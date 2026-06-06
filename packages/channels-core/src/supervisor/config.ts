@@ -196,9 +196,9 @@ export function validateChannelReady(projectDir: string, channelId: ChannelId, c
   }
   if (!isChannelConfigured(projectDir, channelId, config)) {
     if (channelId === "weixin") {
-      return { ok: false as const, reason: "未登录，请运行: gatehouse channels login weixin" }
+      return { ok: false as const, reason: "未登录，请运行: bunx @gatehouse/core channels login weixin" }
     }
-    return { ok: false as const, reason: "缺少凭证，请运行: gatehouse channels login " + channelId }
+    return { ok: false as const, reason: "缺少凭证，请运行: bunx @gatehouse/core channels login " + channelId }
   }
   return { ok: true as const }
 }

@@ -13,7 +13,17 @@ Gatehouse is a multi-agent team plugin for [OpenCode](https://opencode.ai). Regi
 | Non-interactive install | `bunx @gatehouse/core install --no-tui ...` | Same as above; suitable for CI / LLM agents |
 | Health check | `bunx @gatehouse/core doctor [--probe]` | Checks OpenCode, plugin registration, `.gatehouse/` project layout, Portal |
 
-**Do not** use `npm install -g @gatehouse/core` — Gatehouse is an OpenCode plugin; register via `bunx` or `opencode plug`.
+## CLI Invocation
+
+Recommended — run via Bun without a global install:
+
+```bash
+bunx @gatehouse/core <subcommand>
+```
+
+All CLI examples below use this form. If you ran `bun install -g @gatehouse/core`, you may shorten `bunx @gatehouse/core` to `gatehouse`.
+
+**Do not** use `npm install -g @gatehouse/core` — Gatehouse is an OpenCode plugin; register via `bunx` or `opencode plug`. npm cannot run the TypeScript bin directly.
 
 ---
 
@@ -125,7 +135,7 @@ bunx @gatehouse/core install \
 opencode plug @gatehouse/core --global
 ```
 
-This registers the plugin only and **does not** write `~/.config/gatehouse/config.yaml` — run `gatehouse install` if you need locale / model presets.
+This registers the plugin only and **does not** write `~/.config/gatehouse/config.yaml` — run `bunx @gatehouse/core install` if you need locale / model presets.
 
 **The installer writes:**
 
@@ -187,9 +197,9 @@ Complete OAuth / API key setup per OpenCode prompts.
 ### Step 6: (Optional) IM Channels
 
 ```bash
-gatehouse channels init
-gatehouse channels doctor --probe
-gatehouse channels serve
+bunx @gatehouse/core channels init
+bunx @gatehouse/core channels doctor --probe
+bunx @gatehouse/core channels serve
 ```
 
 See [packages/channels-core/README.md](../../packages/channels-core/README.md).
@@ -216,7 +226,7 @@ bun ./package/bin/gatehouse.ts install ./gatehouse-core-0.1.0.tgz --no-tui --loc
 |---------|-----|
 | Doctor reports missing `@gatehouse/core` | Re-run `bunx @gatehouse/core install` |
 | `.gatehouse/` missing | Start `opencode` once from project root |
-| Portal won't open | Confirm OpenCode loaded the plugin; run `doctor --probe` |
+| Portal won't open | Confirm OpenCode loaded the plugin; run `bunx @gatehouse/core doctor --probe` |
 | Invalid model | Check `config.yaml` uses `provider/model-id` format |
 | Incompatible OpenCode version | Upgrade to >= 1.14.40 and < 1.17.0 |
 
@@ -229,8 +239,8 @@ bun ./package/bin/gatehouse.ts install ./gatehouse-core-0.1.0.tgz --no-tui --loc
 | `bunx @gatehouse/core install` | Interactive global install |
 | `bunx @gatehouse/core install --no-tui --locale=en --model=...` | Non-interactive install |
 | `bunx @gatehouse/core doctor [--probe]` | Health check |
-| `gatehouse channels doctor [--probe]` | IM channels health check |
-| `gatehouse portal` | Print Portal URL hint |
+| `bunx @gatehouse/core channels init\|login\|serve\|stop\|status\|doctor` | IM channel management |
+| `bunx @gatehouse/core portal` | Print Portal URL hint |
 | `opencode plug @gatehouse/core --global` | Native OpenCode registration (no config.yaml) |
 
 ---

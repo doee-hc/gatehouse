@@ -7,7 +7,7 @@
 | `@gatehouse/channels-core` | Shared channel bridge logic + OpenCode plugin entry |
 | `@gatehouse/core` | OpenCode server + TUI plugins, `.gatehouse` templates, Portal UI (`dist/portal/`), **bundled IM bridges** (`bridges/`) |
 
-`bun run build` copies `packages/*-bridge/src` into `packages/core/bridges/`. `gatehouse channels serve` resolves bridge entrypoints from the installed `@gatehouse/core` package (via `.gatehouse/core.path`). Separate `@gatehouse/*-bridge` npm packages are **not** required for end users.
+`bun run build` copies `packages/*-bridge/src` into `packages/core/bridges/`. `bunx @gatehouse/core channels serve` resolves bridge entrypoints from the installed `@gatehouse/core` package (via `.gatehouse/core.path`). Separate `@gatehouse/*-bridge` npm packages are **not** required for end users.
 
 Release notes for each version: [CHANGELOG.md](../../../CHANGELOG.md) at the repo root.
 

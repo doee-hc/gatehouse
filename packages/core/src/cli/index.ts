@@ -33,7 +33,7 @@ if (command === "doctor") {
   const rest = args.slice(1)
   if (rest.includes("--help") || rest.includes("-h")) {
     console.log(`Usage:
-  gatehouse doctor [-C project] [--probe]
+  bunx @gatehouse/core doctor [-C project] [--probe]
 
 Options:
   -C, --project <dir>   Gatehouse 项目根目录（默认当前目录）
@@ -63,14 +63,17 @@ if (command === "portal") {
   process.exit(0)
 }
 
-console.log(`Usage:
-  gatehouse install [path/to/@gatehouse/core-*.tgz]
+console.log(`Invoke: bunx @gatehouse/core <subcommand>
+       (or gatehouse <subcommand> after bun install -g @gatehouse/core)
+
+Usage:
+  bunx @gatehouse/core install [path/to/gatehouse-core-*.tgz]
                              # register plugin in ~/.config/opencode
 
-  gatehouse doctor [-C project] [--probe]
+  bunx @gatehouse/core doctor [-C project] [--probe]
                              # health check (System / Config / Agents / Project / Portal / Models)
 
-  gatehouse channels init|list|doctor|login|serve|stop|status
+  bunx @gatehouse/core channels init|list|doctor|login|serve|stop|status
                              # IM bridge supervisor (微信 / 飞书 / QQ)
 
 Local .tgz from bun pm pack in packages/core (filename: gatehouse-core-*.tgz):
@@ -85,7 +88,7 @@ Recommended (global install — no project path):
 
 Then start OpenCode in your project — Gatehouse scaffolds .gatehouse/ automatically.
 
-  gatehouse portal
+  bunx @gatehouse/core portal
 
 npm: @gatehouse/core
 `)

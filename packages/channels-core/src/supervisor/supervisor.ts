@@ -94,13 +94,13 @@ export class ChannelSupervisor {
 
     const existing = readLiveSupervisorState(this.projectDir)
     if (existing && existing.pid !== process.pid) {
-      throw new Error(`supervisor 已在运行 (pid ${existing.pid})，请先 gatehouse channels stop`)
+      throw new Error(`supervisor 已在运行 (pid ${existing.pid})，请先 bunx @gatehouse/core channels stop`)
     }
 
     const config = loadChannelsConfig(this.projectDir)
     const enabled = listEnabledChannels(config, this.requestedChannels)
     if (!enabled.length) {
-      throw new Error("没有启用的 channel。编辑 .gatehouse/channels.yaml 或运行 gatehouse channels login <name>")
+      throw new Error("没有启用的 channel。编辑 .gatehouse/channels.yaml 或运行 bunx @gatehouse/core channels login <name>")
     }
 
     writeSupervisorState(this.projectDir, this.state)

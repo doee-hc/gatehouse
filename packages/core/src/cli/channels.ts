@@ -19,25 +19,28 @@ type ParsedArgs = {
 }
 
 function printChannelsHelp() {
-  console.log(`Usage:
-  gatehouse channels init [-C project]
-  gatehouse channels list [-C project]
-  gatehouse channels doctor [-C project] [--probe]
-  gatehouse channels login <weixin|feishu|qq> [-C project]
-  gatehouse channels serve [-C project] [weixin feishu qq ...]
-  gatehouse channels stop [-C project]
-  gatehouse channels status [-C project]
+  console.log(`Invoke: bunx @gatehouse/core channels <subcommand>
+       (or gatehouse channels <subcommand> after bun install -g @gatehouse/core)
+
+Usage:
+  bunx @gatehouse/core channels init [-C project]
+  bunx @gatehouse/core channels list [-C project]
+  bunx @gatehouse/core channels doctor [-C project] [--probe]
+  bunx @gatehouse/core channels login <weixin|feishu|qq> [-C project]
+  bunx @gatehouse/core channels serve [-C project] [weixin feishu qq ...]
+  bunx @gatehouse/core channels stop [-C project]
+  bunx @gatehouse/core channels status [-C project]
 
 Options:
   -C, --project <dir>   Gatehouse 项目根目录（默认当前目录）
   --probe               doctor/status 时探测 OpenCode 连通性
 
 Examples:
-  gatehouse channels init
-  gatehouse channels login weixin
-  gatehouse channels serve
-  gatehouse channels serve weixin feishu
-  gatehouse channels doctor --probe
+  bunx @gatehouse/core channels init
+  bunx @gatehouse/core channels login weixin
+  bunx @gatehouse/core channels serve
+  bunx @gatehouse/core channels serve weixin feishu
+  bunx @gatehouse/core channels doctor --probe
 `)
 }
 
@@ -98,7 +101,7 @@ export async function runChannelsCommand(rawArgs: string[]) {
       const result = initChannelsConfig(projectDir!)
       if (result.created) {
         console.log(`已创建 ${result.path}`)
-        console.log("编辑 enabled / 凭证后运行: gatehouse channels serve")
+        console.log("编辑 enabled / 凭证后运行: bunx @gatehouse/core channels serve")
       } else {
         console.log(`已存在 ${result.path}`)
       }
@@ -129,7 +132,7 @@ export async function runChannelsCommand(rawArgs: string[]) {
 
     case "login": {
       const channelId = positional[1]
-      if (!channelId) throw new Error("用法: gatehouse channels login <weixin|feishu|qq>")
+      if (!channelId) throw new Error("用法: bunx @gatehouse/core channels login <weixin|feishu|qq>")
       if (!CHANNEL_IDS.includes(channelId as ChannelId)) {
         throw new Error(`未知 channel: ${channelId}`)
       }

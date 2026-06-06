@@ -57,16 +57,16 @@ Bridges subscribe to OpenCode `/event` and push new assistant messages back to I
 
 ## Channels Supervisor CLI
 
-Driven by `@gatehouse/core` `gatehouse channels` subcommands (implementation in this package `src/supervisor/`):
+Driven by `@gatehouse/core` `channels` subcommands (implementation in this package `src/supervisor/`). Invoke via `bunx @gatehouse/core channels …` (or `gatehouse channels …` after `bun install -g @gatehouse/core`):
 
 ```bash
-gatehouse channels init [-C project]
-gatehouse channels login <weixin|feishu|qq>
-gatehouse channels serve [-C project] [weixin feishu qq ...]
-gatehouse channels status [--probe]
-gatehouse channels stop
-gatehouse channels doctor [--probe]
-gatehouse channels list
+bunx @gatehouse/core channels init [-C project]
+bunx @gatehouse/core channels login <weixin|feishu|qq>
+bunx @gatehouse/core channels serve [-C project] [weixin feishu qq ...]
+bunx @gatehouse/core channels status [--probe]
+bunx @gatehouse/core channels stop
+bunx @gatehouse/core channels doctor [--probe]
+bunx @gatehouse/core channels list
 ```
 
 The supervisor spawns platform bridge child processes with `[weixin]` / `[feishu]` / `[qq]` log prefixes; abnormal exits auto-restart (rate-limited to prevent loops).

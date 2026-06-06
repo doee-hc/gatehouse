@@ -91,7 +91,7 @@ function printInstallSuccess(configPath: string) {
   console.log("  2. 运行 opencode（首次启动会自动创建 .gatehouse/）")
   console.log(`  3. 浏览器打开 http://127.0.0.1:${DEFAULT_PORTAL_DISPLAY_PORT}/ 查看 Portal`)
   console.log("  4. 验证: bunx @gatehouse/core doctor")
-  console.log("  5. （可选）IM 通道: gatehouse channels init")
+  console.log("  5. （可选）IM 通道: bunx @gatehouse/core channels init")
   console.log("")
   console.log("认证: 若尚未配置模型 provider，请在 OpenCode 中运行 opencode auth login")
 }
@@ -137,7 +137,7 @@ export async function registerGatehouseGlobal(rawArgs: string[] = []) {
 
 export function printInstallHelp() {
   console.log(`Usage:
-  gatehouse install [path/to/gatehouse-core-*.tgz]
+  bunx @gatehouse/core install [path/to/gatehouse-core-*.tgz]
 
 Options:
   --no-tui              非交互安装（CI / LLM Agent）

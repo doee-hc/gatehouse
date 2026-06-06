@@ -1,4 +1,4 @@
-# Gatehouse IM channels — managed by `gatehouse channels serve`
+# Gatehouse IM channels — managed by `bunx @gatehouse/core channels serve`
 opencodeUrl: http://127.0.0.1:4096
 
 channels:

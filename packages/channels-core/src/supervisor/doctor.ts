@@ -31,7 +31,7 @@ export async function runChannelsDoctor(projectDir: string, probe = false): Prom
   if (!channelsConfigExists(projectDir)) {
     issues.push({
       level: "warn",
-      message: "缺少 .gatehouse/channels.yaml，可运行: gatehouse channels init",
+      message: "缺少 .gatehouse/channels.yaml，可运行: bunx @gatehouse/core channels init",
     })
   }
 
@@ -40,7 +40,7 @@ export async function runChannelsDoctor(projectDir: string, probe = false): Prom
   if (supervisor) {
     issues.push({ level: "ok", message: `supervisor 运行中 (pid ${supervisor.pid})` })
   } else {
-    issues.push({ level: "warn", message: "supervisor 未运行，可运行: gatehouse channels serve" })
+    issues.push({ level: "warn", message: "supervisor 未运行，可运行: bunx @gatehouse/core channels serve" })
   }
 
   if (probe) {

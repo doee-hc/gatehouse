@@ -49,7 +49,7 @@ export async function runChannelLogin(
     if (!appId || !appSecret) throw new Error("App ID 与 App Secret 不能为空")
     updateChannelConfig(projectDir, "feishu", { appId, appSecret })
     console.log("已保存飞书凭证到 .gatehouse/channels.yaml")
-    console.log("提示: 先运行 gatehouse channels serve，再在飞书控制台配置事件订阅长连接。")
+    console.log("提示: 先运行 bunx @gatehouse/core channels serve，再在飞书控制台配置事件订阅长连接。")
     return
   }
 
