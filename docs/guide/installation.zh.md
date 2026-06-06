@@ -132,7 +132,7 @@ opencode plug @gatehouse/core --global
 | 步骤 | 写入 |
 |------|------|
 | 全局 OpenCode | `~/.config/opencode/opencode.jsonc` → `["@gatehouse/core", {}]` |
-| 全局 TUI | `~/.config/opencode/tui.json` → `["@gatehouse/core/tui", {}]` |
+| 全局 TUI | `~/.config/opencode/tui.json` → `["@gatehouse/core", {}]`（OpenCode 自动解析 `exports["./tui"]`） |
 | Agent 定义 | `~/.config/opencode/agent/{lead,architect,curator,arbiter}.md` |
 | Gatehouse 配置 | `~/.config/gatehouse/config.yaml`（locale / models，若指定） |
 

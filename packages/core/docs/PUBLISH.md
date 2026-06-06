@@ -120,7 +120,7 @@ Or edit `~/.config/opencode/opencode.jsonc`:
 And `~/.config/opencode/tui.json`:
 
 ```jsonc
-{ "plugin": ["@gatehouse/core/tui"] }
+{ "plugin": ["@gatehouse/core"] }
 ```
 
 Optional CLI (registers plugin + can write global config.yaml):

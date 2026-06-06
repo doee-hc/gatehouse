@@ -26,7 +26,7 @@ import {
   materializeGatehouseArchive,
   gatehousePackageRoot,
   GATEHOUSE_SERVER_PLUGIN,
-  GATEHOUSE_TUI_PLUGIN,
+  GATEHOUSE_TUI_CONFIG_PLUGIN,
   useLocalPluginEntry,
 } from "./package.ts"
 
@@ -181,7 +181,7 @@ export async function registerGatehouseInGlobalOpencodeConfig(options?: Register
     ? parseJsoncConfig(readFileSync(tuiPath, "utf8"), tuiPath)
     : { $schema: "https://opencode.ai/tui.json" }
   const tuiPlugins = Array.isArray(tuiConfig.plugin) ? tuiConfig.plugin : []
-  tuiConfig.plugin = upsertGatehousePluginList(tuiPlugins, GATEHOUSE_TUI_PLUGIN)
+  tuiConfig.plugin = upsertGatehousePluginList(tuiPlugins, GATEHOUSE_TUI_CONFIG_PLUGIN)
   await Bun.write(tuiPath, `${JSON.stringify(tuiConfig, null, 2)}\n`)
 
   return configPath

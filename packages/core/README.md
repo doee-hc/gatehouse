@@ -49,9 +49,9 @@ opencode plug @gatehouse/core --global
 ```
 
 ```jsonc
-// ~/.config/opencode/tui.json (TUI client guard)
+// ~/.config/opencode/tui.json (TUI client guard — package root; OpenCode resolves exports["./tui"])
 {
-  "plugin": ["@gatehouse/core/tui"]
+  "plugin": ["@gatehouse/core"]
 }
 ```
 

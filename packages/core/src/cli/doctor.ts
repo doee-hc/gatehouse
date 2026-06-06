@@ -107,7 +107,7 @@ export async function runGatehouseDoctor(projectDir: string, probe = false): Pro
     issues.push({
       level: "error",
       category: "Config",
-      message: `~/.config/opencode/tui.json 缺少 @gatehouse/core/tui — 运行: bunx @gatehouse/core install`,
+      message: `~/.config/opencode/tui.json 缺少 @gatehouse/core — 运行: bunx @gatehouse/core install`,
     })
   }
 

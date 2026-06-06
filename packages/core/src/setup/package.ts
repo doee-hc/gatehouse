@@ -5,7 +5,8 @@ import { pathToFileURL } from "node:url"
 
 export const GATEHOUSE_NPM_PACKAGE = "@gatehouse/core"
 export const GATEHOUSE_SERVER_PLUGIN = GATEHOUSE_NPM_PACKAGE
-export const GATEHOUSE_TUI_PLUGIN = `${GATEHOUSE_NPM_PACKAGE}/tui`
+/** npm spec written to tui.json — OpenCode resolves exports["./tui"]; not "@gatehouse/core/tui". */
+export const GATEHOUSE_TUI_CONFIG_PLUGIN = GATEHOUSE_NPM_PACKAGE
 
 export function gatehousePackageRoot(fromDir = import.meta.dir) {
   let dir = path.resolve(fromDir)
@@ -61,7 +62,7 @@ export function resolveGatehouseTuiPluginEntry(packageRoot: string) {
     const source = path.join(packageRoot, "src", "tui", "index.ts")
     if (existsSync(source)) return pathToFileURL(source).href
   }
-  return GATEHOUSE_TUI_PLUGIN
+  return GATEHOUSE_TUI_CONFIG_PLUGIN
 }
 
 export function gatehouseCorePluginSpec(pluginRoot: string) {

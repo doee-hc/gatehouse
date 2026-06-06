@@ -132,7 +132,7 @@ This registers the plugin only and **does not** write `~/.config/gatehouse/confi
 | Step | Target |
 |------|--------|
 | Global OpenCode | `~/.config/opencode/opencode.jsonc` → `["@gatehouse/core", {}]` |
-| Global TUI | `~/.config/opencode/tui.json` → `["@gatehouse/core/tui", {}]` |
+| Global TUI | `~/.config/opencode/tui.json` → `["@gatehouse/core", {}]` (OpenCode resolves `exports["./tui"]`) |
 | Agent definitions | `~/.config/opencode/agent/{lead,architect,curator,arbiter}.md` |
 | Gatehouse config | `~/.config/gatehouse/config.yaml` (locale / models, if specified) |
 

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "name": "@gatehouse/channels-core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Shared Gatehouse channel bridge logic — registry agent routing, OpenCode sessions, /agent commands",
   "type": "module",
   "license": "MIT",

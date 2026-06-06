@@ -8,7 +8,6 @@ import { tmpdir } from "node:os"
 import {
   ensureOpencodeConfig,
   gatehouseCorePluginSpec,
-  gatehouseTuiPluginSpec,
   prepareGatehouseProject,
   projectOpencodeConfigPath,
 } from "../src/setup/project.ts"
@@ -292,7 +291,7 @@ describe("project setup", () => {
         JSON.stringify({
           plugin: [
             [gatehouseCorePluginSpec(pluginRoot), {}],
-            [gatehouseTuiPluginSpec(pluginRoot), {}],
+            ["@gatehouse/core/tui", {}],
           ],
         }),
       )
@@ -303,7 +302,7 @@ describe("project setup", () => {
         plugin?: unknown[]
       }
       const specs = (config.plugin ?? []).map((entry) => (Array.isArray(entry) ? entry[0] : entry))
-      expect(specs).not.toContain(gatehouseTuiPluginSpec(pluginRoot))
+      expect(specs).not.toContain("@gatehouse/core/tui")
       expect(specs.some((spec) => typeof spec === "string" && spec.includes("/tui/"))).toBe(false)
     } finally {
       if (prevLocal !== undefined) process.env.GATEHOUSE_LOCAL_PLUGIN = prevLocal

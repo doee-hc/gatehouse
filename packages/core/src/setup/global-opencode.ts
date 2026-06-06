@@ -4,7 +4,7 @@ import { homedir } from "node:os"
 import { DEFAULT_GATEHOUSE_LOCALE, type GatehouseLocale } from "../locale.ts"
 import { defaultAgentNames, renderAgentPrompt, renderGatehouseTemplate, type OuterProfile } from "../names.ts"
 import { injectAgentPermissionYaml } from "./permissions.ts"
-import { gatehouseTuiPluginSpec, useLocalPluginEntry } from "./package.ts"
+import { GATEHOUSE_NPM_PACKAGE, gatehouseTuiPluginSpec, useLocalPluginEntry } from "./package.ts"
 import { parseJsoncConfig } from "./jsonc.ts"
 import {
   legacyProjectOpencodeConfigPath,
@@ -85,6 +85,7 @@ export function isGatehouseServerPluginSpec(spec: string) {
 
 export function isGatehouseTuiPluginSpec(spec: string) {
   return (
+    spec === GATEHOUSE_NPM_PACKAGE ||
     spec.includes("@gatehouse/core/tui") ||
     spec.includes("gatehouse.tui") ||
     /[/\\]tui[/\\]index\.(ts|tsx|js|mjs|cjs)(?:[?#].*)?$/.test(spec)

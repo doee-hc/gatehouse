@@ -5,7 +5,7 @@ import { tmpdir } from "node:os"
 import { existsSync, readFileSync } from "node:fs"
 import { ensureGlobalGatehouseConfig, gatehouseGlobalConfigPath } from "../src/gatehouse-config.ts"
 import { registerGatehouseInGlobalOpencodeConfig } from "../src/setup/project.ts"
-import { detectGlobalOpencodeConfigPath } from "../src/setup/global-opencode.ts"
+import { detectGlobalOpencodeConfigPath, isGatehouseTuiPluginSpec } from "../src/setup/global-opencode.ts"
 import { parseCliArgs, hasFlag, optionValue } from "../src/cli/parse-args.ts"
 import { normalizeGatehouseLocale } from "../src/locale.ts"
 
@@ -51,6 +51,11 @@ describe("install cli helpers", () => {
     }
   })
 
+  test("isGatehouseTuiPluginSpec accepts opencode plug style package root", () => {
+    expect(isGatehouseTuiPluginSpec("@gatehouse/core")).toBe(true)
+    expect(isGatehouseTuiPluginSpec("@gatehouse/core/tui")).toBe(true)
+  })
+
   test("registerGatehouseInGlobalOpencodeConfig writes server and tui plugins", async () => {
     const globalOpencode = await mkdtemp(path.join(tmpdir(), "gh-install-oc-"))
     const prev = process.env.GATEHOUSE_GLOBAL_OPENCODE_DIR
@@ -66,7 +71,7 @@ describe("install cli helpers", () => {
         plugin?: unknown[]
       }
       const tuiSpecs = (tui.plugin ?? []).map((entry) => (Array.isArray(entry) ? entry[0] : entry))
-      expect(tuiSpecs[0]).toBe("@gatehouse/core/tui")
+      expect(tuiSpecs[0]).toBe("@gatehouse/core")
     } finally {
       if (prev === undefined) delete process.env.GATEHOUSE_GLOBAL_OPENCODE_DIR
       else process.env.GATEHOUSE_GLOBAL_OPENCODE_DIR = prev
