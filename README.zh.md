@@ -103,10 +103,10 @@ Portal 办公室的像素美术素材来自 [LimeZu](https://limezu.itch.io/)，
 
 ## Star 曲线
 
-<a href="https://star-history.com/#doee-hc/gatehouse&Date">
+<a href="https://www.star-history.com/?repos=doee-hc%2Fgatehouse&type=date&legend=top-left">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=doee-hc/gatehouse&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=doee-hc/gatehouse&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=doee-hc/gatehouse&type=Date" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/image?repos=doee-hc/gatehouse&type=date&theme=dark&legend=top-left" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/image?repos=doee-hc/gatehouse&type=date&legend=top-left" />
+    <img alt="Star History Chart" src="https://api.star-history.com/image?repos=doee-hc/gatehouse&type=date&legend=top-left" />
   </picture>
 </a>
