@@ -7,7 +7,7 @@
     },
     "packages/channels-core": {
       "name": "@gatehouse/channels-core",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "dependencies": {
         "@opencode-ai/plugin": "^1.15.13",
         "@opencode-ai/sdk": "^1.15.13",
@@ -25,7 +25,7 @@
     },
     "packages/core": {
       "name": "@gatehouse/core",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "bin": {
         "gatehouse": "./bin/gatehouse.ts",
       },
@@ -58,7 +58,7 @@
       "name": "@gatehouse/feishu-bridge",
       "version": "0.1.0",
       "dependencies": {
-        "@gatehouse/channels-core": "workspace:*",
+        "@gatehouse/channels-core": "0.1.0",
         "@larksuiteoapi/node-sdk": "^1.54.0",
         "@opencode-ai/sdk": "^1.15.13",
       },
@@ -93,7 +93,7 @@
       "name": "@gatehouse/qq-bridge",
       "version": "0.1.0",
       "dependencies": {
-        "@gatehouse/channels-core": "workspace:*",
+        "@gatehouse/channels-core": "0.1.0",
         "@opencode-ai/sdk": "^1.15.13",
         "qq-official-bot": "^1.2.1",
       },
@@ -109,7 +109,7 @@
       "name": "@gatehouse/weixin-bridge",
       "version": "0.1.0",
       "dependencies": {
-        "@gatehouse/channels-core": "workspace:*",
+        "@gatehouse/channels-core": "0.1.0",
         "@opencode-ai/sdk": "^1.15.13",
       },
       "devDependencies": {
@@ -727,6 +727,12 @@
     "yoga-layout": ["yoga-layout@3.2.1", "", {}, "sha512-0LPOt3AxKqMdFBZA3HBAt/t/8vIKq7VaQYbuA8WxCgung+p9TVyKRYdpvCb80HcdTN2NkbIKbhNwKUfm3tQywQ=="],
 
     "zod": ["zod@4.1.8", "", {}, "sha512-5R1P+WwQqmmMIEACyzSvo4JXHY5WiAFHRMg+zBZKgKS+Q1viRa0C1hmUKtHltoIFKtIdki3pRxkmpP74jnNYHQ=="],
+
+    "@gatehouse/feishu-bridge/@gatehouse/channels-core": ["@gatehouse/channels-core@0.1.0", "", { "dependencies": { "@opencode-ai/plugin": "^1.15.13", "@opencode-ai/sdk": "^1.15.13" } }, "sha512-c4mUbaRRmdUX7ictRKLD3P92bfYOn7F+peUvtwNWGwFdJGtdI1BXj7uIWWKzFvC9XPRP4Jvu4sp9w1r1YE+ZDA=="],
+
+    "@gatehouse/qq-bridge/@gatehouse/channels-core": ["@gatehouse/channels-core@0.1.0", "", { "dependencies": { "@opencode-ai/plugin": "^1.15.13", "@opencode-ai/sdk": "^1.15.13" } }, "sha512-c4mUbaRRmdUX7ictRKLD3P92bfYOn7F+peUvtwNWGwFdJGtdI1BXj7uIWWKzFvC9XPRP4Jvu4sp9w1r1YE+ZDA=="],
+
+    "@gatehouse/weixin-bridge/@gatehouse/channels-core": ["@gatehouse/channels-core@0.1.0", "", { "dependencies": { "@opencode-ai/plugin": "^1.15.13", "@opencode-ai/sdk": "^1.15.13" } }, "sha512-c4mUbaRRmdUX7ictRKLD3P92bfYOn7F+peUvtwNWGwFdJGtdI1BXj7uIWWKzFvC9XPRP4Jvu4sp9w1r1YE+ZDA=="],
 
     "@opentui/core/marked": ["marked@17.0.1", "", { "bin": { "marked": "bin/marked.js" } }, "sha512-boeBdiS0ghpWcSwoNm/jJBwdpFaMnZWRzjA6SkUMYb40SVaN1x7mmfGKp0jvexGcx+7y2La5zRZsYFZI6Qpypg=="],
 
