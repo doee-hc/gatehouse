@@ -1,0 +1,268 @@
+import { describe, expect, test } from "bun:test"
+import { mkdtemp, mkdir } from "node:fs/promises"
+import path from "node:path"
+import { tmpdir } from "node:os"
+import { RegistryStore } from "../src/registry/store.ts"
+import { seedActiveMissionRegistry } from "./copy-example-mission.ts"
+import { buildListTeamData, type ListTeamPayload } from "../src/tools/list-views.ts"
+
+function expectPayload(data: Awaited<ReturnType<typeof buildListTeamData>>): ListTeamPayload {
+  if ("error" in data) throw new Error(data.error)
+  return data
+}
+import { parseTreeManifest } from "../src/tree/parse.ts"
+import { exportTreeManifestYaml, writeRetroManifest } from "../src/tree/store.ts"
+
+async function storeWithAgents(
+  agents: Array<{
+    agentId: string
+    scope: "outer" | "inner" | "retro"
+    profile: string
+    sessionId: string
+    displayName: string
+    missionId?: string
+    nodeId?: string
+    parentSessionId?: string
+  }>,
+) {
+  const dir = await mkdtemp(path.join(tmpdir(), "gh-list-views-"))
+  await mkdir(path.join(dir, ".gatehouse", "lead"), { recursive: true })
+  const store = await RegistryStore.create({ directory: dir, client: {} as never })
+  for (const agent of agents) {
+    store.register({
+      agentId: agent.agentId,
+      scope: agent.scope,
+      profile: agent.profile,
+      sessionId: agent.sessionId,
+      displayName: agent.displayName,
+      ...(agent.missionId && { missionId: agent.missionId }),
+      ...(agent.nodeId && { nodeId: agent.nodeId }),
+      ...(agent.parentSessionId && { parentSessionId: agent.parentSessionId }),
+    })
+  }
+  return { dir, store }
+}
+
+const sampleManifestYaml = `
+mission_id: m1
+root_node: root
+created_at: "2026-01-01T00:00:00Z"
+status: running
+nodes:
+  root:
+    session_id: ses-root
+    parent: null
+    description: 协调根
+    profile: build-coordinator
+  leaf:
+    session_id: ses-leaf
+    parent: root
+    description: 执行叶
+    profile: build
+`
+
+describe("buildListTeamData", () => {
+  test("lead sees outer readiness and execution tree without session_id", async () => {
+    const { store, dir } = await storeWithAgents([
+      {
+        agentId: "outer:architect",
+        scope: "outer",
+        profile: "architect",
+        sessionId: "ses-a",
+        displayName: "Architect",
+      },
+    ])
+    seedActiveMissionRegistry(dir, "m1")
+    await exportTreeManifestYaml(dir, parseTreeManifest(sampleManifestYaml))
+    store.register({
+      agentId: "inner:m1:root",
+      scope: "inner",
+      profile: "build-coordinator",
+      sessionId: "ses-root",
+      displayName: "root",
+      missionId: "m1",
+      nodeId: "root",
+    })
+    store.register({
+      agentId: "inner:m1:leaf",
+      scope: "inner",
+      profile: "build",
+      sessionId: "ses-leaf",
+      displayName: "leaf",
+      missionId: "m1",
+      nodeId: "leaf",
+      parentSessionId: "ses-root",
+    })
+    const data = await buildListTeamData({
+      store,
+      directory: dir,
+      callerProfile: "lead",
+      sessionId: "ses-lead",
+    })
+    const payload = expectPayload(data)
+    expect(payload.outer?.find((item) => item.profile === "architect")?.ready).toBe(true)
+    expect(payload.outer?.find((item) => item.profile === "curator")?.ready).toBe(false)
+    expect(payload.execution?.map((item) => item.node_id).sort()).toEqual(["leaf", "root"])
+    expect(payload.execution?.every((item) => !("session_id" in item))).toBe(true)
+  })
+
+  test("architect sees outer contacts and execution without session_id", async () => {
+    const { store, dir } = await storeWithAgents([
+      {
+        agentId: "outer:lead",
+        scope: "outer",
+        profile: "lead",
+        sessionId: "ses-l",
+        displayName: "Lead",
+      },
+      {
+        agentId: "outer:architect",
+        scope: "outer",
+        profile: "architect",
+        sessionId: "ses-a",
+        displayName: "Architect",
+      },
+    ])
+    seedActiveMissionRegistry(dir, "m1")
+    await exportTreeManifestYaml(dir, parseTreeManifest(sampleManifestYaml))
+    const data = await buildListTeamData({
+      store,
+      directory: dir,
+      callerProfile: "architect",
+      sessionId: "ses-a",
+    })
+    const payload = expectPayload(data)
+    expect(payload.outer?.map((item) => item.profile).sort()).toEqual(["architect", "lead"])
+    expect(payload.execution?.length).toBe(2)
+    expect(payload.execution?.every((item) => !("session_id" in item))).toBe(true)
+  })
+
+  test("arbiter sees session_id on roster entries", async () => {
+    const { store, dir } = await storeWithAgents([
+      {
+        agentId: "inner:m1:root",
+        scope: "inner",
+        profile: "build-coordinator",
+        sessionId: "ses-r",
+        displayName: "root",
+        missionId: "m1",
+        nodeId: "root",
+      },
+    ])
+    seedActiveMissionRegistry(dir, "m1")
+    await exportTreeManifestYaml(dir, parseTreeManifest(sampleManifestYaml))
+    const data = await buildListTeamData({
+      store,
+      directory: dir,
+      callerProfile: "arbiter",
+      sessionId: "ses-arbiter",
+    })
+    const payload = expectPayload(data)
+    expect(payload.execution?.find((item) => item.node_id === "root")?.session_id).toBe("ses-r")
+    expect(payload.execution?.find((item) => item.node_id === "leaf")?.session_id).toBeUndefined()
+  })
+
+  test("inner structural root sees lead and all execution nodes", async () => {
+    const { store, dir } = await storeWithAgents([
+      {
+        agentId: "outer:lead",
+        scope: "outer",
+        profile: "lead",
+        sessionId: "ses-l",
+        displayName: "Lead",
+      },
+    ])
+    seedActiveMissionRegistry(dir, "m1")
+    await exportTreeManifestYaml(dir, parseTreeManifest(sampleManifestYaml))
+    const data = await buildListTeamData({
+      store,
+      directory: dir,
+      callerProfile: "build-coordinator",
+      sessionId: "ses-root",
+    })
+    const payload = expectPayload(data)
+    expect(payload.outer).toEqual([{ profile: "lead", display_name: "Lead" }])
+    expect(payload.execution?.length).toBe(2)
+    expect(payload.subtree).toBeUndefined()
+  })
+
+  test("inner leaf sees execution only", async () => {
+    const { store, dir } = await storeWithAgents([])
+    seedActiveMissionRegistry(dir, "m1")
+    await exportTreeManifestYaml(dir, parseTreeManifest(sampleManifestYaml))
+    const data = await buildListTeamData({
+      store,
+      directory: dir,
+      callerProfile: "build",
+      sessionId: "ses-leaf",
+    })
+    const payload = expectPayload(data)
+    expect(payload.outer).toBeUndefined()
+    expect(payload.execution?.length).toBe(2)
+  })
+
+  test("retro session sees subtree only", async () => {
+    const { store, dir } = await storeWithAgents([])
+    seedActiveMissionRegistry(dir, "m1")
+    const manifest = parseTreeManifest(`
+mission_id: m1
+root_node: root
+created_at: "2026-01-01T00:00:00Z"
+status: running
+nodes:
+  root:
+    session_id: ses-root
+    parent: null
+    description: 根
+    profile: build-coordinator
+  mid:
+    session_id: ses-mid
+    parent: root
+    description: 中层
+    profile: build-coordinator
+  leaf:
+    session_id: ses-leaf
+    parent: mid
+    description: 叶
+    profile: build
+`)
+    await exportTreeManifestYaml(dir, manifest)
+    store.register({
+      agentId: "retro:m1:mid",
+      scope: "retro",
+      profile: "build-coordinator",
+      sessionId: "ses-retro-mid",
+      displayName: "mid",
+      missionId: "m1",
+      nodeId: "mid",
+    })
+    await writeRetroManifest(dir, {
+      mission_id: "m1",
+      created_at: "2026-01-01T00:00:00Z",
+      retro_order: ["mid", "root"],
+      nodes: {
+        mid: {
+          exec_session_id: "ses-mid",
+          retro_session_id: "ses-retro-mid",
+          child_nodes: ["leaf"],
+        },
+        root: {
+          exec_session_id: "ses-root",
+          retro_session_id: "ses-retro-root",
+          child_nodes: ["mid"],
+        },
+      },
+    })
+    const data = await buildListTeamData({
+      store,
+      directory: dir,
+      callerProfile: "build-coordinator",
+      sessionId: "ses-retro-mid",
+    })
+    const payload = expectPayload(data)
+    expect(payload.subtree?.map((item) => item.node_id).sort()).toEqual(["leaf", "mid"])
+    expect(payload.execution).toBeUndefined()
+    expect(payload.outer).toBeUndefined()
+    expect(payload.you.node_id).toBe("mid")
+  })
+})

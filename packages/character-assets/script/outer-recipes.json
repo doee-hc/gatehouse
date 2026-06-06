@@ -1,0 +1,30 @@
+{
+  "characterGeneratorRoot": "../../../../Character_Generator",
+  "size": "32x32",
+  "roles": {
+    "lead": {
+      "body": "Body_01.png",
+      "eyes": "Eyes_01.png",
+      "hairstyle": "Hairstyle_01_03.png",
+      "outfit": "Outfit_01_05.png"
+    },
+    "architect": {
+      "body": "Body_01.png",
+      "eyes": "Eyes_02.png",
+      "hairstyle": "Hairstyle_02_01.png",
+      "outfit": "Outfit_03_01.png"
+    },
+    "curator": {
+      "body": "Body_02.png",
+      "eyes": "Eyes_03.png",
+      "hairstyle": "Hairstyle_03_02.png",
+      "outfit": "Outfit_02_03.png"
+    },
+    "arbiter": {
+      "body": "Body_03.png",
+      "eyes": "Eyes_04.png",
+      "hairstyle": "Hairstyle_01_06.png",
+      "outfit": "Outfit_04_02.png"
+    }
+  }
+}

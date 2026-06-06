@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@gatehouse/core",
+  "version": "0.1.0",
+  "description": "Gatehouse multi-agent harness for OpenCode — registry tools, missions, and Portal office UI",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/doee-hc/gatehouse.git",
+    "directory": "packages/core"
+  },
+  "keywords": ["opencode", "plugin", "gatehouse", "agents", "multi-agent"],
+  "bin": {
+    "gatehouse": "./bin/gatehouse.ts"
+  },
+  "scripts": {
+    "build": "bun script/build.ts",
+    "pack": "bun script/pack.ts",
+    "prepublishOnly": "bun run build",
+    "typecheck": "tsgo --noEmit",
+    "test": "GATEHOUSE_USE_OPENCODE_HTTP=0 bun test --timeout 30000",
+    "scaffold": "bun script/scaffold.ts",
+    "dev:opencode": "bun script/dev-opencode.ts",
+    "bake:office-layout-presets": "bun script/bake-office-layout-presets.ts"
+  },
+  "exports": {
+    "./server": "./src/server.ts",
+    "./tui": "./src/tui/index.ts"
+  },
+  "files": [
+    "assets",
+    "bin",
+    "bridges",
+    "dist",
+    "src",
+    "templates"
+  ],
+  "engines": {
+    "opencode": ">=1.14.40 <1.17.0",
+    "bun": ">=1.1.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@gatehouse/channels-core": "0.1.0",
+    "@larksuiteoapi/node-sdk": "^1.54.0",
+    "@opencode-ai/plugin": "^1.15.13",
+    "@opencode-ai/sdk": "^1.15.13",
+    "@opentui/solid": "^0.3.1",
+    "jsonc-parser": "3.3.1",
+    "qq-official-bot": "^1.2.1",
+    "solid-js": "^1.9.10"
+  },
+  "peerDependencies": {
+    "@opencode-ai/plugin": ">=1.14.40",
+    "@opencode-ai/sdk": ">=1.14.40",
+    "@opentui/solid": ">=0.3.1"
+  },
+  "peerDependenciesMeta": {
+    "@opentui/solid": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@tsconfig/bun": "^1.0.9",
+    "@types/bun": "^1.3.13",
+    "@typescript/native-preview": "7.0.0-dev.20251207.1",
+    "typescript": "^5.8.2"
+  }
+}

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gatehouse 频道管理</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="admin-app" class="admin-app">
+      <header class="admin-header">
+        <div>
+          <h1>频道管理</h1>
+          <p class="admin-subtitle">Gatehouse Admin · 微信等 IM 频道鉴权</p>
+        </div>
+        <button id="admin-logout" class="admin-btn admin-btn-ghost" type="button" hidden>退出</button>
+      </header>
+
+      <section id="admin-gate" class="admin-panel">
+        <h2>管理员验证</h2>
+        <p class="admin-hint">Admin key 位于项目 <code>.gatehouse/config.yaml</code> 的 <code>portal.admin_key</code>（首次启动会自动生成）。</p>
+        <form id="admin-login-form" class="admin-form">
+          <label class="admin-label" for="admin-key-input">Admin Key</label>
+          <input id="admin-key-input" class="admin-input" type="password" autocomplete="current-password" required />
+          <button class="admin-btn" type="submit">解锁</button>
+        </form>
+        <p id="admin-gate-error" class="admin-error" hidden></p>
+        <p id="admin-gate-status" class="admin-muted"></p>
+      </section>
+
+      <main id="admin-main" class="admin-main" hidden>
+        <section class="admin-panel">
+          <div class="admin-panel-head">
+            <h2>Supervisor</h2>
+            <div class="admin-actions">
+              <button id="supervisor-start" class="admin-btn" type="button">启动</button>
+              <button id="supervisor-stop" class="admin-btn admin-btn-danger" type="button">停止</button>
+              <button id="channels-refresh" class="admin-btn admin-btn-ghost" type="button">刷新</button>
+            </div>
+          </div>
+          <p id="supervisor-status" class="admin-muted">—</p>
+          <p class="admin-hint">
+            启动前请确保至少一个频道已在配置中启用。调整启用/禁用须先停止 Supervisor，再通过 CLI（<code>gatehouse channels login</code> 或编辑
+            <code>.gatehouse/channels.yaml</code>）修改后重新启动。
+          </p>
+        </section>
+
+        <section class="admin-panel">
+          <h2>频道状态</h2>
+          <p class="admin-hint">只读展示；不在运行中热切换频道。</p>
+          <div id="channel-list" class="channel-list"></div>
+        </section>
+
+        <section class="admin-panel">
+          <h2>微信扫码登录</h2>
+          <p class="admin-hint">登录成功后凭证写入 <code>.gatehouse/channels/weixin/credentials.json</code>。</p>
+          <div class="admin-actions">
+            <button id="weixin-login-start" class="admin-btn" type="button">开始扫码</button>
+            <button id="weixin-login-cancel" class="admin-btn admin-btn-ghost" type="button" hidden>取消</button>
+          </div>
+          <p id="weixin-login-status" class="admin-muted">尚未开始</p>
+          <div id="weixin-qr-host" class="weixin-qr-host"></div>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="/src/admin/main.ts"></script>
+  </body>
+</html>

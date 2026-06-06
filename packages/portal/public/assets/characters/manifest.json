@@ -1,0 +1,5 @@
+{
+  "outerRoles": ["lead", "architect", "curator", "arbiter"],
+  "poolSize": 32,
+  "poolPrefix": "pool"
+}

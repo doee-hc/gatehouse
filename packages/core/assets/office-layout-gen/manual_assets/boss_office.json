@@ -1,0 +1,23 @@
+{
+  "name": "boss_office",
+  "tile_size": 32,
+  "map_size": [37, 21],
+  "anchor_tile": [24, 0],
+
+  "layers": [
+    { "type": "chair", "id": "tl_chair", "texture": "chair_back.png", "tile": [3, 1] },
+    { "type": "chair", "id": "tr_chair", "texture": "chair_back.png", "tile": [9, 1] },
+    { "type": "desk", "id": "tl", "texture": "boss_desk_tl.png", "tile": [1, 2] },
+    { "type": "desk", "id": "tr", "texture": "boss_desk_tr.png", "tile": [8, 2] },
+    { "type": "desk", "id": "dl", "texture": "boss_desk_dl.png", "tile": [1, 5] },
+    { "type": "desk", "id": "dr", "texture": "boss_desk_dr.png", "tile": [7, 5] },
+    { "type": "chair", "id": "dl_chair", "texture": "chair_front.png", "tile": [3, 6] },
+    { "type": "chair", "id": "dr_chair", "texture": "chair_front.png", "tile": [8, 6] },
+    {
+      "type": "sprite",
+      "id": "boss_front_wall",
+      "texture": "boss_front_wall.png",
+      "tile": [0, 8]
+    }
+  ]
+}

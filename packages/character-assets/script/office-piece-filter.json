@@ -1,0 +1,22 @@
+{
+  "body": {
+    "blockNameContains": ["kid"],
+    "blockSeries": [1, 4, 5, 6, 8, 9]
+  },
+  "hairstyle": {
+    "allowNameContains": [
+      "Hairstyle_01_03",
+      "Hairstyle_02_01",
+      "Hairstyle_14_06",
+      "Hairstyle_27_05",
+      "Hairstyle_27_01",
+      "Hairstyle_27_06",
+      "Hairstyle_27_04"
+    ]
+  },
+  "outfit": {},
+  "accessory": {
+    "blockSeries": [1, 2, 3, 9, 10, 16, 17, 18]
+  },
+  "accessoryChance": 0.55
+}

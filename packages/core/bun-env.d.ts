@@ -1,0 +1,21 @@
+interface Headers {
+  entries(): IterableIterator<[string, string]>
+}
+
+declare module "bun:test" {
+  type Expectation = {
+    toBe(value: unknown): void
+    toEqual(value: unknown): void
+    toContain(value: unknown): void
+    toHaveLength(value: number): void
+    toMatchObject(value: unknown): void
+    toBeUndefined(): void
+    not: Expectation
+  }
+
+  export function describe(name: string, fn: () => void): void
+  export function test(name: string, fn: () => unknown | Promise<unknown>): void
+  export const expect: ((value: unknown) => Expectation) & {
+    stringContaining(value: string): unknown
+  }
+}

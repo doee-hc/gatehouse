@@ -1,0 +1,26 @@
+schema_version: 1
+locale: en
+portal:
+  # admin_key is auto-generated on first scaffold / start for /admin channel unlock
+  brand:
+    title: Gatehouse
+    subtitle: Team Portal
+    logo: brand/logo.png
+    # icp_text: ""
+agents:
+  lead:
+    name: Len
+  architect:
+    name: Archie
+  curator:
+    name: Kurt
+  arbiter:
+    name: Art
+# Optional per-role models (provider/model-id). Project overrides ~/.config/gatehouse/config.yaml.
+# models:
+#   lead: opencode/big-pickle
+#   architect: opencode/big-pickle
+#   curator: opencode/deepseek-v4-flash-free
+#   arbiter: opencode/deepseek-v4-flash-free
+#   executor: opencode/big-pickle
+#   coordinator: opencode/big-pickle

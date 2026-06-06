@@ -1,0 +1,57 @@
+{
+  "name": "office_desk_row",
+  "tile_size": 32,
+
+  "desk": {
+    "build": ["left", { "repeat": "right" }],
+    "segments": {
+      "left": {
+        "id": "desk_left",
+        "texture": "office_desk_left.png",
+        "width_tiles": 1,
+        "height_tiles": 3,
+        "anchor_pixel": [0, 0]
+      },
+      "right": {
+        "width_tiles": 3,
+        "height_tiles": 3,
+        "anchor_pixel": [0, 0],
+        "pick": "random",
+        "variants": [
+          { "id": "desk_right_0", "texture": "office_desk_right_0.png" },
+          { "id": "desk_right_1", "texture": "office_desk_right_1.png" },
+          { "id": "desk_right_2", "texture": "office_desk_right_2.png" },
+          { "id": "desk_right_3", "texture": "office_desk_right_3.png" }
+        ]
+      }
+    }
+  },
+
+  "chair_front": {
+    "texture": "chair_front.png",
+    "attach_to": "right",
+    "tile_x": 1,
+    "tile_y": 2,
+    "width_tiles": 1,
+    "height_tiles": 2,
+    "facing": "down"
+  },
+
+  "chair_back": {
+    "texture": "chair_back.png",
+    "attach_to": "right",
+    "tile_x": 1,
+    "tile_y": -1,
+    "width_tiles": 1,
+    "height_tiles": 2,
+    "facing": "up"
+  },
+
+  "placement": {
+    "right_segments": 6,
+    "include_back_chair": true,
+    "module_height_tiles": 5,
+    "pitch_x": 20,
+    "pitch_y": 5
+  }
+}

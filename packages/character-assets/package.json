@@ -1,0 +1,12 @@
+{
+  "name": "@gatehouse/character-assets",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate:outer": "python3 script/compose-character-sheets.py --recipes script/outer-recipes.json --out-dir assets/outer",
+    "generate:pool": "python3 script/generate-pool.py --count 32",
+    "generate:all": "bun script/generate-all.ts",
+    "migrate:preview": "python3 script/migrate-random-to-pool.py",
+    "sync:portal": "bun script/sync-portal.ts"
+  }
+}

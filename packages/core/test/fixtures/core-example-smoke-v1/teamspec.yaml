@@ -1,0 +1,20 @@
+mission_id: core-example-smoke-v1
+root: node-root
+
+nodes:
+  node-root:
+    parent: null
+    description: Mission 任务协调者，分派 node-doc 并汇总交付
+    constraints: |
+      你是 Mission core-example-smoke-v1 的任务协调者。
+      must_not: 不新增 plugin tool；不修改 packages/gatehouse-plugin。
+      下属节点：node-doc；多步时分派，否则自做。
+      交付完成后写 reports/root-delivery.md 并 gatehouse_send_message(recipient="lead") 通知 lead。
+
+  node-doc:
+    parent: node-root
+    description: 文档执行成员，负责 README 示例章节
+    constraints: |
+      你是文档执行成员，负责 README 示例章节。
+      must_not: 不新增 plugin tool；不修改 gatehouse-plugin。
+      when_pair_with: node-root 分配任务后再动笔；完成回复 node-root。

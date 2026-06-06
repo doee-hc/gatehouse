@@ -1,0 +1,40 @@
+.DS_Store
+__pycache__/
+*.pyc
+node_modules
+.env
+.env.local
+.idea
+.vscode
+*~
+tmp
+dist
+packages/core/bridges
+.turbo
+
+# 运行时数据（任意包下）
+**/.gatehouse/
+!packages/core/templates/**
+
+# 本地 OpenCode 配置
+opencode.jsonc
+packages/*/opencode.jsonc
+
+# 本地 OpenCode 运行时目录
+**/.opencode/
+
+# 本地测试沙箱
+packages/test/
+
+# 构建产物
+*.tgz
+
+packages/**/test/.tmp-*
+packages/**/test/.tmp-attachments/
+oh-my-openagent
+
+# LimeZu 本地合成工具输出（只发布 portal 内成品 sheets）
+packages/character-assets/assets/
+
+# 角色预览（含本地配方路径，不进仓库）
+packages/portal/public/assets/characters/preview/

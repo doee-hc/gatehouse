@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@gatehouse/channels-core",
+  "version": "0.1.0",
+  "description": "Shared Gatehouse channel bridge logic — registry agent routing, OpenCode sessions, /agent commands",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/doee-hc/gatehouse.git",
+    "directory": "packages/channels-core"
+  },
+  "keywords": ["opencode", "gatehouse", "channels", "im", "bridge"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./server": "./src/plugin/index.ts",
+    "./plugin": "./src/plugin/index.ts",
+    "./tool-envelope": "./src/tool-envelope.ts",
+    "./project-opencode-config": "./src/project-opencode-config.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "pack": "bun pm pack",
+    "typecheck": "tsgo --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@opencode-ai/plugin": "^1.15.13",
+    "@opencode-ai/sdk": "^1.15.13"
+  },
+  "devDependencies": {
+    "@tsconfig/bun": "^1.0.9",
+    "@types/bun": "^1.3.13",
+    "@types/node": "^24.12.2",
+    "@typescript/native-preview": "7.0.0-dev.20251207.1",
+    "typescript": "^5.8.2"
+  }
+}

@@ -1,0 +1,105 @@
+# Retro analysis template (auto-dispatched after fork)
+
+`gatehouse_mission_retro` **auto-delivers** this template to your retro session (`{{mission_id}}` / `{{node_id}}` placeholders filled). You do not wait for {{architect_name}} to `send_message` each step.
+
+---
+
+## Retro task · node {{node_id}}
+
+You are in a **retro fork session** analyzing your execution branch — **do not** mix analysis into the original execution session.
+
+**Discover issues yourself** — do not rely on Gatehouse precomputed semantic features.
+
+### Data sources (source of truth)
+
+```
+.gatehouse/architect/trees/{{mission_id}}/context/
+  index.json                 # all node_ids in your branch, subtree-metrics paths
+  subtree-metrics.json       # token/duration/tool aggregates per retro coord subtree (read retro_nodes["{{node_id}}"])
+  <node_id>/
+    messages.json            # full raw messages (tool I/O, parent)
+    timeline.md              # grep-friendly timeline (kind, tokens=)
+    metrics.json             # per-node session token/duration/tool aggregates
+
+.gatehouse/architect/retro-toolkit/     # prior retro tools & methodology (read before analysis)
+  SKILL.md
+  tools/<verb-noun>/SKILL.md + scripts
+```
+
+**Precomputed API-level metrics** (read files directly, no tool calls):
+
+- Subtree rollup: `context/subtree-metrics.json` → `retro_nodes["{{node_id}}"]`
+- Per-node detail: `context/<node_id>/metrics.json`
+
+These **do not** replace semantic features you derive from messages/timeline (compaction count, todo-phase tokens, send_message patterns, etc.).
+
+### Recommended steps (sample → tools → conclusions)
+
+1. Read `context/index.json`, `context/subtree-metrics.json` (`retro_nodes["{{node_id}}"]`), **`retro-toolkit/SKILL.md`**; list branch nodes; reuse `tools/` scripts.
+2. **Do not read** all of `messages.json`. Grep `timeline.md` first (table below).
+3. For suspicious patterns: **write or extend Python scripts** for features (compaction, todo tokens, send_message sequences, etc.).
+4. If a new tool is reusable: add `.gatehouse/architect/retro-toolkit/tools/<verb-noun>/` with `SKILL.md`.
+5. Cross-check `subtree-metrics.json` with script output.
+6. Write retro report (include tools section) → `gatehouse_retro_record` → `gatehouse_publish_blog(report_path=...)`.
+
+**Grep guide (timeline.md):**
+
+| Target | Command |
+|--------|---------|
+| Real user input | `grep 'kind=user'` |
+| Gatehouse system delivery | `grep 'kind=gatehouse'` |
+| Context compaction | `grep 'kind=compaction_marker'` |
+| Compaction summary | `grep 'kind=summary'` |
+| Reports upstream/peers | `grep 'tool=gatehouse_send_message'` |
+| Todo changes | `grep 'tool=todowrite'` |
+| High-token turns | `grep 'tokens='` |
+
+**messages.json script tips:** top-level `messages` array; assistant tokens in `info.tokens`; tools in `parts[]` with `type=tool`.
+
+### Output
+
+Write: `.gatehouse/architect/trees/{{mission_id}}/reports/nodes/{{node_id}}-retro.md`
+
+**Report is for {{architect_name}} (assignment & prompt constraints), not domain skills or business implementation detail.**
+
+Suggested structure:
+
+```markdown
+# Runtime retro · {{node_id}}
+
+## Analysis method
+- Sampling path (grep / which nodes and slices):
+- Reused retro-toolkit tools:
+- New tools this round: (or "none"; path + one-line purpose if any)
+
+## Efficiency findings (with script/evidence)
+- (your findings + how measured; cite timeline lines or script output)
+
+## Task assignment & prompt constraints
+- Was assignment clear (who / what / done_when):
+- teamspec constraints followed, too loose/tight:
+- Child prompts causing duplicate work or overlap:
+
+## Coordination & topology (for {{architect_name}} meta-skill)
+- send_message / wait / topology suggestions:
+
+## Actionable recommendations for {{architect_name}} (3–5)
+(assignment, topology, prompt templates, constraint wording only)
+
+## Tool contribution (required)
+| Item | Content |
+|------|---------|
+| New/improved retro tool | yes / no |
+| Tool path | `.gatehouse/architect/retro-toolkit/tools/...` or "none" |
+| Promote to toolkit? | yes / no / n/a |
+| Brief note | |
+```
+
+### Record completion (required)
+
+```
+gatehouse_retro_record()
+gatehouse_publish_blog(report_path=".gatehouse/architect/trees/{{mission_id}}/reports/nodes/{{node_id}}-retro.md")
+```
+
+**Do not** `gatehouse_send_message` {{architect_name}} — Gatehouse auto-notifies {{architect_name}} after all nodes record (with retro reports and retro-toolkit curation tasks).

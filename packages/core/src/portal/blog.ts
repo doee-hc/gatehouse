@@ -1,0 +1,242 @@
+import path from "node:path"
+import { leadDir } from "../paths.ts"
+import { readManifest } from "../tree/store.ts"
+import type { TreeManifest } from "../tree/types.ts"
+import { isRecord, parseYaml, readString } from "../yaml.ts"
+import {
+  blogMissionIdFromPostId,
+  readBlogPublishedDocument,
+  readPublishedBlogPostIds,
+} from "./blog-publish.ts"
+import { createPortalDataCache } from "./portal-cache.ts"
+
+export type BlogPost = {
+  id: string
+  title: string
+  excerpt: string
+  markdown: string
+  path: string
+  updated_at: string
+}
+
+export type BlogGroup = {
+  kind: "mission" | "team-building"
+  id: string
+  title: string
+  objective?: string
+  completed_at?: string
+  post_count: number
+  expanded: boolean
+  posts: BlogPost[]
+}
+
+export type BlogSnapshot = {
+  project_directory: string
+  updated_at: string
+  groups: BlogGroup[]
+}
+
+type MissionEntry = {
+  id: string
+  status: string
+  objective?: string
+  completed_at?: string
+}
+
+const TEAM_BUILDING_GROUP_ID = "__team_building__"
+
+async function readMissionEntries(projectDirectory: string) {
+  const file = Bun.file(path.join(leadDir(projectDirectory), "missions.yaml"))
+  if (!(await file.exists())) return [] as MissionEntry[]
+  const raw = parseYaml(await file.text())
+  if (!isRecord(raw) || !Array.isArray(raw.missions)) return []
+  return raw.missions.flatMap((entry): MissionEntry[] => {
+    if (!isRecord(entry)) return []
+    const id = readString(entry.id)
+    const status = readString(entry.status)
+    if (!id || !status) return []
+    return [
+      {
+        id,
+        status,
+        ...(readString(entry.objective) && { objective: readString(entry.objective) }),
+        ...(readString(entry.completed_at) && { completed_at: readString(entry.completed_at) }),
+      },
+    ]
+  })
+}
+
+async function readMarkdownPost(projectDirectory: string, relPath: string, postId: string) {
+  const abs = path.join(projectDirectory, relPath)
+  const file = Bun.file(abs)
+  if (!(await file.exists())) return undefined
+  const markdown = await file.text()
+  if (!markdown.trim()) return undefined
+  const stat = await file.stat()
+  return {
+    id: postId,
+    title: extractTitle(markdown, path.basename(relPath)),
+    excerpt: excerptFromMarkdown(markdown),
+    markdown,
+    path: relPath,
+    updated_at: stat.mtime.toISOString(),
+  } satisfies BlogPost
+}
+
+function extractTitle(markdown: string, fallback: string) {
+  const match = markdown.match(/^#\s+(.+)$/m)
+  if (match?.[1]) return match[1].trim()
+  return fallback.replace(/\.md$/i, "")
+}
+
+function excerptFromMarkdown(markdown: string, maxLen = 180) {
+  const plain = markdown
+    .replace(/^#+\s.+$/gm, "")
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/`[^`]+`/g, "")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/[*_~>#|-]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+  if (plain.length <= maxLen) return plain
+  return `${plain.slice(0, maxLen).trim()}…`
+}
+
+function treeNodeOrder(manifest: TreeManifest) {
+  const order: string[] = []
+  const queue = Object.entries(manifest.nodes)
+    .filter(([, node]) => node.parent === manifest.root_node)
+    .map(([nodeId]) => nodeId)
+  while (queue.length > 0) {
+    const nodeId = queue.shift()!
+    order.push(nodeId)
+    for (const [childId, node] of Object.entries(manifest.nodes)) {
+      if (node.parent === nodeId) queue.push(childId)
+    }
+  }
+  return order
+}
+
+function blogPostSortRank(postId: string, manifest?: TreeManifest) {
+  if (postId.endsWith(":lead:report")) return 0
+  if (postId.endsWith(":architect:summary")) return 1
+  if (postId.endsWith(":root:delivery")) return 2
+  const retroPrefix = ":retro:"
+  const retroAt = postId.indexOf(retroPrefix)
+  if (retroAt > 0 && manifest) {
+    const nodeId = postId.slice(retroAt + retroPrefix.length)
+    const index = treeNodeOrder(manifest).indexOf(nodeId)
+    return index < 0 ? 50 : 3 + index
+  }
+  return 99
+}
+
+function sortMissionPosts(posts: BlogPost[], manifest?: TreeManifest) {
+  return [...posts].sort(
+    (a, b) =>
+      blogPostSortRank(a.id, manifest) - blogPostSortRank(b.id, manifest) ||
+      a.title.localeCompare(b.title),
+  )
+}
+
+function missionSortTime(mission: MissionEntry, manifest?: TreeManifest) {
+  if (mission.completed_at) return mission.completed_at
+  if (manifest?.archived_at) return manifest.archived_at
+  return manifest?.created_at ?? ""
+}
+
+async function readPublishedPosts(projectDirectory: string, published: Set<string>) {
+  const doc = await readBlogPublishedDocument(projectDirectory)
+  const posts: BlogPost[] = []
+  for (const entry of doc.posts) {
+    if (!published.has(entry.id)) continue
+    const post = await readMarkdownPost(projectDirectory, entry.path, entry.id)
+    if (post) posts.push(post)
+  }
+  return posts
+}
+
+function missionShowsInBlog(mission: MissionEntry) {
+  return mission.status !== "running" && mission.status !== "retro"
+}
+
+const blogSnapshotCache = createPortalDataCache<BlogSnapshot>({ ttlMs: 60_000 })
+
+async function loadBlogSnapshot(projectDirectory: string) {
+  const published = await readPublishedBlogPostIds(projectDirectory)
+  const posts = await readPublishedPosts(projectDirectory, published)
+  const missions = await readMissionEntries(projectDirectory)
+  const missionById = new Map(missions.map((mission) => [mission.id, mission]))
+  const blogMissionIds = new Set(missions.filter(missionShowsInBlog).map((mission) => mission.id))
+
+  const missionPosts = new Map<string, BlogPost[]>()
+  const teamBuildingPosts: BlogPost[] = []
+
+  for (const post of posts) {
+    const missionId = blogMissionIdFromPostId(post.id)
+    if (!missionId || !blogMissionIds.has(missionId)) {
+      teamBuildingPosts.push(post)
+      continue
+    }
+    const bucket = missionPosts.get(missionId) ?? []
+    bucket.push(post)
+    missionPosts.set(missionId, bucket)
+  }
+
+  const missionGroups = await Promise.all(
+    [...missionPosts.entries()].map(async ([missionId, groupPosts]) => {
+      const mission = missionById.get(missionId)!
+      const manifest = await readManifest(projectDirectory, missionId)
+      return {
+        kind: "mission" as const,
+        id: missionId,
+        title: missionId,
+        ...(mission.objective && { objective: mission.objective }),
+        sortTime: missionSortTime(mission, manifest),
+        ...(mission.completed_at && { completed_at: mission.completed_at }),
+        post_count: groupPosts.length,
+        expanded: false,
+        posts: sortMissionPosts(groupPosts, manifest),
+      }
+    }),
+  )
+
+  const missionBlogGroups: BlogGroup[] = missionGroups
+    .filter((group) => group.post_count > 0)
+    .sort((a, b) => b.sortTime.localeCompare(a.sortTime))
+    .map(({ sortTime: _sortTime, ...group }) => group)
+
+  if (missionBlogGroups.length > 0) missionBlogGroups[0]!.expanded = true
+
+  const teamBuildingGroup: BlogGroup | undefined =
+    teamBuildingPosts.length > 0
+      ? {
+          kind: "team-building",
+          id: TEAM_BUILDING_GROUP_ID,
+          title: TEAM_BUILDING_GROUP_ID,
+          post_count: teamBuildingPosts.length,
+          expanded: missionBlogGroups.length === 0,
+          posts: [...teamBuildingPosts].sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
+        }
+      : undefined
+
+  const groups = [...missionBlogGroups, ...(teamBuildingGroup ? [teamBuildingGroup] : [])]
+
+  return {
+    project_directory: projectDirectory,
+    updated_at: new Date().toISOString(),
+    groups,
+  } satisfies BlogSnapshot
+}
+
+export async function buildBlogSnapshot(projectDirectory: string) {
+  return blogSnapshotCache.get(projectDirectory, () => loadBlogSnapshot(projectDirectory))
+}
+
+export function invalidateBlogSnapshotCache() {
+  blogSnapshotCache.clear()
+}
+
+export function clearBlogCacheForTests() {
+  blogSnapshotCache.clear()
+}

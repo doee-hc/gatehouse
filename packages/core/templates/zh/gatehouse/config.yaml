@@ -1,0 +1,26 @@
+schema_version: 1
+locale: zh
+portal:
+  # admin_key 在首次初始化或启动时自动生成，用于 /admin 频道管理解锁
+  brand:
+    title: Gatehouse
+    subtitle: 团队门户
+    logo: brand/logo.png
+    # icp_text: ""
+agents:
+  lead:
+    name: Len
+  architect:
+    name: Archie
+  curator:
+    name: Kurt
+  arbiter:
+    name: Art
+# Optional per-role models (provider/model-id). Project overrides ~/.config/gatehouse/config.yaml.
+# models:
+#   lead: opencode/big-pickle
+#   architect: opencode/big-pickle
+#   curator: opencode/deepseek-v4-flash-free
+#   arbiter: opencode/deepseek-v4-flash-free
+#   executor: opencode/big-pickle
+#   coordinator: opencode/big-pickle
