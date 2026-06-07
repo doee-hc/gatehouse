@@ -28,6 +28,56 @@ Run the plugin locally and visit `http://127.0.0.1:18471/` to explore the office
 
 ---
 
+### Architecture
+
+Gatehouse is built on one premise: **teams are ephemeral; domain knowledge is persistent.**
+
+Each Mission spins up an execution team on demand and releases it when done. What persists across Missions is the skill library, retrospective reports, and architectural learnings—not a fixed roster of agents. The team evolves with your project instead of relying on a permanent org chart.
+
+#### Design principles
+
+| Principle | Description |
+| --- | --- |
+| **Persistent knowledge, ephemeral teams** | Execution teams are created and dissolved per Mission; `.gatehouse/` accumulates domain skills, retros, and architectural experience |
+| **Stable outer ring, flexible inner ring** | The core quartet (Lead / Architect / Curator / Arbiter) persists; inner topology is tailored per Mission by Architect |
+| **Closed-loop self-improvement** | Plan → assemble → execute → accept → retro → skill distillation feeds the next Mission |
+
+#### Core roles
+
+**Lead** — Aligns with your long-term direction and owns the mission queue and acceptance criteria. Plans the roadmap from history and retros; agrees on objectives, constraints, and done-when with you; accepts delivery against `done_when` and decides whether to retro or close out.
+
+**Architect** — A persistent, independent agent that answers "what team does this Mission need?" Designs TeamSpec (how many agents, how many coordination layers) from the frozen mission snapshot; the team dissolves when the Mission ends and is redesigned next time. During retro, reviews full team context and evaluates collaboration efficiency—token usage, tool calls, inter-agent messaging, elapsed time, and other metrics Architect explores in practice—and distills "what structure fits what kind of work" into meta-skills for better team design over time.
+
+**Curator** — Independent skill librarian. After Architect bootstraps topology, Curator assigns domain skills to execution nodes; after retro, executors extract skill updates from the work and Curator analyzes, consolidates, and archives them for reuse.
+
+**Arbiter** — Independent permission authority; does not execute Missions. When the team hits risky or sensitive operations, Arbiter centrally decides allow / reject and maintains an audit trail.
+
+#### Execution safeguards
+
+**Watchdog** — Built into the execution tree. When the whole team goes abnormally idle (e.g. a node finished but never reported upstream, or all work is done but Lead was not notified to pause monitoring), the watchdog wakes the task coordinator to inspect state and recover from silent stalls.
+
+**Mission lifecycle** — Queue → assemble → execute → accept → retro → skill distillation → complete. Lead freezes the mission snapshot; Architect writes TeamSpec and bootstraps; Curator assigns skills and the execution team starts automatically; after acceptance Lead kicks off retro; Architect and Curator summarize architecture and skills respectively, feeding the next planning cycle.
+
+```mermaid
+flowchart TB
+  User([User]) <--> Lead
+  Lead -->|freeze snapshot| Architect
+  Architect -->|TeamSpec / bootstrap| Curator
+  Curator -->|assign skills| ExecTeam[Execution team]
+  ExecTeam -->|risky ops| Arbiter
+  ExecTeam -.->|abnormal idle| Watchdog
+  Watchdog -.->|wake| ExecTeam
+  ExecTeam -->|deliver| Lead
+  Lead -->|accept| Retro[Retro]
+  Retro --> Architect
+  Retro --> Curator
+  Architect -->|architecture| Skills[(Skill library)]
+  Curator -->|domain knowledge| Skills
+  Skills -.->|feedback| Lead
+```
+
+---
+
 ### Installation
 
 **Prerequisites:** [OpenCode](https://opencode.ai) >= 1.14.40 installed.

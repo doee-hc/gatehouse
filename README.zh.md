@@ -28,6 +28,56 @@
 
 ---
 
+### 架构理念
+
+Gatehouse 的核心假设是：**团队可以随任务生灭，领域知识应当持续积累。**
+
+每次 Mission 按需组建执行团队，任务结束后释放；真正持久化的是 Skill 库、复盘报告与架构经验，而非某一次任务的 agent 阵容。团队能力随项目演进，而不是靠固定编制。
+
+#### 设计原则
+
+| 原则 | 说明 |
+| --- | --- |
+| **知识持久，团队临时** | 执行团队按 Mission 创建与解散；`.gatehouse/` 沉淀领域 Skill、复盘与架构经验 |
+| **外层稳定，内层灵活** | 核心四人组（Lead / Architect / Curator / Arbiter）长期存在；内层拓扑由 Architect 按任务定制 |
+| **分工闭环，自我迭代** | 规划 → 建队 → 执行 → 验收 → 复盘 → Skill 沉淀，形成可复用的改进回路 |
+
+#### 核心角色
+
+**Lead（统筹）** — 面向用户的长期方向，维护任务队列与验收标准。结合历史评价与复盘结论规划路线；与你对齐目标、约束与完成条件后启动 Mission；对照 `done_when` 验收交付，决定是否进入复盘或收尾。
+
+**Architect（架构）** — 持久化的独立 agent，负责「这支任务需要怎样的团队」。根据 Mission 快照设计 TeamSpec（分几个 agent、几层协调），任务结束后团队解散，下次任务重新设计。复盘时分析全员上下文，从 token 消耗、工具调用、agent 间通信、执行时间等维度评估协作效率（量化方式由 Architect 在实战中探索），并将「某类任务适合怎样的团队结构」沉淀为 meta-skill，持续改进建队策略。
+
+**Curator（策展）** — 独立的 Skill 管理 agent。Architect 完成拓扑后，由 Curator 为各执行节点分配细分领域 Skill；复盘阶段，执行者从任务中提炼 Skill 更新，Curator 分析、整理并归档到领域库，供后续 Mission 复用。
+
+**Arbiter（仲裁）** — 独立的权限决断 agent，不参与任务执行。当团队遇到危险或敏感操作时，由 Arbiter 统一裁决 allow / reject，并记录审计日志，避免执行层各自为政。
+
+#### 执行保障
+
+**看门狗（Watchdog）** — 执行团队内置空闲监测。当全员异常 idle（例如某 agent 已完成工作却未向上汇报、或任务已全部完成却未通知 Lead 暂停监测）时，看门狗唤醒任务协调者检查状态，减少执行中途无声卡住。
+
+**Mission 生命周期** — 排队 → 建队 → 执行 → 验收 → 复盘 → Skill 沉淀 → 完成。Lead 冻结任务快照，Architect 写 TeamSpec 并 bootstrap，Curator 分配 Skill 后执行团队自动启动；验收通过后 Lead 启动复盘，Architect 与 Curator 分别汇总架构与 Skill 结论，反哺下一次任务规划。
+
+```mermaid
+flowchart TB
+  User([用户]) <--> Lead
+  Lead -->|冻结任务快照| Architect
+  Architect -->|TeamSpec / bootstrap| Curator
+  Curator -->|分配 Skill| ExecTeam[执行团队]
+  ExecTeam -->|危险操作| Arbiter
+  ExecTeam -.->|异常 idle| Watchdog
+  Watchdog -.->|唤醒| ExecTeam
+  ExecTeam -->|交付| Lead
+  Lead -->|验收| Retro[复盘]
+  Retro --> Architect
+  Retro --> Curator
+  Architect -->|架构经验| Skills[(Skill 库)]
+  Curator -->|领域知识| Skills
+  Skills -.->|反哺| Lead
+```
+
+---
+
 ### 安装
 
 **前置条件：** 已安装 [OpenCode](https://opencode.ai) >= 1.14.40。
