@@ -41,6 +41,44 @@ code {
   margin-bottom: 1.25rem;
 }
 
+.admin-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.locale-toggle {
+  display: flex;
+  border: 2px solid #1a2218;
+  overflow: hidden;
+}
+
+.locale-btn {
+  font-family: var(--font);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.3rem 0.55rem;
+  border: none;
+  border-right: 1px solid #1a2218;
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.locale-btn:last-child {
+  border-right: none;
+}
+
+.locale-btn:hover {
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.locale-btn.active {
+  color: var(--text);
+  background: var(--surface);
+}
+
 .admin-header h1 {
   margin: 0;
   font-size: 1.5rem;

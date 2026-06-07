@@ -183,12 +183,98 @@ const messages = {
     zh: "若使用了 HTTP 代理，本地请求可能被拦截——请用 <code>bun run dev /path/to/project</code> 启动（已自动绕过代理）",
     en: "HTTP proxies may block local requests — use <code>bun run dev /path/to/project</code> (proxy bypass is automatic)",
   },
+  "error.loadSnapshot": {
+    zh: "无法加载 snapshot（{status}）：{url}",
+    en: "Failed to load snapshot ({status}): {url}",
+  },
+  "error.snapshotUnavailable": { zh: "无法获取 snapshot", en: "Snapshot unavailable" },
+  "error.loadBlog": { zh: "无法加载 blog（{status}）", en: "Failed to load blog ({status})" },
+  "error.loadTeamStatsApi": {
+    zh: "无法加载团队数据（{status}）",
+    en: "Failed to load team stats ({status})",
+  },
 
   "assets.loadFailed": {
     zh: "办公室资源加载失败\n请运行: GATEHOUSE_PROJECT_DIR=/path/to/project bun run import:office-layout",
     en: "Office assets failed to load\nRun: GATEHOUSE_PROJECT_DIR=/path/to/project bun run import:office-layout",
   },
   "assets.tilesetFailed": { zh: "地图 tileset 绑定失败", en: "Map tileset binding failed" },
+  "assets.layoutUnavailable": {
+    zh: "办公室布局不可用。请先启动 Mission，或运行：bun run import:office-layout",
+    en: "Office layout unavailable. Bootstrap a mission or run: bun run import:office-layout",
+  },
+
+  "admin.pageTitle": { zh: "Gatehouse 频道管理", en: "Gatehouse Channel Admin" },
+  "admin.heading": { zh: "频道管理", en: "Channel Admin" },
+  "admin.subtitle": {
+    zh: "Gatehouse Admin · 微信等 IM 频道鉴权",
+    en: "Gatehouse Admin · WeChat and IM channel auth",
+  },
+  "admin.logout": { zh: "退出", en: "Log out" },
+  "admin.gate.title": { zh: "管理员验证", en: "Admin authentication" },
+  "admin.gate.hint": {
+    zh: "Admin key 位于项目 <code>.gatehouse/config.yaml</code> 的 <code>portal.admin_key</code>（首次启动会自动生成）。",
+    en: "Admin key is in project <code>.gatehouse/config.yaml</code> under <code>portal.admin_key</code> (auto-generated on first start).",
+  },
+  "admin.gate.keyLabel": { zh: "Admin Key", en: "Admin Key" },
+  "admin.gate.unlock": { zh: "解锁", en: "Unlock" },
+  "admin.gate.keyConfigured": { zh: "已检测到 admin key 配置", en: "Admin key configuration detected" },
+  "admin.gate.keyNotConfigured": {
+    zh: "未配置 admin key：请在 .gatehouse/config.yaml 的 portal.admin_key 查看或设置，或使用环境变量 GATEHOUSE_PORTAL_ADMIN_KEY",
+    en: "Admin key not configured: set portal.admin_key in .gatehouse/config.yaml or use GATEHOUSE_PORTAL_ADMIN_KEY",
+  },
+  "admin.gate.sessionExpired": {
+    zh: "会话已过期，请重新输入 key",
+    en: "Session expired — enter your key again",
+  },
+  "admin.supervisor.title": { zh: "Supervisor", en: "Supervisor" },
+  "admin.supervisor.start": { zh: "启动", en: "Start" },
+  "admin.supervisor.stop": { zh: "停止", en: "Stop" },
+  "admin.supervisor.refresh": { zh: "刷新", en: "Refresh" },
+  "admin.supervisor.hint": {
+    zh: "启动前请确保至少一个频道已在配置中启用。调整启用/禁用须先停止 Supervisor，再通过 CLI（<code>bunx @gatehouse/core channels login</code> 或编辑 <code>.gatehouse/channels.yaml</code>）修改后重新启动。",
+    en: "Ensure at least one channel is enabled before starting. To change enable/disable, stop Supervisor first, then update via CLI (<code>bunx @gatehouse/core channels login</code> or edit <code>.gatehouse/channels.yaml</code>) and restart.",
+  },
+  "admin.supervisor.notRunning": { zh: "Supervisor 未运行", en: "Supervisor not running" },
+  "admin.supervisor.running": {
+    zh: "Supervisor 运行中 · pid {pid} · 启动于 {started}",
+    en: "Supervisor running · pid {pid} · started {started}",
+  },
+  "admin.supervisor.starting": { zh: "正在启动 Supervisor…", en: "Starting Supervisor…" },
+  "admin.channels.title": { zh: "频道状态", en: "Channel status" },
+  "admin.channels.hint": {
+    zh: "只读展示；不在运行中热切换频道。",
+    en: "Read-only view; do not hot-swap channels while running.",
+  },
+  "admin.channels.enabled": { zh: "已启用", en: "Enabled" },
+  "admin.channels.disabled": { zh: "已禁用", en: "Disabled" },
+  "admin.channels.configured": { zh: "已配置", en: "Configured" },
+  "admin.channels.notConfigured": { zh: "未配置", en: "Not configured" },
+  "admin.weixin.title": { zh: "微信扫码登录", en: "WeChat QR login" },
+  "admin.weixin.hint": {
+    zh: "登录成功后凭证写入 <code>.gatehouse/channels/weixin/credentials.json</code>。",
+    en: "Credentials are saved to <code>.gatehouse/channels/weixin/credentials.json</code> after login.",
+  },
+  "admin.weixin.start": { zh: "开始扫码", en: "Start QR login" },
+  "admin.weixin.cancel": { zh: "取消", en: "Cancel" },
+  "admin.weixin.notStarted": { zh: "尚未开始", en: "Not started" },
+  "admin.weixin.fetchingQr": { zh: "正在获取二维码…", en: "Fetching QR code…" },
+  "admin.weixin.noQrContent": { zh: "未收到二维码内容", en: "No QR code content received" },
+  "admin.weixin.openInBrowser": { zh: "在浏览器打开扫码页", en: "Open scan page in browser" },
+  "admin.weixin.phase.wait": { zh: "等待扫码…", en: "Waiting for scan…" },
+  "admin.weixin.phase.scaned": { zh: "已扫码，请在微信中确认", en: "Scanned — confirm in WeChat" },
+  "admin.weixin.phase.expired": { zh: "二维码已刷新，请重新扫码", en: "QR code refreshed — scan again" },
+  "admin.weixin.phase.confirmed": { zh: "登录成功", en: "Login successful" },
+  "admin.weixin.phase.failed": { zh: "登录失败", en: "Login failed" },
+  "admin.weixin.phase.cancelled": { zh: "已取消", en: "Cancelled" },
+  "admin.error.notLoggedIn": {
+    zh: "未登录，请先输入 Admin Key",
+    en: "Not logged in — enter Admin Key first",
+  },
+  "admin.error.nonJson": {
+    zh: "Admin API 返回了非 JSON 响应（HTTP {status}）。请确认 Portal Admin 服务已启动，且 Vite 代理端口与 /portal/api/health 中的 admin_port 一致。",
+    en: "Admin API returned non-JSON (HTTP {status}). Ensure Portal Admin is running and the Vite proxy port matches admin_port in /portal/api/health.",
+  },
 
   "about.title": { zh: "关于与致谢", en: "About & Credits" },
   "about.subtitle": {

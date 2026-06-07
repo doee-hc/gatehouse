@@ -1,5 +1,6 @@
 import "./admin.css"
 import QRCode from "qrcode"
+import { initI18n, t } from "../shell/i18n.ts"
 import {
   cancelWeixinLogin,
   clearAdminToken,
@@ -34,6 +35,14 @@ const supervisorStopBtn = document.getElementById("supervisor-stop") as HTMLButt
 
 let weixinSessionId: string | undefined
 let weixinPollTimer: ReturnType<typeof setInterval> | undefined
+let lastChannelSnapshot: ChannelAdminSnapshot | undefined
+let lastSupervisorMessage: string | undefined
+let lastWeixinSession: WeixinLoginSession | undefined
+let weixinStatusIsDefault = true
+
+function syncPageTitle() {
+  document.title = t("admin.pageTitle")
+}
 
 function showGate(message?: string) {
   gate.hidden = false
@@ -51,17 +60,20 @@ function showMain() {
 }
 
 function formatSupervisor(snapshot: ChannelAdminSnapshot) {
-  if (!snapshot.supervisor.running) return "Supervisor 未运行"
+  if (!snapshot.supervisor.running) return t("admin.supervisor.notRunning")
   const started = snapshot.supervisor.startedAt
     ? new Date(snapshot.supervisor.startedAt).toLocaleString()
     : "—"
-  return `Supervisor 运行中 · pid ${snapshot.supervisor.pid ?? "—"} · 启动于 ${started}`
+  return t("admin.supervisor.running", {
+    pid: snapshot.supervisor.pid ?? "—",
+    started,
+  })
 }
 
 function runtimeLabel(entry: ChannelAdminSnapshot["channels"][number]) {
   const parts = [
-    entry.enabled ? "已启用" : "已禁用",
-    entry.configured ? "已配置" : "未配置",
+    entry.enabled ? t("admin.channels.enabled") : t("admin.channels.disabled"),
+    entry.configured ? t("admin.channels.configured") : t("admin.channels.notConfigured"),
   ]
   const status = entry.runtime?.status
   if (status) parts.push(`runtime=${status}`)
@@ -70,6 +82,8 @@ function runtimeLabel(entry: ChannelAdminSnapshot["channels"][number]) {
 }
 
 function renderChannels(snapshot: ChannelAdminSnapshot, supervisorMessage?: string) {
+  lastChannelSnapshot = snapshot
+  lastSupervisorMessage = supervisorMessage
   supervisorStatus.classList.remove("admin-error")
   supervisorStatus.textContent = supervisorMessage ?? formatSupervisor(snapshot)
   channelList.innerHTML = ""
@@ -92,10 +106,11 @@ function renderChannels(snapshot: ChannelAdminSnapshot, supervisorMessage?: stri
 }
 
 async function renderWeixinQr(session: WeixinLoginSession) {
+  lastWeixinSession = session
   weixinQrHost.innerHTML = ""
   const payload = session.qrContent?.trim() || session.qrToken?.trim()
   if (!payload) {
-    weixinQrHost.textContent = "未收到二维码内容"
+    weixinQrHost.textContent = t("admin.weixin.noQrContent")
     return
   }
 
@@ -119,7 +134,7 @@ async function renderWeixinQr(session: WeixinLoginSession) {
     link.href = payload
     link.target = "_blank"
     link.rel = "noopener noreferrer"
-    link.textContent = "在浏览器打开扫码页"
+    link.textContent = t("admin.weixin.openInBrowser")
     link.style.display = "block"
     link.style.marginTop = "0.5rem"
     weixinQrHost.append(link)
@@ -130,20 +145,25 @@ function weixinPhaseText(session: WeixinLoginSession) {
   if (session.message) return session.message
   switch (session.phase) {
     case "wait":
-      return "等待扫码…"
+      return t("admin.weixin.phase.wait")
     case "scaned":
-      return "已扫码，请在微信中确认"
+      return t("admin.weixin.phase.scaned")
     case "expired":
-      return "二维码已刷新，请重新扫码"
+      return t("admin.weixin.phase.expired")
     case "confirmed":
-      return "登录成功"
+      return t("admin.weixin.phase.confirmed")
     case "failed":
-      return "登录失败"
+      return t("admin.weixin.phase.failed")
     case "cancelled":
-      return "已取消"
+      return t("admin.weixin.phase.cancelled")
     default:
       return session.phase
   }
+}
+
+function setWeixinStatusText(text: string, isDefault = false) {
+  weixinStatusIsDefault = isDefault
+  weixinStatus.textContent = text
 }
 
 function stopWeixinPoll() {
@@ -160,7 +180,7 @@ async function pollWeixinSession() {
   if (!weixinSessionId) return
   try {
     const { session } = await pollWeixinLogin(weixinSessionId)
-    weixinStatus.textContent = weixinPhaseText(session)
+    setWeixinStatusText(weixinPhaseText(session))
     await renderWeixinQr(session)
     if (session.phase === "confirmed") {
       stopWeixinPoll()
@@ -174,7 +194,23 @@ async function pollWeixinSession() {
     }
   } catch (error) {
     stopWeixinPoll()
-    weixinStatus.textContent = error instanceof Error ? error.message : String(error)
+    setWeixinStatusText(error instanceof Error ? error.message : String(error))
+  }
+}
+
+function refreshAdminLocale() {
+  syncPageTitle()
+  if (gateStatus.textContent) {
+    gateStatus.textContent = gateStatus.dataset.configured === "1"
+      ? t("admin.gate.keyConfigured")
+      : t("admin.gate.keyNotConfigured")
+  }
+  if (lastChannelSnapshot) renderChannels(lastChannelSnapshot, lastSupervisorMessage)
+  if (lastWeixinSession) {
+    void renderWeixinQr(lastWeixinSession)
+    if (!weixinStatusIsDefault) setWeixinStatusText(weixinPhaseText(lastWeixinSession))
+  } else if (weixinStatusIsDefault) {
+    setWeixinStatusText(t("admin.weixin.notStarted"), true)
   }
 }
 
@@ -182,6 +218,9 @@ async function bootAuthenticated() {
   showMain()
   await refreshChannels()
 }
+
+initI18n(refreshAdminLocale)
+syncPageTitle()
 
 loginForm.addEventListener("submit", (event) => {
   event.preventDefault()
@@ -212,7 +251,7 @@ supervisorStartBtn.addEventListener("click", () => {
   void (async () => {
     supervisorStartBtn.disabled = true
     supervisorStatus.classList.remove("admin-error")
-    supervisorStatus.textContent = "正在启动 Supervisor…"
+    supervisorStatus.textContent = t("admin.supervisor.starting")
     try {
       const result = await startSupervisor()
       renderChannels(result.snapshot)
@@ -220,6 +259,7 @@ supervisorStartBtn.addEventListener("click", () => {
       const message = error instanceof Error ? error.message : String(error)
       supervisorStatus.classList.add("admin-error")
       supervisorStatus.textContent = message
+      lastSupervisorMessage = message
     } finally {
       supervisorStartBtn.disabled = false
     }
@@ -236,6 +276,7 @@ supervisorStopBtn.addEventListener("click", () => {
       const message = error instanceof Error ? error.message : String(error)
       supervisorStatus.classList.add("admin-error")
       supervisorStatus.textContent = message
+      lastSupervisorMessage = message
     } finally {
       supervisorStopBtn.disabled = false
     }
@@ -246,20 +287,21 @@ weixinStartBtn.addEventListener("click", () => {
   void (async () => {
     stopWeixinPoll()
     weixinQrHost.innerHTML = ""
-    weixinStatus.textContent = "正在获取二维码…"
+    lastWeixinSession = undefined
+    setWeixinStatusText(t("admin.weixin.fetchingQr"))
     weixinStartBtn.disabled = true
     try {
       const { session } = await startWeixinLogin()
       weixinSessionId = session.id
       weixinCancelBtn.hidden = false
-      weixinStatus.textContent = weixinPhaseText(session)
+      setWeixinStatusText(weixinPhaseText(session))
       await renderWeixinQr(session)
       weixinPollTimer = setInterval(() => {
         void pollWeixinSession()
       }, 1500)
       void pollWeixinSession()
     } catch (error) {
-      weixinStatus.textContent = error instanceof Error ? error.message : String(error)
+      setWeixinStatusText(error instanceof Error ? error.message : String(error))
     } finally {
       weixinStartBtn.disabled = false
     }
@@ -276,18 +318,20 @@ weixinCancelBtn.addEventListener("click", () => {
     }
     stopWeixinPoll()
     weixinSessionId = undefined
+    lastWeixinSession = undefined
     weixinCancelBtn.hidden = true
     weixinQrHost.innerHTML = ""
-    weixinStatus.textContent = "已取消"
+    setWeixinStatusText(t("admin.weixin.phase.cancelled"))
   })()
 })
 
 void (async () => {
   try {
     const status = await fetchAdminStatus()
+    gateStatus.dataset.configured = status.configured ? "1" : "0"
     gateStatus.textContent = status.configured
-      ? "已检测到 admin key 配置"
-      : "未配置 admin key：请在 .gatehouse/config.yaml 的 portal.admin_key 查看或设置，或使用环境变量 GATEHOUSE_PORTAL_ADMIN_KEY"
+      ? t("admin.gate.keyConfigured")
+      : t("admin.gate.keyNotConfigured")
     if (!status.configured) {
       ;(loginForm.querySelector("button") as HTMLButtonElement).disabled = true
     }
@@ -296,7 +340,7 @@ void (async () => {
         await bootAuthenticated()
       } catch {
         clearAdminToken()
-        showGate("会话已过期，请重新输入 key")
+        showGate(t("admin.gate.sessionExpired"))
       }
     } else {
       showGate()

@@ -30,8 +30,6 @@ import { getPortalSnapshot } from "../portal/state.ts"
 import { findPath, type GridPoint } from "../pathfinding/astar.ts"
 import { gridCenter, gridPathToWorldWaypoints, worldToGrid, type WorldPoint } from "../pathfinding/path-move.ts"
 import { PHASER_FONT, phaserTextResolution, t } from "../shell/i18n.ts"
-import { switchView } from "../shell/tabs.ts"
-import { showToast } from "../shell/toast.ts"
 import {
   agentShouldSitAtDesk,
   anchorGridKey,
@@ -391,6 +389,7 @@ export class OfficeScene extends Phaser.Scene {
   chatHomeGrid = new Map<string, GridPoint>()
   chatChaseTargets = new Map<string, ChatChaseState>()
   retroFollowArchitectGrid?: GridPoint
+  layoutErrorText?: Phaser.GameObjects.Text
 
   constructor() {
     super("OfficeScene")
@@ -436,11 +435,11 @@ export class OfficeScene extends Phaser.Scene {
     const layoutManifest = this.cache.json.get("office-layout-manifest") as OfficeLayoutManifest | undefined
     if (layoutManifest?.version !== 1 || !this.textures.exists("office-scene-bg") || !this.cache.tilemap.has("office-layout")) {
       if (officeLayoutReloadInFlight()) cancelOfficeLayoutReload(currentOfficeLayoutReloadToken())
-      this.add
+      this.layoutErrorText = this.add
         .text(
           16,
           16,
-          "Office layout unavailable. Bootstrap a mission or run: bun run import:office-layout",
+          t("assets.layoutUnavailable"),
           officeTextStyle({
             fontSize: "14px",
             color: "#ffffff",
@@ -875,6 +874,10 @@ export class OfficeScene extends Phaser.Scene {
   }
 
   refreshLocale() {
+    if (this.layoutErrorText?.active) {
+      this.layoutErrorText.setText(t("assets.layoutUnavailable"))
+    }
+    getOfficeDomLabels()?.refreshZoneLocale()
     this.syncDomLabels()
   }
 
