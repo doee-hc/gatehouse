@@ -1,3 +1,11 @@
+import {
+  innerExecutionSkillPermissions,
+  outerProfileSkillPermissions,
+} from "../skills/constants.ts"
+
+type PermissionValue = string | Record<string, string>
+export type AgentPermissionMap = Record<string, PermissionValue>
+
 /** Single source for Gatehouse agent tool permissions (merged by applyGatehouseConfig). */
 
 /** Merged into opencode.json top-level `permission` — inner exec sessions (build / build-coordinator). */
@@ -31,6 +39,7 @@ const outerRetroRecordDenials = {
 } as const
 
 export const leadPermissions = {
+  skill: outerProfileSkillPermissions("lead"),
   task: "deny",
   gatehouse_init_team: "allow",
   gatehouse_bootstrap_tree: "deny",
@@ -50,6 +59,7 @@ export const leadPermissions = {
 } as const
 
 export const architectSessionPermissions = {
+  skill: outerProfileSkillPermissions("architect"),
   task: "deny",
   gatehouse_init_team: "deny",
   gatehouse_bootstrap_tree: "allow",
@@ -69,6 +79,7 @@ export const architectSessionPermissions = {
 } as const
 
 export const curatorSessionPermissions = {
+  skill: outerProfileSkillPermissions("curator"),
   task: "deny",
   gatehouse_init_team: "deny",
   gatehouse_bootstrap_tree: "deny",
@@ -88,6 +99,7 @@ export const curatorSessionPermissions = {
 } as const
 
 export const buildCoordinatorPermissions = {
+  skill: innerExecutionSkillPermissions(),
   question: "allow",
   plan_enter: "allow",
   task: "deny",
@@ -97,6 +109,7 @@ export const buildCoordinatorPermissions = {
 } as const
 
 export const arbiterSessionPermissions = {
+  skill: outerProfileSkillPermissions("arbiter"),
   task: "deny",
   gatehouse_init_team: "deny",
   question: "deny",
@@ -127,7 +140,7 @@ export const arbiterSessionPermissions = {
   gatehouse_unpublish_blog: "deny",
 } as const
 
-export const agentPermissionByAgentFile: Record<string, Record<string, string>> = {
+export const agentPermissionByAgentFile: Record<string, AgentPermissionMap> = {
   "lead.md": leadPermissions,
   "architect.md": architectSessionPermissions,
   "curator.md": curatorSessionPermissions,
@@ -136,9 +149,10 @@ export const agentPermissionByAgentFile: Record<string, Record<string, string>> 
 }
 
 /** Map permission `deny` entries to legacy OpenCode `tools: false` (hide from LLM tool schema). */
-export function hiddenToolsFromPermissions(permission: Record<string, string>) {
+export function hiddenToolsFromPermissions(permission: AgentPermissionMap) {
   const tools: Record<string, boolean> = {}
   for (const [key, value] of Object.entries(permission)) {
+    if (typeof value === "object") continue
     if (value === "deny") tools[key] = false
   }
   return tools
@@ -149,10 +163,19 @@ export function agentToolsForAgentFile(agentFile: string) {
   return permission ? hiddenToolsFromPermissions(permission) : {}
 }
 
-export function permissionYamlBlock(permission: Record<string, string>) {
-  return Object.entries(permission)
-    .map(([key, value]) => `  ${key}: ${value}`)
-    .join("\n")
+export function permissionYamlBlock(permission: AgentPermissionMap) {
+  const lines: string[] = []
+  for (const [key, value] of Object.entries(permission)) {
+    if (typeof value === "object") {
+      lines.push(`  ${key}:`)
+      for (const [nestedKey, nestedValue] of Object.entries(value)) {
+        lines.push(`    ${nestedKey}: ${nestedValue}`)
+      }
+      continue
+    }
+    lines.push(`  ${key}: ${value}`)
+  }
+  return lines.join("\n")
 }
 
 export function toolsYamlBlock(tools: Record<string, boolean>) {

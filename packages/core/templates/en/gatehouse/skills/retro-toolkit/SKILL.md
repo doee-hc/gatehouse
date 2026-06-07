@@ -1,8 +1,12 @@
 ---
 name: retro-toolkit
 description: >-
-  Shared retro coord methodology and custom analysis tools. Discover issues from raw context/,
-  extract features with scripts; persist tool docs as skills for reuse.
+  Shared retro analysis methodology and reusable scripts for Gatehouse build-coordinator retro sessions.
+  Use during mission retro when analyzing context/ dumps and promoting reusable retro tools.
+metadata:
+  gatehouse-kind: toolkit
+  gatehouse-role: exec
+disable-model-invocation: true
 ---
 
 # Retro toolkit · retro-toolkit
@@ -25,8 +29,8 @@ You are a **coord in a retro fork session** (build-coordinator). During retro:
 
 ## Recommended workflow
 
-1. Read `context/index.json` and `context/subtree-metrics.json` (`retro_nodes[<node_id>]`), list all branch `node_id`s.
-2. Read `.gatehouse/architect/retro-toolkit/tools/*/SKILL.md`, reuse scripts.
+1. Call `skill({ name: "retro-toolkit" })`; read `context/index.json` and `context/subtree-metrics.json` (`retro_nodes[<node_id>]`), list all branch `node_id`s.
+2. Read `.gatehouse/skills/retro-toolkit/tools/*/SKILL.md`, reuse scripts.
 3. For 1–2 suspicious nodes: grep timeline → write/run script → record findings.
 4. If a new tool is reusable: add `tools/<name>/` with SKILL.
 5. Write `reports/nodes/<node_id>-retro.md` (include "Tools & methodology") → `gatehouse_retro_record` → `gatehouse_publish_blog(report_path=.gatehouse/architect/trees/<mission_id>/reports/nodes/<node_id>-retro.md)`.
@@ -34,7 +38,7 @@ You are a **coord in a retro fork session** (build-coordinator). During retro:
 ## New tool directory layout
 
 ```
-.gatehouse/architect/retro-toolkit/tools/<verb-noun>/
+.gatehouse/skills/retro-toolkit/tools/<verb-noun>/
   SKILL.md          # purpose, I/O, example command, problem class
   analyze.py        # or other scripts
 ```

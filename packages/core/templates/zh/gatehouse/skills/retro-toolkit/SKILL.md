@@ -1,8 +1,12 @@
 ---
 name: retro-toolkit
 description: >-
-  Gatehouse retro coord 共用方法论与自制分析工具库。从 context/ 原始上下文片段自主发现问题，
-  用脚本提取特征；工具说明以 skill 持久化，供后续 coord 复用迭代。
+  Shared retro analysis methodology and reusable scripts for Gatehouse build-coordinator retro sessions.
+  Use during mission retro when analyzing context/ dumps and promoting reusable retro tools.
+metadata:
+  gatehouse-kind: toolkit
+  gatehouse-role: exec
+disable-model-invocation: true
 ---
 
 # Retro 工具库 · retro-toolkit
@@ -25,8 +29,8 @@ description: >-
 
 ## 推荐工作流
 
-1. 读 `context/index.json` 与 `context/subtree-metrics.json`（`retro_nodes[<node_id>]`），列出所辖分支全部 `node_id`。
-2. 读 `.gatehouse/architect/retro-toolkit/tools/*/SKILL.md`，复用已有脚本。
+1. 调用 `skill({ name: "retro-toolkit" })`；读 `context/index.json` 与 `context/subtree-metrics.json`（`retro_nodes[<node_id>]`），列出所辖分支全部 `node_id`。
+2. 读 `.gatehouse/skills/retro-toolkit/tools/*/SKILL.md`，复用已有脚本。
 3. 对 1–2 个可疑节点：grep timeline → 写/跑脚本 → 记录发现。
 4. 若新工具有复用价值：落盘 `tools/<name>/` 并写 SKILL。
 5. 写 `reports/nodes/<node_id>-retro.md`（含「工具与方法论」章节）→ `gatehouse_retro_record` 登记 → `gatehouse_publish_blog(report_path=.gatehouse/architect/trees/<mission_id>/reports/nodes/<node_id>-retro.md)` 发布到 Portal 博客。
@@ -34,7 +38,7 @@ description: >-
 ## 新工具目录约定
 
 ```
-.gatehouse/architect/retro-toolkit/tools/<verb-noun>/
+.gatehouse/skills/retro-toolkit/tools/<verb-noun>/
   SKILL.md          # 用途、输入输出、示例命令、适用问题类
   analyze.py        # 或其它脚本（可多文件）
 ```

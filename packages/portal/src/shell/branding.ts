@@ -1,5 +1,5 @@
 import type { PortalBranding } from "../api/branding.ts"
-import { initLocaleFromConfig } from "./i18n.ts"
+import { getLocale, initLocaleFromConfig, t } from "./i18n.ts"
 
 let activeBranding: PortalBranding | undefined
 
@@ -12,10 +12,8 @@ export function applyPortalBranding(branding: PortalBranding | undefined) {
     if (titleEl) titleEl.textContent = branding.title
   }
 
-  if (branding?.subtitle) {
-    const subtitleEl = document.querySelector(".brand span[data-i18n='brand.subtitle']")
-    if (subtitleEl) subtitleEl.textContent = branding.subtitle
-  }
+  const subtitleEl = document.querySelector(".brand span[data-i18n='brand.subtitle']")
+  if (subtitleEl) subtitleEl.textContent = resolveBrandSubtitle(branding)
 
   if (branding?.logo_url) {
     const iconEl = document.querySelector(".brand-icon")
@@ -35,6 +33,11 @@ export function applyPortalBranding(branding: PortalBranding | undefined) {
 
 export function refreshPortalBranding() {
   applyPortalBranding(activeBranding)
+}
+
+function resolveBrandSubtitle(branding: PortalBranding | undefined) {
+  if (getLocale() === "en") return t("brand.subtitle")
+  return branding?.subtitle?.trim() || t("brand.subtitle")
 }
 
 function renderPortalFooter(footer: HTMLElement, branding: PortalBranding | undefined) {

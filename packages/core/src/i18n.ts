@@ -33,7 +33,7 @@ Next: write teamspec.yaml under \`.gatehouse/architect/trees/{mission_id}/\`, th
 
 全部 manager 复盘节点已完成并登记。请阅读下列报告，撰写 \`.gatehouse/architect/trees/{mission_id}/reports/architect-summary.md\`。
 
-**必做：** 汇总各 retro 的「工具贡献」→ 整理 \`.gatehouse/architect/retro-toolkit/\`（promote 有效脚本、更新 SKILL、演进 retro 规范）→ 更新 meta-skill → \`gatehouse_send_message(recipient="lead", ...)\` 通知{lead_name}。
+**必做：** 汇总各 retro 的「工具贡献」→ 整理 \`.gatehouse/skills/retro-toolkit/\`（promote 有效脚本、更新 SKILL、演进 retro 规范）→ 更新 architect-meta skill → \`gatehouse_send_message(recipient="lead", ...)\` 通知{lead_name}。
 
 {lines}
 
@@ -44,7 +44,7 @@ retro coord 数据源为 \`context/\`（messages、timeline、metrics、subtree-
 
 All manager retro nodes are complete and recorded. Read the reports below and write \`.gatehouse/architect/trees/{mission_id}/reports/architect-summary.md\`.
 
-**Required:** Summarize each retro's tool contributions → curate \`.gatehouse/architect/retro-toolkit/\` (promote useful scripts, update SKILL, evolve retro norms) → update meta-skill → \`gatehouse_send_message(recipient="lead", ...)\` to notify {lead_name}.
+**Required:** Summarize each retro's tool contributions → curate \`.gatehouse/skills/retro-toolkit/\` (promote useful scripts, update SKILL, evolve retro norms) → update architect-meta skill → \`gatehouse_send_message(recipient="lead", ...)\` to notify {lead_name}.
 
 {lines}
 
@@ -79,12 +79,16 @@ All exec nodes with skill_domain finished retro skill extraction and registratio
   "skillDomain.contextNote": {
     zh: [
       "---",
-      "可查阅领域 skill（自行 read，勿期望全文注入）：`{skill_domain_path}`",
+      "领域 `{skill_domain}` 的 skill 目录：`{skill_domain_path}`",
+      "可用 skill 名（catalog）：{skill_catalog}",
+      "加载方式：`skill({ name: \"<name>\" })` 或 read 对应 `SKILL.md`；勿期望全文自动注入。",
       "Mission 执行期勿提炼 skill；{lead_name}验收且复盘启动后，Gatehouse 会单独下发提炼指引。",
     ].join("\n"),
     en: [
       "---",
-      "Domain skills available (read yourself; do not expect full injection): `{skill_domain_path}`",
+      "Domain `{skill_domain}` skills live under `{skill_domain_path}`",
+      "Available skill names (catalog): {skill_catalog}",
+      "Load via `skill({ name: \"<name>\" })` or read the `SKILL.md`; do not expect full auto-injection.",
       "Do not extract skills during Mission execution; after {lead_name} accepts and retro starts, Gatehouse will send separate extraction guidance.",
     ].join("\n"),
   },

@@ -10,7 +10,7 @@ describe("locale", () => {
   test("resolveGatehouseContentPath prefers locale-specific project files", async () => {
     const project = await mkdtemp(path.join(tmpdir(), "gh-locale-path-"))
     try {
-      const relative = "architect/meta-skill/prompts/dispatch-root.md"
+      const relative = "prompts/architect/dispatch-root.md"
       const localized = path.join(project, ".gatehouse", "en", relative)
       await mkdir(path.dirname(localized), { recursive: true })
       await writeFile(localized, "# English dispatch-root\n")

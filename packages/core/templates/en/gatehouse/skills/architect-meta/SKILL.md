@@ -1,10 +1,15 @@
 ---
 name: architect-meta
 description: >-
-  Outer team architect (profile architect) — teamspec, topology, bootstrap, retro summary.
+  Validates TeamSpec, bootstraps execution topology, and summarizes mission retros for the Gatehouse outer architect profile.
+  Use when acting as profile architect — teamspec, bootstrap, retro summary, and coordination norms.
+metadata:
+  gatehouse-kind: meta
+  gatehouse-role: architect
+disable-model-invocation: true
 ---
 
-# {{architect_name}} · meta-skill
+# {{architect_name}} · architect-meta
 
 ## Your tools
 
@@ -27,7 +32,7 @@ Mission snapshot / TeamSpec / reports — OpenCode read/write + this skill.
 After {{lead_name}} auto-notification from `gatehouse_mission_start`:
 
 1. `gatehouse_mission_current` for full task text (registry snapshot; no repeat `send_message` from {{lead_name}}).
-2. Read `.gatehouse/architect/meta-skill/` history and `prompts/`.
+2. Call `skill({ name: "architect-meta" })` to reload this skill; read `.gatehouse/prompts/architect/` templates.
 
 Task body is objective / done_when / must_not / notes only. **Topology is yours**; teamspec **must not** include skill_domain ({{curator_name}} assigns).
 
@@ -71,7 +76,7 @@ After {{lead_name}} `gatehouse_mission_retro`, Gatehouse forks retro and dispatc
 
 1. Read `reports/nodes/*-retro.md` → write `architect-summary.md` (include retro-toolkit curation).
 2. `gatehouse_publish_blog(report_path=.gatehouse/architect/trees/<id>/reports/architect-summary.md)`.
-3. Update `meta-skill/` and `retro-toolkit/`.
+3. Update `skills/architect-meta/` and `skills/retro-toolkit/`.
 4. `gatehouse_send_message(recipient="lead", ...)`.
 
 {{curator_name}} skill rollup runs in parallel; neither blocks the other.
@@ -82,8 +87,8 @@ After {{lead_name}} `gatehouse_mission_retro`, Gatehouse forks retro and dispatc
 |---------|------|
 | TeamSpec / manifest | `.gatehouse/architect/trees/<id>/` |
 | Reports | `.gatehouse/architect/trees/<id>/reports/` |
-| Prompt templates | `.gatehouse/architect/meta-skill/prompts/` |
-| Retro toolkit | `.gatehouse/architect/retro-toolkit/` |
+| Prompt templates | `.gatehouse/prompts/architect/` |
+| Retro toolkit | `.gatehouse/skills/retro-toolkit/` |
 
 ## Rules
 

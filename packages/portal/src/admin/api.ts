@@ -1,4 +1,5 @@
 import { portalProjectDirectory, resolvePortalProjectDirectory } from "../api/project-directory.ts"
+import { t } from "../shell/i18n.ts"
 
 const TOKEN_KEY = "gatehouse.admin.token"
 
@@ -57,16 +58,14 @@ export type WeixinLoginSession = {
 
 function requireAuthHeaders(extra: Record<string, string> = {}): Record<string, string> {
   const token = sessionStorage.getItem(TOKEN_KEY)
-  if (!token) throw new Error("未登录，请先输入 Admin Key")
+  if (!token) throw new Error(t("admin.error.notLoggedIn"))
   return { Authorization: `Bearer ${token}`, ...extra }
 }
 
 async function parseJson<T>(response: Response): Promise<T> {
   const contentType = response.headers.get("Content-Type") ?? ""
   if (!contentType.includes("application/json")) {
-    throw new Error(
-      `Admin API 返回了非 JSON 响应（HTTP ${response.status}）。请确认 Portal Admin 服务已启动，且 Vite 代理端口与 /portal/api/health 中的 admin_port 一致。`,
-    )
+    throw new Error(t("admin.error.nonJson", { status: response.status }))
   }
   const data = (await response.json().catch(() => ({}))) as T & { error?: string }
   if (!response.ok) {

@@ -6,11 +6,12 @@ import { bundledGatehouseTemplateRoot, gatehouseLocaleRoot, gatehouseRoot } from
 const bundledTemplateRoot = path.join(import.meta.dir, "..", "templates")
 
 export const LOCALE_SPECIFIC_GATEHOUSE_PREFIXES = [
-  "lead/planning-skill/",
-  "architect/meta-skill/",
-  "architect/retro-toolkit/",
-  "curator/meta-skill/",
-  "arbiter/meta-skill/",
+  "skills/lead-meta/",
+  "skills/architect-meta/",
+  "skills/curator-meta/",
+  "skills/arbiter-meta/",
+  "skills/retro-toolkit/",
+  "prompts/",
   "skills/by-domain/",
 ] as const
 

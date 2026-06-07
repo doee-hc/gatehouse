@@ -33,22 +33,22 @@ export async function loginWithQr(params: {
     const manager = getWeixinLoginSessionManager(params.projectDir)
     const session = await manager.startSession()
     const deadline = Date.now() + (params.timeoutMs ?? 480_000)
-    console.log("\n请用微信扫描以下二维码完成登录：\n")
+    console.log("\nScan the QR code below with WeChat to log in:\n")
     if (session.qrContent) console.log(session.qrContent)
     console.log("")
 
     while (Date.now() < deadline) {
       const current = (await manager.tickSession(session.id)) ?? manager.getSession(session.id)
-      if (!current) throw new Error("登录会话已结束")
+      if (!current) throw new Error("Login session ended")
       if (current.phase === "scaned") {
-        console.log("\n已扫码，请在微信中确认…")
+        console.log("\nQR scanned — confirm in WeChat…")
       }
       if (current.phase === "confirmed") {
-        console.log("\n✅ 微信登录成功，凭证已保存。")
+        console.log("\n✅ WeChat login succeeded — credentials saved.")
         return loadCredentials(params.stateDir)
       }
       if (current.phase === "failed") {
-        throw new Error(current.message ?? "登录失败")
+        throw new Error(current.message ?? "Login failed")
       }
       if (current.phase === "expired" && current.message) {
         console.log(`\n${current.message}`)
@@ -61,11 +61,11 @@ export async function loginWithQr(params: {
       await Bun.sleep(1000)
     }
     manager.cancelSession(session.id)
-    throw new Error("登录超时")
+    throw new Error("Login timed out")
   }
 
   const qr = await fetchWeixinQrCode(params.ilinkBaseUrl, params.botType)
-  console.log("\n请用微信扫描以下二维码完成登录：\n")
+  console.log("\nScan the QR code below with WeChat to log in:\n")
   console.log(qr.qrcode_img_content)
   console.log("")
 
@@ -81,16 +81,16 @@ export async function loginWithQr(params: {
       continue
     }
     if (status.status === "scaned") {
-      console.log("\n已扫码，请在微信中确认…")
+      console.log("\nQR scanned — confirm in WeChat…")
       await Bun.sleep(1000)
       continue
     }
     if (status.status === "expired") {
       refreshCount++
       if (refreshCount > 3) {
-        throw new Error("二维码多次过期，请重新运行 login")
+        throw new Error("QR code expired too many times — re-run login")
       }
-      console.log("\n二维码已过期，正在刷新…")
+      console.log("\nQR code expired — refreshing…")
       const next = await fetchWeixinQrCode(params.ilinkBaseUrl, params.botType)
       qrcode = next.qrcode
       console.log(next.qrcode_img_content)
@@ -98,7 +98,7 @@ export async function loginWithQr(params: {
       continue
     }
     if (status.status === "confirmed") {
-      if (!status.bot_token) throw new Error("登录成功但未返回 bot_token")
+      if (!status.bot_token) throw new Error("Login succeeded but bot_token was not returned")
       const credentials: WeixinCredentials = {
         botToken: status.bot_token,
         accountId: status.ilink_bot_id,
@@ -106,10 +106,10 @@ export async function loginWithQr(params: {
         loggedInAt: Date.now(),
       }
       saveCredentials(params.stateDir, credentials)
-      console.log("\n✅ 微信登录成功，凭证已保存。")
+      console.log("\n✅ WeChat login succeeded — credentials saved.")
       return credentials
     }
   }
 
-  throw new Error("登录超时")
+  throw new Error("Login timed out")
 }

@@ -69,9 +69,11 @@ describe("domain skill kickoff", () => {
     expect(section).not.toContain("mkdir")
   })
 
-  test("skillDomainContextNote does not mention extraction during mission", () => {
-    const note = skillDomainContextNote("mbist")
+  test("skillDomainContextNote includes catalog and skill tool guidance", () => {
+    const note = skillDomainContextNote("mbist", undefined, "zh", ["scan-chip", "read-spec"])
     expect(note).toContain("by-domain/mbist")
+    expect(note).toContain("scan-chip, read-spec")
+    expect(note).toContain('skill({ name:')
     expect(note).toContain("勿提炼 skill")
   })
 

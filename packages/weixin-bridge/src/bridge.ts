@@ -111,7 +111,7 @@ export class WeixinLeadBridge {
 
   async start() {
     if (!this.credentials?.botToken) {
-      throw new Error("未找到微信凭证，请先运行: bun run --cwd packages/weixin-bridge login")
+      throw new Error("WeChat credentials not found — run: bunx @gatehouse/core channels login weixin")
     }
     const plugin = await ensureChannelsPluginInOpencodeConfig(this.config.projectDir)
     await verifyOpencode(this.config)
@@ -155,21 +155,21 @@ export class WeixinLeadBridge {
       console.error(`OpenCode event loop failed: ${error instanceof Error ? error.message : String(error)}`)
     })
 
-    console.log(`Gatehouse 微信 Bridge 已启动`)
-    console.log(`  项目: ${this.config.projectDir}`)
+    console.log(`Gatehouse WeChat Bridge started`)
+    console.log(`  project: ${this.config.projectDir}`)
     console.log(`  OpenCode: ${this.config.opencodeUrl}`)
     console.log(`  iLink: ${this.credentials.baseUrl}`)
-    console.log(`  状态: ${this.config.stateDir}`)
-    console.log(`  模式: 私聊文本 + 图片（MVP）`)
+    console.log(`  state: ${this.config.stateDir}`)
+    console.log(`  mode: private text + images (MVP)`)
     if (plugin.added) {
-      console.log(`  已写入 OpenCode 插件: ${plugin.spec}`)
+      console.log(`  wrote OpenCode plugin: ${plugin.spec}`)
     }
 
     while (true) {
       const updates = await getUpdates({ ...opts, getUpdatesBuf: this.syncBuf })
       if (updates.ret !== 0 && updates.ret !== undefined) {
         if (updates.errcode === -14) {
-          throw new Error("微信 session 已过期，请重新 login")
+          throw new Error("WeChat session expired — re-run login")
         }
         console.error(`getUpdates ret=${updates.ret} errcode=${updates.errcode} errmsg=${updates.errmsg}`)
       }

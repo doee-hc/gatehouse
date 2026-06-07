@@ -26,13 +26,13 @@
 |------------|------------|------|----------|--------|
 
 **整理动作（写入永久经验）：**
-- [ ] 合并 promote 的工具到 `.gatehouse/architect/retro-toolkit/tools/`
+- [ ] 合并 promote 的工具到 `.gatehouse/skills/retro-toolkit/tools/`
 - [ ] 更新 `retro-toolkit/SKILL.md`（方法论、推荐 grep、常见问题类）
-- [ ] 更新 `meta-skill/prompts/retro-node-analysis.md`（若需调整 coord 规程措辞）
+- [ ] 更新 `prompts/architect/retro-node-analysis.md`（若需调整 coord 规程措辞）
 - [ ] 弃用/归档重复或失效工具（注明原因）
 
-## meta-skill 更新摘要
-（本次写入 meta-skill/SKILL.md 或 prompts/ 的变更要点 — **协调与分配层面**，非领域 skill）
+## architect-meta 更新摘要
+（本次写入 `skills/architect-meta/SKILL.md` 或 `prompts/architect/` 的变更要点 — **协调与分配层面**，非领域 skill）
 
 ## 给{{lead_name}}的摘要
 （3–5 条 bullet，供 report.md 引用 — 聚焦任务规划与验收，不含业务细节）

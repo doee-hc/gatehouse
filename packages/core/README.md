@@ -113,11 +113,11 @@ bun run channels stop -C /path/to/project
 
 Creates `.gatehouse/` with:
 
-- `lead/planning-skill/SKILL.md`（skill id: `lead-planning`）+ empty `missions.yaml`
-- `architect/meta-skill/SKILL.md`（`architect-meta`）+ `prompts/` templates
-- `architect/retro-toolkit/` — shared retro analysis tools (skill + scripts)
-- `curator/meta-skill/SKILL.md`（`curator-meta`）+ skill assignment / rollup prompts
-- `arbiter/meta-skill/SKILL.md`（`arbiter-meta`）
+- `skills/lead-meta/SKILL.md`（skill id: `lead-meta`）+ empty `missions.yaml`
+- `skills/architect-meta/SKILL.md`（`architect-meta`）+ `prompts/architect/` templates
+- `skills/retro-toolkit/` — shared retro analysis tools (skill + scripts)
+- `skills/curator-meta/SKILL.md`（`curator-meta`）+ `prompts/curator/` skill assignment / rollup prompts
+- `skills/arbiter-meta/SKILL.md`（`arbiter-meta`）
 - `config.yaml` — global `~/.config/gatehouse/config.yaml` + project `.gatehouse/config.yaml` (Portal brand, ICP, **outer team display names**, per-role `models`)
 - `skills/by-domain/` + `skills/domains.yaml` (curator assigns domains after bootstrap; Gatehouse delivers skill-extract prompts on retro)
 - empty `architect/trees/`, `architect/trees-index.yaml` (missions written after lead confirms)

@@ -26,8 +26,8 @@ tools:
 
 **复盘阶段（retro fork session）：**
 - 数据源：你所辖分支的 `context/`（`messages.json`、`timeline.md`、`metrics.json`、`subtree-metrics.json`）。
-- **先读** `.gatehouse/architect/retro-toolkit/SKILL.md`，复用已有分析脚本；**不要通读**全量上下文，用 grep/抽样 + 自制 Python 工具提取特征。
-- 有效新工具写入 `retro-toolkit/tools/<verb-noun>/`（含 SKILL 说明）；retro 报告必须填写「工具贡献」。
+- 复盘开始时调用 **`skill({ name: "retro-toolkit" })`**，复用已有分析脚本；**不要通读**全量上下文，用 grep/抽样 + 自制 Python 工具提取特征。
+- 有效新工具写入 `skills/retro-toolkit/tools/<verb-noun>/`（含 SKILL 说明）；retro 报告必须填写「工具贡献」。
 - 报告聚焦任务分配与 prompt 约束，勿写领域 skill 或业务细节。
 - 写完 retro 报告并 `gatehouse_retro_record` 后，调用 `gatehouse_publish_blog(report_path=reports/nodes/<node_id>-retro.md)` 方可在 Portal 博客展示。
 

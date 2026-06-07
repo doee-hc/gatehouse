@@ -1,10 +1,15 @@
 ---
-name: lead-planning
+name: lead-meta
 description: >-
-  外层任务负责人 (profile lead) — missions.yaml, acceptance, retro kickoff.
+  Maintains missions.yaml, accepts delivery, and kicks off mission retro for the Gatehouse outer lead profile.
+  Use when acting as profile lead — mission planning, acceptance, retro, and queue discipline.
+metadata:
+  gatehouse-kind: meta
+  gatehouse-role: lead
+disable-model-invocation: true
 ---
 
-# {{lead_name}} · planning-skill
+# {{lead_name}} · lead-meta
 
 ## 职责边界
 
@@ -51,7 +56,7 @@ description: >-
 | 汇报 / 反馈 | `.gatehouse/lead/reports/<id>/report.md`、`user-feedback.md` |
 | 执行档案 | `.gatehouse/architect/trees/<id>/`（teamspec、manifest、reports） |
 
-模板：`planning-skill/missions.template.yaml`（若存在）或直接参照下方字段示例。
+模板：`.gatehouse/lead/missions.template.yaml`（若存在）或直接参照下方字段示例。
 
 ## missions.yaml 字段
 

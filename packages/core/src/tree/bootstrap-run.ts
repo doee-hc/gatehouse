@@ -6,8 +6,9 @@ import { readManifest, upsertTreesIndex, writeManifest } from "./store.ts"
 import type { TeamSpec, TreeManifest } from "./types.ts"
 import { loadGatehouseConfig, modelForInnerProfile } from "../gatehouse-config.ts"
 import { createSession, promptSession } from "../session/client.ts"
-import { skillDomainContextNote } from "../retro/skill-kickoff.ts"
+import { skillDomainContextNote, listSkillSlugsInDomain } from "../retro/skill-kickoff.ts"
 import { readAgentNamesSync } from "../names.ts"
+import { readLocaleSync } from "../locale.ts"
 import { readActiveMissionContract } from "../missions/contract.ts"
 import { readMissionsDocument } from "../missions/store.ts"
 import { assertMissionRunning } from "../missions/parse.ts"
@@ -61,8 +62,12 @@ export async function runBootstrapTree(
       ...(specNode.skill_domain && { skill_domain: specNode.skill_domain }),
     }
     const agentNames = readAgentNamesSync(input.directory)
+    const locale = readLocaleSync(input.directory)
+    const skillSlugs = specNode.skill_domain
+      ? await listSkillSlugsInDomain(input.directory, specNode.skill_domain)
+      : []
     const system = specNode.skill_domain
-      ? `${specNode.constraints.trim()}\n\n${skillDomainContextNote(specNode.skill_domain, agentNames)}`
+      ? `${specNode.constraints.trim()}\n\n${skillDomainContextNote(specNode.skill_domain, agentNames, locale, skillSlugs)}`
       : specNode.constraints.trim()
     await promptSession(input.client, input.directory, sessionId, {
       profile,

@@ -21,7 +21,7 @@
     timeline.md              # grep 友好时间线（含 kind、tokens=）
     metrics.json             # 单节点 session 级 token/耗时/工具聚合
 
-.gatehouse/architect/retro-toolkit/     # 历史 retro 工具与方法论（先读再分析）
+.gatehouse/skills/retro-toolkit/     # 历史 retro 工具与方法论（先读再分析）
   SKILL.md
   tools/<verb-noun>/SKILL.md + 脚本
 ```
@@ -38,7 +38,7 @@
 1. 读 `context/index.json`、`context/subtree-metrics.json`（`retro_nodes["{{node_id}}"]`）+ **`retro-toolkit/SKILL.md`**，列出所辖分支节点；复用已有 `tools/` 脚本。
 2. **不要通读**全部 `messages.json`。先用 `timeline.md` grep 定位异常片段（见下表）。
 3. 对可疑模式：**自制或扩展 Python 脚本**提取特征（压缩次数、todo 段 token、send_message 序列等）。
-4. 若新工具有复用价值：写入 `.gatehouse/architect/retro-toolkit/tools/<verb-noun>/`（含 `SKILL.md`）。
+4. 若新工具有复用价值：写入 `.gatehouse/skills/retro-toolkit/tools/<verb-noun>/`（含 `SKILL.md`）。
 5. 用 `subtree-metrics.json` 与脚本输出交叉验证 token/耗时/工具调用统计。
 6. 写 retro 报告（含工具贡献说明）→ `gatehouse_retro_record` 登记 → `gatehouse_publish_blog(report_path=...)` 发布到 Portal 博客。
 
@@ -80,7 +80,7 @@
 - teamspec constraints 是否被遵守、过松/过紧：
 - 子节点 prompt 是否导致重复劳动或职责重叠：
 
-## 协调与拓扑（给{{architect_name}} meta-skill）
+## 协调与拓扑（给 {{architect_name}} architect-meta）
 - send_message / 等待 / 拓扑建议：
 
 ## 给{{architect_name}}的可执行建议（3–5 条）
@@ -90,7 +90,7 @@
 | 项 | 内容 |
 |----|------|
 | 是否新增/改进 retro 工具 | 是 / 否 |
-| 工具路径 | `.gatehouse/architect/retro-toolkit/tools/...` 或「无」 |
+| 工具路径 | `.gatehouse/skills/retro-toolkit/tools/...` 或「无」 |
 | 建议{{architect_name}}是否 promote 进 toolkit | 是 / 否 / 不适用 |
 | 简要说明 | |
 ```

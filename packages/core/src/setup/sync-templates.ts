@@ -10,14 +10,14 @@ import { gatehouseTemplateDest, isLocaleSpecificGatehouseRelative } from "../tem
 
 /** Project-owned under .gatehouse/ — sync must not clobber agent/user edits (same as scaffold). */
 const outerMetaSkillRelatives = new Set([
-  "lead/planning-skill/SKILL.md",
-  "architect/meta-skill/SKILL.md",
-  "curator/meta-skill/SKILL.md",
-  "arbiter/meta-skill/SKILL.md",
+  "skills/lead-meta/SKILL.md",
+  "skills/architect-meta/SKILL.md",
+  "skills/curator-meta/SKILL.md",
+  "skills/arbiter-meta/SKILL.md",
 ])
 
-const outerMetaSkillPrompts = /^(?:lead|architect|curator|arbiter)\/meta-skill\/prompts\//
-const architectRetroToolkit = /^architect\/retro-toolkit\//
+const gatehousePrompts = /^prompts\//
+const architectRetroToolkit = /^skills\/retro-toolkit\//
 const gatehouseSkills = /^skills\//
 
 function skipSyncGatehouseFile(relative: string) {
@@ -26,8 +26,8 @@ function skipSyncGatehouseFile(relative: string) {
   if (relative === "lead/missions.yaml") return true
   if (architectRetroToolkit.test(relative)) return true
   if (gatehouseSkills.test(relative)) return true
+  if (gatehousePrompts.test(relative)) return true
   if (outerMetaSkillRelatives.has(relative)) return true
-  if (outerMetaSkillPrompts.test(relative)) return true
   return false
 }
 
