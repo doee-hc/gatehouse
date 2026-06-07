@@ -17,6 +17,7 @@
 
 | 文档 | 用途 |
 |------|------|
+| [deployment/portal-vps-static.zh.md](./deployment/portal-vps-static.zh.md) | VPS 静态资源 + 本地 Portal API 分离部署 |
 | [../packages/core/README.md](../packages/core/README.md) | 插件工具、registry、任务细节（英文） |
 | [../packages/portal/README.md](../packages/portal/README.md) | Portal 本地运行与开发（英文） |
 | [../packages/portal/ASSETS.md](../packages/portal/ASSETS.md) | LimeZu 素材来源与许可（英文） |
