@@ -67,7 +67,7 @@ test("stringifyYaml preserves multiline notes in mission arrays", () => {
     ],
   }
   const yaml = stringifyYaml(doc)
-  expect(() => parseYaml(yaml)).not.toThrow()
+  parseYaml(yaml)
   const parsed = parseMissionsFile(yaml)
   expect(parsed.missions[0]?.notes).toBe("line one\nline two\n")
   expect(parsed.missions[0]?.started_at).toBe("2026-06-07T15:28:41.203Z")
