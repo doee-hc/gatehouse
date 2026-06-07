@@ -8,7 +8,7 @@ import { refreshPortalBranding } from "./branding.ts"
 import { refreshEventLog } from "./event-log.ts"
 import { initI18n } from "./i18n.ts"
 import { initKnowledge } from "./knowledge.ts"
-import { initTeamStats, refreshTeamStats, renderTeamStats } from "./team-stats.ts"
+import { initTeamStats, refreshTeamStats, renderTeamStats, startTeamStatsPolling } from "./team-stats.ts"
 import { bindOfficeSidebar } from "./office-sidebar.ts"
 import { renderPortal } from "./render-portal.ts"
 import { initTabs, onViewChange } from "./tabs.ts"
@@ -33,6 +33,8 @@ export function initShell(onOfficeReady: () => void, snapshot: PortalSnapshot) {
   bindOfficeSidebar()
   bindAgentOverlay()
   renderPortal(snapshot)
+
+  startTeamStatsPolling()
 
   onViewChange((view) => {
     if (view === "office") onOfficeReady()

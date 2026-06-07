@@ -1,5 +1,8 @@
 import { loadTeamStatsSnapshot } from "../api/team-stats.ts"
 import type { TeamStatsMission, TeamStatsOuterRole, TeamStatsSnapshot } from "../api/types.ts"
+import { TEAM_STATS_POLL_HIDDEN_MS, TEAM_STATS_POLL_MS } from "../portal/poll-intervals.ts"
+import { startAdaptivePolling } from "../portal/poll-scheduler.ts"
+import { getActiveView } from "./tabs.ts"
 import { localeTag, missionStatusLabel, t } from "./i18n.ts"
 
 let teamStatsBound = false
@@ -57,6 +60,64 @@ export function renderTeamStats(snapshot?: TeamStatsSnapshot) {
   ].join("")
 }
 
+function summarizeTeamUsage(snapshot: TeamStatsSnapshot) {
+  let tokens = 0
+  let cost = 0
+  for (const role of snapshot.outer) {
+    tokens += role.tokens.total
+    cost += role.cost
+  }
+  for (const mission of snapshot.missions) {
+    tokens += mission.tokens.total
+    cost += mission.cost
+  }
+  return { tokens, cost }
+}
+
+export function renderOfficeStatsTicker(snapshot?: TeamStatsSnapshot) {
+  const host = document.getElementById("esc-stats-ticker")
+  if (!host) return
+
+  if (!snapshot?.opencode_reachable) {
+    host.hidden = true
+    host.textContent = ""
+    return
+  }
+
+  const usage = summarizeTeamUsage(snapshot)
+  if (usage.tokens <= 0 && usage.cost <= 0) {
+    host.hidden = true
+    host.textContent = ""
+    return
+  }
+
+  host.hidden = false
+  host.textContent = t("stats.ticker", {
+    tokens: formatTokens(usage.tokens),
+    cost: formatCost(usage.cost),
+  })
+}
+
+export function startTeamStatsPolling() {
+  return startAdaptivePolling({
+    intervalMs: TEAM_STATS_POLL_MS,
+    hiddenIntervalMs: TEAM_STATS_POLL_HIDDEN_MS,
+    run: async () => {
+      const view = getActiveView()
+      if (view !== "office" && view !== "stats") return
+
+      const snapshot = await loadTeamStatsSnapshot().catch(() => undefined)
+      if (!snapshot) return
+
+      if (view === "stats") {
+        loading = false
+        renderTeamStats(snapshot)
+      }
+      if (view === "office") renderOfficeStatsTicker(snapshot)
+    },
+  })
+}
+
 export async function refreshTeamStats() {
   if (loading) return
   loading = true
@@ -69,6 +130,7 @@ export async function refreshTeamStats() {
     return
   }
   renderTeamStats(snapshot)
+  if (getActiveView() === "office") renderOfficeStatsTicker(snapshot)
 }
 
 function renderUpdatedAt(value: string) {

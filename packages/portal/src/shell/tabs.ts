@@ -1,6 +1,11 @@
 export type PortalView = "office" | "blog" | "knowledge" | "stats" | "about"
 
 const listeners = new Set<(view: PortalView) => void>()
+let currentView: PortalView = "office"
+
+export function getActiveView() {
+  return currentView
+}
 
 export function onViewChange(fn: (view: PortalView) => void) {
   listeners.add(fn)
@@ -8,6 +13,7 @@ export function onViewChange(fn: (view: PortalView) => void) {
 }
 
 export function switchView(view: PortalView) {
+  currentView = view
   document.querySelectorAll(".nav-tab").forEach((tab) => {
     tab.classList.toggle("active", tab.getAttribute("data-view") === view)
   })

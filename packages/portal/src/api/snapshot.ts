@@ -1,12 +1,13 @@
-import { SNAPSHOT_POLL_MS } from "../portal/poll-intervals.ts"
-import { portalProjectDirectory, resolvePortalProjectDirectory, snapshotUrl } from "./project-directory.ts"
+import { SNAPSHOT_POLL_HIDDEN_MS, SNAPSHOT_POLL_MS } from "../portal/poll-intervals.ts"
+import { startAdaptivePolling } from "../portal/poll-scheduler.ts"
+import { portalProjectSlug, resolvePortalProjectSlug, snapshotUrl } from "./project-directory.ts"
 import type { PortalSnapshot } from "./types.ts"
 
 const FETCH_TIMEOUT_MS = 8000
 
-export async function loadPortalSnapshot(directory?: string) {
-  const resolved = directory ?? portalProjectDirectory() ?? (await resolvePortalProjectDirectory())
-  if (!resolved) throw new Error("未指定项目目录")
+export async function loadPortalSnapshot(project?: string) {
+  const resolved = project ?? portalProjectSlug() ?? (await resolvePortalProjectSlug())
+  if (!resolved) throw new Error("未指定项目")
   const url = snapshotUrl(resolved)
   const response = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
   if (!response.ok) throw new Error(`无法加载 snapshot（${response.status}）：${url}`)
@@ -34,10 +35,12 @@ export async function loadPortalSnapshotWithRetry(
 }
 
 export function startSnapshotPolling(onUpdate: (snapshot: PortalSnapshot) => void, intervalMs = SNAPSHOT_POLL_MS) {
-  const tick = async () => {
-    const snapshot = await loadPortalSnapshot().catch(() => undefined)
-    if (snapshot) onUpdate(snapshot)
-  }
-  void tick()
-  return setInterval(() => void tick(), intervalMs)
+  return startAdaptivePolling({
+    intervalMs,
+    hiddenIntervalMs: SNAPSHOT_POLL_HIDDEN_MS,
+    run: async () => {
+      const snapshot = await loadPortalSnapshot().catch(() => undefined)
+      if (snapshot) onUpdate(snapshot)
+    },
+  })
 }

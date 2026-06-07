@@ -1,4 +1,5 @@
-import { BLOG_POLL_MS } from "../portal/poll-intervals.ts"
+import { BLOG_POLL_HIDDEN_MS, BLOG_POLL_MS } from "../portal/poll-intervals.ts"
+import { startAdaptivePolling } from "../portal/poll-scheduler.ts"
 import { blogUrl, portalProjectSlug } from "./project-directory.ts"
 import type { BlogSnapshot } from "./types.ts"
 
@@ -13,10 +14,12 @@ export async function loadBlogSnapshot(project?: string) {
 }
 
 export function startBlogPolling(onUpdate: (blog: BlogSnapshot) => void, intervalMs = BLOG_POLL_MS) {
-  const tick = async () => {
-    const blog = await loadBlogSnapshot().catch(() => undefined)
-    if (blog) onUpdate(blog)
-  }
-  void tick()
-  return setInterval(() => void tick(), intervalMs)
+  return startAdaptivePolling({
+    intervalMs,
+    hiddenIntervalMs: BLOG_POLL_HIDDEN_MS,
+    run: async () => {
+      const blog = await loadBlogSnapshot().catch(() => undefined)
+      if (blog) onUpdate(blog)
+    },
+  })
 }
