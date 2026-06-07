@@ -39,13 +39,13 @@ export class FeishuLeadBridge {
     const client = createChannelClient(this.config)
     const feishu = createFeishuClient(this.config)
 
-    console.log("Gatehouse 飞书 Bridge 已启动")
-    console.log(`  项目: ${this.config.projectDir}`)
+    console.log("Gatehouse Feishu Bridge started")
+    console.log(`  project: ${this.config.projectDir}`)
     console.log(`  OpenCode: ${this.config.opencodeUrl}`)
-    console.log(`  状态: ${this.config.stateDir}`)
-    console.log("  模式: 私聊/群聊文本 + 图片（MVP）")
+    console.log(`  state: ${this.config.stateDir}`)
+    console.log("  mode: private/group text + images (MVP)")
     if (plugin.added) {
-      console.log(`  已写入 OpenCode 插件: ${plugin.spec}`)
+      console.log(`  wrote OpenCode plugin: ${plugin.spec}`)
     }
 
     const gateway = startFeishuWebSocket(this.config, async (message) => {

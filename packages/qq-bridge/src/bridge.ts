@@ -53,14 +53,14 @@ export class QqLeadBridge {
       this.enqueue(client, this.bot, normalized)
     })
 
-    console.log("Gatehouse QQ Bridge 已启动")
-    console.log(`  项目: ${this.config.projectDir}`)
+    console.log("Gatehouse QQ Bridge started")
+    console.log(`  project: ${this.config.projectDir}`)
     console.log(`  OpenCode: ${this.config.opencodeUrl}`)
-    console.log(`  状态: ${this.config.stateDir}`)
-    console.log(`  沙箱: ${this.config.sandbox ? "是" : "否"}`)
-    console.log("  模式: 官方 Bot 私聊文本 + 图片（MVP）")
+    console.log(`  state: ${this.config.stateDir}`)
+    console.log(`  sandbox: ${this.config.sandbox ? "yes" : "no"}`)
+    console.log("  mode: official Bot private text + images (MVP)")
     if (plugin.added) {
-      console.log(`  已写入 OpenCode 插件: ${plugin.spec}`)
+      console.log(`  wrote OpenCode plugin: ${plugin.spec}`)
     }
 
     await this.bot.start()
