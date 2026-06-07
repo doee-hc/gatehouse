@@ -91,6 +91,11 @@ export function childNodeIds(manifest: TreeManifest, nodeId: string) {
     .map(([id]) => id)
 }
 
+/** True when the execution tree has only the structural root (no delegates). */
+export function isSoloExecutionTeam(manifest: TreeManifest) {
+  return Object.keys(manifest.nodes).length === 1
+}
+
 export function childNodeIdsFromSpec(spec: TeamSpec, nodeId: string) {
   return Object.entries(spec.nodes)
     .filter(([, node]) => node.parent === nodeId)

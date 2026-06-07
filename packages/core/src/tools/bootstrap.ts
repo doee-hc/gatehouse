@@ -20,7 +20,7 @@ export function bootstrapTreeTool(input: PluginInput) {
       teamspec_path: tool.schema
         .string()
         .optional()
-        .describe("Path to teamspec.yaml; default .gatehouse/architect/trees/<active_mission>/teamspec.yaml"),
+        .describe("Path to teamspec.yaml; default .gatehouse/trees/<active_mission>/teamspec.yaml"),
       objective: tool.schema.string().optional().describe("Optional one-line objective stored in trees-index when tree is created"),
     },
     async execute(args, context) {
@@ -66,6 +66,7 @@ export function bootstrapTreeTool(input: PluginInput) {
           const curatorKickoff = await registry.kickoffCuratorSkillAssignment({
             missionId: spec.mission_id,
             objective: args.objective ?? contract?.objective,
+            spec,
           })
           await registry.flushPendingDeliveries()
           return {

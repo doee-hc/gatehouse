@@ -1,6 +1,6 @@
-# Domain skill extract (retro start · Gatehouse system message)
+# Domain skill extract · {{mission_id}}
 
-{{lead_name}} accepted delivery and started Mission `{{mission_id}}` retro. Extract domain skills from **this execution**.
+{{lead_name}} accepted delivery and started retro. Extract domain skills from **this execution**.
 
 **Your node:** {{node_id}}
 **Skill domain for this node:** `{{skill_domain}}`
@@ -34,9 +34,7 @@ Before extracting, **read** existing `*/SKILL.md` under that path; **merge updat
 
 ## Delivery
 
-1. Write `.gatehouse/architect/trees/{{mission_id}}/reports/skills/{{node_id}}-extract.md` — list of new/updated skill paths + one-line summary each.
+1. Write `.gatehouse/trees/{{mission_id}}/reports/skills/{{node_id}}-extract.md` — list of new/updated skill paths + one-line summary each.
 2. Call **`gatehouse_skill_extract_record()`** when done.
 
 **Do not** `gatehouse_send_message` {{curator_name}} — Gatehouse auto-notifies {{curator_name}} after all nodes record.
-
-**Note:** This guidance is dispatched only after retro starts; do not extract skills during Mission execution.

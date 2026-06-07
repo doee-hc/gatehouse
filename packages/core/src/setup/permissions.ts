@@ -28,6 +28,14 @@ const innerRetroGatehousePermissions = {
   gatehouse_retro_record: "allow",
 } as const
 
+/** Mission lifecycle — outer core team only; hidden from execution profiles (root / coordinators). */
+const innerMissionLifecycleDenials = {
+  gatehouse_mission_start: "deny",
+  gatehouse_mission_current: "deny",
+  gatehouse_mission_retro: "deny",
+  gatehouse_mission_complete: "deny",
+} as const
+
 const nonArbiterInspectorDenials = {
   gatehouse_inspector_queue: "deny",
   gatehouse_inspector_decide: "deny",
@@ -98,6 +106,12 @@ export const curatorSessionPermissions = {
   ...nonArbiterInspectorDenials,
 } as const
 
+/** Leaf execution (OpenCode build) — mission lifecycle hidden; coordination tools unchanged. */
+export const buildExecutionPermissions = {
+  ...innerMissionLifecycleDenials,
+  ...nonArbiterInspectorDenials,
+} as const
+
 export const buildCoordinatorPermissions = {
   skill: innerExecutionSkillPermissions(),
   question: "allow",
@@ -105,6 +119,7 @@ export const buildCoordinatorPermissions = {
   task: "deny",
   ...innerExecutionGatehousePermissions,
   ...innerRetroGatehousePermissions,
+  ...innerMissionLifecycleDenials,
   ...nonArbiterInspectorDenials,
 } as const
 

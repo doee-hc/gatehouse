@@ -5,20 +5,32 @@ type MessageTable = Record<string, { zh: string; en: string }>
 const messages = {
   "bulletList.empty": { zh: "（无）", en: "(none)" },
   "mission.objectiveMissing": { zh: "（mission 未提供 objective）", en: "(mission has no objective)" },
-  "curator.objectiveFallback": { zh: "（见 gatehouse_mission_current）", en: "(see gatehouse_mission_current)" },
+  "curator.objectiveFallback": { zh: "（mission 未提供 objective）", en: "(mission has no objective)" },
   "mission.status.ended": { zh: "已结束", en: "ended" },
   "mission.status.cancelled": { zh: "已取消", en: "cancelled" },
-  "mission.started": {
+  "mission.started.body": {
     zh: `[Gatehouse · Mission 已启动 · {mission_id}]
 
-{lead_name} 已通过 gatehouse_mission_start 启动本 Mission。请调用 **gatehouse_mission_current** 获取任务全文（objective / done_when / must_not / notes）。
+{lead_name} 已通过 gatehouse_mission_start 启动本 Mission。
 
-下一步：在 \`.gatehouse/architect/trees/{mission_id}/\` 编写 teamspec.yaml，完成后 **gatehouse_bootstrap_tree**。`,
+{mission_contract}
+
+下一步：在 \`.gatehouse/trees/{mission_id}/\` 编写 teamspec.yaml，完成后 **gatehouse_bootstrap_tree**。若需刷新任务快照，可调用 **gatehouse_mission_current**。`,
     en: `[Gatehouse · Mission started · {mission_id}]
 
-{lead_name} started this Mission via gatehouse_mission_start. Call **gatehouse_mission_current** for the full brief (objective / done_when / must_not / notes).
+{lead_name} started this Mission via gatehouse_mission_start.
 
-Next: write teamspec.yaml under \`.gatehouse/architect/trees/{mission_id}/\`, then **gatehouse_bootstrap_tree**.`,
+{mission_contract}
+
+Next: write teamspec.yaml under \`.gatehouse/trees/{mission_id}/\`, then **gatehouse_bootstrap_tree**. Call **gatehouse_mission_current** to refresh the snapshot if needed.`,
+  },
+  "mission.started.fallback": {
+    zh: `[Gatehouse · Mission 已启动 · {mission_id}]
+
+{lead_name} 已通过 gatehouse_mission_start 启动本 Mission；registry 快照暂不可用，请调用 **gatehouse_mission_current**。`,
+    en: `[Gatehouse · Mission started · {mission_id}]
+
+{lead_name} started this Mission via gatehouse_mission_start; registry snapshot unavailable — call **gatehouse_mission_current**.`,
   },
   "mission.ended": {
     zh: `[Gatehouse · Mission {mission_id} {status_label}]
@@ -31,26 +43,22 @@ Next: write teamspec.yaml under \`.gatehouse/architect/trees/{mission_id}/\`, th
   "retro.batchReady": {
     zh: `[Gatehouse 复盘就绪 · Mission {mission_id}]
 
-全部 manager 复盘节点已完成并登记。请阅读下列报告，撰写 \`.gatehouse/architect/trees/{mission_id}/reports/architect-summary.md\`。
+全部 manager 复盘节点已完成并登记。请阅读下列报告，撰写 \`.gatehouse/trees/{mission_id}/reports/architect-summary.md\`。
 
 **必做：** 汇总各 retro 的「工具贡献」→ 整理 \`.gatehouse/skills/retro-toolkit/\`（promote 有效脚本、更新 SKILL、演进 retro 规范）→ 更新 architect-meta skill → \`gatehouse_send_message(recipient="lead", ...)\` 通知{lead_name}。
 
 {lines}
 
-retro coord 数据源为 \`context/\`（messages、timeline、metrics、subtree-metrics）；语义特征提取靠 retro-toolkit 自制脚本，非 Gatehouse 预分析插件。
-
-复盘启动时已向 manifest 中由{curator_name}分配的各 \`skill_domain\` 执行 session 自动下发 \`prompts/domain-skill-extract.md\`（Gatehouse 系统消息）；全部登记后{curator_name}会收到汇总通知。`,
+retro coord 数据源为 \`context/\`（messages、timeline、metrics、subtree-metrics）；语义特征提取靠 retro-toolkit 自制脚本，非 Gatehouse 预分析插件。`,
     en: `[Gatehouse · Retro ready · Mission {mission_id}]
 
-All manager retro nodes are complete and recorded. Read the reports below and write \`.gatehouse/architect/trees/{mission_id}/reports/architect-summary.md\`.
+All manager retro nodes are complete and recorded. Read the reports below and write \`.gatehouse/trees/{mission_id}/reports/architect-summary.md\`.
 
 **Required:** Summarize each retro's tool contributions → curate \`.gatehouse/skills/retro-toolkit/\` (promote useful scripts, update SKILL, evolve retro norms) → update architect-meta skill → \`gatehouse_send_message(recipient="lead", ...)\` to notify {lead_name}.
 
 {lines}
 
-Retro coord data comes from \`context/\` (messages, timeline, metrics, subtree-metrics); semantic extraction uses retro-toolkit scripts, not a Gatehouse pre-analysis plugin.
-
-When retro started, Gatehouse auto-delivered \`prompts/domain-skill-extract.md\` to exec sessions with \`skill_domain\` assigned by {curator_name}; after all are recorded, {curator_name} gets a summary notification.`,
+Retro coord data comes from \`context/\` (messages, timeline, metrics, subtree-metrics); semantic extraction uses retro-toolkit scripts, not a Gatehouse pre-analysis plugin.`,
   },
   "curator.skillExtractBatchReady": {
     zh: `[Gatehouse 领域 skill 提炼就绪 · Mission {mission_id}]
@@ -103,6 +111,56 @@ All exec nodes with skill_domain finished retro skill extraction and registratio
     en: "Review then call gatehouse_inspector_decide (with reason). Default conservative—reject when unsure.",
   },
   "doneWhen.fileExists": { zh: "文件存在: {path}", en: "File exists: {path}" },
+  "dispatch.teamSnapshot.executionHeader": { zh: "### 执行树", en: "### Execution tree" },
+  "dispatch.teamSnapshot.outerHeader": { zh: "### 外层联系人", en: "### Outer contacts" },
+  "dispatch.teamSnapshot.you": { zh: "（你）", en: " (you)" },
+  "dispatch.teamSnapshot.parent": { zh: "`parent: {parent}`", en: "`parent: {parent}`" },
+  "dispatch.teamSnapshot.children": { zh: "下属: {list}", en: "children: {list}" },
+  "dispatch.teamSnapshot.outerHint": {
+    zh: "交付完成后 `gatehouse_send_message(recipient=\"lead\")`",
+    en: "after delivery use `gatehouse_send_message(recipient=\"lead\")`",
+  },
+  "dispatch.teamSnapshot.teamspecHeader": { zh: "### TeamSpec 节点", en: "### TeamSpec nodes" },
+  "dispatch.teamSnapshot.subtreeHeader": { zh: "### 所辖执行分支（启动快照）", en: "### Your execution subtree (kickoff snapshot)" },
+  "dispatch.teamSnapshot.noNonRootNodes": { zh: "（无下属节点）", en: "(no delegate nodes)" },
+  "dispatch.teamSnapshot.watchdogSnapshotHeader": {
+    zh: "### 执行团队（当前快照）",
+    en: "### Execution team (current snapshot)",
+  },
+  "dispatch.teamSnapshot.watchdogSnapshotNodesHeader": {
+    zh: "### 待 snapshot 排查的非根 node_id",
+    en: "### Non-root node_id values to snapshot once each",
+  },
+  "mission.contract.header": { zh: "## 任务快照（registry 冻结）", en: "## Mission snapshot (registry freeze)" },
+  "mission.contract.missionId": { zh: "**任务 ID：** {mission_id}", en: "**Mission ID:** {mission_id}" },
+  "mission.contract.objectiveHeader": { zh: "**目标：**", en: "**Objective:**" },
+  "mission.contract.doneWhenHeader": { zh: "**验收条件（done_when）：**", en: "**Acceptance criteria (done_when):**" },
+  "mission.contract.mustNotHeader": { zh: "**边界（must_not）：**", en: "**Boundaries (must_not):**" },
+  "mission.contract.notesHeader": { zh: "**备注（notes）：**", en: "**Notes:**" },
+  "domains.registry.header": { zh: "### 已登记 domain-id", en: "### Registered domain ids" },
+  "domains.registry.empty": { zh: "（domains.yaml 尚无条目）", en: "(no entries in domains.yaml yet)" },
+  "delivery.lead.doneWhenHeader": {
+    zh: "## 验收条件（done_when，供对照）",
+    en: "## Acceptance criteria (done_when) for review",
+  },
+  "delivery.lead.refreshHint": {
+    zh: "（registry 快照；可用 `gatehouse_mission_current` 刷新）",
+    en: "(registry snapshot; call `gatehouse_mission_current` to refresh)",
+  },
+  "retro.kickoff.contextHeader": { zh: "## 所辖分支（启动快照）", en: "## Your subtree (kickoff snapshot)" },
+  "retro.kickoff.scopeNodes": { zh: "**node_ids：** {list}", en: "**node_ids:** {list}" },
+  "retro.kickoff.order": {
+    zh: "**retro 顺序：** 第 {position} / {total} 个 manager 节点",
+    en: "**Retro order:** manager node {position} of {total}",
+  },
+  "retro.kickoff.metricsSummary": {
+    zh: "**API 级汇总：** sessions={sessions} · assistant_messages={assistant_messages} · tokens_total={tokens_total} · tool_calls={tool_calls} · tool_errors={tool_errors}",
+    en: "**API-level rollup:** sessions={sessions} · assistant_messages={assistant_messages} · tokens_total={tokens_total} · tool_calls={tool_calls} · tool_errors={tool_errors}",
+  },
+  "retro.kickoff.contextPaths": {
+    zh: "详细原始数据：`.gatehouse/trees/{mission_id}/context/`（messages / timeline / metrics / subtree-metrics）。",
+    en: "Raw data lives under `.gatehouse/trees/{mission_id}/context/` (messages / timeline / metrics / subtree-metrics).",
+  },
 } satisfies MessageTable
 
 export function gatehouseMessage(

@@ -1,6 +1,7 @@
 import type { PluginInput } from "@opencode-ai/plugin"
 import { RegistryDatabase } from "./db.ts"
 import { loadDispatchRootPrompt } from "../dispatch/prompt.ts"
+import { enrichLeadDeliveryMessage } from "../messaging/delivery-notify.ts"
 import { architectRetroBatchReadyMessage, loadRetroKickoffPrompt } from "../retro/prompt.ts"
 import { loadDomainSkillExtractPrompt, execSkillKickoffTargets } from "../retro/skill-kickoff.ts"
 import { loadCuratorSkillAssignKickoff, curatorSkillExtractBatchReadyMessage } from "../curator/prompt.ts"
@@ -661,9 +662,14 @@ export class RegistryStore {
     }
 
     const senderLabel = resolvedSender.displayName
+    const message = enrichLeadDeliveryMessage(this.options.directory, {
+      sender: resolvedSender,
+      recipient,
+      message: input.message,
+    })
     const delivery = await this.deliverToRecipient({
       recipient,
-      promptText: formatDirectedNotification(this.options.directory, senderLabel, input.message),
+      promptText: formatDirectedNotification(this.options.directory, senderLabel, message),
       senderAgentId: resolvedSender.agentId ?? input.senderAgentId,
     })
     if (delivery.status === "failed") {
@@ -797,8 +803,14 @@ export class RegistryStore {
     }
     const promptText = formatDirectedNotification(
       this.options.directory,
-      this.outerName("architect"),
-      await loadDispatchRootPrompt(this.options.directory, manifest.mission_id, input?.objective),
+      "Gatehouse",
+      await loadDispatchRootPrompt(this.options.directory, manifest.mission_id, {
+        objective: input?.objective,
+        manifest,
+        store: this,
+        rootSessionId: recipient.sessionId,
+        rootProfile: recipient.profile,
+      }),
     )
     const result = await this.deliverToRecipient({
       recipient,
@@ -812,7 +824,7 @@ export class RegistryStore {
     }
   }
 
-  async kickoffCuratorSkillAssignment(input: { missionId: string; objective?: string }) {
+  async kickoffCuratorSkillAssignment(input: { missionId: string; objective?: string; spec: TeamSpec }) {
     const curator = this.byProfile("curator", "outer")
     if (!curator?.sessionId) {
       return {
@@ -826,6 +838,7 @@ export class RegistryStore {
       await loadCuratorSkillAssignKickoff(this.options.directory, {
         missionId: input.missionId,
         objective: input.objective,
+        spec: input.spec,
       }),
     )
     const result = await this.deliverToRecipient({
@@ -886,6 +899,7 @@ export class RegistryStore {
       const promptText = await loadRetroKickoffPrompt(this.options.directory, {
         missionId: manifest.mission_id,
         nodeId,
+        manifest,
       })
       const result = await this.deliverToRecipient({
         recipient,

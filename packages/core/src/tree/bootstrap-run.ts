@@ -1,12 +1,13 @@
 import type { PluginInput } from "@opencode-ai/plugin"
 import { getRegistryStore } from "../registry/context.ts"
-import { nodeDisplayLabel, teamSpecPath } from "../paths.ts"
-import { topologicalNodeOrder, validateTeamSpec, resolveInnerProfile } from "./parse.ts"
+import { manifestExportPath, nodeDisplayLabel, teamSpecPath } from "../paths.ts"
+import { topologicalNodeOrder, validateTeamSpec, resolveInnerProfile, childNodeIdsFromSpec } from "./parse.ts"
 import { readManifest, upsertTreesIndex, writeManifest } from "./store.ts"
 import type { TeamSpec, TreeManifest } from "./types.ts"
 import { loadGatehouseConfig, modelForInnerProfile } from "../gatehouse-config.ts"
 import { createSession, promptSession } from "../session/client.ts"
 import { skillDomainContextNote, listSkillSlugsInDomain } from "../retro/skill-kickoff.ts"
+import { formatCoordinatorSubtreeSnapshot } from "../dispatch/team-snapshot.ts"
 import { readAgentNamesSync } from "../names.ts"
 import { readLocaleSync } from "../locale.ts"
 import { readActiveMissionContract } from "../missions/contract.ts"
@@ -66,9 +67,14 @@ export async function runBootstrapTree(
     const skillSlugs = specNode.skill_domain
       ? await listSkillSlugsInDomain(input.directory, specNode.skill_domain)
       : []
-    const system = specNode.skill_domain
+    let system = specNode.skill_domain
       ? `${specNode.constraints.trim()}\n\n${skillDomainContextNote(specNode.skill_domain, agentNames, locale, skillSlugs)}`
       : specNode.constraints.trim()
+    const isIntermediateCoordinator =
+      nodeId !== spec.root && childNodeIdsFromSpec(spec, nodeId).length > 0
+    if (isIntermediateCoordinator) {
+      system = `${system}\n\n${formatCoordinatorSubtreeSnapshot(spec, nodeId, locale)}`
+    }
     await promptSession(input.client, input.directory, sessionId, {
       profile,
       system,
@@ -107,7 +113,7 @@ export async function runBootstrapTree(
     root_node: spec.root,
     root_session_id: nodes[spec.root]?.session_id ?? "",
     node_count: Object.keys(nodes).length,
-    manifest_path: teamSpecPath(input.directory, spec.mission_id).replace("teamspec.yaml", "manifest.yaml"),
+    manifest_path: manifestExportPath(input.directory, spec.mission_id),
     root_kickoff: rootKickoff,
   } satisfies BootstrapRunResult
 }

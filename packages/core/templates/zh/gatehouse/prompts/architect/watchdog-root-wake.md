@@ -8,12 +8,16 @@ Gatehouse 检测到任务 **{{mission_id}}** 的执行团队已连续 **{{idle_s
 
 **注意：** 本消息由看门狗在**整个执行团队异常 idle** 时触发；正常分配任务后应停手等待，勿在日常流程中循环 snapshot。
 
-1. `gatehouse_list_team()` 查看 `execution`（执行树全员；你在 inner session 时自动适用）。
-2. 对每个 **非根** `node_id` **各调用一次** `gatehouse_session_snapshot(recipient="<node_id>")` 排查卡点（单次诊断，禁止重复轮询）。
+{{team_execution_snapshot}}
+
+{{non_root_node_ids}}
+
+1. 使用上方执行团队快照（bootstrap 后结构不变）。
+2. 对上方列出的每个 **非根** `node_id` **各调用一次** `gatehouse_session_snapshot(recipient="<node_id>")` 排查卡点（全员 idle 排查时可查看任意非根节点；单次诊断，禁止重复轮询）。
 3. 根据 snapshot 决定后续：
    - 队友 idle 且任务似已完成 → `gatehouse_send_message` 向其上级或任务协调者补发汇报（或你作为任务协调者直接汇总）。
-   - 队友 idle 但任务未完成 → `gatehouse_send_message` 分配任务或跟进。
-   - 仍有下属分支未交付 → 继续分配任务或跟进，完成后回到「分配任务 → 停手等待消息」模式。
+   - 队友 idle 但任务未完成 → 向**直接管理的下属** `gatehouse_send_message` 分配任务或跟进（勿越级派发；若卡点在其子树内，先催其直接上级）。
+   - 仍有下属分支未交付 → 向直接下属继续分配或跟进，完成后回到「分配任务 → 停手等待消息」模式。
 
 ## 检查工作完成后
 

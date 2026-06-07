@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test"
 import {
   arbiterSessionPermissions,
   architectSessionPermissions,
+  buildCoordinatorPermissions,
+  buildExecutionPermissions,
   curatorSessionPermissions,
   hiddenToolsFromPermissions,
   injectAgentPermissionYaml,
@@ -61,6 +63,28 @@ describe("outer agent permission matrix", () => {
   })
 })
 
+describe("inner execution permission matrix", () => {
+  test("build-coordinator denies mission lifecycle tools and hides them from tool schema", () => {
+    expect(buildCoordinatorPermissions.gatehouse_mission_current).toBe("deny")
+    expect(buildCoordinatorPermissions.gatehouse_mission_start).toBe("deny")
+    expect(buildCoordinatorPermissions.gatehouse_mission_retro).toBe("deny")
+    expect(buildCoordinatorPermissions.gatehouse_mission_complete).toBe("deny")
+
+    const tools = hiddenToolsFromPermissions(buildCoordinatorPermissions)
+    expect(tools.gatehouse_mission_current).toBe(false)
+    expect(tools.gatehouse_mission_start).toBe(false)
+    expect(tools.gatehouse_mission_retro).toBe(false)
+    expect(tools.gatehouse_mission_complete).toBe(false)
+    expect(tools.gatehouse_send_message).toBeUndefined()
+  })
+
+  test("build profile denies mission lifecycle tools and hides them from tool schema", () => {
+    expect(buildExecutionPermissions.gatehouse_mission_current).toBe("deny")
+    const tools = hiddenToolsFromPermissions(buildExecutionPermissions)
+    expect(tools.gatehouse_mission_current).toBe(false)
+  })
+})
+
 describe("hiddenToolsFromPermissions", () => {
   test("maps every deny permission to tools false", () => {
     const tools = hiddenToolsFromPermissions(leadPermissions)
@@ -105,6 +129,8 @@ body
     const result = injectAgentPermissionYaml(template, "build-coordinator.md")
     expect(result).toContain("architect-meta: deny")
     expect(result).toContain("*: allow")
+    expect(result).toContain("gatehouse_mission_current: deny")
+    expect(result).toContain("gatehouse_mission_current: false")
   })
 
   test("injects hidden tools derived from deny permissions for lead", () => {

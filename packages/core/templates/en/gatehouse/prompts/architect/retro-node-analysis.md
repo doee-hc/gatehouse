@@ -1,14 +1,10 @@
-# Retro analysis template (auto-dispatched after fork)
-
-`gatehouse_mission_retro` **auto-delivers** this template to your retro session (`{{mission_id}}` / `{{node_id}}` placeholders filled). You do not wait for {{architect_name}} to `send_message` each step.
-
----
-
-## Retro task · node {{node_id}}
+# Retro task · node {{node_id}}
 
 You are in a **retro fork session** analyzing your execution branch — **do not** mix analysis into the original execution session.
 
-**Discover issues yourself** — do not rely on Gatehouse precomputed semantic features.
+Do not wait for {{architect_name}} to `send_message` each step. **Discover issues yourself** — do not rely on Gatehouse precomputed semantic features.
+
+{{retro_context_snapshot}}
 
 ### Data sources (source of truth)
 
@@ -35,7 +31,7 @@ These **do not** replace semantic features you derive from messages/timeline (co
 
 ### Recommended steps (sample → tools → conclusions)
 
-1. Read `context/index.json`, `context/subtree-metrics.json` (`retro_nodes["{{node_id}}"]`), **`retro-toolkit/SKILL.md`**; list branch nodes; reuse `tools/` scripts.
+1. Use the kickoff snapshot above to scope your branch; read **`retro-toolkit/SKILL.md`**, list nodes, reuse `tools/` scripts.
 2. **Do not read** all of `messages.json`. Grep `timeline.md` first (table below).
 3. For suspicious patterns: **write or extend Python scripts** for features (compaction, todo tokens, send_message sequences, etc.).
 4. If a new tool is reusable: add `.gatehouse/skills/retro-toolkit/tools/<verb-noun>/` with `SKILL.md`.

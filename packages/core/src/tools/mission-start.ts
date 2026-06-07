@@ -2,8 +2,7 @@ import { tool, type PluginInput } from "@opencode-ai/plugin"
 import { getRegistryStore } from "../registry/context.ts"
 import { requireLeadCaller } from "../missions/lifecycle.ts"
 import { startMissionFromYaml } from "../missions/start.ts"
-import { gatehouseMessage } from "../i18n.ts"
-import { readLocaleSync } from "../locale.ts"
+import { formatMissionStartedMessage } from "../messaging/delivery-notify.ts"
 import { readAgentNamesSync, renderGatehouseTemplate } from "../names.ts"
 import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
 
@@ -44,9 +43,11 @@ export function missionStartTool(input: PluginInput) {
         }
 
         const names = readAgentNamesSync(input.directory)
-        const locale = readLocaleSync(input.directory)
         const message = renderGatehouseTemplate(
-          gatehouseMessage("mission.started", locale, { mission_id: args.mission_id }),
+          formatMissionStartedMessage(input.directory, {
+            missionId: args.mission_id,
+            leadName: names.lead,
+          }),
           names,
         )
         const delivery = await lead.registry.sendMessage({

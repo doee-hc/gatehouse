@@ -7,19 +7,50 @@ import {
   watchdogSkillRecordWakePromptPath,
 } from "../paths.ts"
 import { readAgentNamesSync, renderGatehouseTemplate } from "../names.ts"
+import { gatehouseMessage } from "../i18n.ts"
+import { readLocaleSync } from "../locale.ts"
+import {
+  formatExecutionTeamSnapshotFromManifest,
+  formatNonRootNodeIdList,
+} from "../dispatch/team-snapshot.ts"
+import { isSoloExecutionTeam } from "../tree/parse.ts"
+import type { TreeManifest } from "../tree/types.ts"
 
 export const EXECUTION_TREE_IDLE_THRESHOLD_MS = 10_000
 export const EXECUTION_TREE_WATCHDOG_POLL_MS = 2_000
 export const EXECUTION_TREE_WATCHDOG_WAKE_COOLDOWN_MS = 30_000
 
-export async function loadWatchdogRootWakePrompt(projectDirectory: string, missionId: string, idleSeconds: number) {
+export async function loadWatchdogRootWakePrompt(
+  projectDirectory: string,
+  missionId: string,
+  idleSeconds: number,
+  manifest?: TreeManifest,
+) {
+  const solo = manifest ? isSoloExecutionTeam(manifest) : false
+  const locale = readLocaleSync(projectDirectory)
   const template = renderGatehouseTemplate(
-    await Bun.file(watchdogRootWakePromptPath(projectDirectory)).text(),
+    await Bun.file(watchdogRootWakePromptPath(projectDirectory, solo)).text(),
     readAgentNamesSync(projectDirectory),
   )
+  let teamExecutionSnapshot = ""
+  let nonRootNodeIds = ""
+  if (!solo && manifest) {
+    teamExecutionSnapshot = [
+      gatehouseMessage("dispatch.teamSnapshot.watchdogSnapshotHeader", locale),
+      "",
+      formatExecutionTeamSnapshotFromManifest(manifest, locale),
+    ].join("\n")
+    nonRootNodeIds = [
+      gatehouseMessage("dispatch.teamSnapshot.watchdogSnapshotNodesHeader", locale),
+      "",
+      formatNonRootNodeIdList(manifest, locale),
+    ].join("\n")
+  }
   return template
     .replaceAll("{{mission_id}}", missionId)
     .replaceAll("{{idle_seconds}}", String(idleSeconds))
+    .replaceAll("{{team_execution_snapshot}}", teamExecutionSnapshot)
+    .replaceAll("{{non_root_node_ids}}", nonRootNodeIds)
 }
 
 export async function loadWatchdogRetroRecordWakePrompt(

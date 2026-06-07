@@ -150,7 +150,12 @@ export class ExecutionTreeWatchdog {
     if (!root) return
 
     const idleSeconds = Math.round((decision.idleDurationMs ?? EXECUTION_TREE_IDLE_THRESHOLD_MS) / 1000)
-    const content = await loadWatchdogRootWakePrompt(this.input.directory, manifest.mission_id, idleSeconds)
+    const content = await loadWatchdogRootWakePrompt(
+      this.input.directory,
+      manifest.mission_id,
+      idleSeconds,
+      manifest,
+    )
     if (getMissionWatchState(this.input.directory, missionId)?.paused) return
     const delivered = await this.registry.deliverSystemMessage(root, content, root.profile)
     if (delivered.status === "failed") {

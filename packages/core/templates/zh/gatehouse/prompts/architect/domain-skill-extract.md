@@ -1,6 +1,6 @@
-# 领域 skill 提炼（复盘启动 · Gatehouse 系统消息）
+# 领域 skill 提炼 · {{mission_id}}
 
-{{lead_name}}已确认交付完成并启动任务 `{{mission_id}}` 复盘。请根据**本次执行经验**提炼领域 skill。
+{{lead_name}}已确认交付完成并启动任务复盘。请根据**本次执行经验**提炼领域 skill。
 
 **你的节点：** {{node_id}}
 **本节点 skill 领域：** `{{skill_domain}}`
@@ -34,9 +34,7 @@
 
 ## 交付
 
-1. 写 `.gatehouse/architect/trees/{{mission_id}}/reports/skills/{{node_id}}-extract.md` — 新建/更新的 skill 路径列表 + 各一行摘要。
+1. 写 `.gatehouse/trees/{{mission_id}}/reports/skills/{{node_id}}-extract.md` — 新建/更新的 skill 路径列表 + 各一行摘要。
 2. 调用 **`gatehouse_skill_extract_record()`** 登记完成。
 
 **不要** `gatehouse_send_message` 联系{{curator_name}} — 全部节点登记后 Gatehouse 会自动通知{{curator_name}}汇总。
-
-**注意：** 本指引仅在复盘启动后由 Gatehouse 下发；任务执行期不应提前提炼 skill。

@@ -1,14 +1,10 @@
-# 复盘分析模板（fork 后由 Gatehouse 自动下发）
-
-`gatehouse_mission_retro` 会向本 retro session **自动投递**本模板（已替换 `{{mission_id}}` / `{{node_id}}`）。你无需等待{{architect_name}}逐条 `send_message`。
-
----
-
-## 复盘任务 · 节点 {{node_id}}
+# 复盘任务 · 节点 {{node_id}}
 
 你当前在 **retro fork session**，分析的是执行期所辖分支，**不要**把分析对话混入原执行 session。
 
-请**自主发现问题**，而非依赖 Gatehouse 预计算语义特征。
+无需等待 {{architect_name}} 逐条 `send_message`。请**自主发现问题**，而非依赖 Gatehouse 预计算语义特征。
+
+{{retro_context_snapshot}}
 
 ### 数据来源（唯一真相源）
 
@@ -35,7 +31,7 @@
 
 ### 推荐步骤（抽样 → 工具 → 结论）
 
-1. 读 `context/index.json`、`context/subtree-metrics.json`（`retro_nodes["{{node_id}}"]`）+ **`retro-toolkit/SKILL.md`**，列出所辖分支节点；复用已有 `tools/` 脚本。
+1. 使用上方启动快照定位所辖分支；读 **`retro-toolkit/SKILL.md`**，列出节点并复用已有 `tools/` 脚本。
 2. **不要通读**全部 `messages.json`。先用 `timeline.md` grep 定位异常片段（见下表）。
 3. 对可疑模式：**自制或扩展 Python 脚本**提取特征（压缩次数、todo 段 token、send_message 序列等）。
 4. 若新工具有复用价值：写入 `.gatehouse/skills/retro-toolkit/tools/<verb-noun>/`（含 `SKILL.md`）。
