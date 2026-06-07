@@ -12,6 +12,7 @@ import {
 } from "../paths.ts"
 import { readManifest, readTreesIndex } from "../tree/store.ts"
 import { isRecord, parseYaml, readString } from "../yaml.ts"
+import { OUTER_PROFILE_SKILL_DIRS } from "../skills/constants.ts"
 import {
   parseMissionsFile,
   activePortalMissionIds,
@@ -363,13 +364,6 @@ export async function buildPortalSnapshot(projectDirectory: string, opencodeUrl?
   } satisfies PortalSnapshot & { trees_index: typeof treesIndex.trees }
 }
 
-const OUTER_PROFILE_SKILLS: Record<string, string[]> = {
-  lead: ["planning-skill"],
-  architect: ["meta-skill", "retro-toolkit"],
-  curator: ["meta-skill"],
-  arbiter: ["meta-skill"],
-}
-
 async function readOpencodeAgentDescriptions(_projectDirectory: string) {
   const dir = globalOpencodeAgentDir()
   const descriptions = new Map<string, string>()
@@ -399,7 +393,7 @@ function agentPortalMeta(
   if (agent.scope === "outer") {
     return {
       description: descriptions.get(agent.profile),
-      skills: OUTER_PROFILE_SKILLS[agent.profile] ?? [],
+      skills: OUTER_PROFILE_SKILL_DIRS[agent.profile] ?? [],
     }
   }
   const missionTree = tree?.mission_id === agent.missionId ? tree : undefined

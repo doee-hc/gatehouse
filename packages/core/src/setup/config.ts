@@ -19,6 +19,7 @@ import {
   arbiterSessionPermissions,
   globalGatehousePermissions,
   hiddenToolsFromPermissions,
+  type AgentPermissionMap,
 } from "./permissions.ts"
 
 const gatehouseSkillsPath = ".gatehouse"
@@ -27,7 +28,7 @@ function mergeAgent(
   agents: Record<string, Record<string, unknown>>,
   name: string,
   defaults: Record<string, unknown>,
-  permission: Record<string, string>,
+  permission: AgentPermissionMap,
   tools?: Record<string, boolean>,
 ) {
   const existing = agents[name] ?? {}

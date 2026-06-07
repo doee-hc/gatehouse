@@ -2,7 +2,8 @@ import { tool, type PluginInput } from "@opencode-ai/plugin"
 import { getRegistryStore } from "../registry/context.ts"
 import { readManifest, readTeamSpecFile, writeManifest, writeTeamSpec } from "../tree/store.ts"
 import { runBootstrapTree } from "../tree/bootstrap-run.ts"
-import { skillDomainContextNote } from "../retro/skill-kickoff.ts"
+import { skillDomainContextNote, listSkillSlugsInDomain } from "../retro/skill-kickoff.ts"
+import { readLocaleSync } from "../locale.ts"
 import { readAgentNamesSync } from "../names.ts"
 import { innerAgentId } from "../registry/types.ts"
 import { readActiveMissionContract } from "../missions/contract.ts"
@@ -93,9 +94,15 @@ export function applySkillDomainsTool(input: PluginInput) {
             deliveries.push({ nodeId, skillDomain: domainValue, delivery: "failed", error: "exec agent not in registry" })
             continue
           }
+          const slugs = await listSkillSlugsInDomain(input.directory, domainValue.trim())
           const result = await registry.deliverSystemMessage(
             recipient,
-            skillDomainContextNote(domainValue.trim(), readAgentNamesSync(input.directory)),
+            skillDomainContextNote(
+              domainValue.trim(),
+              readAgentNamesSync(input.directory),
+              readLocaleSync(input.directory),
+              slugs,
+            ),
             recipient.profile,
           )
           deliveries.push({

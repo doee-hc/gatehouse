@@ -65,6 +65,7 @@ describe("hiddenToolsFromPermissions", () => {
   test("maps every deny permission to tools false", () => {
     const tools = hiddenToolsFromPermissions(leadPermissions)
     for (const [key, value] of Object.entries(leadPermissions)) {
+      if (typeof value === "object") continue
       if (value === "deny") expect(tools[key]).toBe(false)
       else expect(tools[key]).toBeUndefined()
     }
@@ -80,6 +81,32 @@ describe("hiddenToolsFromPermissions", () => {
 })
 
 describe("injectAgentPermissionYaml", () => {
+  test("injects skill allowlists for lead", () => {
+    const template = `---
+name: lead
+permission:
+  task: deny
+---
+body
+`
+    const result = injectAgentPermissionYaml(template, "lead.md")
+    expect(result).toContain("skill:\n    *: deny")
+    expect(result).toContain("lead-meta: allow")
+  })
+
+  test("injects skill denylists for build-coordinator", () => {
+    const template = `---
+name: build-coordinator
+permission:
+  task: deny
+---
+body
+`
+    const result = injectAgentPermissionYaml(template, "build-coordinator.md")
+    expect(result).toContain("architect-meta: deny")
+    expect(result).toContain("*: allow")
+  })
+
   test("injects hidden tools derived from deny permissions for lead", () => {
     const template = `---
 name: lead
