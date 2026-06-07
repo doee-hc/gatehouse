@@ -1,6 +1,6 @@
 import { loadPortalBranding } from "./api/branding.ts"
 import { loadBlogSnapshot, startBlogPolling } from "./api/blog.ts"
-import { portalProjectDirectory, resolvePortalProjectDirectory } from "./api/project-directory.ts"
+import { portalProjectSlug, resolvePortalProjectSlug } from "./api/project-directory.ts"
 import { loadPortalSnapshotWithRetry, startSnapshotPolling } from "./api/snapshot.ts"
 import { applySnapshotUpdate } from "./portal/snapshot-sync.ts"
 import { BLOG_POLL_MS, SNAPSHOT_POLL_MS } from "./portal/poll-intervals.ts"
@@ -19,8 +19,8 @@ function setLoadingStatus(text: string) {
 }
 
 async function boot() {
-  const directory = portalProjectDirectory() ?? (await resolvePortalProjectDirectory())
-  if (!directory) {
+  const project = portalProjectSlug() ?? (await resolvePortalProjectSlug())
+  if (!project) {
     throw new Error(t("error.noProjectDir"))
   }
 
@@ -33,8 +33,8 @@ async function boot() {
   })
 
   const [blog, branding] = await Promise.all([
-    loadBlogSnapshot(directory).catch(() => undefined),
-    loadPortalBranding(directory).catch(() => undefined),
+    loadBlogSnapshot(project).catch(() => undefined),
+    loadPortalBranding(project).catch(() => undefined),
   ])
 
   applyPortalBranding(branding)

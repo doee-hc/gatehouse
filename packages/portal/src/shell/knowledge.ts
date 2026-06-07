@@ -113,7 +113,7 @@ async function openSkill(domain: string, name: string) {
   meta.textContent = `${domain} · ${pathForSkill(domain, name)}`
   body.innerHTML = `<p class="empty-state">${escapeHtml(t("knowledge.loading"))}</p>`
 
-  const detailData = await loadSkillDetail(domain, name, snapshot?.project_directory).catch(() => undefined)
+  const detailData = await loadSkillDetail(domain, name, snapshot?.project).catch(() => undefined)
   if (!detailData) {
     body.innerHTML = `<p class="empty-state">${escapeHtml(t("knowledge.loadFailed"))}</p>`
     return

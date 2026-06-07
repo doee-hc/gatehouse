@@ -51,7 +51,7 @@ export function refreshAgentOverlay() {
   renderAgentOverlay({
     ...lastSelection,
     status: resolveAgentDisplayStatus({
-      sessionId: record.session_id,
+      spawnId: record.spawn_id,
       snapshotStatus: record.status,
     }),
     ...(record.description && { description: record.description }),

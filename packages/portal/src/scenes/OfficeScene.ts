@@ -76,7 +76,6 @@ type AgentDef = {
   name: string
   atlasPrefix: CharacterAtlasPrefix
   status: AgentStatus
-  sessionId: string
   fixed?: boolean
   ghost?: boolean
   scope?: PortalSnapshot["agents"][number]["scope"]
@@ -99,7 +98,7 @@ type OfficeLayoutManifest = {
 function officeLayoutQuery() {
   const snapshot = getPortalSnapshot()
   const params = new URLSearchParams()
-  if (snapshot?.project_directory) params.set("directory", snapshot.project_directory)
+  if (snapshot?.project) params.set("project", snapshot.project)
   if (snapshot?.office_layout?.revision) params.set("revision", snapshot.office_layout.revision)
   const query = params.toString()
   return query ? `?${query}` : ""
@@ -532,12 +531,11 @@ export class OfficeScene extends Phaser.Scene {
       })
 
     const emptySnapshot: PortalSnapshot = {
-      project_directory: "",
+      project: "",
       updated_at: "",
       missions: [],
       agents: [],
       skills: [],
-      session_status: {},
     }
     const prefixes = [...new Set(agentDefsFromSnapshot(getPortalSnapshot() ?? emptySnapshot).map((d) => d.atlasPrefix))]
     registerCharacterAnims(this, prefixes)
@@ -929,7 +927,7 @@ export class OfficeScene extends Phaser.Scene {
     }
 
     for (const def of defs) {
-      const status = resolveAgentDisplayStatus({ sessionId: def.sessionId, snapshotStatus: def.status })
+      const status = resolveAgentDisplayStatus({ spawnId: def.id, snapshotStatus: def.status })
       const existing = this.agents.get(def.id)
       if (existing) {
         existing.displayName = def.name
@@ -1302,7 +1300,6 @@ function agentDefsFromSnapshot(snapshot: PortalSnapshot) {
       name: agent.name,
       atlasPrefix: agent.atlasPrefix,
       status: agent.status,
-      sessionId: agent.sessionId,
       fixed: agent.fixed,
       ghost: agent.ghost,
       scope: record?.scope,

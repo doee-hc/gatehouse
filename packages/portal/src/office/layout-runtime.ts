@@ -131,7 +131,7 @@ export function resetOfficeLayoutRuntimeForTests() {
 
 export function officeLayoutManifestUrl(snapshot: PortalSnapshot) {
   const params = new URLSearchParams()
-  params.set("directory", snapshot.project_directory)
+  if (snapshot.project) params.set("project", snapshot.project)
   const revision = snapshot.office_layout?.revision
   if (revision) params.set("revision", revision)
   return `/portal/api/office/manifest.json?${params}`

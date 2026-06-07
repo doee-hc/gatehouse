@@ -10,18 +10,25 @@ import {
   type PortalInjectedEvent,
 } from "./events.ts"
 import { portalOfficeDir } from "../paths.ts"
-import { agentSync } from "./agent-sync.ts"
 import { getCachedPortalSnapshot } from "./snapshot.ts"
 import { readOfficeLayoutManifest, readOfficeLayoutSpec } from "./office-layout.ts"
-import { portalAdminRuntimeUrl, portalRuntimeUrl } from "./runtime-info.ts"
+import { portalRuntimeUrl } from "./runtime-info.ts"
 import { buildPortalBranding, resolvePortalLogoFile } from "./branding.ts"
 import { buildTeamStatsSnapshot } from "./team-stats.ts"
 import { officeRevisionCacheControl } from "./portal-cache.ts"
 import { tryServePortalUi } from "./static-ui.ts"
 import { gatehouseLog } from "../log.ts"
 import { resolveProjectDirectory, withCors } from "./security.ts"
-import { fetchAdminReachable, preferredPortalDisplayPort } from "./ports.ts"
-import { getActivePortalAdminPort } from "./admin-server.ts"
+import {
+  toBrowserBlog,
+  toBrowserSkillDetail,
+  toBrowserSnapshot,
+  toBrowserTeamStats,
+} from "./browser-dto.ts"
+import { isOpencodeBridgeRunning } from "./opencode-bridge.ts"
+import { resolvePortalProjectSlug } from "./portal-project.ts"
+import { portalSnapshotCacheAgeMs } from "./snapshot.ts"
+import { acquirePortalSseConnection, portalSseActiveCount } from "./sse-registry.ts"
 
 export type PortalFetchOptions = {
   packageRoot: string
@@ -68,44 +75,49 @@ function serveOfficeFile(
   )
 }
 
-function drainSseMessages(buffer: string) {
-  const messages: unknown[] = []
-  let rest = buffer
-  while (true) {
-    const index = rest.indexOf("\n\n")
-    if (index === -1) break
-    const block = rest.slice(0, index)
-    rest = rest.slice(index + 2)
-    const data = block
-      .split("\n")
-      .filter((line) => line.startsWith("data:"))
-      .map((line) => line.slice(5).trimStart())
-      .join("\n")
-    if (!data) continue
-    try {
-      messages.push(JSON.parse(data) as unknown)
-    } catch {
-      // ignore malformed chunks
-    }
-  }
-  return { messages, rest }
+async function probeOpencodeReachable(baseUrl: string) {
+  const response = await fetch(`${baseUrl.replace(/\/$/, "")}/health`, {
+    signal: AbortSignal.timeout(1500),
+  }).catch(() => undefined)
+  return response?.ok === true
 }
 
-async function proxyOpencodeEvents(projectDirectory: string, request: Request) {
+function streamPortalEvents(request: Request) {
+  const slot = acquirePortalSseConnection()
+  if (!slot.ok) {
+    return new Response(JSON.stringify({ error: "sse_capacity_exceeded" }), {
+      status: 503,
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store",
+        "Retry-After": "30",
+      },
+    })
+  }
+
   const encoder = new TextEncoder()
   let cleanup: (() => void) | undefined
   const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
+    start(controller) {
       controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "ping" })}\n\n`))
       const unsubscribe = subscribePortalEvents((event) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
+        } catch {
+          // stream closed
+        }
       })
       const pingTimer = setInterval(() => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "ping" })}\n\n`))
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "ping" })}\n\n`))
+        } catch {
+          // stream closed
+        }
       }, 8000)
       const stop = () => {
         clearInterval(pingTimer)
         unsubscribe()
+        slot.release()
       }
       cleanup = stop
 
@@ -117,67 +129,19 @@ async function proxyOpencodeEvents(projectDirectory: string, request: Request) {
         },
         { once: true },
       )
-
-      const url = new URL("/event", opencodeUrl())
-      url.searchParams.set("directory", projectDirectory)
-
-      const sync = agentSync(projectDirectory)
-      await sync.refreshIndex(opencodeUrl()).catch(() => undefined)
-
-      while (!request.signal.aborted) {
-        const upstream = await fetch(url, {
-          headers: request.headers.get("Last-Event-ID")
-            ? { "Last-Event-ID": request.headers.get("Last-Event-ID")! }
-            : undefined,
-          signal: request.signal,
-        }).catch(() => undefined)
-
-        if (!upstream?.ok || !upstream.body) {
-          await Bun.sleep(2000)
-          continue
-        }
-
-        const reader = upstream.body.getReader()
-        const decoder = new TextDecoder()
-        let pending = ""
-        try {
-          while (!request.signal.aborted) {
-            const chunk = await reader.read()
-            if (chunk.done) break
-            pending += decoder.decode(chunk.value, { stream: true })
-            const parsed = drainSseMessages(pending)
-            pending = parsed.rest
-            for (const message of parsed.messages) {
-              void sync.handleOpencodeEvent(message, opencodeUrl())
-            }
-          }
-        } catch {
-          // client disconnected or upstream closed
-        } finally {
-          reader.releaseLock()
-        }
-
-        if (request.signal.aborted) break
-        await Bun.sleep(500)
-      }
-
-      stop()
     },
     cancel() {
       cleanup?.()
     },
   })
 
-  return withCors(
-    new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache, no-transform",
-        Connection: "keep-alive",
-      },
-    }),
-    request,
-  )
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+    },
+  })
 }
 
 export function isPortalApiPath(pathname: string) {
@@ -196,21 +160,15 @@ export function createPortalFetchHandler(options: PortalFetchOptions) {
     const projectDirectory = projectDirectoryResult.directory
 
     if (url.pathname === "/portal/api/health") {
-      const listenPort = options.getListenPort() ?? preferredPortalDisplayPort()
-      const adminPort = getActivePortalAdminPort()
-      const adminReady = adminPort ? await fetchAdminReachable(adminPort) : false
+      const opencode = opencodeUrl()
       return withCors(
         json({
           ok: true,
-          project_directory: projectDirectory,
-          default_project_directory: options.defaultProjectDirectory,
-          port: listenPort,
-          ...(adminReady && adminPort
-            ? {
-                admin_port: adminPort,
-                admin_url: portalAdminRuntimeUrl(adminPort),
-              }
-            : {}),
+          project: resolvePortalProjectSlug(projectDirectory),
+          opencode_reachable: await probeOpencodeReachable(opencode),
+          bridge_running: isOpencodeBridgeRunning(),
+          sse_active: portalSseActiveCount(),
+          snapshot_cache_age_ms: portalSnapshotCacheAgeMs(),
         }),
         request,
       )
@@ -264,12 +222,12 @@ export function createPortalFetchHandler(options: PortalFetchOptions) {
       if (!snapshot) {
         return withCors(json({ error: "snapshot_unavailable" }, 503), request)
       }
-      return withCors(json(snapshot), request)
+      return withCors(json(toBrowserSnapshot(projectDirectory, snapshot)), request)
     }
 
     if (url.pathname === "/portal/api/blog") {
       const blog = await buildBlogSnapshot(projectDirectory)
-      return withCors(json(blog), request)
+      return withCors(json(toBrowserBlog(projectDirectory, blog)), request)
     }
 
     if (url.pathname === "/portal/api/team-stats") {
@@ -282,7 +240,7 @@ export function createPortalFetchHandler(options: PortalFetchOptions) {
         return undefined
       })
       if (!stats) return withCors(json({ error: "team_stats_unavailable" }, 503), request)
-      return withCors(json(stats), request)
+      return withCors(json(toBrowserTeamStats(projectDirectory, stats)), request)
     }
 
     if (url.pathname === "/portal/api/skill") {
@@ -291,7 +249,7 @@ export function createPortalFetchHandler(options: PortalFetchOptions) {
       if (!domain || !name) return withCors(new Response("domain and name required", { status: 400 }), request)
       const detail = await readSkillDetail(projectDirectory, domain, name)
       if (!detail) return withCors(new Response("skill not found", { status: 404 }), request)
-      return withCors(json(detail), request)
+      return withCors(json(toBrowserSkillDetail(detail)), request)
     }
 
     if (url.pathname === "/portal/api/office/manifest.json") {
@@ -346,7 +304,7 @@ export function createPortalFetchHandler(options: PortalFetchOptions) {
     }
 
     if (url.pathname === "/portal/events") {
-      return proxyOpencodeEvents(projectDirectory, request)
+      return withCors(streamPortalEvents(request), request)
     }
 
     if (serveStaticUi) {

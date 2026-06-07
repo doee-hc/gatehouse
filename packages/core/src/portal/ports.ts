@@ -3,6 +3,7 @@ import path from "node:path"
 import { gatehouseLog } from "../log.ts"
 import { DEFAULT_PORTAL_ADMIN_PORT, DEFAULT_PORTAL_DISPLAY_PORT } from "./defaults.ts"
 import { portalAdminRuntimeUrl, portalRuntimeUrl, readPortalRuntimeSync } from "./runtime-info.ts"
+import { resolvePortalProjectSlug } from "./portal-project.ts"
 import { preferredPortalAdminPort } from "./security.ts"
 
 export { DEFAULT_PORTAL_ADMIN_PORT, DEFAULT_PORTAL_DISPLAY_PORT } from "./defaults.ts"
@@ -12,11 +13,11 @@ const PORT_LISTEN_PROBE_MS = 300
 
 export type PortalHealth = {
   ok?: boolean
-  project_directory?: string
-  default_project_directory?: string
-  port?: number
-  admin_port?: number
-  admin_url?: string
+  project?: string
+  opencode_reachable?: boolean
+  bridge_running?: boolean
+  sse_active?: number
+  snapshot_cache_age_ms?: number
 }
 
 export type PortalEndpoints = {
@@ -52,14 +53,8 @@ export function preferredPortalDisplayPort() {
 }
 
 export function portalHealthMatchesProject(projectDirectory: string, body: PortalHealth) {
-  const target = path.resolve(projectDirectory)
-  const fromProject =
-    typeof body.project_directory === "string" ? path.resolve(body.project_directory) : undefined
-  const fromDefault =
-    typeof body.default_project_directory === "string"
-      ? path.resolve(body.default_project_directory)
-      : undefined
-  return fromProject === target || fromDefault === target
+  const target = resolvePortalProjectSlug(projectDirectory)
+  return typeof body.project === "string" && body.project === target
 }
 
 export function isPortListening(port: number, host = "127.0.0.1") {
@@ -137,8 +132,7 @@ async function describePortOccupant(port: number) {
     Bun.sleep(100).then(() => undefined),
   ])
   if (!health) return undefined
-  const project = health.project_directory ?? health.default_project_directory
-  if (project) return `Gatehouse Portal (project ${project})`
+  if (health.project) return `Gatehouse Portal (project ${health.project})`
   return "Gatehouse Portal"
 }
 

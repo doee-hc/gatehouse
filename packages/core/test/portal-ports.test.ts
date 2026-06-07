@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs"
 import path from "node:path"
 import { tmpdir } from "node:os"
 import { mkdtemp } from "node:fs/promises"
+import { resetPortalProjectSlugCacheForTests, resolvePortalProjectSlug } from "../src/portal/portal-project.ts"
 import {
   assertPortalPortAvailable,
   fetchAdminReachable,
@@ -14,27 +15,24 @@ import {
 import { readTuiNotificationsFromOffset } from "../src/tui/notifications.ts"
 
 describe("portal ports", () => {
-  test("portalHealthMatchesProject accepts default or project directory", () => {
+  test("portalHealthMatchesProject accepts project slug", () => {
     const project = "/tmp/portal-ports-project"
     expect(
       portalHealthMatchesProject(project, {
-        default_project_directory: project,
+        project: "portal-ports-project",
       }),
     ).toBe(true)
     expect(
       portalHealthMatchesProject(project, {
-        project_directory: project,
-      }),
-    ).toBe(true)
-    expect(
-      portalHealthMatchesProject(project, {
-        default_project_directory: "/tmp/other",
+        project: "other-project",
       }),
     ).toBe(false)
   })
 
   test("probePortalEndpoints checks configured ports only", async () => {
-    const project = "/tmp/portal-ports-health"
+    const project = await mkdtemp(path.join(tmpdir(), "gh-portal-ports-"))
+    resetPortalProjectSlugCacheForTests()
+    const projectSlug = resolvePortalProjectSlug(project)
     const displayPort = String(18100 + Math.floor(Math.random() * 500))
     const adminPort = String(Number(displayPort) + 3)
     const displayServer = Bun.serve({
@@ -43,11 +41,10 @@ describe("portal ports", () => {
       fetch: () =>
         Response.json({
           ok: true,
-          project_directory: project,
-          default_project_directory: project,
-          port: Number(displayPort),
-          admin_port: Number(adminPort),
-          admin_url: `http://127.0.0.1:${adminPort}/admin`,
+          project: projectSlug,
+          opencode_reachable: false,
+          bridge_running: false,
+          sse_active: 0,
         }),
     })
     const adminServer = Bun.serve({
@@ -76,6 +73,7 @@ describe("portal ports", () => {
 
     displayServer.stop()
     adminServer.stop()
+    await Bun.$`rm -rf ${project}`.quiet()
   })
 
   test("assertPortalPortAvailable fails when configured port is listening", async () => {

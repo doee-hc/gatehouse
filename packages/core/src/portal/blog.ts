@@ -9,6 +9,7 @@ import {
   readPublishedBlogPostIds,
 } from "./blog-publish.ts"
 import { createPortalDataCache } from "./portal-cache.ts"
+import { portalCacheTtlMs } from "./portal-cache-ttl.ts"
 
 export type BlogPost = {
   id: string
@@ -160,7 +161,9 @@ function missionShowsInBlog(mission: MissionEntry) {
   return mission.status !== "running" && mission.status !== "retro"
 }
 
-const blogSnapshotCache = createPortalDataCache<BlogSnapshot>({ ttlMs: 60_000 })
+const blogSnapshotCache = createPortalDataCache<BlogSnapshot>({
+  ttlMs: portalCacheTtlMs("GATEHOUSE_PORTAL_BLOG_TTL_MS", 30_000),
+})
 
 async function loadBlogSnapshot(projectDirectory: string) {
   const published = await readPublishedBlogPostIds(projectDirectory)

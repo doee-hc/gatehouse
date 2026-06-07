@@ -1,6 +1,7 @@
 import path from "node:path"
 import crypto from "node:crypto"
 import { DEFAULT_PORTAL_ADMIN_PORT } from "./defaults.ts"
+import { resolveProjectDirectoryBySlug } from "./portal-project.ts"
 import { readPortalRuntimeSync } from "./runtime-info.ts"
 
 const LOCAL_DEV_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"])
@@ -92,6 +93,17 @@ function extraProjectDirectories() {
 }
 
 export function resolveProjectDirectory(url: URL, request: Request, defaultProjectDirectory: string) {
+  const fromProject = url.searchParams.get("project")?.trim()
+  if (fromProject) {
+    const resolved = resolveProjectDirectoryBySlug(
+      fromProject,
+      defaultProjectDirectory,
+      extraProjectDirectories(),
+    )
+    if (!resolved) return { ok: false as const, response: json({ error: "forbidden_project" }, 403) }
+    return { ok: true as const, directory: resolved }
+  }
+
   const fromQuery = url.searchParams.get("directory")
   const fromHeader = request.headers.get("x-opencode-directory")
   const requested = fromQuery ?? fromHeader

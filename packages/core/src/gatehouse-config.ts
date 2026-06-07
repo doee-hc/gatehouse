@@ -35,6 +35,7 @@ export type GatehouseConfigFile = {
   locale?: string
   portal?: {
     admin_key?: string
+    project_slug?: string
     brand?: {
       title?: string
       subtitle?: string
@@ -59,7 +60,7 @@ export type ResolvedGatehouseConfig = {
   locale: GatehouseLocale
   agents: Record<OuterProfile, string>
   models: Partial<Record<GatehouseModelProfile, string>>
-  portal: { brand: PortalBrandConfig }
+  portal: { brand: PortalBrandConfig; project_slug?: string }
 }
 
 export function gatehouseGlobalConfigDir() {
@@ -198,8 +199,17 @@ export function loadGatehouseConfig(projectDirectory: string): ResolvedGatehouse
 
   let portalBrand = mergeBrand({}, global, gatehouseGlobalConfigDir())
   portalBrand = mergeBrand(portalBrand, project, gatehouseRoot(projectDirectory))
+  const projectSlug = project?.portal?.project_slug?.trim()
 
-  return { agents, models, locale, portal: { brand: portalBrand } }
+  return {
+    agents,
+    models,
+    locale,
+    portal: {
+      brand: portalBrand,
+      ...(projectSlug && { project_slug: projectSlug }),
+    },
+  }
 }
 
 export function configYamlTemplate(names = DEFAULT_AGENT_NAMES) {
