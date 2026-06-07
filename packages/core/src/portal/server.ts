@@ -21,6 +21,8 @@ import {
   type PortalViteDevServer,
 } from "./vite-dev.ts"
 import { setPortalInProcessDelivery } from "./events.ts"
+import { initPortalDisplaySettings } from "./portal-display-settings.ts"
+import { ensureOpencodeBridge, stopOpencodeBridge } from "./opencode-bridge.ts"
 import { getCachedPortalSnapshot } from "./snapshot.ts"
 
 type PortalServerHandle = {
@@ -73,8 +75,10 @@ function opencodeUrl() {
 }
 
 function warmPortalBackgroundTasks(projectDirectory: string) {
+  const url = opencodeUrl()
+  void ensureOpencodeBridge(projectDirectory, url)
   // buildPortalSnapshot schedules office layout sync when assets are stale.
-  void getCachedPortalSnapshot(projectDirectory, opencodeUrl()).catch(() => undefined)
+  void getCachedPortalSnapshot(projectDirectory, url).catch(() => undefined)
 }
 
 function getListenPort() {
@@ -130,6 +134,7 @@ function portalPortInUseError(port: number, role: "display" | "admin") {
 export async function ensurePortalServer(projectDirectory: string, packageRoot?: string) {
   defaultProjectDirectory = path.resolve(projectDirectory)
   if (packageRoot) portalPackageRoot = path.resolve(packageRoot)
+  initPortalDisplaySettings(defaultProjectDirectory)
 
   if (sharedServer) {
     const port = activePortalPort ?? sharedServer.port ?? preferredPortalDisplayPort()
@@ -180,6 +185,7 @@ export function startPortalServer(projectDirectory: string) {
 
 export function stopPortalServer(_projectDirectory?: string) {
   setPortalInProcessDelivery(false)
+  stopOpencodeBridge()
   stopPortalAdminServer()
   if (sharedViteDev) {
     void sharedViteDev.close()

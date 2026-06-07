@@ -23,7 +23,7 @@ describe("portal branding api", () => {
       expect(branding.title).toBe("Acme")
       expect(branding.icp_text).toBe("沪ICP备00000000号")
       expect(branding.icp_url).toBe("https://beian.miit.gov.cn/")
-      expect(branding.logo_url).toContain("/portal/api/branding/logo?directory=")
+      expect(branding.logo_url).toContain("/portal/api/branding/logo?project=")
     } finally {
       await rm(project, { recursive: true, force: true })
     }

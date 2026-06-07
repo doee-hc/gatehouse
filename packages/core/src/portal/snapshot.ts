@@ -25,6 +25,7 @@ import type { TreeManifest } from "../tree/types.ts"
 import { readActiveMission } from "./active-mission.ts"
 import { agentSync } from "./agent-sync.ts"
 import { createPortalDataCache } from "./portal-cache.ts"
+import { getPortalDisplaySettings } from "./portal-display-settings.ts"
 import { spawnIdForAgent } from "./spawn-id.ts"
 import { readOfficeLayoutManifest, readOfficeLayoutSpec, computeOfficeLayoutSpec } from "./office-layout.ts"
 import { scheduleOfficeLayoutSync } from "./office-layout-schedule.ts"
@@ -449,11 +450,9 @@ function mapRegistryAgentToPortalAgent(input: {
   }
 }
 
-const SNAPSHOT_CACHE_MS = 8_000
-
 const portalSnapshotCache = createPortalDataCache<
   Awaited<ReturnType<typeof buildPortalSnapshot>>
->({ ttlMs: SNAPSHOT_CACHE_MS })
+>({ ttlMs: () => getPortalDisplaySettings().snapshotTtlMs })
 
 function portalSnapshotCacheKey(projectDirectory: string, opencodeUrl?: string) {
   return `${projectDirectory}\0${opencodeUrl ?? ""}`
@@ -466,4 +465,8 @@ export async function getCachedPortalSnapshot(projectDirectory: string, opencode
 
 export function clearPortalSnapshotCacheForTests() {
   portalSnapshotCache.clear()
+}
+
+export function portalSnapshotCacheAgeMs() {
+  return portalSnapshotCache.cacheAgeMs()
 }

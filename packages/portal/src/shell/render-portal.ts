@@ -17,8 +17,8 @@ export function renderPortal(snapshot: PortalSnapshot) {
 function renderStatus(snapshot: PortalSnapshot) {
   const statusLabel = document.getElementById("nav-status-label")
   if (statusLabel) {
-    statusLabel.textContent = snapshot.project_directory
-      ? t("nav.project", { name: basename(snapshot.project_directory) })
+    statusLabel.textContent = snapshot.project
+      ? t("nav.project", { name: snapshot.project })
       : t("nav.connected")
   }
 
@@ -163,11 +163,6 @@ function formatExecTreeLines(
 
   appendChildren(tree.root_node, "")
   return lines.join("\n")
-}
-
-function basename(value: string) {
-  const parts = value.split(/[/\\]/).filter(Boolean)
-  return parts[parts.length - 1] ?? value
 }
 
 function escapeHtml(value: string) {

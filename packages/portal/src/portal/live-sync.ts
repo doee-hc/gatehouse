@@ -9,6 +9,8 @@ import { notePortalEventStreamReady } from "./snapshot-sync.ts"
 
 const lastLoggedStatus = new Map<string, "idle" | "busy" | "research">()
 
+let stopLiveSync: (() => void) | undefined
+
 function agentDisplayName(spawnId: string) {
   const snapshot = getPortalSnapshot()
   const record = snapshot?.agents.find((item) => item.spawn_id === spawnId)
@@ -21,7 +23,9 @@ function agentDisplayName(spawnId: string) {
 }
 
 export function startPortalLiveSync() {
-  return connectPortalEvents({
+  if (stopLiveSync) return stopLiveSync
+
+  stopLiveSync = connectPortalEvents({
     onPortalEvent: (event) => {
       notePortalEventStreamReady()
       if (event.type === "ping") return
@@ -59,4 +63,6 @@ export function startPortalLiveSync() {
       )
     },
   })
+
+  return stopLiveSync
 }

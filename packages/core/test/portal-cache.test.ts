@@ -12,6 +12,7 @@ test("createPortalDataCache returns cached value within ttl", async () => {
   expect(await cache.get("a", load)).toBe(1)
   expect(await cache.get("a", load)).toBe(1)
   expect(loads).toBe(1)
+  expect((cache.cacheAgeMs() ?? 0) >= 0).toBe(true)
 })
 
 test("createPortalDataCache deduplicates concurrent loads", async () => {

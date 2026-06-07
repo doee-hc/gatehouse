@@ -1,39 +1,75 @@
-let activeDirectory: string | undefined
+let activeProject: string | undefined
 
-export function portalProjectDirectory() {
-  const fromUrl = new URLSearchParams(location.search).get("directory")
+export function portalProjectSlug() {
+  const fromUrl = new URLSearchParams(location.search).get("project")
   if (fromUrl) return fromUrl
-  if (import.meta.env.VITE_GATEHOUSE_PROJECT_DIR) return import.meta.env.VITE_GATEHOUSE_PROJECT_DIR
-  return activeDirectory
+  if (import.meta.env.VITE_GATEHOUSE_PROJECT_SLUG) return import.meta.env.VITE_GATEHOUSE_PROJECT_SLUG
+  return activeProject
 }
 
-export function setPortalProjectDirectory(directory: string) {
-  activeDirectory = directory
+/** @deprecated Use portalProjectSlug — kept for transitional imports. */
+export function portalProjectDirectory() {
+  return portalProjectSlug()
 }
 
-export async function resolvePortalProjectDirectory() {
-  const explicit = portalProjectDirectory()
+export function setPortalProjectSlug(project: string) {
+  activeProject = project
+}
+
+/** @deprecated Use setPortalProjectSlug */
+export function setPortalProjectDirectory(project: string) {
+  setPortalProjectSlug(project)
+}
+
+export async function resolvePortalProjectSlug() {
+  const explicit = portalProjectSlug()
   if (explicit) return explicit
 
   const response = await fetch("/portal/api/health", { signal: AbortSignal.timeout(5000) }).catch(() => undefined)
   if (!response?.ok) return undefined
-  const health = (await response.json()) as { project_directory?: string; default_project_directory?: string }
-  const directory = health.default_project_directory ?? health.project_directory
-  if (directory) setPortalProjectDirectory(directory)
-  return directory
+  const health = (await response.json()) as { project?: string }
+  if (health.project) setPortalProjectSlug(health.project)
+  return health.project
 }
 
-function snapshotQuery(directory?: string) {
-  if (!directory) return "/portal/api/snapshot"
-  return `/portal/api/snapshot?directory=${encodeURIComponent(directory)}`
+/** @deprecated Use resolvePortalProjectSlug */
+export async function resolvePortalProjectDirectory() {
+  return resolvePortalProjectSlug()
 }
 
-export function snapshotUrl(directory?: string) {
-  return snapshotQuery(directory ?? portalProjectDirectory())
+function projectQuery(project?: string) {
+  const slug = project ?? portalProjectSlug()
+  if (!slug) return ""
+  return `?project=${encodeURIComponent(slug)}`
 }
 
-export function eventsUrl(directory?: string) {
-  const dir = directory ?? portalProjectDirectory()
-  if (!dir) return "/portal/events"
-  return `/portal/events?directory=${encodeURIComponent(dir)}`
+export function snapshotUrl(project?: string) {
+  return `/portal/api/snapshot${projectQuery(project)}`
+}
+
+export function eventsUrl(project?: string) {
+  return `/portal/events${projectQuery(project)}`
+}
+
+export function blogUrl(project?: string) {
+  return `/portal/api/blog${projectQuery(project)}`
+}
+
+export function teamStatsUrl(project?: string) {
+  return `/portal/api/team-stats${projectQuery(project)}`
+}
+
+export function brandingUrl(project?: string) {
+  return `/portal/api/branding${projectQuery(project)}`
+}
+
+export function displayConfigUrl(project?: string) {
+  return `/portal/api/display-config${projectQuery(project)}`
+}
+
+export function skillUrl(domain: string, name: string, project?: string) {
+  const base = `/portal/api/skill?domain=${encodeURIComponent(domain)}&name=${encodeURIComponent(name)}`
+  const slug = project ?? portalProjectSlug()
+  if (!slug) return base
+  return `${base}&project=${encodeURIComponent(slug)}`
 }

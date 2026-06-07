@@ -1,9 +1,11 @@
 import { loadPortalBranding } from "./api/branding.ts"
 import { loadBlogSnapshot, startBlogPolling } from "./api/blog.ts"
-import { portalProjectDirectory, resolvePortalProjectDirectory } from "./api/project-directory.ts"
+import { loadPortalDisplayConfig } from "./api/display-config.ts"
+import { portalProjectSlug, resolvePortalProjectSlug } from "./api/project-directory.ts"
 import { loadPortalSnapshotWithRetry, startSnapshotPolling } from "./api/snapshot.ts"
 import { applySnapshotUpdate } from "./portal/snapshot-sync.ts"
-import { BLOG_POLL_MS, SNAPSHOT_POLL_MS } from "./portal/poll-intervals.ts"
+import { BLOG_POLL_MS } from "./portal/poll-intervals.ts"
+import { applyPortalDisplayConfig, resolveSnapshotPollMs } from "./portal/runtime-poll.ts"
 import { setBlogSnapshot, setPortalSnapshot } from "./portal/state.ts"
 import { startPortalLiveSync } from "./portal/live-sync.ts"
 import { startOfficeGame } from "./office/game.ts"
@@ -19,8 +21,8 @@ function setLoadingStatus(text: string) {
 }
 
 async function boot() {
-  const directory = portalProjectDirectory() ?? (await resolvePortalProjectDirectory())
-  if (!directory) {
+  const project = portalProjectSlug() ?? (await resolvePortalProjectSlug())
+  if (!project) {
     throw new Error(t("error.noProjectDir"))
   }
 
@@ -32,10 +34,12 @@ async function boot() {
     console.warn(`[portal] snapshot attempt ${attempt}/${max}:`, detail)
   })
 
-  const [blog, branding] = await Promise.all([
-    loadBlogSnapshot(directory).catch(() => undefined),
-    loadPortalBranding(directory).catch(() => undefined),
+  const [blog, branding, displayConfig] = await Promise.all([
+    loadBlogSnapshot(project).catch(() => undefined),
+    loadPortalBranding(project).catch(() => undefined),
+    loadPortalDisplayConfig(project).catch(() => undefined),
   ])
+  applyPortalDisplayConfig(displayConfig)
 
   applyPortalBranding(branding)
   setPortalSnapshot(snapshot)
@@ -44,7 +48,7 @@ async function boot() {
   startPortalLiveSync()
   startSnapshotPolling((next) => {
     applySnapshotUpdate(next)
-  }, SNAPSHOT_POLL_MS)
+  }, resolveSnapshotPollMs())
   applySnapshotUpdate(snapshot)
 
   if (blog) setBlogSnapshot(blog)

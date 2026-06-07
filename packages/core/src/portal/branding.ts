@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs"
 import path from "node:path"
 import { isAllowedLogoPath, loadGatehouseConfig } from "../gatehouse-config.ts"
+import { resolvePortalProjectSlug } from "./portal-project.ts"
 
 export type PortalBrandingResponse = {
   locale?: string
@@ -23,9 +24,9 @@ export function buildPortalBranding(projectDirectory: string, requestUrl: URL) {
 
   const logoPath = brand.logo_path
   if (logoPath && existsSync(logoPath) && isAllowedLogoPath(logoPath, projectDirectory)) {
-    const directory = encodeURIComponent(projectDirectory)
+    const project = encodeURIComponent(resolvePortalProjectSlug(projectDirectory))
     // Relative URL keeps logo loading through the same origin (Vite proxy or bundled Portal UI).
-    response.logo_url = `/portal/api/branding/logo?directory=${directory}`
+    response.logo_url = `/portal/api/branding/logo?project=${project}`
   }
 
   return response

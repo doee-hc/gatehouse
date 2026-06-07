@@ -17,7 +17,6 @@ export type PortalSkill = {
 
 export type PortalTreeNode = {
   node_id: string
-  session_id: string
   parent: string | null
   skill_domain?: string
   display_name: string
@@ -29,7 +28,6 @@ export type PortalAgent = {
   scope: "outer" | "inner" | "retro"
   profile: string
   display_name: string
-  session_id: string
   mission_id?: string
   node_id?: string
   status: "idle" | "busy" | "research"
@@ -40,7 +38,7 @@ export type PortalAgent = {
 }
 
 export type PortalSnapshot = {
-  project_directory: string
+  project: string
   updated_at: string
   active_mission_id?: string
   lingering_mission_id?: string
@@ -61,7 +59,6 @@ export type PortalSnapshot = {
     nodes: PortalTreeNode[]
   }>
   skills: PortalSkill[]
-  session_status: Record<string, string>
   opencode_reachable?: boolean
   office_layout?: {
     revision: string
@@ -100,7 +97,7 @@ export type BlogGroup = {
 }
 
 export type BlogSnapshot = {
-  project_directory: string
+  project: string
   updated_at: string
   groups: BlogGroup[]
 }
@@ -116,7 +113,6 @@ export type TeamStatsTokenBreakdown = {
 export type TeamStatsRole = {
   node_id: string
   label: string
-  session_id: string
   tokens: TeamStatsTokenBreakdown
   cost: number
   duration_ms: number
@@ -138,14 +134,13 @@ export type TeamStatsMission = {
 export type TeamStatsOuterRole = {
   profile: string
   label: string
-  session_id: string
   tokens: TeamStatsTokenBreakdown
   cost: number
   duration_ms: number
 }
 
 export type TeamStatsSnapshot = {
-  project_directory: string
+  project: string
   updated_at: string
   opencode_reachable: boolean
   outer: TeamStatsOuterRole[]
@@ -158,7 +153,6 @@ export type OfficeAgentDef = {
   atlasPrefix: CharacterAtlasPrefix
   status: PortalAgent["status"]
   spawnId: string
-  sessionId: string
   fixed?: boolean
   ghost?: boolean
 }
@@ -183,7 +177,6 @@ export function officeAgentsFromSnapshot(snapshot: PortalSnapshot) {
     atlasPrefix: characterAtlasPrefix(agent),
     status: agent.status,
     spawnId: agent.spawn_id,
-    sessionId: agent.session_id,
     fixed: agent.scope === "outer",
     ghost: agent.scope === "retro" || agent.lingering === true,
   }))

@@ -145,6 +145,7 @@ const messages = {
   "stats.roleTokens": { zh: "Inner 角色 Token", en: "Inner role tokens" },
   "stats.noRoles": { zh: "该 Mission 暂无执行团队成员", en: "No execution team members for this mission" },
   "stats.expand": { zh: "展开角色分布 →", en: "Expand role breakdown →" },
+  "stats.ticker": { zh: "Token {tokens} · {cost}", en: "Tokens {tokens} · {cost}" },
 
   "toast.bulletinToBlog": { zh: "公告栏 → 跳转到博客", en: "Bulletin board → Blog" },
   "toast.searchKeyword": { zh: "请输入搜索关键词", en: "Enter a search keyword" },

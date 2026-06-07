@@ -12,16 +12,18 @@ type InFlightEntry<T> = {
 export type PortalDataCache<T> = {
   get: (key: string, loader: () => Promise<T>) => Promise<T>
   clear: () => void
+  cacheAgeMs: () => number | undefined
 }
 
-export function createPortalDataCache<T>(options: { ttlMs: number }): PortalDataCache<T> {
+export function createPortalDataCache<T>(options: { ttlMs: number | (() => number) }): PortalDataCache<T> {
   let entry: CacheEntry<T> | undefined
   let inFlight: InFlightEntry<T> | undefined
+  const readTtlMs = () => (typeof options.ttlMs === "function" ? options.ttlMs() : options.ttlMs)
 
   return {
     async get(key, loader) {
       const now = Date.now()
-      if (entry && entry.key === key && now - entry.at < options.ttlMs) {
+      if (entry && entry.key === key && now - entry.at < readTtlMs()) {
         return entry.data
       }
 
@@ -44,6 +46,10 @@ export function createPortalDataCache<T>(options: { ttlMs: number }): PortalData
     clear() {
       entry = undefined
       inFlight = undefined
+    },
+    cacheAgeMs() {
+      if (!entry) return undefined
+      return Math.max(0, Date.now() - entry.at)
     },
   }
 }

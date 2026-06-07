@@ -1,5 +1,5 @@
 import { eventsUrl } from "../api/project-directory.ts"
-import { EVENTS_RECONNECT_MS } from "../portal/poll-intervals.ts"
+import { EVENTS_RECONNECT_MAX_MS, EVENTS_RECONNECT_MS } from "../portal/poll-intervals.ts"
 
 /** Portal SSE events from /portal/events (agent.status, agent.chat — not raw OpenCode). */
 export type PortalEvent =
@@ -21,15 +21,24 @@ function parsePortalEvent(message: MessageEvent<string>) {
   return undefined
 }
 
+function reconnectDelayMs(attempt: number) {
+  const scaled = EVENTS_RECONNECT_MS * 2 ** attempt
+  return Math.min(scaled, EVENTS_RECONNECT_MAX_MS)
+}
+
 export function connectPortalEvents(handlers: { onPortalEvent?: (event: PortalEvent) => void }) {
   let source: EventSource | undefined
   let reconnectTimer: ReturnType<typeof setTimeout> | undefined
+  let reconnectAttempt = 0
   let closed = false
 
   const connect = () => {
     if (closed) return
     source?.close()
     source = new EventSource(eventsUrl())
+    source.onopen = () => {
+      reconnectAttempt = 0
+    }
     source.onmessage = (message) => {
       const event = parsePortalEvent(message)
       if (!event) return
@@ -38,7 +47,9 @@ export function connectPortalEvents(handlers: { onPortalEvent?: (event: PortalEv
     source.onerror = () => {
       source?.close()
       if (closed) return
-      reconnectTimer = setTimeout(connect, EVENTS_RECONNECT_MS)
+      const delay = reconnectDelayMs(reconnectAttempt)
+      reconnectAttempt += 1
+      reconnectTimer = setTimeout(connect, delay)
     }
   }
 
@@ -48,5 +59,6 @@ export function connectPortalEvents(handlers: { onPortalEvent?: (event: PortalEv
     closed = true
     if (reconnectTimer) clearTimeout(reconnectTimer)
     source?.close()
+    source = undefined
   }
 }

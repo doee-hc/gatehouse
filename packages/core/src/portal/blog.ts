@@ -6,9 +6,11 @@ import { isRecord, parseYaml, readString } from "../yaml.ts"
 import {
   blogMissionIdFromPostId,
   readBlogPublishedDocument,
+  readBlogPublishedRevision,
   readPublishedBlogPostIds,
 } from "./blog-publish.ts"
 import { createPortalDataCache } from "./portal-cache.ts"
+import { getPortalDisplaySettings } from "./portal-display-settings.ts"
 
 export type BlogPost = {
   id: string
@@ -160,7 +162,9 @@ function missionShowsInBlog(mission: MissionEntry) {
   return mission.status !== "running" && mission.status !== "retro"
 }
 
-const blogSnapshotCache = createPortalDataCache<BlogSnapshot>({ ttlMs: 60_000 })
+const blogSnapshotCache = createPortalDataCache<BlogSnapshot>({
+  ttlMs: () => getPortalDisplaySettings().blogTtlMs,
+})
 
 async function loadBlogSnapshot(projectDirectory: string) {
   const published = await readPublishedBlogPostIds(projectDirectory)
@@ -229,8 +233,15 @@ async function loadBlogSnapshot(projectDirectory: string) {
   } satisfies BlogSnapshot
 }
 
+function blogSnapshotCacheKey(projectDirectory: string, revision: string) {
+  return `${projectDirectory}\0${revision}`
+}
+
 export async function buildBlogSnapshot(projectDirectory: string) {
-  return blogSnapshotCache.get(projectDirectory, () => loadBlogSnapshot(projectDirectory))
+  const revision = await readBlogPublishedRevision(projectDirectory)
+  return blogSnapshotCache.get(blogSnapshotCacheKey(projectDirectory, revision), () =>
+    loadBlogSnapshot(projectDirectory),
+  )
 }
 
 export function invalidateBlogSnapshotCache() {

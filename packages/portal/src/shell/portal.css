@@ -358,6 +358,12 @@ body {
   color: #fff;
 }
 
+.esc-stats-ticker {
+  color: #fde68a;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .esc-status.live {
   color: #f87171;
   animation: blink 1.2s step-end infinite;
