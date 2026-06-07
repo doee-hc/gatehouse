@@ -36,7 +36,7 @@ function stringifyYamlBlock(value: unknown, indent = 0): string {
         if (item !== null && typeof item === "object" && !Array.isArray(item)) {
           const lines = stringifyYamlBlock(item, indent + 1).split("\n")
           const [first, ...rest] = lines
-          return `${pad}- ${first?.trim() ?? ""}${rest.length > 0 ? `\n${rest.map((line) => `${pad}  ${line.trimStart()}`).join("\n")}` : ""}`
+          return `${pad}- ${first?.trimStart() ?? ""}${rest.length > 0 ? `\n${rest.join("\n")}` : ""}`
         }
         return `${pad}- ${stringifyYamlBlock(item, indent + 1)}`
       })

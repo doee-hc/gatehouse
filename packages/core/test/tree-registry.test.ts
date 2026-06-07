@@ -5,6 +5,8 @@ import { tmpdir } from "node:os"
 import { RegistryDatabase } from "../src/registry/db.ts"
 import { readManifest, readTreesIndex, writeManifest } from "../src/tree/store.ts"
 import { stringifyYaml } from "../src/yaml.ts"
+import { parseMissionsFile } from "../src/missions/parse.ts"
+import { parseYaml } from "../src/yaml.ts"
 import type { TreeManifest } from "../src/tree/types.ts"
 
 const sampleManifest = (): TreeManifest => ({
@@ -48,6 +50,27 @@ test("stringifyYaml uses block style for nested mappings", () => {
   expect(yaml.includes("nodes:\n")).toBe(true)
   expect(yaml.includes("  root:\n")).toBe(true)
   expect(yaml.includes("nodes: {")).toBe(false)
+})
+
+test("stringifyYaml preserves multiline notes in mission arrays", () => {
+  const doc = {
+    schema_version: 2,
+    missions: [
+      {
+        id: "chat-32-concurrent",
+        status: "running",
+        done_when: ["item1"],
+        must_not: ["item2"],
+        notes: "line one\nline two\n",
+        started_at: "2026-06-07T15:28:41.203Z",
+      },
+    ],
+  }
+  const yaml = stringifyYaml(doc)
+  expect(() => parseYaml(yaml)).not.toThrow()
+  const parsed = parseMissionsFile(yaml)
+  expect(parsed.missions[0]?.notes).toBe("line one\nline two\n")
+  expect(parsed.missions[0]?.started_at).toBe("2026-06-07T15:28:41.203Z")
 })
 
 test("readTreesIndex derives from registry.db", async () => {
