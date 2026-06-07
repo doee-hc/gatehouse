@@ -1,13 +1,10 @@
-const DEFAULT_SSE_MAX = 500
+import { getPortalDisplaySettings } from "./portal-display-settings.ts"
 
 let activeConnections = 0
 let rejectedTotal = 0
 
 function maxSseConnections() {
-  const raw = process.env.GATEHOUSE_PORTAL_SSE_MAX?.trim()
-  if (!raw) return DEFAULT_SSE_MAX
-  const value = Number(raw)
-  return Number.isFinite(value) && value > 0 ? Math.floor(value) : DEFAULT_SSE_MAX
+  return getPortalDisplaySettings().sseMax
 }
 
 export function portalSseActiveCount() {

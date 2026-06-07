@@ -63,6 +63,10 @@ export function brandingUrl(project?: string) {
   return `/portal/api/branding${projectQuery(project)}`
 }
 
+export function displayConfigUrl(project?: string) {
+  return `/portal/api/display-config${projectQuery(project)}`
+}
+
 export function skillUrl(domain: string, name: string, project?: string) {
   const base = `/portal/api/skill?domain=${encodeURIComponent(domain)}&name=${encodeURIComponent(name)}`
   const slug = project ?? portalProjectSlug()

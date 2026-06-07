@@ -2,6 +2,15 @@ schema_version: 1
 locale: en
 portal:
   # admin_key is auto-generated on first scaffold / start for /admin channel unlock
+  # display:
+  #   sse_max: 500
+  #   snapshot_ttl_ms: 5000
+  #   team_stats_ttl_ms: 10000
+  #   blog_ttl_ms: 30000
+  #   cors_origins:
+  #     - https://portal.example.com
+  #   snapshot_poll_ms: 15000
+  #   team_stats_poll_ms: 12000
   brand:
     title: Gatehouse
     subtitle: Team Portal

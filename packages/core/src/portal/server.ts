@@ -21,6 +21,7 @@ import {
   type PortalViteDevServer,
 } from "./vite-dev.ts"
 import { setPortalInProcessDelivery } from "./events.ts"
+import { initPortalDisplaySettings } from "./portal-display-settings.ts"
 import { ensureOpencodeBridge, stopOpencodeBridge } from "./opencode-bridge.ts"
 import { getCachedPortalSnapshot } from "./snapshot.ts"
 
@@ -133,6 +134,7 @@ function portalPortInUseError(port: number, role: "display" | "admin") {
 export async function ensurePortalServer(projectDirectory: string, packageRoot?: string) {
   defaultProjectDirectory = path.resolve(projectDirectory)
   if (packageRoot) portalPackageRoot = path.resolve(packageRoot)
+  initPortalDisplaySettings(defaultProjectDirectory)
 
   if (sharedServer) {
     const port = activePortalPort ?? sharedServer.port ?? preferredPortalDisplayPort()

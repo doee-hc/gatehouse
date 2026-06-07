@@ -1,6 +1,7 @@
 import path from "node:path"
 import crypto from "node:crypto"
 import { DEFAULT_PORTAL_ADMIN_PORT } from "./defaults.ts"
+import { getPortalDisplaySettings } from "./portal-display-settings.ts"
 import { resolveProjectDirectoryBySlug } from "./portal-project.ts"
 import { readPortalRuntimeSync } from "./runtime-info.ts"
 
@@ -25,12 +26,7 @@ export function portalAdminRuntimeUrl(port: number) {
 }
 
 function configuredCorsOrigins() {
-  const raw = process.env.GATEHOUSE_PORTAL_CORS_ORIGINS?.trim()
-  if (!raw) return undefined
-  return raw
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean)
+  return getPortalDisplaySettings().corsOrigins
 }
 
 function isLocalDevOrigin(origin: string) {

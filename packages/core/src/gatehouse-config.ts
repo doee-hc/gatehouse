@@ -30,6 +30,16 @@ export type GatehouseSessionModelRef = {
   id: string
 }
 
+export type PortalDisplayConfig = {
+  sse_max?: number
+  snapshot_ttl_ms?: number
+  team_stats_ttl_ms?: number
+  blog_ttl_ms?: number
+  cors_origins?: string[]
+  snapshot_poll_ms?: number
+  team_stats_poll_ms?: number
+}
+
 export type GatehouseConfigFile = {
   schema_version?: number
   locale?: string
@@ -43,6 +53,7 @@ export type GatehouseConfigFile = {
       icp_text?: string
       icp_url?: string
     }
+    display?: PortalDisplayConfig
   }
   agents?: Partial<Record<OuterProfile, { name?: string }>>
   models?: Partial<Record<GatehouseModelProfile, string>>
@@ -60,7 +71,7 @@ export type ResolvedGatehouseConfig = {
   locale: GatehouseLocale
   agents: Record<OuterProfile, string>
   models: Partial<Record<GatehouseModelProfile, string>>
-  portal: { brand: PortalBrandConfig; project_slug?: string }
+  portal: { brand: PortalBrandConfig; project_slug?: string; display?: PortalDisplayConfig }
 }
 
 export function gatehouseGlobalConfigDir() {
@@ -147,6 +158,43 @@ export function modelForInnerProfile(
   return undefined
 }
 
+function mergePortalDisplay(
+  base: PortalDisplayConfig,
+  layer: GatehouseConfigFile | undefined,
+): PortalDisplayConfig {
+  const display = layer?.portal?.display
+  if (!display) return base
+  const next = { ...base }
+  if (positiveConfigInt(display.sse_max) !== undefined) next.sse_max = positiveConfigInt(display.sse_max)
+  if (positiveConfigInt(display.snapshot_ttl_ms) !== undefined) {
+    next.snapshot_ttl_ms = positiveConfigInt(display.snapshot_ttl_ms)
+  }
+  if (positiveConfigInt(display.team_stats_ttl_ms) !== undefined) {
+    next.team_stats_ttl_ms = positiveConfigInt(display.team_stats_ttl_ms)
+  }
+  if (positiveConfigInt(display.blog_ttl_ms) !== undefined) {
+    next.blog_ttl_ms = positiveConfigInt(display.blog_ttl_ms)
+  }
+  if (Array.isArray(display.cors_origins)) {
+    const origins = display.cors_origins
+      .map((value) => (typeof value === "string" ? value.trim() : ""))
+      .filter(Boolean)
+    if (origins.length > 0) next.cors_origins = origins
+  }
+  if (positiveConfigInt(display.snapshot_poll_ms) !== undefined) {
+    next.snapshot_poll_ms = positiveConfigInt(display.snapshot_poll_ms)
+  }
+  if (positiveConfigInt(display.team_stats_poll_ms) !== undefined) {
+    next.team_stats_poll_ms = positiveConfigInt(display.team_stats_poll_ms)
+  }
+  return next
+}
+
+function positiveConfigInt(value: unknown) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return undefined
+  return Math.floor(value)
+}
+
 function mergeBrand(base: PortalBrandConfig, layer: GatehouseConfigFile | undefined, configDir: string) {
   const brand = layer?.portal?.brand
   if (!brand) return base
@@ -200,6 +248,9 @@ export function loadGatehouseConfig(projectDirectory: string): ResolvedGatehouse
   let portalBrand = mergeBrand({}, global, gatehouseGlobalConfigDir())
   portalBrand = mergeBrand(portalBrand, project, gatehouseRoot(projectDirectory))
   const projectSlug = project?.portal?.project_slug?.trim()
+  let portalDisplay = mergePortalDisplay({}, global)
+  portalDisplay = mergePortalDisplay(portalDisplay, project)
+  const hasPortalDisplay = Object.keys(portalDisplay).length > 0
 
   return {
     agents,
@@ -208,6 +259,7 @@ export function loadGatehouseConfig(projectDirectory: string): ResolvedGatehouse
     portal: {
       brand: portalBrand,
       ...(projectSlug && { project_slug: projectSlug }),
+      ...(hasPortalDisplay && { display: portalDisplay }),
     },
   }
 }

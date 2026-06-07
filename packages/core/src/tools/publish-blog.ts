@@ -62,7 +62,7 @@ export function publishBlogTool(input: PluginInput) {
         return {
           output: toolOk(toolName, {
             ...result,
-            note: "Post is now visible in Portal blog view (polled by UI)",
+            note: "Post is now visible in Portal blog view (cache refresh requested)",
           }),
           ...toolMetadata(toolName),
         }

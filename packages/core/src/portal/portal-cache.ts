@@ -15,14 +15,15 @@ export type PortalDataCache<T> = {
   cacheAgeMs: () => number | undefined
 }
 
-export function createPortalDataCache<T>(options: { ttlMs: number }): PortalDataCache<T> {
+export function createPortalDataCache<T>(options: { ttlMs: number | (() => number) }): PortalDataCache<T> {
   let entry: CacheEntry<T> | undefined
   let inFlight: InFlightEntry<T> | undefined
+  const readTtlMs = () => (typeof options.ttlMs === "function" ? options.ttlMs() : options.ttlMs)
 
   return {
     async get(key, loader) {
       const now = Date.now()
-      if (entry && entry.key === key && now - entry.at < options.ttlMs) {
+      if (entry && entry.key === key && now - entry.at < readTtlMs()) {
         return entry.data
       }
 

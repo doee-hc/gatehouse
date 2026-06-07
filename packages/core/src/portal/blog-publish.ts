@@ -1,10 +1,12 @@
 import path from "node:path"
 import { gatehouseRoot } from "../paths.ts"
 import { isRecord, parseYaml, readString, stringifyYaml } from "../yaml.ts"
+import { requestPortalBlogCacheRefresh } from "./blog-cache-sync.ts"
 
-async function invalidateBlogSnapshotCache() {
-  const { invalidateBlogSnapshotCache: invalidate } = await import("./blog.ts")
-  invalidate()
+export async function readBlogPublishedRevision(projectDirectory: string) {
+  const file = Bun.file(blogPublishedPath(projectDirectory))
+  if (!(await file.exists())) return "0"
+  return String((await file.stat()).mtimeMs)
 }
 
 export type BlogPublishedEntry = {
@@ -161,7 +163,7 @@ export async function publishBlogPost(
   }
   const target = blogPublishedPath(projectDirectory)
   await Bun.write(target, stringifyYaml(doc))
-  await invalidateBlogSnapshotCache()
+  void requestPortalBlogCacheRefresh(projectDirectory)
   return { post_id: input.postId, path: input.reportPath, published_at, republished: Boolean(existing) }
 }
 
@@ -183,7 +185,7 @@ export async function unpublishBlogPost(
   }
   doc.posts.splice(index, 1)
   await Bun.write(blogPublishedPath(projectDirectory), stringifyYaml(doc))
-  await invalidateBlogSnapshotCache()
+  void requestPortalBlogCacheRefresh(projectDirectory)
   return {
     ok: true,
     post_id: input.postId,

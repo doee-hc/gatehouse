@@ -2,6 +2,15 @@ schema_version: 1
 locale: zh
 portal:
   # admin_key 在首次初始化或启动时自动生成，用于 /admin 频道管理解锁
+  # display:
+  #   sse_max: 500
+  #   snapshot_ttl_ms: 5000
+  #   team_stats_ttl_ms: 10000
+  #   blog_ttl_ms: 30000
+  #   cors_origins:
+  #     - https://portal.example.com
+  #   snapshot_poll_ms: 15000
+  #   team_stats_poll_ms: 12000
   brand:
     title: Gatehouse
     subtitle: 团队门户

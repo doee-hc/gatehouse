@@ -1,6 +1,6 @@
 import path from "node:path"
 import { existsSync } from "node:fs"
-import { buildBlogSnapshot } from "./blog.ts"
+import { buildBlogSnapshot, invalidateBlogSnapshotCache } from "./blog.ts"
 import { readSkillDetail } from "./skill.ts"
 import {
   deliverPortalEvent,
@@ -28,6 +28,7 @@ import {
 import { isOpencodeBridgeRunning } from "./opencode-bridge.ts"
 import { resolvePortalProjectSlug } from "./portal-project.ts"
 import { portalSnapshotCacheAgeMs } from "./snapshot.ts"
+import { getPortalDisplaySettings, toBrowserDisplayConfig } from "./portal-display-settings.ts"
 import { acquirePortalSseConnection, portalSseActiveCount } from "./sse-registry.ts"
 
 export type PortalFetchOptions = {
@@ -183,6 +184,17 @@ export function createPortalFetchHandler(options: PortalFetchOptions) {
       }
       deliverPortalEvent(event)
       return withCors(json({ ok: true }), request)
+    }
+
+    if (url.pathname === "/portal/api/internal/blog-invalidate" && request.method === "POST") {
+      const denied = handlePortalInternalEventRequest(request)
+      if (denied) return withCors(denied, request)
+      invalidateBlogSnapshotCache()
+      return withCors(json({ ok: true }), request)
+    }
+
+    if (url.pathname === "/portal/api/display-config") {
+      return withCors(json(toBrowserDisplayConfig(getPortalDisplaySettings())), request)
     }
 
     if (url.pathname === "/portal/api/branding") {

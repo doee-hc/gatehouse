@@ -1,6 +1,7 @@
 import { loadTeamStatsSnapshot } from "../api/team-stats.ts"
 import type { TeamStatsMission, TeamStatsOuterRole, TeamStatsSnapshot } from "../api/types.ts"
-import { TEAM_STATS_POLL_HIDDEN_MS, TEAM_STATS_POLL_MS } from "../portal/poll-intervals.ts"
+import { TEAM_STATS_POLL_HIDDEN_MS } from "../portal/poll-intervals.ts"
+import { resolveTeamStatsPollMs } from "../portal/runtime-poll.ts"
 import { startAdaptivePolling } from "../portal/poll-scheduler.ts"
 import { getActiveView } from "./tabs.ts"
 import { localeTag, missionStatusLabel, t } from "./i18n.ts"
@@ -100,7 +101,7 @@ export function renderOfficeStatsTicker(snapshot?: TeamStatsSnapshot) {
 
 export function startTeamStatsPolling() {
   return startAdaptivePolling({
-    intervalMs: TEAM_STATS_POLL_MS,
+    intervalMs: resolveTeamStatsPollMs(),
     hiddenIntervalMs: TEAM_STATS_POLL_HIDDEN_MS,
     run: async () => {
       const view = getActiveView()

@@ -9,7 +9,7 @@ import { sessionDurationMs } from "../session/client.ts"
 import { readManifest, readTreesIndex } from "../tree/store.ts"
 import type { TreeManifest } from "../tree/types.ts"
 import { createPortalDataCache } from "./portal-cache.ts"
-import { portalCacheTtlMs } from "./portal-cache-ttl.ts"
+import { getPortalDisplaySettings } from "./portal-display-settings.ts"
 
 export type TeamStatsRole = {
   node_id: string
@@ -59,7 +59,7 @@ export type SessionUsage = {
 const FETCH_CONCURRENCY = 12
 
 const teamStatsCache = createPortalDataCache<TeamStatsSnapshot>({
-  ttlMs: portalCacheTtlMs("GATEHOUSE_PORTAL_TEAM_STATS_TTL_MS", 10_000),
+  ttlMs: () => getPortalDisplaySettings().teamStatsTtlMs,
 })
 
 function isRecord(value: unknown): value is Record<string, unknown> {

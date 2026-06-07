@@ -3,7 +3,8 @@ import path from "node:path"
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { buildBlogSnapshot, clearBlogCacheForTests } from "../src/portal/blog.ts"
-import { publishBlogPost, unpublishBlogPost } from "../src/portal/blog-publish.ts"
+import { publishBlogPost, readBlogPublishedRevision, unpublishBlogPost } from "../src/portal/blog-publish.ts"
+import { requestPortalBlogCacheRefresh } from "../src/portal/blog-cache-sync.ts"
 
 let dir: string
 
@@ -219,4 +220,64 @@ missions:
 
   const blog = await buildBlogSnapshot(dir)
   expect(blog.groups).toHaveLength(0)
+})
+
+test("buildBlogSnapshot reloads when blog-published revision changes", async () => {
+  await write(
+    ".gatehouse/lead/missions.yaml",
+    `schema_version: 1
+missions:
+  - id: m-rev
+    status: done
+    completed_at: "2026-05-01T00:00:00Z"
+`,
+  )
+  await write(".gatehouse/lead/reports/m-rev/report.md", "# 报告\n\n正文。")
+
+  expect((await buildBlogSnapshot(dir)).groups).toHaveLength(0)
+
+  await write(
+    ".gatehouse/portal/blog-published.yaml",
+    `schema_version: 1
+posts:
+  - id: m-rev:lead:report
+    path: .gatehouse/lead/reports/m-rev/report.md
+    published_at: "2026-06-01T00:00:00Z"
+    published_by: lead
+`,
+  )
+
+  expect((await readBlogPublishedRevision(dir))).not.toBe("0")
+  expect((await buildBlogSnapshot(dir)).groups).toHaveLength(1)
+})
+
+test("requestPortalBlogCacheRefresh hits portal internal endpoint", async () => {
+  const port = String(18200 + Math.floor(Math.random() * 500))
+  const token = "blog-cache-refresh-token"
+  let invalidated = false
+
+  const server = Bun.serve({
+    port: Number(port),
+    hostname: "127.0.0.1",
+    fetch: async (request) => {
+      if (new URL(request.url).pathname !== "/portal/api/internal/blog-invalidate") {
+        return new Response("not found", { status: 404 })
+      }
+      if (request.headers.get("X-Gatehouse-Portal-Internal-Token") !== token) {
+        return new Response("unauthorized", { status: 401 })
+      }
+      invalidated = true
+      return Response.json({ ok: true })
+    },
+  })
+
+  process.env.GATEHOUSE_PORTAL_PORT = port
+  process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN = token
+
+  expect(await requestPortalBlogCacheRefresh(dir)).toBe(true)
+  expect(invalidated).toBe(true)
+
+  server.stop()
+  delete process.env.GATEHOUSE_PORTAL_PORT
+  delete process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN
 })
