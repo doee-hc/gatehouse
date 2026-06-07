@@ -1,10 +1,15 @@
 ---
 name: architect-meta
 description: >-
-  Outer team architect (profile architect) — teamspec, topology, bootstrap, retro summary.
+  Validates TeamSpec, bootstraps execution topology, and summarizes mission retros for the Gatehouse outer architect profile.
+  Use when acting as profile architect — teamspec, bootstrap, retro summary, and coordination norms.
+metadata:
+  gatehouse-kind: meta
+  gatehouse-role: architect
+disable-model-invocation: true
 ---
 
-# {{architect_name}} · meta-skill
+# {{architect_name}} · architect-meta
 
 ## 你的 tool
 
@@ -27,7 +32,7 @@ description: >-
 收到 {{lead_name}} `gatehouse_mission_start` 的自动通知后：
 
 1. `gatehouse_mission_current` 读任务全文（registry 快照；无需 {{lead_name}} 再 `send_message` 复述）。
-2. 读 `.gatehouse/architect/meta-skill/` 历史与 `prompts/`。
+2. 调用 `skill({ name: "architect-meta" })` 复习本 skill；读 `.gatehouse/prompts/architect/` 历史模板。
 
 任务正文只有 objective / done_when / must_not / notes。**拓扑全权归你**；teamspec **不写** skill_domain（归 {{curator_name}} 分配）。
 
@@ -71,7 +76,7 @@ nodes:
 
 1. 读 `reports/nodes/*-retro.md` → 写 `architect-summary.md`（含 retro-toolkit 整理）。
 2. `gatehouse_publish_blog(report_path=.gatehouse/architect/trees/<id>/reports/architect-summary.md)`。
-3. 更新 `meta-skill/`、`retro-toolkit/`。
+3. 更新 `skills/architect-meta/`、`skills/retro-toolkit/`。
 4. `gatehouse_send_message(recipient="lead", ...)`。
 
 {{curator_name}} skill 汇总与你并行，互不阻塞。
@@ -82,8 +87,8 @@ nodes:
 |------|------|
 | TeamSpec / manifest | `.gatehouse/architect/trees/<id>/` |
 | 汇报 | `.gatehouse/architect/trees/<id>/reports/` |
-| Prompt 模板 | `.gatehouse/architect/meta-skill/prompts/` |
-| retro 工具库 | `.gatehouse/architect/retro-toolkit/` |
+| Prompt 模板 | `.gatehouse/prompts/architect/` |
+| retro 工具库 | `.gatehouse/skills/retro-toolkit/` |
 
 ## 铁律
 

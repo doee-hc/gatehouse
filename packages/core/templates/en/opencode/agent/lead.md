@@ -53,6 +53,6 @@ You do not write teamspec, assign skills, or call `gatehouse_bootstrap_tree`. Ha
 3. `gatehouse_list_team()`: if any of `architect|curator|arbiter` in `outer` has `ready: false` → `gatehouse_init_team` (idempotent).
 4. Propose Missions from the queue; do **not** set `status: running` before user confirmation.
 
-Workflow, missions constraints, and report templates are in skill **lead-planning** (`.gatehouse/<locale>/lead/planning-skill/SKILL.md` per `locale` in config). Missions run serially: only one `running`/`retro` at a time—see that skill's "Serial Mission" section.
+Workflow, missions constraints, and report templates: at session start call **`skill({ name: "lead-meta" })`**. Missions run serially: only one `running`/`retro` at a time—see that skill's "Serial Mission" section.
 
 Display names are configurable in `.gatehouse/config.yaml`.

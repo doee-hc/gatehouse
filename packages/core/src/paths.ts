@@ -63,19 +63,19 @@ export function teamSpecPath(projectDirectory: string, missionId: string) {
 }
 
 export function dispatchRootPromptPath(projectDirectory: string) {
-  return resolveGatehouseContentPath(projectDirectory, "architect/meta-skill/prompts/dispatch-root.md")
+  return resolveGatehouseContentPath(projectDirectory, "prompts/architect/dispatch-root.md")
 }
 
 export function watchdogRootWakePromptPath(projectDirectory: string) {
-  return resolveGatehouseContentPath(projectDirectory, "architect/meta-skill/prompts/watchdog-root-wake.md")
+  return resolveGatehouseContentPath(projectDirectory, "prompts/architect/watchdog-root-wake.md")
 }
 
 export function watchdogRetroRecordWakePromptPath(projectDirectory: string) {
-  return resolveGatehouseContentPath(projectDirectory, "architect/meta-skill/prompts/watchdog-retro-record-wake.md")
+  return resolveGatehouseContentPath(projectDirectory, "prompts/architect/watchdog-retro-record-wake.md")
 }
 
 export function watchdogSkillRecordWakePromptPath(projectDirectory: string) {
-  return resolveGatehouseContentPath(projectDirectory, "architect/meta-skill/prompts/watchdog-skill-record-wake.md")
+  return resolveGatehouseContentPath(projectDirectory, "prompts/architect/watchdog-skill-record-wake.md")
 }
 
 export function rootDeliveryPath(projectDirectory: string, missionId: string) {
@@ -129,11 +129,11 @@ export function contextIndexRelPath(missionId: string) {
 }
 
 export function retroAnalysisPromptPath(projectDirectory: string) {
-  return resolveGatehouseContentPath(projectDirectory, "architect/meta-skill/prompts/retro-node-analysis.md")
+  return resolveGatehouseContentPath(projectDirectory, "prompts/architect/retro-node-analysis.md")
 }
 
 export function domainSkillExtractPromptPath(projectDirectory: string) {
-  return resolveGatehouseContentPath(projectDirectory, "architect/meta-skill/prompts/domain-skill-extract.md")
+  return resolveGatehouseContentPath(projectDirectory, "prompts/architect/domain-skill-extract.md")
 }
 
 export function skillDomainDir(domainId: string) {
@@ -149,7 +149,7 @@ export function curatorDir(projectDirectory: string) {
 }
 
 export function curatorSkillAssignKickoffPath(projectDirectory: string) {
-  return resolveGatehouseContentPath(projectDirectory, "curator/meta-skill/prompts/skill-assign-kickoff.md")
+  return resolveGatehouseContentPath(projectDirectory, "prompts/curator/skill-assign-kickoff.md")
 }
 
 export function curatorSkillSummaryRelPath(missionId: string, nodeId: string) {

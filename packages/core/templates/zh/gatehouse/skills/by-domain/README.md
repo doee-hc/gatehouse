@@ -12,7 +12,8 @@
 - **命名**：子目录 slug 为「动词+名词」，如 `resolve-tessent-c9-drc`。
 - **frontmatter**：写清触发场景与禁止场景。
 - **体量**：正文 1k–3k token。
-- **时机**：仅在 {{lead_name}} 验收后执行 `gatehouse_mission_retro`，由 Gatehouse 向执行 session 下发 `.gatehouse/architect/meta-skill/prompts/domain-skill-extract.md`。
+- **时机**：仅在 {{lead_name}} 验收后执行 `gatehouse_mission_retro`，由 Gatehouse 向执行 session 下发 `.gatehouse/prompts/architect/domain-skill-extract.md`。
+- **加载**：执行期用 `skill({ name: "<slug>" })` 或 read `SKILL.md`；frontmatter 可含 `metadata.gatehouse-domain`。
 
 ## 上下文策略
 

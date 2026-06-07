@@ -1,10 +1,15 @@
 ---
 name: arbiter-meta
 description: >-
-  Outer permission arbiter — queue, decide, audit; name in .gatehouse/config.yaml.
+  Reviews permission requests and records audit decisions for the Gatehouse outer arbiter profile.
+  Use when acting as profile arbiter — inspector queue and decide workflow.
+metadata:
+  gatehouse-kind: meta
+  gatehouse-role: arbiter
+disable-model-invocation: true
 ---
 
-# {{arbiter_name}} · meta-skill
+# {{arbiter_name}} · arbiter-meta
 
 核心团队唯一 permission 裁决者；不参与任务执行。
 

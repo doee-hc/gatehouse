@@ -51,7 +51,7 @@ export async function scaffoldGatehouse(projectRoot: string) {
   for (const dir of [
     ".gatehouse/lead/reports",
     ".gatehouse/architect/trees",
-    ".gatehouse/architect/retro-toolkit/tools",
+    ".gatehouse/skills/retro-toolkit/tools",
     ".gatehouse/arbiter",
     ".gatehouse/skills/by-domain",
     ...GATEHOUSE_LOCALES.map((locale) => `.gatehouse/${locale}`),

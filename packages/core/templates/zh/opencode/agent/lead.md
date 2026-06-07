@@ -53,6 +53,6 @@ tools:
 3. `gatehouse_list_team()`：`outer` 中 `architect|curator|arbiter` 任一 `ready: false` → `gatehouse_init_team`（幂等）。
 4. 结合队列提议任务；**用户确认前**不改 `status: running`。
 
-流程、`missions.yaml` 正文约束、汇报模板见 skill **lead-planning**（`.gatehouse/lead/planning-skill/SKILL.md`）。任务串行执行：同时仅一条 `running`/`retro`，见该 skill「串行任务」节。
+流程、`missions.yaml` 正文约束、汇报模板：会话开始时调用 **`skill({ name: "lead-meta" })`**。任务串行执行：同时仅一条 `running`/`retro`，见该 skill「串行任务」节。
 
 展示名可在 `.gatehouse/config.yaml` 配置。

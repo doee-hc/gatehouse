@@ -26,8 +26,8 @@ While waiting for teammates in the execution team, you may call `gatehouse_sessi
 
 **Retro phase (retro fork session):**
 - Data source: your branch's `context/` (`messages.json`, `timeline.md`, `metrics.json`, `subtree-metrics.json`).
-- **Read first** `.gatehouse/{locale}/architect/retro-toolkit/SKILL.md` and reuse existing analysis scripts; **do not** read full context—use grep/sampling + custom Python tools.
-- Promote useful new tools to `retro-toolkit/tools/<verb-noun>/` (with SKILL docs); retro reports must include a "Tool contributions" section.
+- At retro start call **`skill({ name: "retro-toolkit" })`** and reuse existing analysis scripts; **do not** read full context—use grep/sampling + custom Python tools.
+- Promote useful new tools to `skills/retro-toolkit/tools/<verb-noun>/` (with SKILL docs); retro reports must include a "Tool contributions" section.
 - Reports focus on task assignment and prompt constraints—not domain skills or business minutiae.
 - After writing the retro report and `gatehouse_retro_record`, call `gatehouse_publish_blog(report_path=reports/nodes/<node_id>-retro.md)` for Portal blog visibility.
 

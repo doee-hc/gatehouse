@@ -21,7 +21,7 @@ You are in a **retro fork session** analyzing your execution branch — **do not
     timeline.md              # grep-friendly timeline (kind, tokens=)
     metrics.json             # per-node session token/duration/tool aggregates
 
-.gatehouse/architect/retro-toolkit/     # prior retro tools & methodology (read before analysis)
+.gatehouse/skills/retro-toolkit/     # prior retro tools & methodology (read before analysis)
   SKILL.md
   tools/<verb-noun>/SKILL.md + scripts
 ```
@@ -38,7 +38,7 @@ These **do not** replace semantic features you derive from messages/timeline (co
 1. Read `context/index.json`, `context/subtree-metrics.json` (`retro_nodes["{{node_id}}"]`), **`retro-toolkit/SKILL.md`**; list branch nodes; reuse `tools/` scripts.
 2. **Do not read** all of `messages.json`. Grep `timeline.md` first (table below).
 3. For suspicious patterns: **write or extend Python scripts** for features (compaction, todo tokens, send_message sequences, etc.).
-4. If a new tool is reusable: add `.gatehouse/architect/retro-toolkit/tools/<verb-noun>/` with `SKILL.md`.
+4. If a new tool is reusable: add `.gatehouse/skills/retro-toolkit/tools/<verb-noun>/` with `SKILL.md`.
 5. Cross-check `subtree-metrics.json` with script output.
 6. Write retro report (include tools section) → `gatehouse_retro_record` → `gatehouse_publish_blog(report_path=...)`.
 
@@ -80,7 +80,7 @@ Suggested structure:
 - teamspec constraints followed, too loose/tight:
 - Child prompts causing duplicate work or overlap:
 
-## Coordination & topology (for {{architect_name}} meta-skill)
+## Coordination & topology (for {{architect_name}} architect-meta)
 - send_message / wait / topology suggestions:
 
 ## Actionable recommendations for {{architect_name}} (3–5)
@@ -90,7 +90,7 @@ Suggested structure:
 | Item | Content |
 |------|---------|
 | New/improved retro tool | yes / no |
-| Tool path | `.gatehouse/architect/retro-toolkit/tools/...` or "none" |
+| Tool path | `.gatehouse/skills/retro-toolkit/tools/...` or "none" |
 | Promote to toolkit? | yes / no / n/a |
 | Brief note | |
 ```

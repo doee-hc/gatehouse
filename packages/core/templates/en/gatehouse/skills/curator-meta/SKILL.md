@@ -1,10 +1,15 @@
 ---
 name: curator-meta
 description: >-
-  Outer skill curator (profile curator) — domain assignment, apply_skill_domains, extract rollup.
+  Assigns skill domains, bootstraps execution teams, and rolls up domain skills for the Gatehouse outer curator profile.
+  Use when acting as profile curator — apply_skill_domains and post-retro skill curation.
+metadata:
+  gatehouse-kind: meta
+  gatehouse-role: curator
+disable-model-invocation: true
 ---
 
-# {{curator_name}} · meta-skill
+# {{curator_name}} · curator-meta
 
 ## Your tools
 

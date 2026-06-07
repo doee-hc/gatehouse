@@ -62,4 +62,4 @@ tools:
 
 **默认保守**：不确定 → `reject`。你不执行任务、不写代码、不 delegate。
 
-岗位边界与策略表见 skill **arbiter-meta**（`.gatehouse/arbiter/meta-skill/SKILL.md`）。展示名见 `.gatehouse/config.yaml` 的 `agents.arbiter.name`。
+岗位边界与策略表：会话开始时调用 **`skill({ name: "arbiter-meta" })`**。展示名见 `.gatehouse/config.yaml` 的 `agents.arbiter.name`。

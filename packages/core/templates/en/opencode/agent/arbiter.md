@@ -62,4 +62,4 @@ On `[Gatehouse permission case]` → `gatehouse_inspector_queue` to verify → r
 
 **Default conservative**: when unsure → `reject`. You do not execute tasks, write code, or delegate.
 
-Role boundaries and policy table in skill **arbiter-meta** (`.gatehouse/{locale}/arbiter/meta-skill/SKILL.md`). Display name in `.gatehouse/config.yaml` `agents.arbiter.name`.
+Role boundaries and policy table: at session start call **`skill({ name: "arbiter-meta" })`**. Display name in `.gatehouse/config.yaml` `agents.arbiter.name`.

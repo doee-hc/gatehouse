@@ -26,13 +26,13 @@ Roll up "Tool contribution" from each `reports/nodes/*-retro.md`:
 |------------|-------------------|------|----------|----------|
 
 **Curation (write to permanent experience):**
-- [ ] Merge promoted tools into `.gatehouse/architect/retro-toolkit/tools/`
+- [ ] Merge promoted tools into `.gatehouse/skills/retro-toolkit/tools/`
 - [ ] Update `retro-toolkit/SKILL.md` (methodology, recommended greps, problem classes)
-- [ ] Update `meta-skill/prompts/retro-node-analysis.md` if coord procedure wording needs change
+- [ ] Update `prompts/architect/retro-node-analysis.md` if coord procedure wording needs change
 - [ ] Deprecate/archive duplicate or stale tools (note reason)
 
-## meta-skill update summary
-(What changed in meta-skill/SKILL.md or prompts/ this round — **coordination & assignment**, not domain skills)
+## architect-meta update summary
+(What changed in `skills/architect-meta/SKILL.md` or `prompts/architect/` this round — **coordination & assignment**, not domain skills)
 
 ## Summary for {{lead_name}}
 (3–5 bullets for report.md — Mission planning & acceptance, no business implementation detail)

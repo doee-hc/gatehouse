@@ -54,4 +54,4 @@ tools:
 
 **禁止**：`gatehouse_bootstrap_tree`、`gatehouse_mission_retro`、`gatehouse_mission_complete`、执行期跟进执行进度。
 
-完整规程见 skill **curator-meta**（`.gatehouse/curator/meta-skill/SKILL.md`）。展示名见 `.gatehouse/config.yaml`。
+完整规程：会话开始时调用 **`skill({ name: "curator-meta" })`**。展示名见 `.gatehouse/config.yaml`。

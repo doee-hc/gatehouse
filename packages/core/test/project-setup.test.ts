@@ -36,8 +36,8 @@ describe("project setup", () => {
       try {
         await prepareGatehouseProject(dir, pluginRoot)
 
-        expect(await Bun.file(path.join(dir, ".gatehouse/zh/lead/planning-skill/SKILL.md")).exists()).toBe(true)
-        expect(await Bun.file(path.join(dir, ".gatehouse/en/lead/planning-skill/SKILL.md")).exists()).toBe(true)
+        expect(await Bun.file(path.join(dir, ".gatehouse/zh/skills/lead-meta/SKILL.md")).exists()).toBe(true)
+        expect(await Bun.file(path.join(dir, ".gatehouse/en/skills/lead-meta/SKILL.md")).exists()).toBe(true)
         expect(await Bun.file(path.join(dir, ".gatehouse/lead/missions.yaml")).exists()).toBe(true)
         expect(await Bun.file(path.join(dir, ".gatehouse/brand/logo.png")).exists()).toBe(true)
         expect(await Bun.file(path.join(dir, ".opencode/agent/lead.md")).exists()).toBe(false)
@@ -180,11 +180,11 @@ describe("project setup", () => {
       const dir = await mkdtemp(path.join(tmpdir(), "gh-sync-skill-"))
       try {
         await syncManagedTemplates(dir)
-        const skillPath = path.join(dir, ".gatehouse/lead/planning-skill/SKILL.md")
-        const skillMarker = "# agent-revised planning-skill\n"
+        const skillPath = path.join(dir, ".gatehouse/skills/lead-meta/SKILL.md")
+        const skillMarker = "# agent-revised lead-meta\n"
         await Bun.write(skillPath, skillMarker)
 
-        const promptPath = path.join(dir, ".gatehouse/architect/meta-skill/prompts/dispatch-root.md")
+        const promptPath = path.join(dir, ".gatehouse/prompts/architect/dispatch-root.md")
         const promptMarker = "# agent-revised dispatch-root\n"
         await Bun.write(promptPath, promptMarker)
 
@@ -208,11 +208,11 @@ describe("project setup", () => {
         const missionsMarker = "schema_version: 2\nmissions:\n  - id: keep-me\n    status: running\n"
         await Bun.write(missionsPath, missionsMarker)
 
-        const retroSkillPath = path.join(dir, ".gatehouse/architect/retro-toolkit/SKILL.md")
+        const retroSkillPath = path.join(dir, ".gatehouse/skills/retro-toolkit/SKILL.md")
         const retroSkillMarker = "# custom retro-toolkit root\n"
         await Bun.write(retroSkillPath, retroSkillMarker)
 
-        const templateSkillPath = path.join(dir, ".gatehouse/architect/retro-toolkit/tools/_template/SKILL.md")
+        const templateSkillPath = path.join(dir, ".gatehouse/skills/retro-toolkit/tools/_template/SKILL.md")
         const templateMarker = "# custom _template skill\n"
         await Bun.write(templateSkillPath, templateMarker)
 

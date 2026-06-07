@@ -55,4 +55,4 @@ tools:
 
 **禁止**：`gatehouse_mission_retro`、`gatehouse_mission_complete`、改任务正文、分配 skill_domain、执行期跟进进度或循环 `session_snapshot` 轮询。
 
-完整规程见 skill **architect-meta**（`.gatehouse/architect/meta-skill/SKILL.md`）。展示名见 `.gatehouse/config.yaml`。
+完整规程：会话开始时调用 **`skill({ name: "architect-meta" })`**。展示名见 `.gatehouse/config.yaml`。
