@@ -77,7 +77,6 @@ nodes:
     try {
       await RegistryStore.create({ directory: dir, client: mockClient() })
       await mkdir(path.join(dir, ".gatehouse", "lead"), { recursive: true })
-      await mkdir(path.join(dir, ".gatehouse", "architect"), { recursive: true })
       await writeFile(
         path.join(dir, ".gatehouse", "lead", "missions.yaml"),
         stringifyYaml({
@@ -88,7 +87,7 @@ nodes:
         }),
       )
       await writeFile(
-        path.join(dir, ".gatehouse", "architect", "trees-index.yaml"),
+        path.join(dir, ".gatehouse", "trees-index.yaml"),
         stringifyYaml({
           trees: [
             {

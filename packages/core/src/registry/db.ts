@@ -20,6 +20,7 @@ import {
   getRetroManifest,
   getTreeManifest,
   listTreeMissionIds,
+  listTreesIndex,
   migrateTreeManifestDisplayName,
   migrateTreeManifestProfileColumn,
   migrateTreeManifestDescriptionColumn,
@@ -587,6 +588,10 @@ export class RegistryDatabase {
 
   listTreeMissionIds(status?: TreeManifest["status"]) {
     return listTreeMissionIds(this.db, status)
+  }
+
+  listTreesIndex() {
+    return listTreesIndex(this.db)
   }
 
   findTreeManifestByExecSession(sessionId: string) {

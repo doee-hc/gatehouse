@@ -31,7 +31,7 @@ disable-model-invocation: true
 
 收到 {{lead_name}} `gatehouse_mission_start` 的自动通知后：
 
-1. `gatehouse_mission_current` 读任务全文（registry 快照；无需 {{lead_name}} 再 `send_message` 复述）。
+1. 使用通知中的任务快照（objective / done_when / must_not / notes）；必要时 `gatehouse_mission_current` 刷新。
 2. 调用 `skill({ name: "architect-meta" })` 复习本 skill；读 `.gatehouse/prompts/architect/` 历史模板。
 
 任务正文只有 objective / done_when / must_not / notes。**拓扑全权归你**；teamspec **不写** skill_domain（归 {{curator_name}} 分配）。
@@ -63,6 +63,43 @@ nodes:
       执行者约束
 ```
 
+**多级团队**（root → 中间协调层 → 叶子）：每层只分派**直接下属**；中间协调层在 bootstrap 后会收到所辖子树快照，继续向下分派。示例：
+
+```yaml
+mission_id: <id>
+root: node-root
+nodes:
+  node-root:
+    parent: null
+    description: 任务协调者，分派直接下属并汇总交付
+    constraints: |
+      仅向 parent 指向你的节点分派（node-frontend、node-api）。
+      收到子树汇报后写 reports/root-delivery.md，再 gatehouse_send_message(recipient="lead")。
+  node-frontend:
+    parent: node-root
+    description: 前端子树协调者，分派 UI/CSS 并汇总
+    constraints: |
+      仅向 node-ui、node-css 分派；禁止 task。
+      子树完成后 gatehouse_send_message 汇报 node-root。
+  node-ui:
+    parent: node-frontend
+    description: 前端 UI 执行成员
+    constraints: |
+      node-frontend 分派后再动笔；完成后回复 node-frontend。
+  node-css:
+    parent: node-frontend
+    description: 样式执行成员
+    constraints: |
+      node-frontend 分派后再动笔；完成后回复 node-frontend。
+  node-api:
+    parent: node-root
+    description: 后端 API 执行成员
+    constraints: |
+      node-root 分派后再动笔；完成后回复 node-root。
+```
+
+两级够用则不必加中间层；中间协调节点通常**不**由 {{curator_name}} 分配 `skill_domain`（见 curator-meta）。
+
 2. `gatehouse_bootstrap_tree(objective=...)` → {{curator_name}} `apply_skill_domains` 后自动组建执行团队、向任务协调者下发启动消息。
 3. **退出执行环**。
 
@@ -75,7 +112,7 @@ nodes:
 {{lead_name}} `gatehouse_mission_retro` 后 Gatehouse 自动 fork retro、下发模板。registry 收齐 retro 节点 → **自动通知你**：
 
 1. 读 `reports/nodes/*-retro.md` → 写 `architect-summary.md`（含 retro-toolkit 整理）。
-2. `gatehouse_publish_blog(report_path=.gatehouse/architect/trees/<id>/reports/architect-summary.md)`。
+2. `gatehouse_publish_blog(report_path=.gatehouse/trees/<id>/reports/architect-summary.md)`。
 3. 更新 `skills/architect-meta/`、`skills/retro-toolkit/`。
 4. `gatehouse_send_message(recipient="lead", ...)`。
 
@@ -85,8 +122,8 @@ nodes:
 
 | 用途 | 路径 |
 |------|------|
-| TeamSpec / manifest | `.gatehouse/architect/trees/<id>/` |
-| 汇报 | `.gatehouse/architect/trees/<id>/reports/` |
+| TeamSpec / reports | `.gatehouse/trees/<id>/`（manifest 仅在 `registry.db`；调试导出见 `internal/exports/`） |
+| 汇报 | `.gatehouse/trees/<id>/reports/` |
 | Prompt 模板 | `.gatehouse/prompts/architect/` |
 | retro 工具库 | `.gatehouse/skills/retro-toolkit/` |
 

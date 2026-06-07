@@ -33,7 +33,7 @@ disable-model-invocation: true
 2. 读 `.gatehouse/skills/retro-toolkit/tools/*/SKILL.md`，复用已有脚本。
 3. 对 1–2 个可疑节点：grep timeline → 写/跑脚本 → 记录发现。
 4. 若新工具有复用价值：落盘 `tools/<name>/` 并写 SKILL。
-5. 写 `reports/nodes/<node_id>-retro.md`（含「工具与方法论」章节）→ `gatehouse_retro_record` 登记 → `gatehouse_publish_blog(report_path=.gatehouse/architect/trees/<mission_id>/reports/nodes/<node_id>-retro.md)` 发布到 Portal 博客。
+5. 写 `reports/nodes/<node_id>-retro.md`（含「工具与方法论」章节）→ `gatehouse_retro_record` 登记 → `gatehouse_publish_blog(report_path=.gatehouse/trees/<mission_id>/reports/nodes/<node_id>-retro.md)` 发布到 Portal 博客。
 
 ## 新工具目录约定
 

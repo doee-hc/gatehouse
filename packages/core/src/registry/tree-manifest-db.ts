@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite"
 import { REGISTRY_SCHEMA_VERSION } from "./types.ts"
-import type { RetroManifest, TreeManifest, TreeNode } from "../tree/types.ts"
+import type { RetroManifest, TreeManifest, TreeNode, TreesIndex, TreesIndexEntry } from "../tree/types.ts"
 
 type TreeRow = {
   mission_id: string
@@ -142,6 +142,43 @@ export function listTreeMissionIds(db: Database, status?: TreeManifest["status"]
         mission_id: string
       }>)
   return rows.map((row) => row.mission_id)
+}
+
+type TreesIndexRow = {
+  mission_id: string
+  status: string
+  root_node: string
+  created_at: string
+  root_session_id: string | null
+  objective: string | null
+}
+
+export function listTreesIndex(db: Database): TreesIndex {
+  const rows = db
+    .query(
+      `SELECT t.mission_id, t.status, t.root_node, t.created_at,
+              n.session_id AS root_session_id, m.objective AS objective
+       FROM registry_tree t
+       LEFT JOIN registry_tree_node n
+         ON n.mission_id = t.mission_id AND n.node_id = t.root_node
+       LEFT JOIN registry_mission m ON m.mission_id = t.mission_id
+       ORDER BY t.created_at DESC`,
+    )
+    .all() as TreesIndexRow[]
+  const trees = rows
+    .map((row): TreesIndexEntry | undefined => {
+      if (!row.root_session_id) return undefined
+      return {
+        mission_id: row.mission_id,
+        root_session_id: row.root_session_id,
+        root_node: row.root_node,
+        status: row.status,
+        created_at: row.created_at,
+        ...(row.objective && { objective: row.objective }),
+      }
+    })
+    .filter((entry): entry is TreesIndexEntry => entry !== undefined)
+  return { trees }
 }
 
 export function findTreeManifestByExecSession(db: Database, sessionId: string) {

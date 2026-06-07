@@ -62,7 +62,7 @@ describe("mission inner agent lifecycle", () => {
   test("setMissionStatus done keeps inner agents as lingering display in snapshot", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-mission-agents-"))
     await mkdir(path.join(dir, ".gatehouse", "lead"), { recursive: true })
-    await mkdir(path.join(dir, ".gatehouse", "architect", "trees", "m-a"), { recursive: true })
+    await mkdir(path.join(dir, ".gatehouse", "trees", "m-a"), { recursive: true })
     await writeFile(
       path.join(dir, ".gatehouse", "lead", "missions.yaml"),
       stringifyYaml({
@@ -71,7 +71,7 @@ describe("mission inner agent lifecycle", () => {
       }),
     )
     await writeFile(
-      path.join(dir, ".gatehouse", "architect", "trees", "m-a", "manifest.yaml"),
+      path.join(dir, ".gatehouse", "trees", "m-a", "manifest.yaml"),
       stringifyYaml({
         mission_id: "m-a",
         status: "running",
@@ -178,7 +178,7 @@ describe("mission inner agent lifecycle", () => {
         {
           missionId: "m-retro",
           nodeId: "root",
-          reportPath: ".gatehouse/architect/trees/m-retro/reports/nodes/root-retro.md",
+          reportPath: ".gatehouse/trees/m-retro/reports/nodes/root-retro.md",
           sessionId: "ses-retro-root",
           completedAt: now,
         },
@@ -230,7 +230,7 @@ describe("mission inner agent lifecycle", () => {
         {
           missionId: "m-retro",
           nodeId: "root",
-          reportPath: ".gatehouse/architect/trees/m-retro/reports/nodes/root-retro.md",
+          reportPath: ".gatehouse/trees/m-retro/reports/nodes/root-retro.md",
           sessionId: "ses-retro-root",
           completedAt: now,
         },

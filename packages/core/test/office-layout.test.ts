@@ -72,8 +72,8 @@ describe("office layout spec", () => {
   test("counts inner nodes for the active running mission only", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-office-layout-"))
     await mkdir(path.join(dir, ".gatehouse", "lead"), { recursive: true })
-    await mkdir(path.join(dir, ".gatehouse", "architect", "trees", "mission-a"), { recursive: true })
-    await mkdir(path.join(dir, ".gatehouse", "architect", "trees", "mission-b"), { recursive: true })
+    await mkdir(path.join(dir, ".gatehouse", "trees", "mission-a"), { recursive: true })
+    await mkdir(path.join(dir, ".gatehouse", "trees", "mission-b"), { recursive: true })
 
     await writeFile(
       path.join(dir, ".gatehouse", "lead", "missions.yaml"),
@@ -88,7 +88,7 @@ describe("office layout spec", () => {
     )
 
     await writeFile(
-      path.join(dir, ".gatehouse", "architect", "trees", "mission-a", "manifest.yaml"),
+      path.join(dir, ".gatehouse", "trees", "mission-a", "manifest.yaml"),
       stringifyYaml({
         mission_id: "mission-a",
         status: "running",
@@ -102,7 +102,7 @@ describe("office layout spec", () => {
     )
 
     await writeFile(
-      path.join(dir, ".gatehouse", "architect", "trees", "mission-b", "manifest.yaml"),
+      path.join(dir, ".gatehouse", "trees", "mission-b", "manifest.yaml"),
       stringifyYaml({
         mission_id: "mission-b",
         status: "running",
@@ -144,7 +144,7 @@ describe("office layout spec", () => {
   test("includes inner nodes from the newest done mission when idle", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-office-layout-lingering-"))
     await mkdir(path.join(dir, ".gatehouse", "lead"), { recursive: true })
-    await mkdir(path.join(dir, ".gatehouse", "architect", "trees", "mission-last"), { recursive: true })
+    await mkdir(path.join(dir, ".gatehouse", "trees", "mission-last"), { recursive: true })
 
     await writeFile(
       path.join(dir, ".gatehouse", "lead", "missions.yaml"),
@@ -158,7 +158,7 @@ describe("office layout spec", () => {
     )
 
     await writeFile(
-      path.join(dir, ".gatehouse", "architect", "trees", "mission-last", "manifest.yaml"),
+      path.join(dir, ".gatehouse", "trees", "mission-last", "manifest.yaml"),
       stringifyYaml({
         mission_id: "mission-last",
         status: "archived",

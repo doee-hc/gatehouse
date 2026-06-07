@@ -42,32 +42,62 @@ export function leadDir(projectDirectory: string) {
   return path.join(gatehouseRoot(projectDirectory), "lead")
 }
 
-export function architectDir(projectDirectory: string) {
-  return path.join(gatehouseRoot(projectDirectory), "architect")
+export function treesDir(projectDirectory: string) {
+  return path.join(gatehouseRoot(projectDirectory), "trees")
 }
 
 export function treeDir(projectDirectory: string, missionId: string) {
-  return path.join(architectDir(projectDirectory), "trees", missionId)
+  return path.join(treesDir(projectDirectory), missionId)
 }
 
-export function manifestPath(projectDirectory: string, missionId: string) {
+export function treeRelDir(missionId: string) {
+  return path.join(".gatehouse", "trees", missionId)
+}
+
+/** Human/debug YAML export root — not an agent runtime interface. */
+export function internalExportsDir(projectDirectory: string) {
+  return path.join(gatehouseRoot(projectDirectory), "internal", "exports")
+}
+
+export function manifestExportPath(projectDirectory: string, missionId: string) {
+  return path.join(internalExportsDir(projectDirectory), "trees", missionId, "manifest.yaml")
+}
+
+export function retroManifestExportPath(projectDirectory: string, missionId: string) {
+  return path.join(internalExportsDir(projectDirectory), "trees", missionId, "retro-manifest.yaml")
+}
+
+/** Pre-internal-layout path; import fallback only. */
+export function legacyManifestPath(projectDirectory: string, missionId: string) {
   return path.join(treeDir(projectDirectory, missionId), "manifest.yaml")
 }
 
-export function retroManifestPath(projectDirectory: string, missionId: string) {
+export function legacyRetroManifestPath(projectDirectory: string, missionId: string) {
   return path.join(treeDir(projectDirectory, missionId), "retro-manifest.yaml")
+}
+
+/** @deprecated Use manifestExportPath — kept for import fallback call sites. */
+export function manifestPath(projectDirectory: string, missionId: string) {
+  return manifestExportPath(projectDirectory, missionId)
+}
+
+/** @deprecated Use retroManifestExportPath — kept for import fallback call sites. */
+export function retroManifestPath(projectDirectory: string, missionId: string) {
+  return retroManifestExportPath(projectDirectory, missionId)
 }
 
 export function teamSpecPath(projectDirectory: string, missionId: string) {
   return path.join(treeDir(projectDirectory, missionId), "teamspec.yaml")
 }
 
-export function dispatchRootPromptPath(projectDirectory: string) {
-  return resolveGatehouseContentPath(projectDirectory, "prompts/architect/dispatch-root.md")
+export function dispatchRootPromptPath(projectDirectory: string, solo = false) {
+  const file = solo ? "dispatch-root-solo.md" : "dispatch-root.md"
+  return resolveGatehouseContentPath(projectDirectory, `prompts/architect/${file}`)
 }
 
-export function watchdogRootWakePromptPath(projectDirectory: string) {
-  return resolveGatehouseContentPath(projectDirectory, "prompts/architect/watchdog-root-wake.md")
+export function watchdogRootWakePromptPath(projectDirectory: string, solo = false) {
+  const file = solo ? "watchdog-root-wake-solo.md" : "watchdog-root-wake.md"
+  return resolveGatehouseContentPath(projectDirectory, `prompts/architect/${file}`)
 }
 
 export function watchdogRetroRecordWakePromptPath(projectDirectory: string) {
@@ -83,7 +113,7 @@ export function rootDeliveryPath(projectDirectory: string, missionId: string) {
 }
 
 export function treesIndexPath(projectDirectory: string) {
-  return path.join(architectDir(projectDirectory), "trees-index.yaml")
+  return path.join(gatehouseRoot(projectDirectory), "trees-index.yaml")
 }
 
 export function nodeDisplayLabel(nodeId: string) {
@@ -105,7 +135,7 @@ export function retroSessionTitle(missionId: string, nodeId: string) {
 }
 
 export function retroNodeReportRelPath(missionId: string, nodeId: string) {
-  return path.join(".gatehouse", "architect", "trees", missionId, "reports", "nodes", `${nodeId}-retro.md`)
+  return path.join(treeRelDir(missionId), "reports", "nodes", `${nodeId}-retro.md`)
 }
 
 export function retroNodeReportPath(projectDirectory: string, missionId: string, nodeId: string) {
@@ -121,11 +151,11 @@ export function nodeContextDir(projectDirectory: string, missionId: string, node
 }
 
 export function nodeContextRelDir(missionId: string, nodeId: string) {
-  return path.join(".gatehouse", "architect", "trees", missionId, "context", nodeId)
+  return path.join(treeRelDir(missionId), "context", nodeId)
 }
 
 export function contextIndexRelPath(missionId: string) {
-  return path.join(".gatehouse", "architect", "trees", missionId, "context", "index.json")
+  return path.join(treeRelDir(missionId), "context", "index.json")
 }
 
 export function retroAnalysisPromptPath(projectDirectory: string) {
@@ -153,7 +183,15 @@ export function curatorSkillAssignKickoffPath(projectDirectory: string) {
 }
 
 export function curatorSkillSummaryRelPath(missionId: string, nodeId: string) {
-  return path.join(".gatehouse", "architect", "trees", missionId, "reports", "skills", `${nodeId}-extract.md`)
+  return path.join(treeRelDir(missionId), "reports", "skills", `${nodeId}-extract.md`)
+}
+
+export function architectSummaryRelPath(missionId: string) {
+  return path.join(treeRelDir(missionId), "reports", "architect-summary.md")
+}
+
+export function rootDeliveryRelPath(missionId: string) {
+  return path.join(treeRelDir(missionId), "reports", "root-delivery.md")
 }
 
 export function portalOfficeDir(projectDirectory: string) {

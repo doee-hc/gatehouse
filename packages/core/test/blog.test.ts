@@ -43,7 +43,7 @@ missions:
   )
 
   await write(
-    ".gatehouse/architect/trees/mission-old/manifest.yaml",
+    ".gatehouse/trees/mission-old/manifest.yaml",
     `mission_id: mission-old
 status: archived
 root_node: root
@@ -62,7 +62,7 @@ nodes:
   )
 
   await write(
-    ".gatehouse/architect/trees/mission-new/manifest.yaml",
+    ".gatehouse/trees/mission-new/manifest.yaml",
     `mission_id: mission-new
 status: archived
 root_node: root
@@ -81,15 +81,15 @@ nodes:
   )
 
   await write(".gatehouse/lead/reports/mission-old/report.md", "# 旧任务验收\n\nlead 汇报。")
-  await write(".gatehouse/architect/trees/mission-old/reports/architect-summary.md", "# 旧任务复盘\n\narchitect 汇总。")
-  await write(".gatehouse/architect/trees/mission-old/reports/root-delivery.md", "# 任务协调者交付\n\n交付完成。")
+  await write(".gatehouse/trees/mission-old/reports/architect-summary.md", "# 旧任务复盘\n\narchitect 汇总。")
+  await write(".gatehouse/trees/mission-old/reports/root-delivery.md", "# 任务协调者交付\n\n交付完成。")
   await write(
-    ".gatehouse/architect/trees/mission-old/reports/nodes/leaf-a-retro.md",
+    ".gatehouse/trees/mission-old/reports/nodes/leaf-a-retro.md",
     "# leaf-a 复盘\n\n叶子 retro。",
   )
 
   await write(".gatehouse/lead/reports/mission-new/report.md", "# 新任务验收\n\n最新汇报。")
-  await write(".gatehouse/architect/trees/mission-new/reports/nodes/leaf-b-retro.md", "# leaf-b 复盘\n\n最新 retro。")
+  await write(".gatehouse/trees/mission-new/reports/nodes/leaf-b-retro.md", "# leaf-b 复盘\n\n最新 retro。")
   await write(".gatehouse/lead/reports/mission-running/report.md", "# 进行中汇报\n\nrunning。")
 
   await publishBlogPost(dir, {
@@ -98,7 +98,7 @@ nodes:
   })
   await publishBlogPost(dir, {
     postId: "mission-new:retro:leaf-b",
-    reportPath: ".gatehouse/architect/trees/mission-new/reports/nodes/leaf-b-retro.md",
+    reportPath: ".gatehouse/trees/mission-new/reports/nodes/leaf-b-retro.md",
   })
   await publishBlogPost(dir, {
     postId: "mission-old:lead:report",
@@ -106,15 +106,15 @@ nodes:
   })
   await publishBlogPost(dir, {
     postId: "mission-old:architect:summary",
-    reportPath: ".gatehouse/architect/trees/mission-old/reports/architect-summary.md",
+    reportPath: ".gatehouse/trees/mission-old/reports/architect-summary.md",
   })
   await publishBlogPost(dir, {
     postId: "mission-old:root:delivery",
-    reportPath: ".gatehouse/architect/trees/mission-old/reports/root-delivery.md",
+    reportPath: ".gatehouse/trees/mission-old/reports/root-delivery.md",
   })
   await publishBlogPost(dir, {
     postId: "mission-old:retro:leaf-a",
-    reportPath: ".gatehouse/architect/trees/mission-old/reports/nodes/leaf-a-retro.md",
+    reportPath: ".gatehouse/trees/mission-old/reports/nodes/leaf-a-retro.md",
   })
   await publishBlogPost(dir, {
     postId: "mission-running:lead:report",

@@ -1,6 +1,6 @@
 # {{architect_name}}复盘汇总模板
 
-落盘：`.gatehouse/architect/trees/<mission_id>/reports/architect-summary.md`
+落盘：`.gatehouse/trees/<mission_id>/reports/architect-summary.md`
 
 ---
 

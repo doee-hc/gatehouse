@@ -8,7 +8,7 @@ import { RegistryDatabase } from "../src/registry/db.ts"
 import { REGISTRY_SCHEMA_VERSION } from "../src/registry/types.ts"
 
 const dir = path.join(import.meta.dir, ".tmp-portal-serial")
-const trees = (id: string) => path.join(dir, ".gatehouse/architect/trees", id)
+const trees = (id: string) => path.join(dir, ".gatehouse/trees", id)
 
 beforeAll(async () => {
   await Bun.$`rm -rf ${dir} && mkdir -p ${dir}/.gatehouse/lead ${trees("m-a")} ${trees("m-b")} ${trees("m-done")}`.quiet()
@@ -186,7 +186,7 @@ test("buildPortalSnapshot excludes inner agents for done missions while another 
 
 test("buildPortalSnapshot includes lingering inner agents when no active mission", async () => {
   const lingeringDir = path.join(import.meta.dir, ".tmp-portal-lingering")
-  const lingeringTreeDir = path.join(lingeringDir, ".gatehouse/architect/trees/m-last")
+  const lingeringTreeDir = path.join(lingeringDir, ".gatehouse/trees/m-last")
   await Bun.$`rm -rf ${lingeringDir} && mkdir -p ${lingeringDir}/.gatehouse/lead ${lingeringTreeDir}`.quiet()
   await Bun.write(
     path.join(lingeringDir, ".gatehouse/lead/missions.yaml"),
@@ -293,7 +293,7 @@ nodes:
 
 test("buildPortalSnapshot includes retro mission tree and agents", async () => {
   const retroDir = path.join(import.meta.dir, ".tmp-portal-retro")
-  const retroTreeDir = path.join(retroDir, ".gatehouse/architect/trees/m-retro")
+  const retroTreeDir = path.join(retroDir, ".gatehouse/trees/m-retro")
   await Bun.$`rm -rf ${retroDir} && mkdir -p ${retroDir}/.gatehouse/lead ${retroTreeDir}`.quiet()
   await Bun.write(
     path.join(retroDir, ".gatehouse/lead/missions.yaml"),

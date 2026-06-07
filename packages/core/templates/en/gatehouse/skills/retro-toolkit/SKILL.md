@@ -33,7 +33,7 @@ You are a **coord in a retro fork session** (build-coordinator). During retro:
 2. Read `.gatehouse/skills/retro-toolkit/tools/*/SKILL.md`, reuse scripts.
 3. For 1–2 suspicious nodes: grep timeline → write/run script → record findings.
 4. If a new tool is reusable: add `tools/<name>/` with SKILL.
-5. Write `reports/nodes/<node_id>-retro.md` (include "Tools & methodology") → `gatehouse_retro_record` → `gatehouse_publish_blog(report_path=.gatehouse/architect/trees/<mission_id>/reports/nodes/<node_id>-retro.md)`.
+5. Write `reports/nodes/<node_id>-retro.md` (include "Tools & methodology") → `gatehouse_retro_record` → `gatehouse_publish_blog(report_path=.gatehouse/trees/<mission_id>/reports/nodes/<node_id>-retro.md)`.
 
 ## New tool directory layout
 

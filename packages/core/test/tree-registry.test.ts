@@ -3,7 +3,8 @@ import path from "node:path"
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { RegistryDatabase } from "../src/registry/db.ts"
-import { readManifest, writeManifest } from "../src/tree/store.ts"
+import { readManifest, readTreesIndex, writeManifest } from "../src/tree/store.ts"
+import { stringifyYaml } from "../src/yaml.ts"
 import type { TreeManifest } from "../src/tree/types.ts"
 
 const sampleManifest = (): TreeManifest => ({
@@ -26,7 +27,7 @@ test("tree manifest round-trips in registry.db; yaml is export-only", async () =
     const fromRead = await readManifest(dir, "m-tree-db")
     expect(fromRead?.root_node).toBe("root")
     const yamlText = await Bun.file(
-      path.join(dir, ".gatehouse/architect/trees/m-tree-db/manifest.yaml"),
+      path.join(dir, ".gatehouse/internal/exports/trees/m-tree-db/manifest.yaml"),
     ).text()
     expect(yamlText).toContain("m-tree-db")
     new RegistryDatabase(dir).saveTreeManifest({
@@ -36,6 +37,29 @@ test("tree manifest round-trips in registry.db; yaml is export-only", async () =
     })
     expect(await readManifest(dir, "m-tree-db")).toMatchObject({ status: "archived" })
     expect(yamlText).toContain("running")
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test("stringifyYaml uses block style for nested mappings", () => {
+  const yaml = stringifyYaml({ mission_id: "m1", nodes: { root: { session_id: "ses-1", parent: null } } })
+  expect(yaml.includes("mission_id: m1\n")).toBe(true)
+  expect(yaml.includes("nodes:\n")).toBe(true)
+  expect(yaml.includes("  root:\n")).toBe(true)
+  expect(yaml.includes("nodes: {")).toBe(false)
+})
+
+test("readTreesIndex derives from registry.db", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "gh-trees-index-db-"))
+  try {
+    await writeManifest(dir, sampleManifest())
+    const index = await readTreesIndex(dir)
+    expect(index.trees.length).toBe(1)
+    expect(index.trees[0]?.mission_id).toBe("m-tree-db")
+    expect(index.trees[0]?.root_node).toBe("root")
+    expect(index.trees[0]?.root_session_id).toBe("ses-root")
+    expect(index.trees[0]?.status).toBe("running")
   } finally {
     await rm(dir, { recursive: true, force: true })
   }

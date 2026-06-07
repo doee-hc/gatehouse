@@ -1,6 +1,6 @@
 ---
 name: build-coordinator
-description: Mid-layer coordinator for the Mission execution team—same permissions as build, but task is denied to prevent subagent spawning.
+description: Mission execution-team coordinator (task coordinator or intermediate layer)—same permissions as build, but task is denied to prevent subagent spawning.
 mode: primary
 color: "#4A90A4"
 permission:
@@ -14,10 +14,18 @@ permission:
   gatehouse_publish_blog: allow
   gatehouse_unpublish_blog: allow
   gatehouse_retro_record: allow
+  gatehouse_mission_start: deny
+  gatehouse_mission_current: deny
+  gatehouse_mission_retro: deny
+  gatehouse_mission_complete: deny
   gatehouse_inspector_queue: deny
   gatehouse_inspector_decide: deny
 tools:
   task: false
+  gatehouse_mission_start: false
+  gatehouse_mission_current: false
+  gatehouse_mission_retro: false
+  gatehouse_mission_complete: false
   gatehouse_inspector_queue: false
   gatehouse_inspector_decide: false
 ---
@@ -31,6 +39,8 @@ While waiting for teammates in the execution team, you may call `gatehouse_sessi
 - Reports focus on task assignment and prompt constraints—not domain skills or business minutiae.
 - After writing the retro report and `gatehouse_retro_record`, call `gatehouse_publish_blog(report_path=reports/nodes/<node_id>-retro.md)` for Portal blog visibility.
 
-Gatehouse mid-layer coordinator for the Mission execution team. Same permissions as `build`, but **denied** OpenCode `task` for subagent spawning.
+Gatehouse coordinator agent for the Mission execution team (task coordinator or intermediate layer). Same permissions as `build`, but **denied** OpenCode `task` for subagent spawning.
 
-In-team collaboration: `gatehouse_list_team()` → `gatehouse_send_message(recipient=<node_id>)`. Only leaf execution roles may use `task` for parallel exploration.
+In-team collaboration: use the team snapshot in system or the kickoff execution tree → assign via `gatehouse_send_message` only to your **direct reports** (`node_id` values whose `parent` is you); intermediate coordinators delegate further down the tree. Leaf execution members (profile `build`) do hands-on work and may use `task` for parallel exploration.
+
+**Do not** read `manifest.yaml`, `teamspec.yaml`, or `.gatehouse/internal/exports/` for team topology—use the team snapshot in system or the kickoff message (structure is fixed after bootstrap).

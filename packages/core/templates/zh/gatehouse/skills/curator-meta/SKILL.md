@@ -29,7 +29,7 @@ disable-model-invocation: true
 
 此时 **只有**任务快照 + teamspec，**尚无 manifest**。
 
-1. `gatehouse_mission_current`；读 `teamspec.yaml`、`domains.yaml`（可选查阅已有 `by-domain/<id>/` 以复用 id）。
+1. 收到 Gatehouse skill_domain 分配 kickoff（含任务快照、TeamSpec 摘要、domains 列表）。
 2. 仅为需沉淀的执行节点选定 `skill_domain`；**未分配节点不要写入 `assignments`**（中间协调、无总结价值的节点通常省略）。
 3. 可选：新 domain-id 先更新 `domains.yaml`（仅元数据）。
 4. **仅** `gatehouse_apply_skill_domains(assignments='{"node-id":"domain-id"}')` — 工具自动创建缺失的 `by-domain/<domain-id>/`（空目录，无 `SKILL.md`），并组建执行团队 → **结束本轮**（勿 `gatehouse_bootstrap_tree`，勿私信 {{architect_name}}/{{lead_name}}）。
@@ -50,7 +50,7 @@ disable-model-invocation: true
 |------|------|
 | 领域注册表 | `.gatehouse/skills/domains.yaml` |
 | 领域 skill | `.gatehouse/skills/by-domain/<id>/` |
-| 任务树 | `.gatehouse/architect/trees/<id>/` |
+| 任务树 | `.gatehouse/trees/<id>/` |
 | 提炼摘要 | `reports/skills/<node_id>-extract.md` |
 
 ## 铁律

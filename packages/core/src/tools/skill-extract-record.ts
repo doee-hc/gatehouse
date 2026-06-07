@@ -13,7 +13,7 @@ export function skillExtractRecordTool(input: PluginInput) {
       summary_path: tool.schema
         .string()
         .optional()
-        .describe("Default: .gatehouse/architect/trees/<mission_id>/reports/skills/<node_id>-extract.md"),
+        .describe("Default: .gatehouse/trees/<mission_id>/reports/skills/<node_id>-extract.md"),
     },
     async execute(args, context) {
       const toolName = "gatehouse_skill_extract_record"

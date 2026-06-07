@@ -31,7 +31,7 @@ Mission snapshot / TeamSpec / reports — OpenCode read/write + this skill.
 
 After {{lead_name}} auto-notification from `gatehouse_mission_start`:
 
-1. `gatehouse_mission_current` for full task text (registry snapshot; no repeat `send_message` from {{lead_name}}).
+1. Use the mission snapshot in the start notification (objective / done_when / must_not / notes); call `gatehouse_mission_current` to refresh if needed.
 2. Call `skill({ name: "architect-meta" })` to reload this skill; read `.gatehouse/prompts/architect/` templates.
 
 Task body is objective / done_when / must_not / notes only. **Topology is yours**; teamspec **must not** include skill_domain ({{curator_name}} assigns).
@@ -63,6 +63,43 @@ nodes:
       Executor constraints
 ```
 
+**Multi-level team** (root → intermediate coordinator → leaves): each layer assigns only to **direct reports**; intermediate coordinators receive a subtree snapshot at bootstrap and delegate further down. Example:
+
+```yaml
+mission_id: <id>
+root: node-root
+nodes:
+  node-root:
+    parent: null
+    description: Task coordinator — delegate to direct reports and summarize delivery
+    constraints: |
+      Assign only to nodes whose parent is you (node-frontend, node-api).
+      After subtree reports arrive, write reports/root-delivery.md, then gatehouse_send_message(recipient="lead").
+  node-frontend:
+    parent: node-root
+    description: Frontend subtree coordinator — delegates UI/CSS and summarizes
+    constraints: |
+      Assign only to node-ui and node-css; task denied.
+      When the subtree is done, gatehouse_send_message upstream to node-root.
+  node-ui:
+    parent: node-frontend
+    description: Frontend UI executor
+    constraints: |
+      Start after node-frontend assigns; report back to node-frontend when done.
+  node-css:
+    parent: node-frontend
+    description: Styles executor
+    constraints: |
+      Start after node-frontend assigns; report back to node-frontend when done.
+  node-api:
+    parent: node-root
+    description: Backend API executor
+    constraints: |
+      Start after node-root assigns; report back to node-root when done.
+```
+
+Use two levels when that is enough; intermediate coordinators usually **do not** get `skill_domain` from {{curator_name}} (see curator-meta).
+
 2. `gatehouse_bootstrap_tree(objective=...)` → after {{curator_name}} `apply_skill_domains`, execution team is formed and task coordinator receives kickoff automatically.
 3. **Exit the execution loop.**
 
@@ -75,7 +112,7 @@ Execution team collaborates on its own; **you do not intervene**, track progress
 After {{lead_name}} `gatehouse_mission_retro`, Gatehouse forks retro and dispatches templates. When all retro nodes are recorded → **auto-notify you**:
 
 1. Read `reports/nodes/*-retro.md` → write `architect-summary.md` (include retro-toolkit curation).
-2. `gatehouse_publish_blog(report_path=.gatehouse/architect/trees/<id>/reports/architect-summary.md)`.
+2. `gatehouse_publish_blog(report_path=.gatehouse/trees/<id>/reports/architect-summary.md)`.
 3. Update `skills/architect-meta/` and `skills/retro-toolkit/`.
 4. `gatehouse_send_message(recipient="lead", ...)`.
 
@@ -85,8 +122,8 @@ After {{lead_name}} `gatehouse_mission_retro`, Gatehouse forks retro and dispatc
 
 | Purpose | Path |
 |---------|------|
-| TeamSpec / manifest | `.gatehouse/architect/trees/<id>/` |
-| Reports | `.gatehouse/architect/trees/<id>/reports/` |
+| TeamSpec / reports | `.gatehouse/trees/<id>/` (manifest in `registry.db`; debug export under `internal/exports/`) |
+| Reports | `.gatehouse/trees/<id>/reports/` |
 | Prompt templates | `.gatehouse/prompts/architect/` |
 | Retro toolkit | `.gatehouse/skills/retro-toolkit/` |
 

@@ -29,7 +29,7 @@ disable-model-invocation: true
 
 At this point you have **only** mission snapshot + teamspec, **no manifest yet**.
 
-1. `gatehouse_mission_current`; read `teamspec.yaml`, `domains.yaml` (optionally skim existing `by-domain/<id>/` to reuse ids).
+1. Receive Gatehouse skill_domain assignment kickoff (mission snapshot, TeamSpec summary, domains list).
 2. Pick `skill_domain` only for execution nodes that should accumulate skills; **omit unassigned nodes from `assignments`** (coordinators and low-value nodes are usually skipped).
 3. Optional: update `domains.yaml` first for new domain ids (metadata only).
 4. **Only** `gatehouse_apply_skill_domains(assignments='{"node-id":"domain-id"}')` — tool creates missing `by-domain/<domain-id>/` (empty dir, no `SKILL.md`) and forms execution team → **end this round** (no `gatehouse_bootstrap_tree`, no DM to {{architect_name}}/{{lead_name}}).
@@ -50,7 +50,7 @@ When all are recorded → **auto-notify you**:
 |---------|------|
 | Domain registry | `.gatehouse/skills/domains.yaml` |
 | Domain skills | `.gatehouse/skills/by-domain/<id>/` |
-| Mission tree | `.gatehouse/architect/trees/<id>/` |
+| Mission tree | `.gatehouse/trees/<id>/` |
 | Extract summaries | `reports/skills/<node_id>-extract.md` |
 
 ## Rules

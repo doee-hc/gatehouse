@@ -25,11 +25,11 @@ Architecture & workflow: project `.gatehouse/**/SKILL.md` prompts (scaffolded on
 
 Everything else (missions queue, reports, skills) uses OpenCode **read/write** + SKILL prompts under `.gatehouse/`. Portal blog only shows posts after `gatehouse_publish_blog`.
 
-Personnel registry (outer + inner + retro agents ↔ OpenCode `session_id`) and **execution-tree manifests** (`manifest` / `retro-manifest`) live in **`.gatehouse/registry.db`** (SQLite). Plugin code reads trees from the DB; `trees/<mission_id>/manifest.yaml` and `retro-manifest.yaml` are **export snapshots** for human inspection. `gatehouse_send_message` resolves recipients and enforces who may message whom; OpenCode `task` child sessions for lead/architect are disabled. **Lead should call `gatehouse_init_team` on first conversation** to register architect/curator/arbiter; thereafter `send_message` and architect `gatehouse_bootstrap_tree` require registered targets. Curator `apply_skill_domains` creates Mission execution sessions.
+Personnel registry (outer + inner + retro agents ↔ OpenCode `session_id`) and **execution-tree manifests** (`manifest` / `retro-manifest`) live in **`.gatehouse/registry.db`** (SQLite). Plugin code reads trees from the DB only. Optional YAML exports for human inspection live under **`.gatehouse/internal/exports/trees/<mission_id>/`** — inner agents must use `gatehouse_list_team()`, not these files. `trees/<mission_id>/` holds authoring (`teamspec.yaml`) and reports only. `gatehouse_send_message` resolves recipients and enforces who may message whom; OpenCode `task` child sessions for lead/architect are disabled. **Lead should call `gatehouse_init_team` on first conversation** to register architect/curator/arbiter; thereafter `send_message` and architect `gatehouse_bootstrap_tree` require registered targets. Curator `apply_skill_domains` creates Mission execution sessions.
 
 **Delivery queue:** if the recipient session is `busy` or `retry`, the prompt is appended to `registry_pending_delivery` and the tool returns `delivery: queued`. The plugin flushes the FIFO queue when OpenCode emits `session.status: idle` for that session, and every 15s as a fallback.
 
-**Execution-tree watchdog:** while a mission is `running` (no retro fork), the plugin polls every 2s; if **all** execution-tree sessions stay `idle` for 10s, it wakes the structural root with `prompts/watchdog-root-wake.md` to snapshot teammates and unblock stalled coordination (30s cooldown between wakes). Watchdog **pauses** after the structural root `gatehouse_send_message`s lead (awaiting reply) and **resumes** on any `send_message` to a tree member (`recipient=<node_id>` or inner session).
+**Execution-tree watchdog:** while a mission is `running` (no retro fork), the plugin polls every 2s; if **all** execution-tree sessions stay `idle` for 10s, it wakes the structural root with `prompts/architect/watchdog-root-wake.md` (multi-node) or `watchdog-root-wake-solo.md` (solo root) to unblock stalled work (30s cooldown between wakes). Watchdog **pauses** after the structural root `gatehouse_send_message`s lead (awaiting reply) and **resumes** on any `send_message` to a tree member (`recipient=<node_id>` or inner session).
 
 **Retro / skill record watchdogs:** two independent pollers (same 2s / 10s idle / 30s cooldown). While `gatehouse_retro_record` or `gatehouse_skill_extract_record` completions are still pending, if **all** expected retro or exec sessions are idle for 10s, Gatehouse notifies each **pending** agent with `watchdog-retro-record-wake.md` or `watchdog-skill-record-wake.md` to finish and call the record tool.
 
@@ -120,7 +120,7 @@ Creates `.gatehouse/` with:
 - `skills/arbiter-meta/SKILL.md`（`arbiter-meta`）
 - `config.yaml` — global `~/.config/gatehouse/config.yaml` + project `.gatehouse/config.yaml` (Portal brand, ICP, **outer team display names**, per-role `models`)
 - `skills/by-domain/` + `skills/domains.yaml` (curator assigns domains after bootstrap; Gatehouse delivers skill-extract prompts on retro)
-- empty `architect/trees/`, `architect/trees-index.yaml` (missions written after lead confirms)
+- empty `trees/`, `trees-index.yaml` (missions written after lead confirms)
 
 ## 测试用示例任务（core-example-smoke-v1）
 
@@ -130,7 +130,7 @@ Creates `.gatehouse/` with:
 bun run --cwd packages/core test
 ```
 
-手动 OpenCode smoke：将 `test/fixtures/core-example-smoke-v1/` 复制到项目的 `.gatehouse/architect/trees/`，再按 fixture 内 `missions.yaml` 走任务流程。
+手动 OpenCode smoke：将 `test/fixtures/core-example-smoke-v1/` 复制到项目的 `.gatehouse/trees/`，再按 fixture 内 `missions.yaml` 走任务流程。
 
 ## Legacy
 

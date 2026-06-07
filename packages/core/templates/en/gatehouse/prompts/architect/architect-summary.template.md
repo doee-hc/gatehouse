@@ -1,6 +1,6 @@
 # {{architect_name}} retro rollup template
 
-Write to: `.gatehouse/architect/trees/<mission_id>/reports/architect-summary.md`
+Write to: `.gatehouse/trees/<mission_id>/reports/architect-summary.md`
 
 ---
 

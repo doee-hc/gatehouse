@@ -119,7 +119,8 @@ describe("example flow", () => {
       )
       expect(manifest?.nodes["node-doc"]?.description).toBe("文档执行成员，负责 README 示例章节")
       expect(sessionCounter).toBe(2)
-      expect(kickoffTexts.some((text) => text.includes("来自 Archie"))).toBe(true)
+      expect(kickoffTexts.some((text) => text.includes("来自 Gatehouse"))).toBe(true)
+      expect(kickoffTexts.some((text) => text.includes("执行启动"))).toBe(true)
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

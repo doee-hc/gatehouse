@@ -23,10 +23,10 @@ afterEach(async () => {
 
 test("resolveBlogPostId maps known report paths", () => {
   expect(resolveBlogPostId(".gatehouse/lead/reports/m1/report.md")).toBe("m1:lead:report")
-  expect(resolveBlogPostId(".gatehouse/architect/trees/m1/reports/architect-summary.md")).toBe(
+  expect(resolveBlogPostId(".gatehouse/trees/m1/reports/architect-summary.md")).toBe(
     "m1:architect:summary",
   )
-  expect(resolveBlogPostId(".gatehouse/architect/trees/m1/reports/nodes/n1-retro.md")).toBe("m1:retro:n1")
+  expect(resolveBlogPostId(".gatehouse/trees/m1/reports/nodes/n1-retro.md")).toBe("m1:retro:n1")
   expect(resolveBlogPostId(".gatehouse/skills/by-domain/dft/x/SKILL.md")).toBe("skill:dft:x")
 })
 
@@ -38,7 +38,7 @@ test("blogMissionIdFromPostId extracts mission id", () => {
 
 test("blogPostRelPath inverts post ids", () => {
   expect(blogPostRelPath("m1:lead:report")).toBe(".gatehouse/lead/reports/m1/report.md")
-  expect(blogPostRelPath("m1:retro:n1")).toBe(".gatehouse/architect/trees/m1/reports/nodes/n1-retro.md")
+  expect(blogPostRelPath("m1:retro:n1")).toBe(".gatehouse/trees/m1/reports/nodes/n1-retro.md")
 })
 
 test("publishBlogPost writes manifest and supports republish", async () => {

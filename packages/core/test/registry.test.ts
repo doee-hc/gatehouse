@@ -514,7 +514,7 @@ describe("registry harness", () => {
         sessionId: "ses_retro_root",
       })
       store.beginRetroRun("m1", ["node-root"])
-      const reportRel = ".gatehouse/architect/trees/m1/reports/nodes/node-root-retro.md"
+      const reportRel = ".gatehouse/trees/m1/reports/nodes/node-root-retro.md"
       await Bun.write(path.join(dir, reportRel), "# retro\n")
       await store.recordRetroCompletion({
         missionId: "m1",
@@ -736,6 +736,14 @@ describe("applyGatehouseConfig", () => {
     expect(permission.gatehouse_send_message).toBe("allow")
     expect(permission.gatehouse_retro_record).toBe("allow")
     expect(permission.gatehouse_skill_extract_record).toBe("allow")
+    expect(permission.gatehouse_mission_current).toBe("deny")
+    const coordinatorTools = agents["build-coordinator"]?.tools as Record<string, boolean>
+    expect(coordinatorTools.gatehouse_mission_current).toBe(false)
+
+    const buildPermission = agents["build"]?.permission as Record<string, string>
+    expect(buildPermission.gatehouse_mission_current).toBe("deny")
+    const buildTools = agents["build"]?.tools as Record<string, boolean>
+    expect(buildTools.gatehouse_mission_current).toBe(false)
   })
 
   test("sets global gatehouse_skill_extract_record for inner build profiles", async () => {

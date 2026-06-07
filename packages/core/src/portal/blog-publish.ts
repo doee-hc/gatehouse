@@ -1,5 +1,5 @@
 import path from "node:path"
-import { gatehouseRoot } from "../paths.ts"
+import { architectSummaryRelPath, gatehouseRoot, retroNodeReportRelPath, rootDeliveryRelPath } from "../paths.ts"
 import { isRecord, parseYaml, readString, stringifyYaml } from "../yaml.ts"
 import { requestPortalBlogCacheRefresh } from "./blog-cache-sync.ts"
 
@@ -30,15 +30,15 @@ export function leadBlogReportRel(missionId: string) {
 }
 
 export function architectBlogSummaryRel(missionId: string) {
-  return path.join(".gatehouse", "architect", "trees", missionId, "reports", "architect-summary.md")
+  return architectSummaryRelPath(missionId)
 }
 
 export function rootBlogDeliveryRel(missionId: string) {
-  return path.join(".gatehouse", "architect", "trees", missionId, "reports", "root-delivery.md")
+  return rootDeliveryRelPath(missionId)
 }
 
 export function retroBlogNodeRel(missionId: string, nodeId: string) {
-  return path.join(".gatehouse", "architect", "trees", missionId, "reports", "nodes", `${nodeId}-retro.md`)
+  return retroNodeReportRelPath(missionId, nodeId)
 }
 
 export function skillBlogRel(domain: string, skillName: string) {
@@ -51,13 +51,13 @@ export function resolveBlogPostId(reportPath: string) {
   const leadMatch = rel.match(/^\.gatehouse\/lead\/reports\/([^/]+)\/report\.md$/)
   if (leadMatch?.[1]) return `${leadMatch[1]}:lead:report`
 
-  const architectMatch = rel.match(/^\.gatehouse\/architect\/trees\/([^/]+)\/reports\/architect-summary\.md$/)
+  const architectMatch = rel.match(/^\.gatehouse\/trees\/([^/]+)\/reports\/architect-summary\.md$/)
   if (architectMatch?.[1]) return `${architectMatch[1]}:architect:summary`
 
-  const rootMatch = rel.match(/^\.gatehouse\/architect\/trees\/([^/]+)\/reports\/root-delivery\.md$/)
+  const rootMatch = rel.match(/^\.gatehouse\/trees\/([^/]+)\/reports\/root-delivery\.md$/)
   if (rootMatch?.[1]) return `${rootMatch[1]}:root:delivery`
 
-  const retroMatch = rel.match(/^\.gatehouse\/architect\/trees\/([^/]+)\/reports\/nodes\/([^/]+)-retro\.md$/)
+  const retroMatch = rel.match(/^\.gatehouse\/trees\/([^/]+)\/reports\/nodes\/([^/]+)-retro\.md$/)
   if (retroMatch?.[1] && retroMatch[2]) return `${retroMatch[1]}:retro:${retroMatch[2]}`
 
   const skillMatch = rel.match(/^\.gatehouse\/skills\/by-domain\/([^/]+)\/([^/]+)\/SKILL\.md$/)

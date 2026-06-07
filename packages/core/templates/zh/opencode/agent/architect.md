@@ -49,8 +49,8 @@ tools:
 
 ## 会话开场
 
-1. 等 {{lead_name}} `gatehouse_mission_start`（registry 自动投递启动通知；任务全文用 `gatehouse_mission_current`）。
-2. `gatehouse_mission_current` → 写 `teamspec.yaml`（**无** skill_domain）→ `gatehouse_bootstrap_tree`（仅唤醒 {{curator_name}} 分配 skill_domain，**不**创建执行 session）→ **退出执行环**；{{curator_name}} `apply_skill_domains` 后执行团队自动启动。
+1. 等 {{lead_name}} `gatehouse_mission_start`（registry 自动投递启动通知，**含任务快照**；必要时 `gatehouse_mission_current` 刷新）。
+2. 写 `teamspec.yaml`（**无** skill_domain）→ `gatehouse_bootstrap_tree`（仅唤醒 {{curator_name}} 分配 skill_domain，**不**创建执行 session）→ **退出执行环**；{{curator_name}} `apply_skill_domains` 后执行团队自动启动。
 3. 复盘收齐后写 `architect-summary.md` → `gatehouse_publish_blog(report_path=...)` → `gatehouse_send_message(recipient="lead", ...)`。
 
 **禁止**：`gatehouse_mission_retro`、`gatehouse_mission_complete`、改任务正文、分配 skill_domain、执行期跟进进度或循环 `session_snapshot` 轮询。

@@ -7,6 +7,7 @@ import { loadLeadPrompt } from "../prompt/lead.ts"
 import {
   LEAD_OPENCODE,
   INNER_COORDINATOR_AGENT,
+  INNER_EXECUTION_AGENT,
   ARCHITECT_OPENCODE,
   ARBITER_OPENCODE,
   CURATOR_OPENCODE,
@@ -16,6 +17,7 @@ import {
   architectSessionPermissions,
   curatorSessionPermissions,
   buildCoordinatorPermissions,
+  buildExecutionPermissions,
   arbiterSessionPermissions,
   globalGatehousePermissions,
   hiddenToolsFromPermissions,
@@ -115,11 +117,19 @@ export async function applyGatehouseConfig(cfg: Config, projectDirectory?: strin
     INNER_COORDINATOR_AGENT,
     {
       mode: "primary",
-      description: "Mission 执行团队中间协调层 — 与 build 相同权限，禁止 task 生成 subagent",
+      description: "Mission 执行团队协调层（含任务协调者与中间协调层）— 与 build 相同权限，禁止 task 生成 subagent",
       color: "#4A90A4",
     },
     buildCoordinatorPermissions,
     hiddenToolsFromPermissions(buildCoordinatorPermissions),
+  )
+
+  mergeAgent(
+    agents,
+    INNER_EXECUTION_AGENT,
+    {},
+    buildExecutionPermissions,
+    hiddenToolsFromPermissions(buildExecutionPermissions),
   )
 
   mergeAgent(
@@ -183,6 +193,13 @@ export async function applyGatehouseConfig(cfg: Config, projectDirectory?: strin
     },
     buildCoordinatorPermissions,
     hiddenToolsFromPermissions(buildCoordinatorPermissions),
+  )
+  mergeAgent(
+    agents,
+    INNER_EXECUTION_AGENT,
+    {},
+    buildExecutionPermissions,
+    hiddenToolsFromPermissions(buildExecutionPermissions),
   )
   mergeAgent(
     agents,

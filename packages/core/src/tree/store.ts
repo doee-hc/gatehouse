@@ -2,10 +2,11 @@ import { existsSync, readFileSync } from "node:fs"
 import path from "node:path"
 import { RegistryDatabase } from "../registry/db.ts"
 import {
-  architectDir,
   gatehouseRoot,
-  manifestPath,
-  retroManifestPath,
+  legacyManifestPath,
+  legacyRetroManifestPath,
+  manifestExportPath,
+  retroManifestExportPath,
   teamSpecPath,
   treeDir,
   treesIndexPath,
@@ -31,15 +32,25 @@ function treeRegistry(projectDirectory: string, readonly?: boolean) {
 }
 
 async function readManifestYamlExport(projectDirectory: string, missionId: string) {
-  const text = await readText(manifestPath(projectDirectory, missionId))
-  if (!text) return undefined
-  return parseTreeManifest(text)
+  for (const filePath of [
+    manifestExportPath(projectDirectory, missionId),
+    legacyManifestPath(projectDirectory, missionId),
+  ]) {
+    const text = await readText(filePath)
+    if (text) return parseTreeManifest(text)
+  }
+  return undefined
 }
 
 function readManifestYamlExportSync(projectDirectory: string, missionId: string) {
-  const file = manifestPath(projectDirectory, missionId)
-  if (!existsSync(file)) return undefined
-  return parseTreeManifest(readFileSync(file, "utf8"))
+  for (const filePath of [
+    manifestExportPath(projectDirectory, missionId),
+    legacyManifestPath(projectDirectory, missionId),
+  ]) {
+    if (!existsSync(filePath)) continue
+    return parseTreeManifest(readFileSync(filePath, "utf8"))
+  }
+  return undefined
 }
 
 async function importManifestFromYamlExport(projectDirectory: string, missionId: string) {
@@ -56,17 +67,17 @@ function importManifestFromYamlExportSync(projectDirectory: string, missionId: s
   return manifest
 }
 
-/** Write manifest.yaml for human inspection; runtime reads registry.db only. */
+/** Write manifest YAML under internal/exports for human inspection; runtime reads registry.db only. */
 export async function exportTreeManifestYaml(projectDirectory: string, manifest: TreeManifest) {
-  const dir = treeDir(projectDirectory, manifest.mission_id)
-  await Bun.$`mkdir -p ${dir}`.quiet()
-  await writeText(manifestPath(projectDirectory, manifest.mission_id), stringifyYaml(manifest))
+  const filePath = manifestExportPath(projectDirectory, manifest.mission_id)
+  await Bun.$`mkdir -p ${path.dirname(filePath)}`.quiet()
+  await writeText(filePath, stringifyYaml(manifest))
 }
 
 export async function exportRetroManifestYaml(projectDirectory: string, retro: RetroManifest) {
-  const dir = treeDir(projectDirectory, retro.mission_id)
-  await Bun.$`mkdir -p ${dir}`.quiet()
-  await writeText(retroManifestPath(projectDirectory, retro.mission_id), stringifyYaml(retro))
+  const filePath = retroManifestExportPath(projectDirectory, retro.mission_id)
+  await Bun.$`mkdir -p ${path.dirname(filePath)}`.quiet()
+  await writeText(filePath, stringifyYaml(retro))
 }
 
 export async function readTeamSpecFile(projectDirectory: string, missionId: string) {
@@ -105,7 +116,14 @@ export async function writeManifest(projectDirectory: string, manifest: TreeMani
 }
 
 async function readRetroManifestYamlExport(projectDirectory: string, missionId: string) {
-  const text = await readText(retroManifestPath(projectDirectory, missionId))
+  let text: string | undefined
+  for (const filePath of [
+    retroManifestExportPath(projectDirectory, missionId),
+    legacyRetroManifestPath(projectDirectory, missionId),
+  ]) {
+    text = await readText(filePath)
+    if (text) break
+  }
   if (!text) return undefined
   const raw = parseYaml(text)
   if (!isRecord(raw)) throw new Error("retro-manifest must be a mapping")
@@ -175,26 +193,30 @@ function parseTreesIndex(text: string): TreesIndex {
   return { trees }
 }
 
+function readTreesIndexFromDb(projectDirectory: string): TreesIndex {
+  const dbPath = path.join(gatehouseRoot(projectDirectory), "registry.db")
+  if (!existsSync(dbPath)) return { trees: [] }
+  return treeRegistry(projectDirectory, true).listTreesIndex()
+}
+
 export function readTreesIndexSync(projectDirectory: string): TreesIndex {
+  const fromDb = readTreesIndexFromDb(projectDirectory)
+  if (fromDb.trees.length > 0) return fromDb
   const file = treesIndexPath(projectDirectory)
   if (!existsSync(file)) return { trees: [] }
   return parseTreesIndex(readFileSync(file, "utf8"))
 }
 
 export async function readTreesIndex(projectDirectory: string): Promise<TreesIndex> {
+  const fromDb = readTreesIndexFromDb(projectDirectory)
+  if (fromDb.trees.length > 0) return fromDb
   const text = await readText(treesIndexPath(projectDirectory))
   if (!text) return { trees: [] }
   return parseTreesIndex(text)
 }
 
-export async function upsertTreesIndex(projectDirectory: string, entry: TreesIndexEntry) {
-  const index = await readTreesIndex(projectDirectory)
-  const trees = index.trees.filter((item) => item.mission_id !== entry.mission_id)
-  trees.push(entry)
-  trees.sort((a, b) => b.created_at.localeCompare(a.created_at))
-  await Bun.$`mkdir -p ${architectDir(projectDirectory)}`.quiet()
-  await writeText(treesIndexPath(projectDirectory), stringifyYaml({ trees }))
-}
+/** @deprecated Trees index is derived from registry.db; kept as a no-op for callers. */
+export async function upsertTreesIndex(_projectDirectory: string, _entry: TreesIndexEntry) {}
 
 export async function findMissionBySession(projectDirectory: string, sessionId: string) {
   const byExec = treeRegistry(projectDirectory, true).findTreeManifestByExecSession(sessionId)

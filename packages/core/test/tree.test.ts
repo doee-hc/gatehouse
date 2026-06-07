@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import {
   childNodeIds,
+  isSoloExecutionTeam,
   manifestMembers,
   managerRetroOrder,
   parseTeamSpec,
@@ -180,5 +181,23 @@ nodes:
 `)
     expect(childNodeIds(manifest, "root")).toEqual([])
     expect(managerRetroOrder(manifest)).toEqual(["root"])
+    expect(isSoloExecutionTeam(manifest)).toBe(true)
+  })
+
+  test("isSoloExecutionTeam is false for multi-node trees", () => {
+    const manifest = parseTreeManifest(`
+mission_id: multi
+status: running
+root_node: root
+created_at: "2026-01-01T00:00:00Z"
+nodes:
+  root:
+    session_id: s1
+    parent: null
+  leaf:
+    session_id: s2
+    parent: root
+`)
+    expect(isSoloExecutionTeam(manifest)).toBe(false)
   })
 })

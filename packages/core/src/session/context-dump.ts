@@ -1,6 +1,6 @@
 import path from "node:path"
 import { mkdir } from "node:fs/promises"
-import { contextDir, contextIndexRelPath, nodeContextDir, nodeContextRelDir } from "../paths.ts"
+import { contextDir, contextIndexRelPath, nodeContextDir, nodeContextRelDir, treeRelDir } from "../paths.ts"
 import { aggregateSessionMetrics, mergeSessionMetrics, type SessionMetrics } from "../metrics/aggregate.ts"
 import { managerRetroOrder } from "../tree/parse.ts"
 import type { TreeManifest, TreeNode } from "../tree/types.ts"
@@ -329,14 +329,7 @@ export async function dumpMissionContext(input: {
   )
 
   const contextRoot = contextDir(input.projectDirectory, input.manifest.mission_id)
-  const subtreeMetricsRel = path.join(
-    ".gatehouse",
-    "architect",
-    "trees",
-    input.manifest.mission_id,
-    "context",
-    "subtree-metrics.json",
-  )
+  const subtreeMetricsRel = path.join(treeRelDir(input.manifest.mission_id), "context", "subtree-metrics.json")
   await mkdir(contextRoot, { recursive: true })
   await Bun.write(
     path.join(contextRoot, "subtree-metrics.json"),

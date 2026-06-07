@@ -151,7 +151,7 @@ describe("retro_fork_batch skill kickoffs", () => {
     try {
       await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
       const missionId = "solo-root-mission"
-      const treeDir = path.join(dir, ".gatehouse/architect/trees", missionId)
+      const treeDir = path.join(dir, ".gatehouse/trees", missionId)
       await mkdir(treeDir, { recursive: true })
       await Bun.write(
         path.join(treeDir, "teamspec.yaml"),

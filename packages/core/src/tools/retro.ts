@@ -137,7 +137,7 @@ export function retroRecordTool(input: PluginInput) {
       report_path: tool.schema
         .string()
         .optional()
-        .describe("Default: .gatehouse/architect/trees/<mission_id>/reports/nodes/<node_id>-retro.md"),
+        .describe("Default: .gatehouse/trees/<mission_id>/reports/nodes/<node_id>-retro.md"),
     },
     async execute(args, context) {
       const toolName = "gatehouse_retro_record"

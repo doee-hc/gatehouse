@@ -25,7 +25,7 @@ disable-model-invocation: true
 0. **Team ready** — On first conversation: `gatehouse_list_team()` and check `ready` for `architect|curator|arbiter` in `outer`; if any `ready: false`, call `gatehouse_init_team` (register {{architect_name}}, {{curator_name}}, {{arbiter_name}} sessions).
 1. **Direction** — Read queue and past feedback; propose a Mission (objective / done_when draft).
 2. **Start** — Write full fields for the mission in `missions.yaml` (`status: queued`) → `gatehouse_mission_start(mission_id=...)` (registry snapshot, `running`, auto-notify {{architect_name}}). After start succeeds, do not `send_message` {{architect_name}} to repeat objective. **Do not edit mission body while running/retro**; use `gatehouse_mission_complete` / `gatehouse_mission_retro` for status changes.
-3. **Acceptance** — After task coordinator notifies you, read `architect/trees/<id>/reports/` against `done_when` → write `report.md` → `gatehouse_publish_blog(report_path=.gatehouse/lead/reports/<id>/report.md)` for user confirmation.
+3. **Acceptance** — After task coordinator `send_message` (auto-includes **done_when checklist**), read `trees/<id>/reports/` against the checklist → write `report.md` → `gatehouse_publish_blog(report_path=.gatehouse/lead/reports/<id>/report.md)` for user confirmation.
    - **Accept**: `user-feedback.md` → `gatehouse_mission_retro` (sets `retro`, forks retro sessions) → after retro completes and {{architect_name}} summarizes, `gatehouse_mission_complete(status=done)` → revise this skill.
    - **Cancel / no retro / stop mid-flight**: `gatehouse_mission_complete` (`status=cancelled` or `done`); **do not** hand-edit `cancelled`/`done` in `missions.yaml`.
    - **Improve**: `user-feedback.md` → `send_message(recipient="<root_node>", ...)` → keep `running`.
@@ -54,7 +54,7 @@ disable-model-invocation: true
 |---------|------|
 | Queue & mission body | `.gatehouse/lead/missions.yaml` |
 | Reports / feedback | `.gatehouse/lead/reports/<id>/report.md`, `user-feedback.md` |
-| Execution archive | `.gatehouse/architect/trees/<id>/` (teamspec, manifest, reports) |
+| Execution archive | `.gatehouse/trees/<id>/` (teamspec, reports); runtime topology in `registry.db` |
 
 Template: `.gatehouse/lead/missions.template.yaml` (if present) or field example below.
 

@@ -25,7 +25,7 @@ disable-model-invocation: true
 0. **团队就绪** — 首次对话：`gatehouse_list_team()` 查看 `outer` 中 `architect|curator|arbiter` 的 `ready`；任一 `ready: false` 则 `gatehouse_init_team`（登记{{architect_name}}、{{curator_name}}、{{arbiter_name}} session）。
 1. **定方向** — 读队列与历史评价，提议任务（objective / done_when 草案）。
 2. **启动** — 在 `missions.yaml` 为该任务写全字段（`status: queued`）→ `gatehouse_mission_start(mission_id=...)`（写入 registry 快照、`running`、自动通知{{architect_name}}）。start 成功后无需再向{{architect_name}} `send_message` 复述 objective。**running/retro 期间勿改正文**；改状态用 `gatehouse_mission_complete` / `gatehouse_mission_retro`。
-3. **验收** — 任务协调者通知后，对照 `done_when` 读 `architect/trees/<id>/reports/` → 写 `report.md` → `gatehouse_publish_blog(report_path=.gatehouse/lead/reports/<id>/report.md)` 请用户确认。
+3. **验收** — 任务协调者 `send_message` 通知后（消息会自动附带 **done_when 清单**），对照清单读 `trees/<id>/reports/` → 写 `report.md` → `gatehouse_publish_blog(report_path=.gatehouse/lead/reports/<id>/report.md)` 请用户确认。
    - **接受**：`user-feedback.md` → `gatehouse_mission_retro`（写入 `retro`、fork 复盘 session）→ 复盘收齐且{{architect_name}}汇总后 `gatehouse_mission_complete(status=done)` → 修订本 skill。
    - **取消 / 不复盘 / 中途停止**：`gatehouse_mission_complete`（`status=cancelled` 或 `done`）；**勿**手改 `missions.yaml` 的 `cancelled`/`done`。
    - **改进**：`user-feedback.md` → `send_message(recipient="<root_node>", ...)` → 保持 `running`。
@@ -54,7 +54,7 @@ disable-model-invocation: true
 |------|------|
 | 队列与任务正文 | `.gatehouse/lead/missions.yaml` |
 | 汇报 / 反馈 | `.gatehouse/lead/reports/<id>/report.md`、`user-feedback.md` |
-| 执行档案 | `.gatehouse/architect/trees/<id>/`（teamspec、manifest、reports） |
+| 执行档案 | `.gatehouse/trees/<id>/`（teamspec、reports）；运行态拓扑在 `registry.db` |
 
 模板：`.gatehouse/lead/missions.template.yaml`（若存在）或直接参照下方字段示例。
 

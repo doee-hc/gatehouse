@@ -63,7 +63,7 @@ describe("mission lifecycle tools", () => {
     try {
       await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
       const missionId = "m-busy"
-      const treeDir = path.join(dir, ".gatehouse/architect/trees", missionId)
+      const treeDir = path.join(dir, ".gatehouse/trees", missionId)
       await mkdir(treeDir, { recursive: true })
       await Bun.write(
         path.join(treeDir, "manifest.yaml"),
@@ -133,7 +133,7 @@ describe("mission lifecycle tools", () => {
     try {
       await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
       const missionId = "m-done"
-      const treeDir = path.join(dir, ".gatehouse/architect/trees", missionId)
+      const treeDir = path.join(dir, ".gatehouse/trees", missionId)
       await mkdir(treeDir, { recursive: true })
       await Bun.write(
         path.join(treeDir, "manifest.yaml"),
@@ -200,7 +200,11 @@ describe("mission lifecycle tools", () => {
       const entry = missions.missions.find((item) => isRecord(item) && item.id === missionId)
       expect(isRecord(entry) && entry.status).toBe("cancelled")
 
-      const manifest = parseYaml(await Bun.file(path.join(treeDir, "manifest.yaml")).text())
+      const manifest = parseYaml(
+        await Bun.file(
+          path.join(dir, ".gatehouse/internal/exports/trees", missionId, "manifest.yaml"),
+        ).text(),
+      )
       expect(isRecord(manifest) && manifest.status).toBe("archived")
     } finally {
       await rm(dir, { recursive: true, force: true })
