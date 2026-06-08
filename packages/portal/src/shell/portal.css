@@ -260,6 +260,11 @@ body {
   box-shadow: 0 0 0 1px #14532d;
 }
 
+.live-dot.offline {
+  background: #94a3b8;
+  box-shadow: 0 0 0 1px #475569;
+}
+
 @keyframes pulse {
   0%,
   100% {
@@ -375,6 +380,10 @@ body {
 
 .esc-status.connected {
   color: var(--esc-hud-text);
+}
+
+.esc-status.offline {
+  color: #94a3b8;
 }
 
 @keyframes blink {

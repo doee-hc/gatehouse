@@ -1,3 +1,5 @@
+import { readLastCachedProjectSlug } from "../portal/offline-cache.ts"
+
 let activeProject: string | undefined
 
 export function portalProjectSlug() {
@@ -26,10 +28,13 @@ export async function resolvePortalProjectSlug() {
   if (explicit) return explicit
 
   const response = await fetch("/portal/api/health", { signal: AbortSignal.timeout(5000) }).catch(() => undefined)
-  if (!response?.ok) return undefined
-  const health = (await response.json()) as { project?: string }
-  if (health.project) setPortalProjectSlug(health.project)
-  return health.project
+  if (response?.ok) {
+    const health = (await response.json()) as { project?: string }
+    if (health.project) setPortalProjectSlug(health.project)
+    return health.project
+  }
+
+  return readLastCachedProjectSlug()
 }
 
 /** @deprecated Use resolvePortalProjectSlug */

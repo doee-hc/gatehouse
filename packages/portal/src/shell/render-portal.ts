@@ -1,4 +1,5 @@
 import type { PortalSnapshot, PortalTreeNode } from "../api/types.ts"
+import { isBackendConnected } from "../portal/connection.ts"
 import { refreshAgentOverlay } from "./agent-overlay.ts"
 import { getBlogSnapshot } from "../portal/state.ts"
 import { renderBlog } from "./blog.ts"
@@ -17,14 +18,22 @@ export function renderPortal(snapshot: PortalSnapshot) {
 function renderStatus(snapshot: PortalSnapshot) {
   const statusLabel = document.getElementById("nav-status-label")
   if (statusLabel) {
-    statusLabel.textContent = snapshot.project
-      ? t("nav.project", { name: snapshot.project })
-      : t("nav.connected")
+    if (!isBackendConnected()) {
+      statusLabel.textContent = t("nav.offline")
+    } else {
+      statusLabel.textContent = snapshot.project
+        ? t("nav.project", { name: snapshot.project })
+        : t("nav.connected")
+    }
   }
 
   const liveDot = document.getElementById("nav-live-dot")
   if (liveDot) {
-    liveDot.className = isPortalLive(snapshot) ? "live-dot live" : "live-dot idle"
+    if (!isBackendConnected()) {
+      liveDot.className = "live-dot offline"
+    } else {
+      liveDot.className = isPortalLive(snapshot) ? "live-dot live" : "live-dot idle"
+    }
   }
 }
 
@@ -48,7 +57,10 @@ function renderOffice(snapshot: PortalSnapshot) {
 
   const escStatus = document.getElementById("esc-status")
   if (escStatus) {
-    if (isPortalLive(snapshot)) {
+    if (!isBackendConnected()) {
+      escStatus.textContent = t("esc.status.offline")
+      escStatus.className = "esc-status offline"
+    } else if (isPortalLive(snapshot)) {
       escStatus.textContent = t("esc.status.live")
       escStatus.className = "esc-status live"
     } else {

@@ -14,12 +14,15 @@ const messages = {
   "nav.connecting": { zh: "连接 Portal API…", en: "Connecting to Portal API…" },
   "nav.waitingApi": { zh: "等待 Portal API ({attempt}/{max})…", en: "Waiting for Portal API ({attempt}/{max})…" },
   "nav.connected": { zh: "已连接", en: "Connected" },
+  "nav.offline": { zh: "后端未连接", en: "Backend offline" },
+  "nav.offlineCache": { zh: "加载离线缓存…", en: "Loading offline cache…" },
   "nav.project": { zh: "项目：{name}", en: "Project: {name}" },
 
   "esc.mission": { zh: "任务 · {id}", en: "Mission · {id}" },
   "esc.missionEmpty": { zh: "任务 · —", en: "Mission · —" },
   "esc.missionLingering": { zh: "待命 · {id}", en: "Standby · {id}" },
   "esc.status.live": { zh: "● LIVE", en: "● LIVE" },
+  "esc.status.offline": { zh: "● 未连接", en: "● OFFLINE" },
   "esc.status.idle": { zh: "● 待命", en: "● Standby" },
   "esc.status.connected": { zh: "● 已连接", en: "● Connected" },
 
@@ -47,6 +50,11 @@ const messages = {
     en: "OpenCode offline — run bun run dev <project> to start the full stack",
   },
   "event.portalStreamReady": { zh: "Portal 事件流已连接", en: "Portal event stream connected" },
+  "event.portalOffline": {
+    zh: "Portal 后端未连接 — 显示离线缓存",
+    en: "Portal backend offline — showing cached snapshot",
+  },
+  "event.portalReconnected": { zh: "Portal 后端已恢复连接", en: "Portal backend reconnected" },
   "event.opencodeConnected": { zh: "OpenCode 已连接", en: "OpenCode connected" },
   "event.opencodeDisconnected": {
     zh: "OpenCode 未连接 — agent 状态无法同步",
