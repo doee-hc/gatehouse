@@ -6,7 +6,7 @@ import {
   readJsonFile,
   writeJsonFile,
   type WeixinCredentials,
-} from "@gatehouse/channels-core"
+} from "@gatehouse/core/channels"
 
 const CREDENTIALS_FILE = "credentials.json"
 

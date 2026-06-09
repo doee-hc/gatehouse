@@ -20,7 +20,7 @@
     "channels:serve": "bun run --cwd packages/core bin/gatehouse.ts channels serve",
     "build": "bun run --cwd packages/core build",
     "typecheck": "bun run --filter '@gatehouse/*' typecheck",
-    "test": "bun run --filter '@gatehouse/{core,channels-core,weixin-bridge,feishu-bridge,qq-bridge}' test"
+    "test": "bun run --filter '@gatehouse/{core,weixin-bridge,feishu-bridge,qq-bridge}' test"
   },
   "prettier": {
     "semi": false,

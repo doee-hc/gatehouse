@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { chunkText } from "../src/text.ts"
+import { chunkText } from "../../src/channels/text.ts"
 
 describe("chunkText", () => {
   test("returns single chunk when under limit", () => {

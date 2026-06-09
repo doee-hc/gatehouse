@@ -8,8 +8,8 @@ import {
   isAgentSwitchable,
   listSwitchableAgents,
   readRegistryAgentById,
-} from "../src/registry/agent-target.ts"
-import { loadAgentDescriptions } from "../src/registry/agent-descriptions.ts"
+} from "../../src/channels/registry/agent-target.ts"
+import { loadAgentDescriptions } from "../../src/channels/registry/agent-descriptions.ts"
 
 function writeRegistry(dir: string, rows: Array<Record<string, string | null>>) {
   const gatehouse = path.join(dir, ".gatehouse")

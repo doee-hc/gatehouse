@@ -112,7 +112,7 @@ For the full user workflow, see the [Getting Started guide](./docs/getting-start
 - **Mission lifecycle** — Queue → execute → review → retrospective → skill distillation; team state persists in the project's `.gatehouse/`.
 - **Self-improvement** — Retrospectives and skill extraction feed back into future Missions as the team evolves with your project.
 - **Portal office** — Phaser pixel-art office: agents at their desks when busy, wandering when idle; includes a blog and Skill tab.
-- **IM channels (optional)** — Chat remotely with any team member via WeChat / Feishu / QQ (see [Channels docs](./packages/channels-core/README.md)).
+- **IM channels (optional)** — Chat remotely with any team member via WeChat / Feishu / QQ ([IM Channels guide](./docs/guide/channels.md)).
 
 ### Configuration
 
@@ -133,6 +133,7 @@ Project config is auto-generated on first OpenCode launch. Details: [Getting Sta
 | [docs/guide/installation.md](./docs/guide/installation.md) | Full installation guide |
 | [packages/core/README.md](./packages/core/README.md) | Plugin tool reference (advanced) |
 | [packages/portal/README.md](./packages/portal/README.md) | Portal development and debugging |
+| [docs/guide/channels.md](./docs/guide/channels.md) | IM channels (WeChat / Feishu / QQ) |
 | [docs/dev.md](./docs/dev.md) | Monorepo development and contributing |
 | [CHANGELOG.md](./CHANGELOG.md) | Release history and known limitations |
 | [docs/README.md](./docs/README.md) | Documentation index |

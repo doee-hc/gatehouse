@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { parseAgentCommand } from "../src/registry/agent-command.ts"
+import { parseAgentCommand } from "../../src/channels/registry/agent-command.ts"
 
 describe("parseAgentCommand", () => {
   test("returns undefined for normal chat", () => {

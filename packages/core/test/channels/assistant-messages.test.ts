@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import {
   collectDeliverableAssistantMessages,
   isDeliverableAssistantMessage,
-} from "../src/opencode/assistant-messages.ts"
+} from "../../src/channels/opencode/assistant-messages.ts"
 
 describe("assistant message delivery", () => {
   test("collects assistant messages after watermark", () => {

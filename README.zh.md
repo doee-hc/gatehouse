@@ -112,7 +112,7 @@ bunx @gatehouse/core doctor
 - **任务生命周期** — 排队 → 执行 → 验收 → 复盘 → 技能沉淀；团队状态持久化在项目 `.gatehouse/` 中。
 - **自我迭代** — 复盘与技能提取会反哺后续任务，团队能力随项目演进。
 - **Portal 办公室** — Phaser 像素风办公室：agent 忙碌时在工位、空闲时走动；附带博客与 Skill Tab。
-- **IM 通道（可选）** — 通过微信 / 飞书 / QQ 与任意团队成员远程对话（见 [Channels 文档](./packages/channels-core/README.md)）。
+- **IM 通道（可选）** — 通过微信 / 飞书 / QQ 与任意团队成员远程对话（[IM 通道指南](./docs/guide/channels.zh.md)）。
 
 ### 配置
 
@@ -133,6 +133,7 @@ Gatehouse 使用两层配置，项目级覆盖全局级：
 | [docs/guide/installation.zh.md](./docs/guide/installation.zh.md) | 完整安装指南 |
 | [packages/core/README.md](./packages/core/README.md) | 插件工具参考（进阶，英文） |
 | [packages/portal/README.md](./packages/portal/README.md) | Portal 开发与调试（英文） |
+| [docs/guide/channels.zh.md](./docs/guide/channels.zh.md) | IM 通道（微信 / 飞书 / QQ） |
 | [docs/dev.md](./docs/dev.md) | 本仓库开发与贡献（英文） |
 | [CHANGELOG.md](./CHANGELOG.md) | 版本历史与已知限制 |
 | [docs/README.zh.md](./docs/README.zh.md) | 文档索引 |

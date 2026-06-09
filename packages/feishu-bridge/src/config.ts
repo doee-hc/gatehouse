@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs"
 import path from "node:path"
-import { resolveChannelStateDir } from "@gatehouse/channels-core"
+import { resolveChannelStateDir } from "@gatehouse/core/channels"
 import type { FeishuBridgeConfig } from "./feishu/types.ts"
 
 function readEnv(name: string, fallback?: string) {

@@ -3,7 +3,7 @@ import { existsSync } from "node:fs"
 import path from "node:path"
 import { describe, expect, test } from "bun:test"
 import { Database } from "bun:sqlite"
-import { readRegistryLeadSessionId } from "../src/registry/agent-target.ts"
+import { readRegistryLeadSessionId } from "../../src/channels/registry/agent-target.ts"
 
 function writeRegistryLead(dir: string, sessionId: string) {
   const gatehouse = path.join(dir, ".gatehouse")

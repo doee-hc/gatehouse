@@ -6,7 +6,7 @@ import {
   startChannelSupervisorFromAdmin,
   stopChannelSupervisorFromAdmin,
   type ChannelId,
-} from "@gatehouse/channels-core"
+} from "../channels/index.ts"
 import { gatehousePackageRoot } from "../setup/package.ts"
 import { adminAuthStatus, createAdminSession, validateAdminToken } from "./admin-auth.ts"
 

@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs"
 import path from "node:path"
-import { ensurePortalAdminKey } from "@gatehouse/channels-core"
+import { ensurePortalAdminKey } from "./channels/portal/config.ts"
 import { configYamlTemplate } from "./gatehouse-config.ts"
 import { GATEHOUSE_LOCALES } from "./locale.ts"
 import { readAgentNamesSync, renderGatehouseTemplate } from "./names.ts"

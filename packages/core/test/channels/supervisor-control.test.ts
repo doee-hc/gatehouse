@@ -7,7 +7,7 @@ import {
   enqueueSupervisorControl,
   resolveGatehouseCliEntry,
   supervisorControlPath,
-} from "../src/supervisor/index.ts"
+} from "../../src/channels/supervisor/index.ts"
 
 function tempProject() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "gatehouse-control-"))
@@ -40,7 +40,7 @@ describe("supervisor control", () => {
     dirs.push(projectDir)
     fs.mkdirSync(path.join(projectDir, ".gatehouse"), { recursive: true })
     fs.writeFileSync(path.join(projectDir, ".gatehouse/core.path"), "/tmp/stale-pack\n")
-    const fallback = path.resolve(import.meta.dir, "../../core")
+    const fallback = path.resolve(import.meta.dir, "../..")
     const cli = resolveGatehouseCliEntry(projectDir, fallback)
     expect(cli).toBe(path.join(fallback, "bin", "gatehouse.ts"))
   })

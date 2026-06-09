@@ -9,7 +9,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@gatehouse/channels-core": "0.1.0",
+    "@gatehouse/core": "0.1.1",
     "@opencode-ai/sdk": "^1.15.13",
     "qq-official-bot": "^1.2.1"
   },

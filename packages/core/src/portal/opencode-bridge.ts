@@ -1,4 +1,4 @@
-import { runOpencodeEventLoop } from "@gatehouse/channels-core"
+import { runOpencodeEventLoop } from "../channels/opencode/events.ts"
 import { gatehouseLog } from "../log.ts"
 import { agentSync } from "./agent-sync.ts"
 

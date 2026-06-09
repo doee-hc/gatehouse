@@ -10,7 +10,7 @@ import {
   runChannelsDoctor,
   stopSupervisorProcess,
   type ChannelId,
-} from "@gatehouse/channels-core"
+} from "../channels/index.ts"
 
 type ParsedArgs = {
   projectDir?: string

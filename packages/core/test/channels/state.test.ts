@@ -7,7 +7,7 @@ import {
   isMessageProcessed,
   rememberLastMessage,
   setActiveAgentId,
-} from "../src/store/state.ts"
+} from "../../src/channels/store/state.ts"
 
 const tempDirs: string[] = []
 
@@ -18,7 +18,7 @@ afterEach(() => {
 })
 
 function tempStateDir() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "channels-core-state-"))
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "gh-channels-state-"))
   tempDirs.push(dir)
   return dir
 }

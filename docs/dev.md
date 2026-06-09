@@ -11,10 +11,11 @@ For Gatehouse repository contributors and plugin developers. User installation a
 
 | Package | npm name | Description |
 |---|---|---|
-| `packages/core` | `@gatehouse/core` | Main plugin (server + TUI + CLI + Portal API) |
+| `packages/core` | `@gatehouse/core` | Main plugin (server + TUI + CLI + Portal API + IM **channels** at `src/channels/`) |
 | `packages/portal` | `@gatehouse/portal` | Portal UI (build output merged into core `dist/portal/`) |
-| `packages/channels-core` | `@gatehouse/channels-core` | Shared IM channel bridge library |
-| `packages/*-bridge` | `@gatehouse/*-bridge` | WeChat / Feishu / QQ bridges |
+| `packages/*-bridge` | `@gatehouse/*-bridge` | WeChat / Feishu / QQ bridges (depend on `@gatehouse/core`, import `@gatehouse/core/channels`) |
+
+IM channels user guide: [guide/channels.md](./guide/channels.md) · [guide/channels.zh.md](./guide/channels.zh.md). Source: `packages/core/src/channels/`.
 
 ## Local Development
 
@@ -56,7 +57,7 @@ See [packages/portal/README.md](../packages/portal/README.md).
 | Command | Description |
 |---------|-------------|
 | `bun run typecheck` | Typecheck entire monorepo |
-| `bun run test` | Run core, channels-core, and all three bridge tests |
+| `bun run test` | Run core and all three bridge tests |
 | `bun run build` | Build core (includes Portal static assets) |
 | `bun run --cwd packages/core pack` | Pack before publish |
 | `bun run channels --help` | IM channels CLI |

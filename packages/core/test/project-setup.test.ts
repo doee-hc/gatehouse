@@ -253,10 +253,10 @@ describe("project setup", () => {
     })
   })
 
-  test("ensureOpencodeConfig preserves channels-core plugin in local dev mode", async () => {
+  test("ensureOpencodeConfig preserves channels plugin in local dev mode", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-channels-config-"))
     const pluginRoot = path.join(import.meta.dir, "..")
-    const channelsSpec = pathToFileURL(path.resolve(import.meta.dir, "../../channels-core")).href
+    const channelsSpec = pathToFileURL(path.join(pluginRoot, "src/channels/plugin/index.ts")).href
     try {
       await Bun.write(
         projectOpencodeConfigPath(dir),

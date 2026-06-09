@@ -1,6 +1,4 @@
 import { existsSync, readFileSync } from "node:fs"
-import { homedir } from "node:os"
-import path from "node:path"
 import { DEFAULT_AGENT_ID } from "../constants.ts"
 import type { OpencodeClient } from "../opencode/client.ts"
 import { gatehouseConfigPath } from "../portal/config.ts"
@@ -11,6 +9,7 @@ import {
   type RegistryAgentTarget,
 } from "./agent-target.ts"
 import { upsertLeadRegistryAgent } from "./registry-write.ts"
+import { loadLeadPrompt } from "../../prompt/lead.ts"
 
 const LEAD_OPENCODE = "lead"
 
@@ -61,36 +60,12 @@ function responseSessionId(value: unknown) {
   if (isRecord(value.data) && typeof value.data.id === "string") return value.data.id
 }
 
-function stripMarkdownFrontmatter(text: string) {
-  if (!text.startsWith("---")) return text.trim()
-  const end = text.indexOf("\n---", 3)
-  if (end === -1) return text.trim()
-  return text.slice(end + 4).trim()
-}
-
-function globalOpencodeAgentPath(filename: string) {
-  const fromEnv = process.env.GATEHOUSE_GLOBAL_OPENCODE_DIR?.trim()
-  const root = fromEnv ? path.resolve(fromEnv) : path.join(homedir(), ".config", "opencode")
-  return path.join(root, "agent", filename)
-}
-
-async function resolveLeadPromptPath() {
-  const global = globalOpencodeAgentPath("lead.md")
-  if (await Bun.file(global).exists()) return global
-  return undefined
-}
-
-function renderLeadPrompt(template: string, displayName: string) {
-  return template
-    .replaceAll("{{name}}", displayName)
-    .replaceAll("{{lead_name}}", displayName)
-}
-
 async function loadLeadSystemPrompt(projectDir: string) {
-  const file = await resolveLeadPromptPath()
-  if (!file) return undefined
-  const template = stripMarkdownFrontmatter(await Bun.file(file).text())
-  return renderLeadPrompt(template, readLeadDisplayName(projectDir))
+  try {
+    return await loadLeadPrompt(projectDir)
+  } catch {
+    return undefined
+  }
 }
 
 async function createLeadOpencodeSession(client: OpencodeClient, config: ChannelBridgeConfig) {

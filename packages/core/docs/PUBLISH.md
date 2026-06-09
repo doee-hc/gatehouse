@@ -1,11 +1,10 @@
 # Publishing `@gatehouse/core`
 
-`@gatehouse/core` depends on **`@gatehouse/channels-core`** (shared IM channel logic). Publish **channels-core first**, then core.
-
 | Package | Contents |
 |---------|----------|
-| `@gatehouse/channels-core` | Shared channel bridge logic + OpenCode plugin entry |
-| `@gatehouse/core` | OpenCode server + TUI plugins, `.gatehouse` templates, Portal UI (`dist/portal/`), **bundled IM bridges** (`bridges/`) |
+| `@gatehouse/core` | OpenCode server + TUI plugins, `.gatehouse` templates, Portal UI (`dist/portal/`), **channels** (`src/channels/`), bundled IM bridges (`bridges/`) |
+
+IM channel logic and the OpenCode plugin entry **`@gatehouse/core/channels/plugin`** ship inside `@gatehouse/core`.
 
 `bun run build` copies `packages/*-bridge/src` into `packages/core/bridges/`. `bunx @gatehouse/core channels serve` resolves bridge entrypoints from the installed `@gatehouse/core` package (via `.gatehouse/core.path`). Separate `@gatehouse/*-bridge` npm packages are **not** required for end users.
 
@@ -19,7 +18,7 @@ Release notes for each version: [CHANGELOG.md](../../../CHANGELOG.md) at the rep
 
 ## npm organization `@gatehouse`
 
-The first publish must go to the scoped packages `@gatehouse/channels-core` and `@gatehouse/core`. Create the org **before** running `npm publish`.
+The first publish must go to the scoped package `@gatehouse/core`. Create the org **before** running `npm publish`.
 
 ### 1. Create the organization (one-time)
 
@@ -43,14 +42,11 @@ npm org ls gatehouse
 
 You should see your npm user listed as **owner** or **developer** on the org.
 
-### 3. Verify packages are not yet published (expected before first release)
+### 3. Verify package is not yet published (expected before first release)
 
 ```bash
 curl -fsS "https://registry.npmjs.org/@gatehouse%2fcore" || echo "@gatehouse/core not published yet"
-curl -fsS "https://registry.npmjs.org/@gatehouse%2fchannels-core" || echo "@gatehouse/channels-core not published yet"
 ```
-
-Both commands should return **404 / not found** until the first successful publish.
 
 ## Build
 
@@ -78,18 +74,12 @@ bun run dev /path/to/project
 
 ## Publish to npm
 
-`packages/core/package.json` pins `@gatehouse/channels-core` to the same semver as `packages/channels-core/package.json` (monorepo workspaces still link locally during dev).
-
-1. Bump **both** package versions together when releasing; update [CHANGELOG.md](../../../CHANGELOG.md).
+1. Bump `packages/core/package.json` version; update [CHANGELOG.md](../../../CHANGELOG.md).
 2. Log in: `npm login`
-3. Publish **channels-core**, then **core**:
+3. Publish **core**:
 
 ```bash
-cd packages/channels-core
-bun run pack   # optional local .tgz check
-npm publish --access public
-
-cd ../core
+cd packages/core
 bun run pack
 npm publish --access public
 ```
@@ -100,8 +90,6 @@ npm publish --access public
 git tag v0.1.0
 git push origin v0.1.0
 ```
-
-`bun run pack` in core fails if `@gatehouse/channels-core` is still `workspace:*` or version-mismatched.
 
 ## User setup (recommended)
 

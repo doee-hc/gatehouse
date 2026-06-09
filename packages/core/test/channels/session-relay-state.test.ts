@@ -9,7 +9,7 @@ import {
   listUsersBoundToSession,
   rememberContextToken,
   setLastDeliveredAssistantMessageId,
-} from "../src/store/state.ts"
+} from "../../src/channels/store/state.ts"
 
 const tempDirs: string[] = []
 

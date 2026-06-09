@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test"
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
-import { isMessageKeyProcessed, rememberMessageKey } from "../src/store/state.ts"
+import { isMessageKeyProcessed, rememberMessageKey } from "../../src/channels/store/state.ts"
 
 const tempDirs: string[] = []
 
@@ -13,7 +13,7 @@ afterEach(() => {
 })
 
 function tempStateDir() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "channels-core-key-"))
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "gh-channels-key-"))
   tempDirs.push(dir)
   return dir
 }

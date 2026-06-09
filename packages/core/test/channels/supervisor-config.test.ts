@@ -10,9 +10,9 @@ import {
   updateChannelConfig,
   validateChannelReady,
   weixinCredentialsPath,
-} from "../src/supervisor/config.ts"
-import { resolveBridgeEntry } from "../src/supervisor/resolve-bridge.ts"
-import { writeJsonFile } from "../src/store/files.ts"
+} from "../../src/channels/supervisor/config.ts"
+import { resolveBridgeEntry } from "../../src/channels/supervisor/resolve-bridge.ts"
+import { writeJsonFile } from "../../src/channels/store/files.ts"
 
 const tmpRoots: string[] = []
 

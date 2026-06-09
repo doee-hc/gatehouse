@@ -13,7 +13,7 @@ import {
   verifyOpencode,
   type ChannelPromptFile,
   type OpencodeClient,
-} from "@gatehouse/channels-core"
+} from "@gatehouse/core/channels"
 import path from "node:path"
 import { Bot, ReceiverMode, segment, type PrivateMessageEvent } from "qq-official-bot"
 import { normalizePrivateMessage, unsupportedMediaReply } from "./qq/inbound.ts"

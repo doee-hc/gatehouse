@@ -5,6 +5,14 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **IM channels merged into `@gatehouse/core`** — channel bridge logic now lives at `@gatehouse/core/channels` (`packages/core/src/channels/`).
+- **OpenCode channels plugin** — `@gatehouse/core/channels/plugin` in project `opencode.jsonc`.
+- **Docs** — unified IM guide: [docs/guide/channels.md](./docs/guide/channels.md) / [docs/guide/channels.zh.md](./docs/guide/channels.zh.md).
+
 ## [0.1.1] - 2026-06-06
 
 ### Fixed
@@ -28,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Permission arbiter** — automated handling of OpenCode permission prompts via the Arbiter agent
 - **Portal office UI** — pixel-art office view, blog publishing, and skill browser (bundled in core as `dist/portal/`)
 - **`gatehouse` CLI** — `install`, `doctor`, and IM channel management commands
-- **`@gatehouse/channels-core`** — shared IM bridge library (WeChat / Feishu / QQ routing, `/agent` switching, attachments)
+- **IM channels** — WeChat / Feishu / QQ routing, `/agent` switching, attachments (`@gatehouse/core/channels`)
 - **Bundled IM bridges** — WeChat, Feishu, and QQ bridge sources copied into `@gatehouse/core` at build time
 - **Bilingual templates** — English and Chinese `.gatehouse/` agent prompts and config scaffolding
 - **Documentation** — README, Getting Started, and installation guides in English and Chinese

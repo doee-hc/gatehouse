@@ -196,13 +196,15 @@ Complete OAuth / API key setup per OpenCode prompts.
 
 ### Step 6: (Optional) IM Channels
 
+Built into `@gatehouse/core` — enables WeChat / Feishu / QQ when you run:
+
 ```bash
 bunx @gatehouse/core channels init
 bunx @gatehouse/core channels doctor --probe
 bunx @gatehouse/core channels serve
 ```
 
-See [packages/channels-core/README.md](../../packages/channels-core/README.md).
+See [docs/guide/channels.md](./channels.md) and [packages/core/README.md](../../packages/core/README.md#im-channels).
 
 ---
 

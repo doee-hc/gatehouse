@@ -141,7 +141,7 @@ The admin key is in `.gatehouse/config.yaml` under `portal.admin_key`. Override 
 
 ## IM Channels (Optional)
 
-To chat with Lead via WeChat, Feishu, or QQ, configure Channels separately:
+IM channels are part of `@gatehouse/core` (not a separate package). To chat with Lead via WeChat, Feishu, or QQ:
 
 ```bash
 bunx @gatehouse/core channels init
@@ -149,9 +149,10 @@ bunx @gatehouse/core channels login weixin   # or feishu / qq
 bunx @gatehouse/core channels serve
 ```
 
-See bridge docs:
+Full guide: [docs/guide/channels.md](./guide/channels.md)
 
-- [channels-core](../packages/channels-core/README.md)
+Platform-specific setup:
+
 - [WeChat](../packages/weixin-bridge/README.md)
 - [Feishu](../packages/feishu-bridge/README.md)
 - [QQ](../packages/qq-bridge/README.md)

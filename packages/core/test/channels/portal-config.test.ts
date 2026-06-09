@@ -7,7 +7,7 @@ import {
   generatePortalAdminKey,
   readPortalAdminKeyFromConfig,
   resolvePortalAdminKey,
-} from "../src/portal/config.ts"
+} from "../../src/channels/portal/config.ts"
 
 function withProject(run: (projectDir: string) => void) {
   const projectDir = mkdtempSync(path.join(tmpdir(), "gh-portal-admin-"))

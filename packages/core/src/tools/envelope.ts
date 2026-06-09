@@ -1,4 +1,4 @@
-import { gatehouseToolMetadata, toolFail, toolOk } from "@gatehouse/channels-core/tool-envelope"
+import { gatehouseToolMetadata, toolFail, toolOk } from "../channels/tool-envelope.ts"
 
 const PLUGIN = "gatehouse.core"
 

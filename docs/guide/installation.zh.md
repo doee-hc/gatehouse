@@ -196,13 +196,15 @@ opencode auth login
 
 ### Step 6：（可选）IM 通道
 
+内置于 `@gatehouse/core`，运行以下命令启用微信 / 飞书 / QQ：
+
 ```bash
 bunx @gatehouse/core channels init
 bunx @gatehouse/core channels doctor --probe
 bunx @gatehouse/core channels serve
 ```
 
-详见 [packages/channels-core/README.md](../../packages/channels-core/README.md)。
+详见 [docs/guide/channels.zh.md](./channels.zh.md) 与 [packages/core/README.md](../../packages/core/README.md#im-channels)。
 
 ---
 

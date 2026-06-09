@@ -2,11 +2,11 @@ import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { describe, expect, test } from "bun:test"
 import { Database } from "bun:sqlite"
-import { DEFAULT_AGENT_ID } from "../src/constants.ts"
-import { ensureLeadAgentTarget } from "../src/registry/lead-session.ts"
-import { readRegistryAgentById } from "../src/registry/agent-target.ts"
-import type { OpencodeClient } from "../src/opencode/client.ts"
-import type { ChannelBridgeConfig } from "../src/types.ts"
+import { DEFAULT_AGENT_ID } from "../../src/channels/constants.ts"
+import { ensureLeadAgentTarget } from "../../src/channels/registry/lead-session.ts"
+import { readRegistryAgentById } from "../../src/channels/registry/agent-target.ts"
+import type { OpencodeClient } from "../../src/channels/opencode/client.ts"
+import type { ChannelBridgeConfig } from "../../src/channels/types.ts"
 
 function writeRegistryLead(dir: string, sessionId: string) {
   const gatehouse = path.join(dir, ".gatehouse")

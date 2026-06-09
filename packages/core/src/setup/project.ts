@@ -45,9 +45,8 @@ export type PrepareGatehouseProjectOptions = {
 function isChannelsPluginSpec(spec: unknown) {
   if (typeof spec !== "string") return false
   return (
-    spec.includes("@gatehouse/channels-core") ||
     spec.includes("@gatehouse/core/channels") ||
-    (spec.startsWith("file:") && (spec.includes("channels-core") || spec.includes("/channels/plugin")))
+    (spec.startsWith("file:") && spec.includes("/channels/plugin"))
   )
 }
 

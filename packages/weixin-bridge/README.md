@@ -38,7 +38,7 @@ cp .env.example .env
 
 State files go to `{GATEHOUSE_PROJECT_DIR}/.gatehouse/channels/weixin/` (credentials, cursors, message dedup; legacy `.gatehouse/weixin-bridge/` is auto-detected). Lead session is authoritative from `.gatehouse/registry.db`.
 
-Shared Gatehouse logic (registry, `/agent`, OpenCode calls) lives in [`@gatehouse/channels-core`](../channels-core/README.md).
+Shared Gatehouse logic (registry, `/agent`, OpenCode calls) is in `@gatehouse/core` — see [IM Channels guide](../../docs/guide/channels.md).
 
 ## First Login
 

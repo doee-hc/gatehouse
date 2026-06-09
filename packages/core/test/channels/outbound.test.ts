@@ -6,7 +6,7 @@ import {
   isImageAttachment,
   readOutboundQueue,
   resolveOutboundPath,
-} from "../src/outbound.ts"
+} from "../../src/channels/outbound.ts"
 
 describe("outbound queue", () => {
   test("resolveOutboundPath rejects paths outside project", () => {

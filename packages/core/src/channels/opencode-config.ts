@@ -9,7 +9,7 @@ import {
   resolveProjectOpencodeConfigSources,
 } from "./project-opencode-config.ts"
 
-export const CHANNELS_PLUGIN_PACKAGE = "@gatehouse/channels-core"
+export const CHANNELS_PLUGIN_PACKAGE = "@gatehouse/core/channels/plugin"
 
 export { projectOpencodeConfigPath } from "./project-opencode-config.ts"
 
@@ -18,14 +18,14 @@ function parseJsonc(text: string) {
   return JSON.parse(withoutComments) as Record<string, unknown>
 }
 
-export function channelsCorePackageRoot(fromDir: string) {
+export function gatehouseCorePackageRoot(fromDir: string) {
   let dir = path.resolve(fromDir)
   while (true) {
     const candidate = path.join(dir, "package.json")
     if (existsSync(candidate)) {
       try {
         const name = JSON.parse(readFileSync(candidate, "utf8") as string).name
-        if (name === "@gatehouse/channels-core") return dir
+        if (name === "@gatehouse/core") return dir
       } catch {
         return dir
       }
@@ -34,29 +34,39 @@ export function channelsCorePackageRoot(fromDir: string) {
     if (parent === dir) break
     dir = parent
   }
-  throw new Error("无法定位 @gatehouse/channels-core 包根目录")
+  throw new Error("无法定位 @gatehouse/core 包根目录")
 }
 
 export function useLocalChannelsPlugin() {
   return process.env.GATEHOUSE_DEV === "1" || process.env.CHANNELS_LOCAL_PLUGIN === "1"
 }
 
-export function channelsPluginSpec(pluginRoot: string) {
+export function channelsPluginEntryPath(packageRoot: string) {
+  const fromCore = path.join(packageRoot, "src", "channels", "plugin", "index.ts")
+  if (existsSync(fromCore)) return fromCore
+  const fromChannelsDir = path.join(packageRoot, "plugin", "index.ts")
+  if (existsSync(fromChannelsDir)) return fromChannelsDir
+  return fromCore
+}
+
+export function channelsPluginSpec(packageRoot: string) {
   if (useLocalChannelsPlugin()) {
-    return pathToFileURL(pluginRoot).href
+    return pathToFileURL(channelsPluginEntryPath(packageRoot)).href
   }
   return CHANNELS_PLUGIN_PACKAGE
 }
 
 function isChannelsPluginSpec(spec: unknown) {
   if (typeof spec !== "string") return false
-  return spec.includes("@gatehouse/channels-core") || (spec.startsWith("file:") && spec.includes("channels-core"))
+  return (
+    spec.includes("@gatehouse/core/channels") ||
+    (spec.startsWith("file:") && spec.includes("/channels/plugin"))
+  )
 }
 
 export async function ensureChannelsPluginInOpencodeConfig(projectDir: string, pluginRoot?: string) {
   const root = path.resolve(projectDir)
-  const packageRoot =
-    pluginRoot ?? channelsCorePackageRoot(path.dirname(fileURLToPath(import.meta.url)))
+  const packageRoot = pluginRoot ?? gatehouseCorePackageRoot(path.dirname(fileURLToPath(import.meta.url)))
   const spec = channelsPluginSpec(packageRoot)
   const { configPath, legacySources } = await resolveProjectOpencodeConfigSources(root)
   const source = await readProjectOpencodeConfigText(root)

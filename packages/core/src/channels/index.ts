@@ -31,13 +31,15 @@ export {
 } from "./outbound.ts"
 export type { OutboundAttachment } from "./outbound.ts"
 export {
-  channelsCorePackageRoot,
+  gatehouseCorePackageRoot,
   channelsPluginSpec,
+  CHANNELS_PLUGIN_PACKAGE,
   ensureChannelsPluginInOpencodeConfig,
   migrateLegacyProjectOpencodeConfig,
   projectOpencodeConfigPath,
 } from "./opencode-config.ts"
 export type { ChannelBridgeConfig, UserChatState } from "./types.ts"
+export { gatehouseToolMetadata, toolFail, toolOk } from "./tool-envelope.ts"
 
 export {
   formatAgentDirectory,

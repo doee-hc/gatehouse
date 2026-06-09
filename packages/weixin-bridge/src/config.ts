@@ -1,6 +1,6 @@
 import path from "node:path"
 import { existsSync } from "node:fs"
-import { resolveChannelStateDir } from "@gatehouse/channels-core"
+import { resolveChannelStateDir } from "@gatehouse/core/channels"
 import type { WeixinBridgeConfig } from "./ilink/types.ts"
 
 function readEnv(name: string, fallback?: string) {

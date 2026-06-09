@@ -21,7 +21,7 @@ import {
   verifyOpencode,
   type ChannelPromptFile,
   type OpencodeClient,
-} from "@gatehouse/channels-core"
+} from "@gatehouse/core/channels"
 import { MessageState, MessageType, type WeixinBridgeConfig, type WeixinMessage } from "./ilink/types.ts"
 import { getConfig, getUpdates, sendMessage, sendTyping, type IlinkClientOptions } from "./ilink/api.ts"
 import { imageItems, inboundText, isUserTextMessage, unsupportedMediaReply } from "./ilink/inbound.ts"

@@ -1,6 +1,6 @@
 import crypto from "node:crypto"
 import path from "node:path"
-import { isPortalAdminConfigured, resolvePortalAdminKey } from "@gatehouse/channels-core"
+import { isPortalAdminConfigured, resolvePortalAdminKey } from "../channels/portal/config.ts"
 
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000
 

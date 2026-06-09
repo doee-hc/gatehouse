@@ -8,17 +8,21 @@ import {
   CHANNELS_PLUGIN_PACKAGE,
   ensureChannelsPluginInOpencodeConfig,
   projectOpencodeConfigPath,
-} from "../src/opencode-config.ts"
+} from "../../src/channels/opencode-config.ts"
+
+const corePackageRoot = path.join(import.meta.dir, "../..")
 
 describe("opencode-config", () => {
   test("channelsPluginSpec uses package root in local dev mode", () => {
-    const root = path.join(import.meta.dir, "..")
+    const root = corePackageRoot
     const prevDev = process.env.GATEHOUSE_DEV
     const prevLocal = process.env.CHANNELS_LOCAL_PLUGIN
     process.env.GATEHOUSE_DEV = "1"
     delete process.env.CHANNELS_LOCAL_PLUGIN
     try {
-      expect(channelsPluginSpec(root)).toBe(pathToFileURL(root).href)
+      expect(channelsPluginSpec(root)).toBe(
+        pathToFileURL(path.join(root, "src/channels/plugin/index.ts")).href,
+      )
     } finally {
       if (prevDev === undefined) delete process.env.GATEHOUSE_DEV
       else process.env.GATEHOUSE_DEV = prevDev
@@ -28,7 +32,7 @@ describe("opencode-config", () => {
   })
 
   test("channelsPluginSpec uses npm package name in production mode", () => {
-    const root = path.join(import.meta.dir, "..")
+    const root = corePackageRoot
     const prevDev = process.env.GATEHOUSE_DEV
     const prevLocal = process.env.CHANNELS_LOCAL_PLUGIN
     delete process.env.GATEHOUSE_DEV
@@ -45,7 +49,7 @@ describe("opencode-config", () => {
 
   test("ensureChannelsPluginInOpencodeConfig writes project root opencode.jsonc only", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-ch-opencode-"))
-    const packageRoot = path.join(import.meta.dir, "..")
+    const packageRoot = corePackageRoot
     const prevDev = process.env.GATEHOUSE_DEV
     process.env.GATEHOUSE_DEV = "1"
     try {
@@ -61,7 +65,7 @@ describe("opencode-config", () => {
         plugin?: unknown[]
       }
       const specs = (config.plugin ?? []).map((entry) => (Array.isArray(entry) ? entry[0] : entry))
-      expect(specs[0]).toBe(pathToFileURL(packageRoot).href)
+      expect(specs[0]).toBe(pathToFileURL(path.join(packageRoot, "src/channels/plugin/index.ts")).href)
     } finally {
       if (prevDev === undefined) delete process.env.GATEHOUSE_DEV
       else process.env.GATEHOUSE_DEV = prevDev
@@ -71,13 +75,13 @@ describe("opencode-config", () => {
 
   test("ensureChannelsPluginInOpencodeConfig migrates legacy opencode.json to root opencode.jsonc", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-ch-legacy-json-"))
-    const packageRoot = path.join(import.meta.dir, "..")
+    const packageRoot = corePackageRoot
     const prevDev = process.env.GATEHOUSE_DEV
     process.env.GATEHOUSE_DEV = "1"
     try {
       await Bun.write(
         path.join(dir, "opencode.json"),
-        JSON.stringify({ plugin: [["@gatehouse/channels-core/plugin", {}]] }),
+        JSON.stringify({ plugin: [["@gatehouse/core/channels/plugin", {}]] }),
       )
 
       const result = await ensureChannelsPluginInOpencodeConfig(dir, packageRoot)
@@ -90,8 +94,8 @@ describe("opencode-config", () => {
         plugin?: unknown[]
       }
       const specs = (config.plugin ?? []).map((entry) => (Array.isArray(entry) ? entry[0] : entry))
-      expect(specs).toContain(pathToFileURL(packageRoot).href)
-      expect(specs.some((entry) => typeof entry === "string" && entry.includes("/plugin"))).toBe(false)
+      expect(specs).toContain(pathToFileURL(path.join(packageRoot, "src/channels/plugin/index.ts")).href)
+      expect(specs.filter((entry) => String(entry).includes("/channels/plugin"))).toHaveLength(1)
     } finally {
       if (prevDev === undefined) delete process.env.GATEHOUSE_DEV
       else process.env.GATEHOUSE_DEV = prevDev
@@ -101,7 +105,7 @@ describe("opencode-config", () => {
 
   test("ensureChannelsPluginInOpencodeConfig migrates .opencode/opencode.jsonc to project root", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-ch-legacy-dir-"))
-    const packageRoot = path.join(import.meta.dir, "..")
+    const packageRoot = corePackageRoot
     const prevDev = process.env.GATEHOUSE_DEV
     process.env.GATEHOUSE_DEV = "1"
     try {
@@ -109,7 +113,7 @@ describe("opencode-config", () => {
       await Bun.$`mkdir -p ${legacyDir}`.quiet()
       await Bun.write(
         path.join(legacyDir, "opencode.jsonc"),
-        JSON.stringify({ default_agent: "lead", plugin: [["file:///tmp/old-channels", {}]] }),
+        JSON.stringify({ default_agent: "lead", plugin: [["file:///tmp/channels/plugin/index.ts", {}]] }),
       )
 
       await ensureChannelsPluginInOpencodeConfig(dir, packageRoot)

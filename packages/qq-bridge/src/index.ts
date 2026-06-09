@@ -1,5 +1,5 @@
 import path from "node:path"
-import { loadDotEnv } from "@gatehouse/channels-core"
+import { loadDotEnv } from "@gatehouse/core/channels"
 import { runBridge } from "./bridge.ts"
 import { loadConfig } from "./config.ts"
 

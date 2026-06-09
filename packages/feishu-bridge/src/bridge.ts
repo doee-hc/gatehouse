@@ -14,7 +14,7 @@ import {
   verifyOpencode,
   type ChannelPromptFile,
   type OpencodeClient,
-} from "@gatehouse/channels-core"
+} from "@gatehouse/core/channels"
 import path from "node:path"
 import { createFeishuClient, type FeishuClient } from "./feishu/api.ts"
 import { inboundText, parseImageKey, shouldHandleMessage, unsupportedMediaReply } from "./feishu/inbound.ts"

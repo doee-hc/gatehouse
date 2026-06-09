@@ -11,6 +11,7 @@
 |------|------|
 | [getting-started.zh.md](./getting-started.zh.md) | 安装、任务流程、Portal、配置 |
 | [guide/installation.zh.md](./guide/installation.zh.md) | 完整安装指南（人类 + LLM Agent） |
+| [guide/channels.zh.md](./guide/channels.zh.md) | IM 通道（微信 / 飞书 / QQ） |
 | [../README.zh.md](../README.zh.md) | 项目首页（产品概览） |
 
 ## 进阶
@@ -21,7 +22,6 @@
 | [../packages/core/README.md](../packages/core/README.md) | 插件工具、registry、任务细节（英文） |
 | [../packages/portal/README.md](../packages/portal/README.md) | Portal 本地运行与开发（英文） |
 | [../packages/portal/ASSETS.md](../packages/portal/ASSETS.md) | LimeZu 素材来源与许可（英文） |
-| [../packages/channels-core/README.md](../packages/channels-core/README.md) | IM 通道总览（英文） |
 
 ## 开发者
 

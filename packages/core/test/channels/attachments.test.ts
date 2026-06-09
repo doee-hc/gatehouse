@@ -6,7 +6,7 @@ import {
   resolveAttachmentsDir,
   sanitizeFilename,
   saveAttachment,
-} from "../src/attachments.ts"
+} from "../../src/channels/attachments.ts"
 
 describe("attachments", () => {
   test("sanitizeFilename strips path traversal", () => {

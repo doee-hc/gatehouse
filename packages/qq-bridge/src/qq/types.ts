@@ -1,4 +1,4 @@
-import type { ChannelBridgeConfig } from "@gatehouse/channels-core"
+import type { ChannelBridgeConfig } from "@gatehouse/core/channels"
 
 export interface QqBridgeConfig extends ChannelBridgeConfig {
   appId: string
