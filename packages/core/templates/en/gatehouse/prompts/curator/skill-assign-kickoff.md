@@ -21,7 +21,7 @@
 
 ## Steps
 
-1. From the TeamSpec summary above, decide per-node `skill_domain` entries in `assignments` (**omitted = no assignment**; no skill-extract message at retro).
+1. From the TeamSpec summary above, decide per-node `skill_domain` entries in `assignments` (**omitted = no assignment**; no skill-extract message at retro). If mission `notes` contains `[user-specified·skill]`, follow it; **otherwise decide on your own** — do not expect skill hints from {{lead_name}}.
 2. For new domain ids not in the registry: optionally update `domains.yaml` (metadata only).
 3. `gatehouse_apply_skill_domains(assignments='{"node-id":"domain-id"}')` → **end this round**.
 

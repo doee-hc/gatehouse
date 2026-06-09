@@ -1,7 +1,7 @@
 ---
 name: retro-toolkit
 description: >-
-  Shared retro analysis methodology and reusable scripts for Gatehouse build-coordinator retro sessions.
+  Shared retro analysis methodology and reusable scripts for Gatehouse build-root / build-coordinator retro sessions.
   Use during mission retro when analyzing context/ dumps and promoting reusable retro tools.
 metadata:
   gatehouse-kind: toolkit
@@ -11,7 +11,7 @@ disable-model-invocation: true
 
 # Retro 工具库 · retro-toolkit
 
-你是 **retro fork session 中的 coord**（build-coordinator）。复盘时：
+你是 **retro fork session 中的协调节点**（build-root / build-root-solo / build-coordinator）。复盘时：
 
 1. **唯一数据源** — `.gatehouse/trees/<mission_id>/context/`（`messages.json`、`timeline.md`、`metrics.json`、`subtree-metrics.json`）。
 2. **不要通读全量上下文** — 先读 `subtree-metrics.json` 与 `metrics.json`，再 grep `timeline.md`、抽样 `messages.json`，定位可疑片段后深挖。

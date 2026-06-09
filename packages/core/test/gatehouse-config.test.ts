@@ -12,7 +12,12 @@ import {
   parseGatehouseModel,
   resolveLogoPath,
 } from "../src/gatehouse-config.ts"
-import { INNER_COORDINATOR_AGENT, INNER_EXECUTION_AGENT } from "../src/registry/types.ts"
+import {
+  INNER_COORDINATOR_AGENT,
+  INNER_EXECUTION_AGENT,
+  INNER_ROOT_AGENT,
+  INNER_ROOT_SOLO_AGENT,
+} from "../src/registry/types.ts"
 
 describe("gatehouse config", () => {
   test("merges global and project config", async () => {
@@ -73,6 +78,8 @@ describe("gatehouse config", () => {
       expect(modelForOuterProfile(config.models, "lead")).toBe("openai/gpt-5")
       expect(modelForInnerProfile(config.models, INNER_EXECUTION_AGENT)).toBe("anthropic/claude-haiku-4")
       expect(modelForInnerProfile(config.models, INNER_COORDINATOR_AGENT)).toBeUndefined()
+      expect(modelForInnerProfile(config.models, INNER_ROOT_AGENT)).toBeUndefined()
+      expect(modelForInnerProfile(config.models, INNER_ROOT_SOLO_AGENT)).toBeUndefined()
     } finally {
       if (prevGlobal === undefined) delete process.env.GATEHOUSE_GLOBAL_CONFIG_DIR
       else process.env.GATEHOUSE_GLOBAL_CONFIG_DIR = prevGlobal

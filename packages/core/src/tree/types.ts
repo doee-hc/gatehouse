@@ -4,7 +4,7 @@ export type TreeNode = {
   display_name?: string
   /** One-line role summary for UI and gatehouse_list_team (execution view) */
   description?: string
-  /** OpenCode profile (build / build-coordinator). */
+  /** OpenCode profile (build-root / build-coordinator / build). */
   profile?: string
   /** Skill extract domain; curator gatehouse_apply_skill_domains writes manifest */
   skill_domain?: string
@@ -34,8 +34,6 @@ export type RetroManifest = {
 
 export type TeamSpecNode = {
   parent: string | null
-  /** OpenCode profile override (build / build-coordinator). */
-  profile?: string
   /** One-line role summary; copied into manifest at bootstrap */
   description: string
   constraints: string

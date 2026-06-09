@@ -1,0 +1,15 @@
+# Gatehouse IM channels — managed by `bunx @gatehouse/core channels serve`
+opencodeUrl: http://127.0.0.1:4096
+
+channels:
+  weixin:
+    enabled: false
+  feishu:
+    enabled: false
+    appId: ""
+    appSecret: ""
+  qq:
+    enabled: false
+    appId: ""
+    secret: ""
+    sandbox: true

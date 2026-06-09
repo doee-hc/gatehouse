@@ -8,6 +8,8 @@ import {
   LEAD_OPENCODE,
   INNER_COORDINATOR_AGENT,
   INNER_EXECUTION_AGENT,
+  INNER_ROOT_AGENT,
+  INNER_ROOT_SOLO_AGENT,
   ARCHITECT_OPENCODE,
   ARBITER_OPENCODE,
   CURATOR_OPENCODE,
@@ -17,6 +19,8 @@ import {
   architectSessionPermissions,
   curatorSessionPermissions,
   buildCoordinatorPermissions,
+  buildRootPermissions,
+  buildRootSoloPermissions,
   buildExecutionPermissions,
   arbiterSessionPermissions,
   globalGatehousePermissions,
@@ -114,10 +118,34 @@ export async function applyGatehouseConfig(cfg: Config, projectDirectory?: strin
 
   mergeAgent(
     agents,
+    INNER_ROOT_AGENT,
+    {
+      mode: "primary",
+      description: "任务执行团队根协调者（structural root）— 统筹执行树、汇总交付并通知 lead；禁止 task",
+      color: "#2E6F8F",
+    },
+    buildRootPermissions,
+    hiddenToolsFromPermissions(buildRootPermissions),
+  )
+
+  mergeAgent(
+    agents,
+    INNER_ROOT_SOLO_AGENT,
+    {
+      mode: "primary",
+      description: "任务执行团队 solo 根节点 — 兼执行与交付，可 task；通知 lead",
+      color: "#3A8F7A",
+    },
+    buildRootSoloPermissions,
+    hiddenToolsFromPermissions(buildRootSoloPermissions),
+  )
+
+  mergeAgent(
+    agents,
     INNER_COORDINATOR_AGENT,
     {
       mode: "primary",
-      description: "Mission 执行团队协调层（含任务协调者与中间协调层）— 与 build 相同权限，禁止 task 生成 subagent",
+      description: "任务执行团队中间协调层 — 分派所辖子树、向上汇报父节点；禁止 task",
       color: "#4A90A4",
     },
     buildCoordinatorPermissions,
@@ -146,12 +174,21 @@ export async function applyGatehouseConfig(cfg: Config, projectDirectory?: strin
 
   if (!projectDirectory) return
 
-  const [leadDescription, architectDescription, curatorDescription, arbiterDescription, coordinatorDescription] =
-    await Promise.all([
+  const [
+    leadDescription,
+    architectDescription,
+    curatorDescription,
+    arbiterDescription,
+    rootDescription,
+    rootSoloDescription,
+    coordinatorDescription,
+  ] = await Promise.all([
       loadAgentDescription(projectDirectory, "lead.md"),
       loadAgentDescription(projectDirectory, "architect.md"),
       loadAgentDescription(projectDirectory, "curator.md"),
       loadAgentDescription(projectDirectory, "arbiter.md"),
+      loadAgentDescription(projectDirectory, "build-root.md"),
+      loadAgentDescription(projectDirectory, "build-root-solo.md"),
       loadAgentDescription(projectDirectory, "build-coordinator.md"),
     ])
 
@@ -184,6 +221,24 @@ export async function applyGatehouseConfig(cfg: Config, projectDirectory?: strin
     },
     curatorSessionPermissions,
     hiddenToolsFromPermissions(curatorSessionPermissions),
+  )
+  mergeAgent(
+    agents,
+    INNER_ROOT_AGENT,
+    {
+      ...(rootDescription ? { description: rootDescription } : {}),
+    },
+    buildRootPermissions,
+    hiddenToolsFromPermissions(buildRootPermissions),
+  )
+  mergeAgent(
+    agents,
+    INNER_ROOT_SOLO_AGENT,
+    {
+      ...(rootSoloDescription ? { description: rootSoloDescription } : {}),
+    },
+    buildRootSoloPermissions,
+    hiddenToolsFromPermissions(buildRootSoloPermissions),
   )
   mergeAgent(
     agents,

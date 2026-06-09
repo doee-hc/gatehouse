@@ -8,12 +8,12 @@ export type AgentPermissionMap = Record<string, PermissionValue>
 
 /** Single source for Gatehouse agent tool permissions (merged by applyGatehouseConfig). */
 
-/** Merged into opencode.json top-level `permission` — inner exec sessions (build / build-coordinator). */
+/** Merged into opencode.json top-level `permission` — inner exec sessions (build-root / build-coordinator / build). */
 export const globalGatehousePermissions = {
   gatehouse_skill_extract_record: "allow",
 } as const
 
-/** Gatehouse coordination tools merged into profile build-coordinator only (not native build). */
+/** Gatehouse coordination tools for inner coordinators (build-root / build-coordinator; not leaf build). */
 const innerExecutionGatehousePermissions = {
   gatehouse_list_team: "allow",
   gatehouse_send_message: "allow",
@@ -23,7 +23,7 @@ const innerExecutionGatehousePermissions = {
   gatehouse_unpublish_blog: "allow",
 } as const
 
-/** Retro fork sessions only (managerRetroOrder nodes → build-coordinator). */
+/** Retro fork sessions (managerRetroOrder nodes → build-root / build-coordinator). */
 const innerRetroGatehousePermissions = {
   gatehouse_retro_record: "allow",
 } as const
@@ -112,7 +112,7 @@ export const buildExecutionPermissions = {
   ...nonArbiterInspectorDenials,
 } as const
 
-export const buildCoordinatorPermissions = {
+const innerCoordinatorPermissions = {
   skill: innerExecutionSkillPermissions(),
   question: "allow",
   plan_enter: "allow",
@@ -122,6 +122,18 @@ export const buildCoordinatorPermissions = {
   ...innerMissionLifecycleDenials,
   ...nonArbiterInspectorDenials,
 } as const
+
+/** Structural root with delegates — may notify lead; task denied. */
+export const buildRootPermissions = innerCoordinatorPermissions
+
+/** Solo structural root — may notify lead and use task for parallel exploration. */
+export const buildRootSoloPermissions = {
+  ...innerCoordinatorPermissions,
+  task: "allow",
+} as const
+
+/** Intermediate subtree coordinator — inner messaging only. */
+export const buildCoordinatorPermissions = innerCoordinatorPermissions
 
 export const arbiterSessionPermissions = {
   skill: outerProfileSkillPermissions("arbiter"),
@@ -160,6 +172,8 @@ export const agentPermissionByAgentFile: Record<string, AgentPermissionMap> = {
   "architect.md": architectSessionPermissions,
   "curator.md": curatorSessionPermissions,
   "arbiter.md": arbiterSessionPermissions,
+  "build-root.md": buildRootPermissions,
+  "build-root-solo.md": buildRootSoloPermissions,
   "build-coordinator.md": buildCoordinatorPermissions,
 }
 

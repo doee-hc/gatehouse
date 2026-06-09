@@ -70,6 +70,9 @@ describe("dispatch prompt", () => {
       expect(prompt).toContain("任务协调者")
       expect(prompt).toContain("node-doc")
       expect(prompt).toContain("执行团队（启动快照）")
+      expect(prompt).toContain("你在 Gatehouse 中的位置")
+      expect(prompt).toContain("用户意图（参考")
+      expect(prompt).toContain("system constraints")
       expect(prompt).not.toContain("gatehouse_list_team")
       expect(prompt).not.toContain("结构有变")
       expect(prompt).not.toContain("调用 `gatehouse_list_team()` 了解")
@@ -95,6 +98,8 @@ nodes:
 `)
       const prompt = await loadDispatchRootPrompt(dir, "core-example-smoke-v1", { manifest: soloManifest })
       expect(prompt).toContain("唯一执行者")
+      expect(prompt).toContain("task")
+      expect(prompt).toContain("你在 Gatehouse 中的位置")
       expect(prompt).not.toContain("gatehouse_list_team")
       expect(prompt).not.toContain("启动快照")
     } finally {

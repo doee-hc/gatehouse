@@ -12,8 +12,25 @@ export const CURATOR_OPENCODE = "curator"
 export const ARBITER_OPENCODE = "arbiter"
 
 export const INNER_EXECUTION_AGENT = "build"
-/** Inner tree nodes with children — build-equivalent permissions but task denied. */
+/** Structural root with delegates — coordinates the tree and notifies lead; task denied. */
+export const INNER_ROOT_AGENT = "build-root"
+/** Solo structural root (no children) — executes, may use task, notifies lead. */
+export const INNER_ROOT_SOLO_AGENT = "build-root-solo"
+/** Intermediate inner nodes with children — subtree coordination only; no lead contact. */
 export const INNER_COORDINATOR_AGENT = "build-coordinator"
+
+export const INNER_PROFILES = [
+  INNER_ROOT_AGENT,
+  INNER_ROOT_SOLO_AGENT,
+  INNER_COORDINATOR_AGENT,
+  INNER_EXECUTION_AGENT,
+] as const
+
+const INNER_LEAD_CONTACT_PROFILES = new Set<string>([INNER_ROOT_AGENT, INNER_ROOT_SOLO_AGENT])
+
+export function innerProfileMayNotifyLead(profile: string) {
+  return INNER_LEAD_CONTACT_PROFILES.has(profile)
+}
 
 export const GATEHOUSE_OUTER_AGENTS = new Set([
   LEAD_OPENCODE,
@@ -28,7 +45,7 @@ export type RegistryStatus = "active" | "completed" | "error"
 export type RegistryAgent = {
   agentId: string
   scope: RegistryScope
-  /** OpenCode agent id (lead / architect / build / build-coordinator / …). */
+  /** OpenCode agent id (lead / architect / build-root / build-coordinator / build / …). */
   profile: string
   sessionId: string
   displayName: string

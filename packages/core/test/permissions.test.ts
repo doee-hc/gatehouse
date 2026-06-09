@@ -64,6 +64,11 @@ describe("outer agent permission matrix", () => {
 })
 
 describe("inner execution permission matrix", () => {
+  test("build-root-solo allows task", async () => {
+    const { buildRootSoloPermissions } = await import("../src/setup/permissions.ts")
+    expect(buildRootSoloPermissions.task).toBe("allow")
+  })
+
   test("build-coordinator denies mission lifecycle tools and hides them from tool schema", () => {
     expect(buildCoordinatorPermissions.gatehouse_mission_current).toBe("deny")
     expect(buildCoordinatorPermissions.gatehouse_mission_start).toBe("deny")

@@ -55,6 +55,6 @@ disable-model-invocation: true
 
 ## 铁律
 
-1. skill 领域归你 — 任务正文 / teamspec 不含 skill_domain。
+1. skill 领域归你 — 任务正文 / teamspec 不含 skill_domain。无 `[用户指定·skill]` 时，{{lead_name}} 的 mission 不含对你的 hint，你根据 TeamSpec 与任务快照自行决定 `assignments`。
 2. 执行期不提炼 — 复盘后 Gatehouse 下发。
 3. 执行 agent 用 `skill_extract_record` 登记，勿私信你。

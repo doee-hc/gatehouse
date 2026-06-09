@@ -43,10 +43,22 @@ disable-model-invocation: true
 
 ## missions.yaml body rules
 
+Mission body expresses **user intent and acceptance only** — do not make professional calls for the core team.
+
 - Each mission: `objective`, `done_when`, `must_not`; optional `notes`, `priority`.
-- No team topology, sub-agent constraints, or `skill_domains` — topology is {{architect_name}}, skills are {{curator_name}}.
+- **`objective` / `done_when` / `must_not`**: delivery and acceptance (passed to the execution team). State what the user wants, how to verify, and execution boundaries — **no** team topology, node layout, `skill_domain`, or sub-agent roles.
+- **`notes`**: optional background and context. **By default omit** topology or skill hints; {{architect_name}} owns team design, {{curator_name}} owns skill assignment.
+- **Only when the user explicitly specifies**, record in `notes` with fixed prefixes (user's words or your confirmed paraphrase — do not invent):
+  - `[user-specified·topology] …` — {{architect_name}} must follow
+  - `[user-specified·skill] …` — {{curator_name}} must follow
+  If the user did not specify → **omit** these lines; do not substitute soft hints like "suggest" or "consider".
 - Write actionable `must_not`; {{architect_name}} maps them into node constraints.
 - Do not put "extract skills during execution" in `done_when` — Gatehouse dispatches after retro; {{curator_name}} rolls up.
+
+**Anti-patterns (do not put in mission):**
+- ❌ `objective: "Build a root + frontend two-node team to …"`
+- ❌ `notes: "suggest solo execution"` / `notes: "use docs domain for documentation"`
+- ✅ `objective: "Add README example section"` + `notes: "[user-specified·topology] User asked for solo root only"`
 
 ## Paths
 
@@ -72,7 +84,7 @@ missions:
       - path: <path relative to project root>
     must_not: ["boundary constraints"]
     notes: |
-      optional background
+      optional user background (no topology/skill hints unless user explicitly specified with [user-specified·topology] / [user-specified·skill] prefixes)
     started_at: "ISO8601"
     completed_at: "ISO8601"
 ```

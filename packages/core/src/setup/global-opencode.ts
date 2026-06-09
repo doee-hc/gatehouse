@@ -11,7 +11,7 @@ import {
   migrateLegacyProjectOpencodeConfig as migrateLegacyProjectOpencodeConfigShared,
   projectOpencodeConfigPath,
   readProjectOpencodeConfigText,
-} from "@gatehouse/channels-core/project-opencode-config"
+} from "../channels/project-opencode-config.ts"
 import { bundledOpencodeTemplateRoot } from "../template-paths.ts"
 
 const agentProfileByFile: Record<string, OuterProfile> = {
@@ -95,7 +95,12 @@ export function isGatehouseTuiPluginSpec(spec: string) {
 export const MANAGED_GLOBAL_AGENT_FILES = ["lead.md", "architect.md", "curator.md", "arbiter.md"] as const
 
 /** Gatehouse-owned agent definitions synced to ~/.config/opencode/agent/. */
-export const SYNCED_GLOBAL_AGENT_FILES = [...MANAGED_GLOBAL_AGENT_FILES, "build-coordinator.md"] as const
+export const SYNCED_GLOBAL_AGENT_FILES = [
+  ...MANAGED_GLOBAL_AGENT_FILES,
+  "build-root.md",
+  "build-root-solo.md",
+  "build-coordinator.md",
+] as const
 
 export { legacyProjectOpencodeConfigPath, projectOpencodeConfigPath }
 

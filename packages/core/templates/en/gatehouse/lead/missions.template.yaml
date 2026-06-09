@@ -8,5 +8,9 @@
     - "可验证验收条件"
   must_not:
     - "边界约束"
+  # notes optional. Default: user background/context only — no topology or skill hints.
+  # Only when the user explicitly specifies:
+  #   [user-specified·topology] …
+  #   [user-specified·skill] …
   notes: |
-    可选：背景、上下文、用户口头补充。
+    Optional: user background and context.

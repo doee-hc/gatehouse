@@ -267,13 +267,13 @@ describe("registry harness", () => {
       store.registerInnerNode({
         missionId: "m1",
         nodeId: "node-root",
-        profile: "build-coordinator",
+        profile: "build-root",
         sessionId: "ses_exec_root",
       })
       store.registerRetroNode({
         missionId: "m1",
         nodeId: "node-root",
-        profile: "build-coordinator",
+        profile: "build-root",
         sessionId: "ses_retro_root",
       })
 
@@ -283,6 +283,37 @@ describe("registry harness", () => {
       })
       expect(resolution.status).toBe("resolved")
       if (resolution.status === "resolved") expect(resolution.recipient.scope).toBe("retro")
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  test("intermediate build-coordinator cannot send_message to lead", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-registry-mid-lead-deny-"))
+    try {
+      const pluginInput = { directory: dir, client: mockClientMinimal() } as unknown as PluginInput
+      const store = await getRegistryStore(pluginInput)
+      store.registerOuterSession({
+        profile: "lead",
+        sessionId: "ses_lead",
+        projectRootSessionId: "ses_lead",
+      })
+      store.registerInnerNode({
+        missionId: "m1",
+        nodeId: "node-mid",
+        profile: "build-coordinator",
+        sessionId: "ses_mid",
+        parentSessionId: "ses_root",
+      })
+      const send = sendMessageTool(pluginInput)
+      const output = toolOutput(
+        await send.execute(
+          { recipient: "lead", message: "subtree done" },
+          mockToolContext(dir, "ses_mid", "build-coordinator"),
+        ),
+      )
+      expect(output).toContain("SEND_FORBIDDEN")
+      expect(output).toContain("build-root")
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
@@ -350,6 +381,36 @@ describe("registry harness", () => {
     }
   })
 
+  test("solo build-root-solo can send_message to lead", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-registry-solo-root-lead-"))
+    try {
+      const pluginInput = { directory: dir, client: mockClientMinimal() } as unknown as PluginInput
+      const store = await getRegistryStore(pluginInput)
+      store.registerOuterSession({
+        profile: "lead",
+        sessionId: "ses_lead",
+        projectRootSessionId: "ses_lead",
+      })
+      store.registerInnerNode({
+        missionId: "m1",
+        nodeId: "node-root",
+        profile: "build-root-solo",
+        sessionId: "ses_root",
+      })
+      const send = sendMessageTool(pluginInput)
+      const output = toolOutput(
+        await send.execute(
+          { recipient: "lead", message: "solo done" },
+          mockToolContext(dir, "ses_root", "build-root-solo"),
+        ),
+      )
+      expect(output).toContain("ses_lead")
+      expect(output).not.toContain("SEND_FORBIDDEN")
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
   test("structural root can send_message to hengduan", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-registry-root-hengduan-"))
     try {
@@ -363,15 +424,15 @@ describe("registry harness", () => {
       })
       store.registerInnerNode({
         missionId: "m1",
-        nodeId: "node-doc",
-        profile: "build",
+        nodeId: "node-root",
+        profile: "build-root",
         sessionId: "ses_root",
       })
       const send = sendMessageTool(pluginInput)
       const output = toolOutput(
         await send.execute(
           { recipient: "lead", message: "mission done" },
-          mockToolContext(dir, "ses_root", "build"),
+          mockToolContext(dir, "ses_root", "build-root"),
         ),
       )
       expect(output).toContain("ses_lead")
@@ -412,13 +473,13 @@ describe("registry harness", () => {
       store.registerInnerNode({
         missionId: "m1",
         nodeId: "node-root",
-        profile: "build-coordinator",
+        profile: "build-root",
         sessionId: "ses_root",
       })
       const send = sendMessageTool(pluginInput)
       await send.execute(
         { recipient: "lead", message: "inner portal chat" },
-        mockToolContext(dir, "ses_root", "build"),
+        mockToolContext(dir, "ses_root", "build-root"),
       )
       await Bun.sleep(50)
 
@@ -451,15 +512,15 @@ describe("registry harness", () => {
       })
       store.registerInnerNode({
         missionId: "m1",
-        nodeId: "node-doc",
-        profile: "build",
+        nodeId: "node-root",
+        profile: "build-root",
         sessionId: "ses_root",
       })
       const send = sendMessageTool(pluginInput)
       const output = toolOutput(
         await send.execute(
           { recipient: "architect", message: "mission done" },
-          mockToolContext(dir, "ses_root", "build"),
+          mockToolContext(dir, "ses_root", "build-root"),
         ),
       )
       expect(output).toContain("SEND_FORBIDDEN")
@@ -562,7 +623,7 @@ describe("registry harness", () => {
       store.registerInnerNode({
         missionId: "m1",
         nodeId: "node-root",
-        profile: "build-coordinator",
+        profile: "build-root",
         sessionId: "ses_root",
       })
       store.registerInnerNode({
@@ -602,7 +663,7 @@ describe("registry harness", () => {
       store.registerInnerNode({
         missionId: "m1",
         nodeId: "node-root",
-        profile: "build-coordinator",
+        profile: "build-root",
         sessionId: "ses_root",
       })
       seedActiveMissionRegistry(dir, "m1")
@@ -722,23 +783,23 @@ describe("applyGatehouseConfig", () => {
     expect((agents["lead"]?.permission as Record<string, string>).gatehouse_send_message).toBe("allow")
   })
 
-  test("registers build-coordinator with build-like permissions except task", async () => {
+  test("registers inner coordinator profiles with task denied", async () => {
     const { applyGatehouseConfig } = await import("../src/setup/config.ts")
     const cfg = { profile: {} } as Record<string, unknown>
     await applyGatehouseConfig(cfg as never)
     const agents = cfg.agent as Record<string, Record<string, unknown>>
-    const permission = agents["build-coordinator"]?.permission as Record<string, string>
-    expect(agents["build-coordinator"]?.mode).toBe("primary")
-    expect(permission.task).toBe("deny")
-    expect(permission.question).toBe("allow")
-    expect(permission.plan_enter).toBe("allow")
-    expect(permission.gatehouse_list_team).toBe("allow")
-    expect(permission.gatehouse_send_message).toBe("allow")
-    expect(permission.gatehouse_retro_record).toBe("allow")
-    expect(permission.gatehouse_skill_extract_record).toBe("allow")
-    expect(permission.gatehouse_mission_current).toBe("deny")
-    const coordinatorTools = agents["build-coordinator"]?.tools as Record<string, boolean>
-    expect(coordinatorTools.gatehouse_mission_current).toBe(false)
+    for (const profile of ["build-root", "build-coordinator"] as const) {
+      const permission = agents[profile]?.permission as Record<string, string>
+      expect(agents[profile]?.mode).toBe("primary")
+      expect(permission.task).toBe("deny")
+      expect(permission.gatehouse_send_message).toBe("allow")
+      expect(permission.gatehouse_mission_current).toBe("deny")
+      const tools = agents[profile]?.tools as Record<string, boolean>
+      expect(tools.gatehouse_mission_current).toBe(false)
+    }
+    const soloPermission = agents["build-root-solo"]?.permission as Record<string, string>
+    expect(soloPermission.task).toBe("allow")
+    expect(soloPermission.gatehouse_send_message).toBe("allow")
 
     const buildPermission = agents["build"]?.permission as Record<string, string>
     expect(buildPermission.gatehouse_mission_current).toBe("deny")

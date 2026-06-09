@@ -15,7 +15,7 @@ const sampleManifest = (): TreeManifest => ({
   root_node: "root",
   created_at: "2026-06-01T00:00:00Z",
   nodes: {
-    root: { session_id: "ses-root", parent: null, display_name: "root", profile: "build-coordinator" },
+    root: { session_id: "ses-root", parent: null, display_name: "root", profile: "build-root" },
     leaf: { session_id: "ses-leaf", parent: "root", display_name: "leaf", profile: "build", skill_domain: "docs" },
   },
 })

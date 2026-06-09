@@ -1,4 +1,9 @@
-import { INNER_COORDINATOR_AGENT, INNER_EXECUTION_AGENT } from "../registry/types.ts"
+import {
+  INNER_COORDINATOR_AGENT,
+  INNER_EXECUTION_AGENT,
+  INNER_ROOT_AGENT,
+  INNER_ROOT_SOLO_AGENT,
+} from "../registry/types.ts"
 import type { TeamSpec, TeamSpecNode, TreeManifest, TreeNode } from "./types.ts"
 import { isRecord, parseYaml, readString } from "../yaml.ts"
 
@@ -8,7 +13,6 @@ function parseTeamSpecNode(value: unknown): TeamSpecNode | undefined {
   if (constraints === undefined) return
   const parentRaw = value.parent
   const parent = parentRaw === null ? null : readString(parentRaw) ?? null
-  const profile = readString(value.profile)
   const description = readString(value.description)
   const skill_domain = readString(value.skill_domain)
   if (description === undefined) return
@@ -16,7 +20,6 @@ function parseTeamSpecNode(value: unknown): TeamSpecNode | undefined {
     parent,
     description,
     constraints,
-    ...(profile && { profile }),
     ...(skill_domain && { skill_domain }),
   }
 }
@@ -30,6 +33,11 @@ export function parseTeamSpec(text: string): TeamSpec {
   if (!isRecord(raw.nodes)) throw new Error("TeamSpec requires nodes mapping")
   const nodes: Record<string, TeamSpecNode> = {}
   for (const [nodeId, nodeValue] of Object.entries(raw.nodes)) {
+    if (isRecord(nodeValue) && nodeValue.profile !== undefined) {
+      throw new Error(
+        `TeamSpec node ${nodeId} must not include profile (bootstrap assigns build-root-solo / build-root / build-coordinator / build from topology)`,
+      )
+    }
     const node = parseTeamSpecNode(nodeValue)
     if (!node) throw new Error(`Invalid TeamSpec node: ${nodeId}`)
     nodes[nodeId] = node
@@ -102,14 +110,21 @@ export function childNodeIdsFromSpec(spec: TeamSpec, nodeId: string) {
     .map(([id]) => id)
 }
 
+export function expectedInnerProfile(spec: TeamSpec, nodeId: string) {
+  const node = spec.nodes[nodeId]
+  if (!node) throw new Error(`TeamSpec missing node ${nodeId}`)
+  const isStructuralRoot = node.parent === null && spec.root === nodeId
+  if (isStructuralRoot) {
+    return childNodeIdsFromSpec(spec, nodeId).length === 0 ? INNER_ROOT_SOLO_AGENT : INNER_ROOT_AGENT
+  }
+  if (childNodeIdsFromSpec(spec, nodeId).length > 0) return INNER_COORDINATOR_AGENT
+  return INNER_EXECUTION_AGENT
+}
+
 export function resolveInnerProfile(spec: TeamSpec, nodeId: string) {
   const node = spec.nodes[nodeId]
   if (!node) throw new Error(`TeamSpec missing node ${nodeId}`)
-  if (node.profile) return node.profile
-  if (childNodeIdsFromSpec(spec, nodeId).length > 0) return INNER_COORDINATOR_AGENT
-  // Solo structural root (no children) still enters managerRetroOrder — use coordinator profile, not leaf build.
-  if (node.parent === null && spec.root === nodeId) return INNER_COORDINATOR_AGENT
-  return INNER_EXECUTION_AGENT
+  return expectedInnerProfile(spec, nodeId)
 }
 
 export function nodeDepth(manifest: TreeManifest, nodeId: string) {
@@ -150,7 +165,9 @@ export function validateTeamSpec(spec: TeamSpec) {
     if (!node.description.trim()) throw new Error(`TeamSpec node ${nodeId} requires a non-empty description`)
     if (node.parent === null) continue
     if (!spec.nodes[node.parent]) throw new Error(`TeamSpec node ${nodeId} references missing parent ${node.parent}`)
+    resolveInnerProfile(spec, nodeId)
   }
+  resolveInnerProfile(spec, spec.root)
   const order = topologicalNodeOrder(spec)
   if (!order.includes(spec.root)) throw new Error("TeamSpec root unreachable")
 }

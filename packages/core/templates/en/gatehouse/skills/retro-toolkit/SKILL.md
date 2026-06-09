@@ -1,7 +1,7 @@
 ---
 name: retro-toolkit
 description: >-
-  Shared retro analysis methodology and reusable scripts for Gatehouse build-coordinator retro sessions.
+  Shared retro analysis methodology and reusable scripts for Gatehouse build-root / build-coordinator retro sessions.
   Use during mission retro when analyzing context/ dumps and promoting reusable retro tools.
 metadata:
   gatehouse-kind: toolkit
@@ -11,7 +11,7 @@ disable-model-invocation: true
 
 # Retro toolkit · retro-toolkit
 
-You are a **coord in a retro fork session** (build-coordinator). During retro:
+You are a **coordinator in a retro fork session** (build-root, build-root-solo, or build-coordinator). During retro:
 
 1. **Single source of truth** — `.gatehouse/trees/<mission_id>/context/` (`messages.json`, `timeline.md`, `metrics.json`, `subtree-metrics.json`).
 2. **Do not read full context end-to-end** — start with `subtree-metrics.json` and `metrics.json`, grep `timeline.md`, sample `messages.json`, then dig into suspicious slices.

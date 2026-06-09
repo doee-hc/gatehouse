@@ -168,7 +168,7 @@ nodes:
         sender: {
           agentId: "inner:core-example-smoke-v1:node-root",
           sessionId: "s-root",
-          profile: "build-coordinator",
+          profile: "build-root",
           scope: "inner",
           missionId: "core-example-smoke-v1",
           nodeId: "node-root",

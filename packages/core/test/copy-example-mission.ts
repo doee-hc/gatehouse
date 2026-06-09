@@ -21,7 +21,7 @@ function exampleMissionEntry(): MissionEntry {
       "teamspec.yaml 与 registry 任务快照可被 @gatehouse/core 解析",
     ],
     must_not: ["不新增 plugin tool", "不修改无关包"],
-    notes: "轻装 smoke 示例：root + doc-writer 两节点树。",
+    notes: "轻装 smoke 示例；验证 scaffold 与 mission 管道。",
     started_at: new Date().toISOString(),
   }
 }

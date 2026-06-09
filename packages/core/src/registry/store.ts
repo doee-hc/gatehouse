@@ -19,6 +19,7 @@ import {
   ARCHITECT_OPENCODE,
   LEAD_OPENCODE,
   INNER_EXECUTION_AGENT,
+  innerProfileMayNotifyLead,
   ARBITER_OPENCODE,
   CURATOR_OPENCODE,
   OUTER_ARCHITECT_ID,
@@ -1188,7 +1189,9 @@ export class RegistryStore {
   }
 
   private async busySessionIds() {
-    const map = await sessionStatusById(this.options.client, this.options.directory, this.options.plugin)
+    const map =
+      (await sessionStatusById(this.options.client, this.options.directory, this.options.plugin)) ??
+      new Map<string, import("../session/status.ts").SessionRuntimeStatus>()
     return new Set(
       [...map.entries()]
         .filter(([, status]) => status === "busy" || status === "retry")
@@ -1233,8 +1236,13 @@ function sendPolicyViolation(
   }
   if (sender.scope === "inner") {
     if (recipient.scope === "outer" && recipient.profile === "lead") {
-      if (!sender.parentSessionId) return undefined
-      return `only the structural root may notify lead (${names.lead}) of mission completion`
+      if (sender.parentSessionId) {
+        return `only profile build-root (structural root) may notify lead (${names.lead}) of mission completion`
+      }
+      if (!innerProfileMayNotifyLead(sender.profile)) {
+        return `only profile build-root or build-root-solo (structural root) may notify lead (${names.lead}); got profile ${sender.profile}`
+      }
+      return undefined
     }
     if (recipient.scope === "outer") return "execution-tree nodes may only message peers in the same mission"
     if (sender.missionId !== recipient.missionId) return "execution-tree nodes may only message peers in the same mission"

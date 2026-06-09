@@ -53,7 +53,7 @@ nodes:
     session_id: ses-root
     parent: null
     description: 协调根
-    profile: build-coordinator
+    profile: build-root
   leaf:
     session_id: ses-leaf
     parent: root
@@ -77,7 +77,7 @@ describe("buildListTeamData", () => {
     store.register({
       agentId: "inner:m1:root",
       scope: "inner",
-      profile: "build-coordinator",
+      profile: "build-root",
       sessionId: "ses-root",
       displayName: "root",
       missionId: "m1",
@@ -142,7 +142,7 @@ describe("buildListTeamData", () => {
       {
         agentId: "inner:m1:root",
         scope: "inner",
-        profile: "build-coordinator",
+        profile: "build-root",
         sessionId: "ses-r",
         displayName: "root",
         missionId: "m1",
@@ -177,7 +177,7 @@ describe("buildListTeamData", () => {
     const data = await buildListTeamData({
       store,
       directory: dir,
-      callerProfile: "build-coordinator",
+      callerProfile: "build-root",
       sessionId: "ses-root",
     })
     const payload = expectPayload(data)
@@ -214,7 +214,7 @@ nodes:
     session_id: ses-root
     parent: null
     description: 根
-    profile: build-coordinator
+    profile: build-root
   mid:
     session_id: ses-mid
     parent: root

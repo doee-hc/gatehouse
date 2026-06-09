@@ -34,7 +34,7 @@ disable-model-invocation: true
 1. 使用通知中的任务快照（objective / done_when / must_not / notes）；必要时 `gatehouse_mission_current` 刷新。
 2. 调用 `skill({ name: "architect-meta" })` 复习本 skill；读 `.gatehouse/<locale>/prompts/architect/` 历史模板（`<locale>` 见 `.gatehouse/config.yaml`）。
 
-任务正文只有 objective / done_when / must_not / notes。**拓扑全权归你**；teamspec **不写** skill_domain（归 {{curator_name}} 分配）。
+任务正文只有 objective / done_when / must_not / notes。**拓扑全权归你** — 除非 `notes` 含 `[用户指定·拓扑]` 行（用户经 {{lead_name}} 明确指定），否则忽略任何软性拓扑暗示，自行设计 teamspec。teamspec **不写** skill_domain（归 {{curator_name}} 分配）。
 
 **Kickoff 纪律：**
 
@@ -46,6 +46,8 @@ disable-model-invocation: true
 1. 写 `.gatehouse/trees/<id>/teamspec.yaml`（**无** skill_domain）：
 
 每个 inner 节点必填 **`description`**：一句话说明职责（UI / `gatehouse_list_team` execution 视图展示）；详细边界写在 **`constraints`**。
+
+**勿写 `profile`** — bootstrap 按拓扑自动分配：solo root（无下属）→ `build-root-solo`（可 `task`）；有下属的 root → `build-root`；中间协调层 → `build-coordinator`；叶子 → `build`。
 
 ```yaml
 mission_id: <id>
@@ -130,7 +132,7 @@ nodes:
 
 ## 铁律
 
-1. 拓扑归你，skill 归{{curator_name}}。
+1. 拓扑归你，skill 归{{curator_name}}。无 `[用户指定·拓扑]` 时，{{lead_name}} 的 mission 不含对你的 hint，你全权决定节点与层级。
 2. 不代替 {{lead_name}} 对用户验收或启动复盘。
 3. 用户不直连任务执行团队。
 4. 新任务新建执行团队结构，旧 session 存档不删。

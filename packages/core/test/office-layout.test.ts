@@ -95,7 +95,7 @@ describe("office layout spec", () => {
         root_node: "root",
         created_at: "2026-06-01T00:00:00Z",
         nodes: {
-          root: { session_id: "s-root-a", parent: null, display_name: "root", profile: "build-coordinator" },
+          root: { session_id: "s-root-a", parent: null, display_name: "root", profile: "build-root" },
           leaf: { session_id: "s-leaf-a", parent: "root", display_name: "leaf", profile: "build" },
         },
       }),
@@ -109,7 +109,7 @@ describe("office layout spec", () => {
         root_node: "root",
         created_at: "2026-06-01T00:00:00Z",
         nodes: {
-          root: { session_id: "s-root-b", parent: null, display_name: "root", profile: "build-coordinator" },
+          root: { session_id: "s-root-b", parent: null, display_name: "root", profile: "build-root" },
           impl: { session_id: "s-impl-b", parent: "root", display_name: "impl", profile: "build" },
           qa: { session_id: "s-qa-b", parent: "root", display_name: "qa", profile: "build" },
         },
@@ -165,7 +165,7 @@ describe("office layout spec", () => {
         root_node: "root",
         created_at: "2026-06-01T00:00:00Z",
         nodes: {
-          root: { session_id: "s-root", parent: null, display_name: "root", profile: "build-coordinator" },
+          root: { session_id: "s-root", parent: null, display_name: "root", profile: "build-root" },
           leaf: { session_id: "s-leaf", parent: "root", display_name: "leaf", profile: "build" },
         },
       }),

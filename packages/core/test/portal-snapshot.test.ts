@@ -74,7 +74,7 @@ nodes:
       {
         agentId: "inner:m-a:root",
         scope: "inner",
-        profile: "build-coordinator",
+        profile: "build-root",
         sessionId: "ses-m-a-root",
         displayName: "m-a root",
         missionId: "m-a",
@@ -98,7 +98,7 @@ nodes:
       {
         agentId: "inner:m-b:root",
         scope: "inner",
-        profile: "build-coordinator",
+        profile: "build-root",
         sessionId: "ses-m-b-root",
         displayName: "m-b root",
         missionId: "m-b",
@@ -240,7 +240,7 @@ nodes:
       {
         agentId: "inner:m-last:root",
         scope: "inner",
-        profile: "build-coordinator",
+        profile: "build-root",
         sessionId: "ses-m-last-root",
         displayName: "m-last root",
         missionId: "m-last",
@@ -326,7 +326,7 @@ nodes:
       {
         agentId: "retro:m-retro:root",
         scope: "retro",
-        profile: "build-coordinator",
+        profile: "build-root",
         sessionId: "ses-m-retro-retro-root",
         displayName: "m-retro retro root",
         missionId: "m-retro",

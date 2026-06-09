@@ -10,7 +10,12 @@ import {
   validateTeamSpec,
 } from "../src/tree/parse.ts"
 import { parseTreeManifest } from "../src/tree/parse.ts"
-import { INNER_COORDINATOR_AGENT, INNER_EXECUTION_AGENT } from "../src/registry/types.ts"
+import {
+  INNER_COORDINATOR_AGENT,
+  INNER_EXECUTION_AGENT,
+  INNER_ROOT_AGENT,
+  INNER_ROOT_SOLO_AGENT,
+} from "../src/registry/types.ts"
 
 const sampleSpec = `
 mission_id: demo-mission
@@ -106,13 +111,31 @@ nodes:
     expect(members.find((item) => item.node_id === "leaf")?.description).toBe("执行")
   })
 
-  test("resolveInnerProfile picks coordinator for managers and build for leaves", () => {
+  test("resolveInnerProfile picks build-root, build-coordinator, and build by role", () => {
     const spec = parseTeamSpec(sampleSpec)
-    expect(resolveInnerProfile(spec, "root")).toBe(INNER_COORDINATOR_AGENT)
+    expect(resolveInnerProfile(spec, "root")).toBe(INNER_ROOT_AGENT)
     expect(resolveInnerProfile(spec, "leaf")).toBe(INNER_EXECUTION_AGENT)
+    const multi = parseTeamSpec(`
+mission_id: multi
+root: node-root
+nodes:
+  node-root:
+    parent: null
+    description: 根
+    constraints: "root"
+  node-mid:
+    parent: node-root
+    description: 中层
+    constraints: "mid"
+  node-leaf:
+    parent: node-mid
+    description: 叶
+    constraints: "leaf"
+`)
+    expect(resolveInnerProfile(multi, "node-mid")).toBe(INNER_COORDINATOR_AGENT)
   })
 
-  test("resolveInnerProfile uses coordinator for solo structural root", () => {
+  test("resolveInnerProfile uses build-root-solo for solo structural root", () => {
     const spec = parseTeamSpec(`
 mission_id: solo
 root: node-root
@@ -123,7 +146,26 @@ nodes:
     constraints: |
       兼协调与执行
 `)
-    expect(resolveInnerProfile(spec, "node-root")).toBe(INNER_COORDINATOR_AGENT)
+    expect(resolveInnerProfile(spec, "node-root")).toBe(INNER_ROOT_SOLO_AGENT)
+  })
+
+  test("parseTeamSpec rejects profile field on nodes", () => {
+    let message = ""
+    try {
+      parseTeamSpec(`
+mission_id: bad
+root: root
+nodes:
+  root:
+    parent: null
+    description: 根
+    profile: build-root
+    constraints: "x"
+`)
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error)
+    }
+    expect(message).toContain("must not include profile")
   })
 })
 

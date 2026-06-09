@@ -55,6 +55,6 @@ When all are recorded → **auto-notify you**:
 
 ## Rules
 
-1. Skill domains are yours — mission body / teamspec must not contain skill_domain.
+1. Skill domains are yours — mission body / teamspec must not contain skill_domain. Without a `[user-specified·skill]` line in mission `notes`, {{lead_name}} provides no skill hints; decide `assignments` from TeamSpec and the mission snapshot yourself.
 2. No extraction during execution — Gatehouse dispatches after retro.
 3. Execution agents use `skill_extract_record`; do not DM you.

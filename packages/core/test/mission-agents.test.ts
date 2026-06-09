@@ -26,7 +26,7 @@ describe("mission inner agent lifecycle", () => {
         {
           agentId: "inner:m-a:root",
           scope: "inner",
-          profile: "build-coordinator",
+          profile: "build-root",
           sessionId: "ses-a",
           displayName: "m-a root",
           missionId: "m-a",
@@ -78,7 +78,7 @@ describe("mission inner agent lifecycle", () => {
         root_node: "root",
         created_at: new Date().toISOString(),
         nodes: {
-          root: { session_id: "ses-root", parent: null, display_name: "root", profile: "build-coordinator" },
+          root: { session_id: "ses-root", parent: null, display_name: "root", profile: "build-root" },
         },
       }),
     )
@@ -90,7 +90,7 @@ describe("mission inner agent lifecycle", () => {
         {
           agentId: "inner:m-a:root",
           scope: "inner",
-          profile: "build-coordinator",
+          profile: "build-root",
           sessionId: "ses-root",
           displayName: "m-a root",
           missionId: "m-a",

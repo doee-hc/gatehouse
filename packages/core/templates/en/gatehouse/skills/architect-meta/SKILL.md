@@ -34,7 +34,7 @@ After {{lead_name}} auto-notification from `gatehouse_mission_start`:
 1. Use the mission snapshot in the start notification (objective / done_when / must_not / notes); call `gatehouse_mission_current` to refresh if needed.
 2. Call `skill({ name: "architect-meta" })` to reload this skill; read `.gatehouse/<locale>/prompts/architect/` templates (`<locale>` from `.gatehouse/config.yaml`).
 
-Task body is objective / done_when / must_not / notes only. **Topology is yours**; teamspec **must not** include skill_domain ({{curator_name}} assigns).
+Task body is objective / done_when / must_not / notes only. **Topology is yours** — unless `notes` contains a `[user-specified·topology]` line (user explicitly specified via {{lead_name}}), ignore soft topology hints and design teamspec yourself. teamspec **must not** include skill_domain ({{curator_name}} assigns).
 
 **Kickoff discipline:**
 
@@ -46,6 +46,8 @@ Task body is objective / done_when / must_not / notes only. **Topology is yours*
 1. Write `.gatehouse/trees/<id>/teamspec.yaml` (**no** skill_domain):
 
 Each inner node **must** have **`description`**: one-line role (shown in UI / `gatehouse_list_team` execution view); detailed boundaries in **`constraints`**.
+
+**Do not write `profile`** — bootstrap assigns from topology: solo root (no children) → `build-root-solo` (may use `task`); root with delegates → `build-root`; intermediate → `build-coordinator`; leaf → `build`.
 
 ```yaml
 mission_id: <id>
@@ -130,7 +132,7 @@ After {{lead_name}} `gatehouse_mission_retro`, Gatehouse forks retro and dispatc
 
 ## Rules
 
-1. Topology is yours; skills are {{curator_name}}'s.
+1. Topology is yours; skills are {{curator_name}}'s. Without `[user-specified·topology]` in mission `notes`, {{lead_name}} provides no topology hints — you own node layout and depth.
 2. Do not accept delivery or start retro for {{lead_name}}.
 3. Users do not talk to the execution team directly.
 4. Each new Mission gets a new execution structure; old sessions are archived, not deleted.

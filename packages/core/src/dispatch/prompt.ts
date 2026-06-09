@@ -1,6 +1,5 @@
 import { bulletList } from "../missions/parse.ts"
 import { requireActiveMissionContract } from "../missions/contract.ts"
-import { formatMissionContractBlock } from "../missions/contract-format.ts"
 import { dispatchRootPromptPath } from "../paths.ts"
 import { gatehouseMessage } from "../i18n.ts"
 import { readLocaleSync } from "../locale.ts"

@@ -1,4 +1,4 @@
-import { generatePortalAdminKey } from "@gatehouse/channels-core"
+import { generatePortalAdminKey } from "./channels/portal/config.ts"
 import { existsSync, readFileSync } from "node:fs"
 import { homedir } from "node:os"
 import path from "node:path"
@@ -167,7 +167,9 @@ export function modelForInnerProfile(
   profile: string,
 ) {
   if (profile === "build") return models.executor
-  if (profile === "build-coordinator") return models.coordinator
+  if (profile === "build-root" || profile === "build-root-solo" || profile === "build-coordinator") {
+    return models.coordinator
+  }
   return undefined
 }
 

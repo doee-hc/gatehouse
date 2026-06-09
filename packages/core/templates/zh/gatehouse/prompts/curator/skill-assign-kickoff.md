@@ -21,7 +21,7 @@
 
 ## 步骤
 
-1. 按上方 TeamSpec 各节点 `constraints` 决定是否在 `assignments` 中列入 `skill_domain`（**未列入 = 不分配**，复盘期也不会收到 skill 提炼系统消息）。
+1. 按上方 TeamSpec 各节点 `constraints` 决定是否在 `assignments` 中列入 `skill_domain`（**未列入 = 不分配**，复盘期也不会收到 skill 提炼系统消息）。任务快照 `notes` 中若有 `[用户指定·skill]` 须遵守；**无此行则全权自行决定**，勿期待 {{lead_name}} 提供 skill hint。
 2. 若使用仓库中尚未登记的 domain-id：可先更新 `domains.yaml`（仅元数据）。
 3. `gatehouse_apply_skill_domains(assignments='{"node-id":"domain-id"}')` → **结束本轮**。
 

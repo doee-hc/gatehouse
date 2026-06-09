@@ -5,7 +5,7 @@ import {
   corePackageMarkerPath,
   ensureChannelsPluginInOpencodeConfig,
   ensurePortalAdminKey,
-} from "@gatehouse/channels-core"
+} from "../channels/index.ts"
 import { LEAD_OPENCODE } from "../registry/types.ts"
 import { scaffoldGatehouse } from "../scaffold.ts"
 import { syncManagedTemplates } from "./sync-templates.ts"
@@ -46,7 +46,8 @@ function isChannelsPluginSpec(spec: unknown) {
   if (typeof spec !== "string") return false
   return (
     spec.includes("@gatehouse/channels-core") ||
-    (spec.startsWith("file:") && spec.includes("channels-core"))
+    spec.includes("@gatehouse/core/channels") ||
+    (spec.startsWith("file:") && (spec.includes("channels-core") || spec.includes("/channels/plugin")))
   )
 }
 

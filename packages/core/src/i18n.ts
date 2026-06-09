@@ -117,11 +117,14 @@ All exec nodes with skill_domain finished retro skill extraction and registratio
   "dispatch.teamSnapshot.parent": { zh: "`parent: {parent}`", en: "`parent: {parent}`" },
   "dispatch.teamSnapshot.children": { zh: "下属: {list}", en: "children: {list}" },
   "dispatch.teamSnapshot.outerHint": {
-    zh: "交付完成后 `gatehouse_send_message(recipient=\"lead\")`",
-    en: "after delivery use `gatehouse_send_message(recipient=\"lead\")`",
+    zh: "核心团队（建队已完成）；执行期勿联系；交付后仅 `gatehouse_send_message(recipient=\"lead\")`",
+    en: "Core team (team build complete); do not contact during execution; after delivery only `gatehouse_send_message(recipient=\"lead\")`",
   },
   "dispatch.teamSnapshot.teamspecHeader": { zh: "### TeamSpec 节点", en: "### TeamSpec nodes" },
-  "dispatch.teamSnapshot.subtreeHeader": { zh: "### 所辖执行分支（启动快照）", en: "### Your execution subtree (kickoff snapshot)" },
+  "dispatch.teamSnapshot.subtreeHeader": {
+    zh: "### 所辖执行分支（启动快照）\n\n你是**中间协调层**（`build-coordinator`）：仅管理此分支；**禁止**联系 lead；子树完成后向父节点汇报。",
+    en: "### Your execution subtree (kickoff snapshot)\n\nYou are an **intermediate coordinator** (`build-coordinator`): manage this branch only; **do not** contact lead; report upstream to parent when done.",
+  },
   "dispatch.teamSnapshot.noNonRootNodes": { zh: "（无下属节点）", en: "(no delegate nodes)" },
   "dispatch.teamSnapshot.watchdogSnapshotHeader": {
     zh: "### 执行团队（当前快照）",

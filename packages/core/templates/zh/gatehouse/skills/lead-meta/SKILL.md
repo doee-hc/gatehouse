@@ -43,10 +43,22 @@ disable-model-invocation: true
 
 ## missions.yaml 正文约束
 
+任务正文只表达**用户意图与验收**，不替核心团队做专业判断。
+
 - 每条任务写 `objective`、`done_when`、`must_not`；可选 `notes`、`priority`。
-- 不写团队拓扑、子 agent 约束、`skill_domains` — 拓扑归{{architect_name}}，skill 归{{curator_name}}。
+- **`objective` / `done_when` / `must_not`**：面向交付与验收（会传给任务执行团队）。只写用户要什么、怎么验、执行边界；**禁止**写团队拓扑、节点划分、`skill_domain`、子 agent 分工。
+- **`notes`**：可选背景、上下文、用户口头补充。**默认不写**拓扑或 skill 暗示；{{architect_name}} 全权决定建队，{{curator_name}} 全权决定 skill 分配。
+- **仅当用户明确指定**时，方可在 `notes` 用固定前缀落盘（须为用户原话或你复述确认后的表述，勿自行发挥）：
+  - `[用户指定·拓扑] …` — {{architect_name}}须遵守
+  - `[用户指定·skill] …` — {{curator_name}}须遵守
+  用户未指定 → **省略**上述行，勿用「建议」「可考虑」等软性 hint 代替。
 - `must_not` 措辞可执行；{{architect_name}}会写入节点 constraints。
 - 勿把「执行期提炼 skill」写进 `done_when` — 复盘后 Gatehouse 自动下发，{{curator_name}}汇总。
+
+**反例（勿写进 mission）：**
+- ❌ `objective: "建 root + frontend 两节点团队完成 …"`
+- ❌ `notes: "建议 solo 执行"` / `notes: "文档任务用 docs domain"`
+- ✅ `objective: "完善 README 示例章节"` + `notes: "[用户指定·拓扑] 用户要求仅 root 单节点 solo 执行"`
 
 ## 路径
 
@@ -72,7 +84,7 @@ missions:
       - path: <相对项目根的路径>
     must_not: ["边界约束"]
     notes: |
-      可选背景说明
+      可选：用户背景与上下文（勿写拓扑/skill hint，除非用户明确指定并用 [用户指定·拓扑] / [用户指定·skill] 前缀）
     started_at: "ISO8601"
     completed_at: "ISO8601"
 ```
