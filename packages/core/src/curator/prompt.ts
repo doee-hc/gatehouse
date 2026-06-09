@@ -1,5 +1,5 @@
 import { curatorSkillAssignKickoffPath } from "../paths.ts"
-import { formatMissionContractBlock } from "../missions/contract-format.ts"
+import { formatMissionContractForRole } from "../missions/contract-format.ts"
 import { requireActiveMissionContract } from "../missions/contract.ts"
 import { gatehouseMessage } from "../i18n.ts"
 import { DEFAULT_GATEHOUSE_LOCALE, readLocaleSync, type GatehouseLocale } from "../locale.ts"
@@ -25,7 +25,7 @@ export async function loadCuratorSkillAssignKickoff(
       "{{objective}}",
       input.objective ?? contract.objective ?? gatehouseMessage("mission.objectiveMissing", locale),
     )
-    .replaceAll("{{mission_contract}}", formatMissionContractBlock(contract, locale))
+    .replaceAll("{{mission_contract}}", formatMissionContractForRole(contract, locale, "curator"))
     .replaceAll("{{teamspec_summary}}", formatTeamSpecAssignmentSummary(input.spec, locale))
     .replaceAll("{{domains_registry}}", formatSkillDomainsRegistry(domains, locale))
 }

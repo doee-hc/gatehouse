@@ -1,4 +1,4 @@
-import { formatMissionContractBlock } from "../missions/contract-format.ts"
+import { formatMissionContractForRole } from "../missions/contract-format.ts"
 import { readActiveMissionContract } from "../missions/contract.ts"
 import { bulletList } from "../missions/parse.ts"
 import { gatehouseMessage } from "../i18n.ts"
@@ -46,6 +46,6 @@ export function formatMissionStartedMessage(
   return gatehouseMessage("mission.started.body", locale, {
     mission_id: input.missionId,
     lead_name: input.leadName,
-    mission_contract: formatMissionContractBlock(contract, locale),
+    mission_contract: formatMissionContractForRole(contract, locale, "architect"),
   })
 }
