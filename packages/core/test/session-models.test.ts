@@ -23,7 +23,7 @@ describe("session models", () => {
 
     await createSession(mockClient, "/tmp/project", {
       display_name: "node-root",
-      profile: "build-coordinator",
+      profile: "build-root",
       model: "test/coord-model",
     })
 

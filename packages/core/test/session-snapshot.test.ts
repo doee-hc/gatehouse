@@ -116,7 +116,7 @@ describe("session snapshot", () => {
       store.registerInnerNode({
         missionId: "m1",
         nodeId: "node-root",
-        profile: "build-coordinator",
+        profile: "build-root",
         sessionId: "ses_worker",
       })
       seedActiveMissionRegistry(dir, "m1")
@@ -219,7 +219,7 @@ describe("session snapshot", () => {
       store.registerInnerNode({
         missionId: "m1",
         nodeId: "node-root",
-        profile: "build-coordinator",
+        profile: "build-root",
         sessionId: "ses_root",
       })
       store.registerInnerNode({

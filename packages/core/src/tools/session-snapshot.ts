@@ -156,12 +156,12 @@ export function sessionSnapshotTool(input: PluginInput) {
         }
 
         const lineCount = clampSnapshotLines(args.lines)
-        const [messages, statusMap] = await Promise.all([
+        const [messages, statusLookup] = await Promise.all([
           sessionMessages(input.client, input.directory, recipient.sessionId),
           sessionStatusById(input.client, input.directory, input),
         ])
         const tail = tailSessionSnapshotLines(messages, lineCount)
-        const sessionStatus = sessionRuntimeStatus(statusMap, recipient.sessionId)
+        const sessionStatus = sessionRuntimeStatus(statusLookup ?? new Map(), recipient.sessionId)
         const pendingDeliveries = store.pendingDeliveryCountForSession(recipient.sessionId)
         const hint = activityHint({ sessionStatus, tailLines: tail, pendingDeliveries })
 

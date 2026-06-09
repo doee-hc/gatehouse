@@ -13,9 +13,29 @@ function watchKey(directory: string, missionId: string, kind: WatchdogKind = "ex
 }
 
 export function bindWatchdogStateStore(directory: string, db: RegistryDatabase) {
+  const prefix = `${directory}\0`
+  for (const key of [...statesByKey.keys()]) {
+    if (key.startsWith(prefix)) statesByKey.delete(key)
+  }
   dbByDirectory.set(directory, db)
   for (const row of db.loadWatchdogStates()) {
     statesByKey.set(watchKey(directory, row.missionId, row.kind), row.state)
+  }
+}
+
+export function listWatchdogStateMissionIds(directory: string, kind: WatchdogKind) {
+  const prefix = `${directory}\0${kind}\0`
+  const missionIds: string[] = []
+  for (const key of statesByKey.keys()) {
+    if (key.startsWith(prefix)) missionIds.push(key.slice(prefix.length))
+  }
+  return missionIds
+}
+
+export function pruneWatchdogStates(directory: string, kind: WatchdogKind, keepMissionIds: Iterable<string>) {
+  const keep = new Set(keepMissionIds)
+  for (const missionId of listWatchdogStateMissionIds(directory, kind)) {
+    if (!keep.has(missionId)) deleteMissionWatchState(directory, missionId, kind)
   }
 }
 

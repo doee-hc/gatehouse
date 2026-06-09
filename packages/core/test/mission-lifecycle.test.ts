@@ -73,7 +73,7 @@ describe("mission lifecycle tools", () => {
           root_node: "root",
           created_at: new Date().toISOString(),
           nodes: {
-            root: { session_id: "ses_root", parent: null, display_name: "root", profile: "build-coordinator" },
+            root: { session_id: "ses_root", parent: null, display_name: "root", profile: "build-root" },
           },
         }),
       )
@@ -92,7 +92,7 @@ describe("mission lifecycle tools", () => {
         root_node: "root",
         created_at: new Date().toISOString(),
         nodes: {
-          root: { session_id: "ses_root", parent: null, display_name: "root", profile: "build-coordinator" },
+          root: { session_id: "ses_root", parent: null, display_name: "root", profile: "build-root" },
         },
       })
 
@@ -143,7 +143,7 @@ describe("mission lifecycle tools", () => {
           root_node: "root",
           created_at: new Date().toISOString(),
           nodes: {
-            root: { session_id: "ses_root", parent: null, display_name: "root", profile: "build-coordinator" },
+            root: { session_id: "ses_root", parent: null, display_name: "root", profile: "build-root" },
           },
         }),
       )
@@ -178,7 +178,7 @@ describe("mission lifecycle tools", () => {
         root_node: "root",
         created_at: new Date().toISOString(),
         nodes: {
-          root: { session_id: "ses_root", parent: null, display_name: "root", profile: "build-coordinator" },
+          root: { session_id: "ses_root", parent: null, display_name: "root", profile: "build-root" },
         },
       })
       await registerOuterTeam(pluginInput)

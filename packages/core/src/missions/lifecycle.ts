@@ -69,6 +69,9 @@ export async function assertAllMissionAgentsIdle(input: {
     throw new Error(`No registry agents for mission ${input.missionId} (scopes: ${input.scopes.join(", ")})`)
   }
   const statusMap = await sessionStatusById(input.client, input.directory, input.plugin)
+  if (!statusMap) {
+    throw new Error("Session status unavailable; cannot verify mission agents are idle")
+  }
   const blocked: Array<{ agentId: string; sessionId: string; reason: string }> = []
   for (const agent of agents) {
     const runtime = sessionRuntimeStatus(statusMap, agent.sessionId)

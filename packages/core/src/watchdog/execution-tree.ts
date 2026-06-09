@@ -2,6 +2,7 @@ import type { PluginInput } from "@opencode-ai/plugin"
 import type { RegistryStore } from "../registry/store.ts"
 import type { RegistryAgent } from "../registry/types.ts"
 import { innerAgentId } from "../registry/types.ts"
+import { gatehouseLog } from "../log.ts"
 import { sessionRuntimeStatus, sessionStatusById, type SessionRuntimeStatus } from "../session/status.ts"
 import { readManifest, readRetroManifest } from "../tree/store.ts"
 import type { TreeManifest } from "../tree/types.ts"
@@ -22,8 +23,17 @@ import {
 import {
   deleteMissionWatchState,
   getMissionWatchState,
+  pruneWatchdogStates,
   setMissionWatchState,
 } from "./state-store.ts"
+
+function logWatchdogTickError(directory: string, label: string, error: unknown) {
+  gatehouseLog(
+    "error",
+    `${label} tick failed: ${error instanceof Error ? error.message : String(error)}`,
+    { projectDirectory: directory, title: "Watchdog" },
+  )
+}
 
 export function manifestSessionIds(manifest: TreeManifest) {
   return Object.values(manifest.nodes).map((node) => node.session_id)
@@ -107,7 +117,7 @@ export class ExecutionTreeWatchdog {
     const run = this.tickTail.then(() => this.tickOnce())
     this.tickTail = run.then(
       () => undefined,
-      () => undefined,
+      (error) => logWatchdogTickError(this.input.directory, "execution tree watchdog", error),
     )
     return run
   }
@@ -115,9 +125,13 @@ export class ExecutionTreeWatchdog {
   private async tickOnce() {
     const now = Date.now()
     const statusMap = await sessionStatusById(this.input.client, this.input.directory, this.input)
-    for (const missionId of await listRunningMissionIds(this.input.directory)) {
+    if (!statusMap) return
+
+    const runningMissionIds = await listRunningMissionIds(this.input.directory)
+    for (const missionId of runningMissionIds) {
       await this.checkMission(missionId, statusMap, now)
     }
+    pruneWatchdogStates(this.input.directory, "execution", runningMissionIds)
   }
 
   private async checkMission(
@@ -142,8 +156,10 @@ export class ExecutionTreeWatchdog {
     const allIdle = allSessionsIdle(statusMap, sessionIds)
     const decision = watchdogTickDecision({ now, allIdle, state })
     if (getMissionWatchState(this.input.directory, missionId)?.paused) return
-    setMissionWatchState(this.input.directory, missionId, decision.nextState)
-    if (decision.action !== "wake") return
+    if (decision.action !== "wake") {
+      setMissionWatchState(this.input.directory, missionId, decision.nextState)
+      return
+    }
     if (getMissionWatchState(this.input.directory, missionId)?.paused) return
 
     const root = this.registry.byAgentId(innerAgentId(manifest.mission_id, manifest.root_node))
@@ -158,10 +174,9 @@ export class ExecutionTreeWatchdog {
     )
     if (getMissionWatchState(this.input.directory, missionId)?.paused) return
     const delivered = await this.registry.deliverSystemMessage(root, content, root.profile)
-    if (delivered.status === "failed") {
-      const current = getMissionWatchState(this.input.directory, missionId) ?? decision.nextState
-      setMissionWatchState(this.input.directory, missionId, { ...current, lastWakeAt: undefined })
-    }
+    if (delivered.status === "failed") return
+
+    setMissionWatchState(this.input.directory, missionId, decision.nextState)
   }
 }
 

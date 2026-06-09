@@ -2,16 +2,22 @@ import type { PluginInput } from "@opencode-ai/plugin"
 import type { RegistryStore } from "../registry/store.ts"
 import type { RegistryAgent } from "../registry/types.ts"
 import { innerAgentId, retroAgentId } from "../registry/types.ts"
+import { gatehouseLog } from "../log.ts"
 import { sessionStatusById, type SessionRuntimeStatus } from "../session/status.ts"
 import { allSessionsIdle, watchdogTickDecision } from "./execution-tree.ts"
 import {
   EXECUTION_TREE_IDLE_THRESHOLD_MS,
   EXECUTION_TREE_WATCHDOG_POLL_MS,
-  EXECUTION_TREE_WATCHDOG_WAKE_COOLDOWN_MS,
   loadWatchdogRetroRecordWakePrompt,
   loadWatchdogSkillRecordWakePrompt,
 } from "./prompt.ts"
-import { deleteMissionWatchState, getMissionWatchState, setMissionWatchState, type WatchdogKind } from "./state-store.ts"
+import {
+  deleteMissionWatchState,
+  getMissionWatchState,
+  pruneWatchdogStates,
+  setMissionWatchState,
+  type WatchdogKind,
+} from "./state-store.ts"
 
 export type IncompleteRecordRun = {
   missionId: string
@@ -28,6 +34,23 @@ export function expectedSessionIds(
     const agent = resolveAgent(run.missionId, nodeId)
     return agent?.sessionId ? [agent.sessionId] : []
   })
+}
+
+export function pendingSessionIds(
+  run: IncompleteRecordRun,
+  resolveAgent: (missionId: string, nodeId: string) => RegistryAgent | undefined,
+) {
+  return run.pendingNodeIds.flatMap((nodeId) => {
+    const agent = resolveAgent(run.missionId, nodeId)
+    return agent?.sessionId ? [agent.sessionId] : []
+  })
+}
+
+function resetRecordWatchIdleTiming(directory: string, missionId: string, kind: WatchdogKind) {
+  const state = getMissionWatchState(directory, missionId, kind)
+  if (!state?.allIdleSince && !state?.lastWakeAt) return
+  if (state.paused) return
+  setMissionWatchState(directory, missionId, {}, kind)
 }
 
 export async function checkRecordWatchdogMission(input: {
@@ -52,16 +75,22 @@ export async function checkRecordWatchdogMission(input: {
     return { action: "complete" as const }
   }
 
-  const sessionIds = expectedSessionIds(registry, run, resolveAgent)
-  if (sessionIds.length === 0) return { action: "skip" as const }
+  const sessionIds = pendingSessionIds(run, resolveAgent)
+  if (sessionIds.length === 0) {
+    resetRecordWatchIdleTiming(directory, missionId, kind)
+    return { action: "skip" as const }
+  }
 
   const allIdle = allSessionsIdle(statusMap, sessionIds)
   const state = getMissionWatchState(directory, missionId, kind) ?? {}
   const decision = watchdogTickDecision({ now, allIdle, state })
-  setMissionWatchState(directory, missionId, decision.nextState, kind)
-  if (decision.action !== "wake") return { action: decision.action }
+  if (decision.action !== "wake") {
+    setMissionWatchState(directory, missionId, decision.nextState, kind)
+    return { action: decision.action }
+  }
 
   const idleSeconds = Math.round((decision.idleDurationMs ?? EXECUTION_TREE_IDLE_THRESHOLD_MS) / 1000)
+  let deliveredCount = 0
   let anyFailed = false
   for (const nodeId of run.pendingNodeIds) {
     const agent = resolveAgent(missionId, nodeId)
@@ -69,14 +98,23 @@ export async function checkRecordWatchdogMission(input: {
     const content = await loadWakePrompt(directory, { missionId, nodeId, idleSeconds })
     const delivered = await registry.deliverSystemMessage(agent, content, agent.profile)
     if (delivered.status === "failed") anyFailed = true
+    else deliveredCount++
   }
 
-  if (anyFailed) {
-    const current = getMissionWatchState(directory, missionId, kind) ?? decision.nextState
-    setMissionWatchState(directory, missionId, { ...current, lastWakeAt: undefined }, kind)
+  if (deliveredCount === 0 || anyFailed) {
+    return { action: "wake" as const, notified: deliveredCount }
   }
 
-  return { action: "wake" as const, notified: run.pendingNodeIds.length }
+  setMissionWatchState(directory, missionId, decision.nextState, kind)
+  return { action: "wake" as const, notified: deliveredCount }
+}
+
+function logWatchdogTickError(directory: string, label: string, error: unknown) {
+  gatehouseLog(
+    "error",
+    `${label} tick failed: ${error instanceof Error ? error.message : String(error)}`,
+    { projectDirectory: directory, title: "Watchdog" },
+  )
 }
 
 class RecordWatchdog {
@@ -106,7 +144,7 @@ class RecordWatchdog {
     const run = this.tickTail.then(() => this.tickOnce())
     this.tickTail = run.then(
       () => undefined,
-      () => undefined,
+      (error) => logWatchdogTickError(this.input.directory, `${this.kind} watchdog`, error),
     )
     return run
   }
@@ -114,7 +152,10 @@ class RecordWatchdog {
   private async tickOnce() {
     const now = Date.now()
     const statusMap = await sessionStatusById(this.input.client, this.input.directory, this.input)
-    for (const run of this.listRuns(this.registry)) {
+    if (!statusMap) return
+
+    const runs = this.listRuns(this.registry)
+    for (const run of runs) {
       await checkRecordWatchdogMission({
         pluginInput: this.input,
         registry: this.registry,
@@ -126,6 +167,11 @@ class RecordWatchdog {
         loadWakePrompt: this.loadWakePrompt,
       })
     }
+    pruneWatchdogStates(
+      this.input.directory,
+      this.kind,
+      runs.map((run) => run.missionId),
+    )
   }
 }
 

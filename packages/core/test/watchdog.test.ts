@@ -19,6 +19,7 @@ import {
   bindWatchdogStateStore,
   deleteMissionWatchState,
   getMissionWatchState,
+  pruneWatchdogStates,
   resetWatchdogStateStoreForTests,
   setMissionWatchState,
 } from "../src/watchdog/state-store.ts"
@@ -233,6 +234,34 @@ describe("watchdog state persistence", () => {
     setMissionWatchState(dir, "mission-a", { paused: true }, "retro_record")
     deleteMissionWatchState(dir, "mission-a", "retro_record")
     expect(db.loadWatchdogStates()).toEqual([])
+    resetWatchdogStateStoreForTests()
+  })
+
+  test("pruneWatchdogStates removes stale mission rows", () => {
+    const dir = `/tmp/gh-watchdog-prune-${Date.now()}`
+    bindWatchdogStateStore(dir, new RegistryDatabase(dir))
+    setMissionWatchState(dir, "mission-a", { allIdleSince: 1 })
+    setMissionWatchState(dir, "mission-b", { allIdleSince: 2 }, "retro_record")
+    pruneWatchdogStates(dir, "execution", ["mission-z"])
+    pruneWatchdogStates(dir, "retro_record", [])
+    expect(getMissionWatchState(dir, "mission-a")).toBeUndefined()
+    expect(getMissionWatchState(dir, "mission-b", "retro_record")).toBeUndefined()
+    resetWatchdogStateStoreForTests()
+  })
+
+  test("bindWatchdogStateStore replaces stale in-memory keys for directory", () => {
+    const dir = `/tmp/gh-watchdog-rebind-${Date.now()}`
+    const db = new RegistryDatabase(dir)
+    bindWatchdogStateStore(dir, db)
+    setMissionWatchState(dir, "mission-a", { paused: true })
+    resetWatchdogStateStoreForTests()
+
+    bindWatchdogStateStore(dir, db)
+    expect(getMissionWatchState(dir, "mission-a")).toEqual({ paused: true })
+
+    db.deleteWatchdogState("mission-a", "execution")
+    bindWatchdogStateStore(dir, db)
+    expect(getMissionWatchState(dir, "mission-a")).toBeUndefined()
     resetWatchdogStateStoreForTests()
   })
 })
