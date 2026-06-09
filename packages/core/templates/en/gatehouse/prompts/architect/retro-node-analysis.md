@@ -9,7 +9,7 @@ Do not wait for {{architect_name}} to `send_message` each step. **Discover issue
 ### Data sources (source of truth)
 
 ```
-.gatehouse/architect/trees/{{mission_id}}/context/
+.gatehouse/trees/{{mission_id}}/context/
   index.json                 # all node_ids in your branch, subtree-metrics paths
   subtree-metrics.json       # token/duration/tool aggregates per retro coord subtree (read retro_nodes["{{node_id}}"])
   <node_id>/
@@ -17,15 +17,14 @@ Do not wait for {{architect_name}} to `send_message` each step. **Discover issue
     timeline.md              # grep-friendly timeline (kind, tokens=)
     metrics.json             # per-node session token/duration/tool aggregates
 
-.gatehouse/skills/retro-toolkit/     # prior retro tools & methodology (read before analysis)
-  SKILL.md
-  tools/<verb-noun>/SKILL.md + scripts
+skill({ name: "retro-toolkit" })     # methodology (or read .gatehouse/<locale>/skills/retro-toolkit/SKILL.md)
+.gatehouse/skills/retro-toolkit/tools/<verb-noun>/SKILL.md + scripts
 ```
 
 **Precomputed API-level metrics** (read files directly, no tool calls):
 
-- Subtree rollup: `context/subtree-metrics.json` → `retro_nodes["{{node_id}}"]`
-- Per-node detail: `context/<node_id>/metrics.json`
+- Subtree rollup: `.gatehouse/trees/{{mission_id}}/context/subtree-metrics.json` → `retro_nodes["{{node_id}}"]`
+- Per-node detail: `.gatehouse/trees/{{mission_id}}/context/<node_id>/metrics.json`
 
 These **do not** replace semantic features you derive from messages/timeline (compaction count, todo-phase tokens, send_message patterns, etc.).
 
@@ -35,8 +34,8 @@ These **do not** replace semantic features you derive from messages/timeline (co
 2. **Do not read** all of `messages.json`. Grep `timeline.md` first (table below).
 3. For suspicious patterns: **write or extend Python scripts** for features (compaction, todo tokens, send_message sequences, etc.).
 4. If a new tool is reusable: add `.gatehouse/skills/retro-toolkit/tools/<verb-noun>/` with `SKILL.md`.
-5. Cross-check `subtree-metrics.json` with script output.
-6. Write retro report (include tools section) → `gatehouse_retro_record` → `gatehouse_publish_blog(report_path=...)`.
+5. Cross-check `.gatehouse/trees/{{mission_id}}/context/subtree-metrics.json` with script output.
+6. Write `.gatehouse/trees/{{mission_id}}/reports/nodes/{{node_id}}-retro.md` (include "Tool contribution" section) → `gatehouse_retro_record` → `gatehouse_publish_blog(report_path=.gatehouse/trees/{{mission_id}}/reports/nodes/{{node_id}}-retro.md)`.
 
 **Grep guide (timeline.md):**
 
@@ -54,7 +53,7 @@ These **do not** replace semantic features you derive from messages/timeline (co
 
 ### Output
 
-Write: `.gatehouse/architect/trees/{{mission_id}}/reports/nodes/{{node_id}}-retro.md`
+Write: `.gatehouse/trees/{{mission_id}}/reports/nodes/{{node_id}}-retro.md`
 
 **Report is for {{architect_name}} (assignment & prompt constraints), not domain skills or business implementation detail.**
 
@@ -95,7 +94,7 @@ Suggested structure:
 
 ```
 gatehouse_retro_record()
-gatehouse_publish_blog(report_path=".gatehouse/architect/trees/{{mission_id}}/reports/nodes/{{node_id}}-retro.md")
+gatehouse_publish_blog(report_path=".gatehouse/trees/{{mission_id}}/reports/nodes/{{node_id}}-retro.md")
 ```
 
 **Do not** `gatehouse_send_message` {{architect_name}} — Gatehouse auto-notifies {{architect_name}} after all nodes record (with retro reports and retro-toolkit curation tasks).

@@ -158,10 +158,6 @@ async function readPublishedPosts(projectDirectory: string, published: Set<strin
   return posts
 }
 
-function missionShowsInBlog(mission: MissionEntry) {
-  return mission.status !== "running" && mission.status !== "retro"
-}
-
 const blogSnapshotCache = createPortalDataCache<BlogSnapshot>({
   ttlMs: () => getPortalDisplaySettings().blogTtlMs,
 })
@@ -171,14 +167,14 @@ async function loadBlogSnapshot(projectDirectory: string) {
   const posts = await readPublishedPosts(projectDirectory, published)
   const missions = await readMissionEntries(projectDirectory)
   const missionById = new Map(missions.map((mission) => [mission.id, mission]))
-  const blogMissionIds = new Set(missions.filter(missionShowsInBlog).map((mission) => mission.id))
+  const knownMissionIds = new Set(missions.map((mission) => mission.id))
 
   const missionPosts = new Map<string, BlogPost[]>()
   const teamBuildingPosts: BlogPost[] = []
 
   for (const post of posts) {
     const missionId = blogMissionIdFromPostId(post.id)
-    if (!missionId || !blogMissionIds.has(missionId)) {
+    if (!missionId || !knownMissionIds.has(missionId)) {
       teamBuildingPosts.push(post)
       continue
     }

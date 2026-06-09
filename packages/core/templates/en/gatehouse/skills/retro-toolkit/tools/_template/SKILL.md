@@ -2,13 +2,13 @@
 
 ## Problem class
 
-(e.g. count context compactions and token inflation on following assistant turns)
+(e.g. count context compaction events and post-compaction assistant token spikes)
 
 ## Inputs
 
-- `context/<node_id>/messages.json` or `timeline.md`
-- `context/subtree-metrics.json` → `retro_nodes[<node_id>]` (subtree token/duration/tool totals)
-- `context/<node_id>/metrics.json` (per-node totals)
+- `.gatehouse/trees/<mission_id>/context/<node_id>/messages.json` or `timeline.md`
+- `.gatehouse/trees/<mission_id>/context/subtree-metrics.json` → `retro_nodes[<node_id>]` (subtree token/duration/tool totals)
+- `.gatehouse/trees/<mission_id>/context/<node_id>/metrics.json` (per-node totals)
 
 ## Run
 

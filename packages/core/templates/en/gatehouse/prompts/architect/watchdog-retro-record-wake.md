@@ -4,8 +4,8 @@ Gatehouse detected Mission **{{mission_id}}** node **{{node_id}}** retro session
 
 ## Do now
 
-1. Confirm retro report is written: `{{report_path}}` (include "Tools & methodology" section).
+1. Confirm retro report is written: `{{report_path}}` (include "Tool contribution" section).
 2. Call **`gatehouse_retro_record()`** (or `report_path=` pointing at the report).
-3. Optional: `gatehouse_publish_blog(report_path={{report_path}})` to publish to Portal blog.
+3. Call `gatehouse_publish_blog(report_path={{report_path}})` to publish to Portal blog (same as retro-node-analysis; recommended).
 
 **Do not** `gatehouse_send_message` {{architect_name}} — Gatehouse auto-notifies {{architect_name}} after all retro nodes record.

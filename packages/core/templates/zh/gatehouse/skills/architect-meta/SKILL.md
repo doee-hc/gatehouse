@@ -32,7 +32,7 @@ disable-model-invocation: true
 收到 {{lead_name}} `gatehouse_mission_start` 的自动通知后：
 
 1. 使用通知中的任务快照（objective / done_when / must_not / notes）；必要时 `gatehouse_mission_current` 刷新。
-2. 调用 `skill({ name: "architect-meta" })` 复习本 skill；读 `.gatehouse/prompts/architect/` 历史模板。
+2. 调用 `skill({ name: "architect-meta" })` 复习本 skill；读 `.gatehouse/<locale>/prompts/architect/` 历史模板（`<locale>` 见 `.gatehouse/config.yaml`）。
 
 任务正文只有 objective / done_when / must_not / notes。**拓扑全权归你**；teamspec **不写** skill_domain（归 {{curator_name}} 分配）。
 
@@ -43,7 +43,7 @@ disable-model-invocation: true
 
 ### 2. 建队
 
-1. 写 `teamspec.yaml`（**无** skill_domain）：
+1. 写 `.gatehouse/trees/<id>/teamspec.yaml`（**无** skill_domain）：
 
 每个 inner 节点必填 **`description`**：一句话说明职责（UI / `gatehouse_list_team` execution 视图展示）；详细边界写在 **`constraints`**。
 
@@ -74,7 +74,7 @@ nodes:
     description: 任务协调者，分派直接下属并汇总交付
     constraints: |
       仅向 parent 指向你的节点分派（node-frontend、node-api）。
-      收到子树汇报后写 reports/root-delivery.md，再 gatehouse_send_message(recipient="lead")。
+      收到子树汇报后写 .gatehouse/trees/<id>/reports/root-delivery.md，再 gatehouse_publish_blog(report_path=.gatehouse/trees/<id>/reports/root-delivery.md)，再 gatehouse_send_message(recipient="lead")。
   node-frontend:
     parent: node-root
     description: 前端子树协调者，分派 UI/CSS 并汇总
@@ -111,9 +111,9 @@ nodes:
 
 {{lead_name}} `gatehouse_mission_retro` 后 Gatehouse 自动 fork retro、下发模板。registry 收齐 retro 节点 → **自动通知你**：
 
-1. 读 `reports/nodes/*-retro.md` → 写 `architect-summary.md`（含 retro-toolkit 整理）。
+1. 读 `.gatehouse/trees/<id>/reports/nodes/*-retro.md` → 写 `.gatehouse/trees/<id>/reports/architect-summary.md`（含 retro-toolkit 整理）。
 2. `gatehouse_publish_blog(report_path=.gatehouse/trees/<id>/reports/architect-summary.md)`。
-3. 更新 `skills/architect-meta/`、`skills/retro-toolkit/`。
+3. 更新 `.gatehouse/<locale>/skills/architect-meta/`、`.gatehouse/<locale>/skills/retro-toolkit/SKILL.md` 与 `.gatehouse/skills/retro-toolkit/tools/`。
 4. `gatehouse_send_message(recipient="lead", ...)`。
 
 {{curator_name}} skill 汇总与你并行，互不阻塞。
@@ -122,10 +122,11 @@ nodes:
 
 | 用途 | 路径 |
 |------|------|
-| TeamSpec / reports | `.gatehouse/trees/<id>/`（manifest 仅在 `registry.db`；调试导出见 `internal/exports/`） |
+| TeamSpec / reports | `.gatehouse/trees/<id>/`（manifest 仅在 `registry.db`；调试导出见 `.gatehouse/internal/exports/`） |
 | 汇报 | `.gatehouse/trees/<id>/reports/` |
-| Prompt 模板 | `.gatehouse/prompts/architect/` |
-| retro 工具库 | `.gatehouse/skills/retro-toolkit/` |
+| Prompt 模板 | `.gatehouse/<locale>/prompts/architect/`（`<locale>` 见 `config.yaml`） |
+| retro 方法论 | `.gatehouse/<locale>/skills/retro-toolkit/SKILL.md` |
+| retro 工具脚本 | `.gatehouse/skills/retro-toolkit/tools/` |
 
 ## 铁律
 

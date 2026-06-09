@@ -40,7 +40,7 @@ disable-model-invocation: true
 
 全部登记后 → **自动通知你**：
 
-1. 读 `reports/skills/<node_id>-extract.md` 与 `by-domain/` 变更。
+1. 读 `.gatehouse/trees/<id>/reports/skills/<node_id>-extract.md` 与 `.gatehouse/skills/by-domain/` 变更。
 2. 去重合并 → 更新 `domains.yaml`；可选 `curator-summary.md`。
 3. 可选 `gatehouse_send_message(recipient="lead", ...)`。
 
@@ -51,7 +51,7 @@ disable-model-invocation: true
 | 领域注册表 | `.gatehouse/skills/domains.yaml` |
 | 领域 skill | `.gatehouse/skills/by-domain/<id>/` |
 | 任务树 | `.gatehouse/trees/<id>/` |
-| 提炼摘要 | `reports/skills/<node_id>-extract.md` |
+| 提炼摘要 | `.gatehouse/trees/<id>/reports/skills/<node_id>-extract.md` |
 
 ## 铁律
 

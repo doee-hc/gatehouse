@@ -20,19 +20,19 @@
 - 上下文压缩 / 协调 / token 热点等模式：
 
 ## retro 工具与方法论演进（必做）
-汇总各 `reports/nodes/*-retro.md` 的「工具贡献」章节：
+汇总各 `.gatehouse/trees/<mission_id>/reports/nodes/*-retro.md` 的「工具贡献」章节：
 
 | retro 节点 | 新工具/改进 | 路径 | promote? | 一句话 |
 |------------|------------|------|----------|--------|
 
 **整理动作（写入永久经验）：**
 - [ ] 合并 promote 的工具到 `.gatehouse/skills/retro-toolkit/tools/`
-- [ ] 更新 `retro-toolkit/SKILL.md`（方法论、推荐 grep、常见问题类）
-- [ ] 更新 `prompts/architect/retro-node-analysis.md`（若需调整 coord 规程措辞）
+- [ ] 更新 `.gatehouse/<locale>/skills/retro-toolkit/SKILL.md`（方法论、推荐 grep、常见问题类）
+- [ ] 更新 `.gatehouse/<locale>/prompts/architect/retro-node-analysis.md`（若需调整 coord 规程措辞）
 - [ ] 弃用/归档重复或失效工具（注明原因）
 
 ## architect-meta 更新摘要
-（本次写入 `skills/architect-meta/SKILL.md` 或 `prompts/architect/` 的变更要点 — **协调与分配层面**，非领域 skill）
+（本次写入 `.gatehouse/<locale>/skills/architect-meta/SKILL.md` 或 `.gatehouse/<locale>/prompts/architect/` 的变更要点 — **协调与分配层面**，非领域 skill）
 
 ## 给{{lead_name}}的摘要
 （3–5 条 bullet，供 report.md 引用 — 聚焦任务规划与验收，不含业务细节）

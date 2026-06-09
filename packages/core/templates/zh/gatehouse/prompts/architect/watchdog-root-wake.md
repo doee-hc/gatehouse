@@ -23,7 +23,7 @@ Gatehouse 检测到任务 **{{mission_id}}** 的执行团队已连续 **{{idle_s
 
 确认任务已全部执行完毕后，处理对{{lead_name}}的通知（`gatehouse_send_message(recipient="lead", ...)` 会暂停看门狗，直至{{lead_name}}或执行团队再次分配任务）：
 
-1. **若尚未向{{lead_name}}发送过完成通知**（含此前漏发、仅口头汇总未调用工具等情况）→ 按需写交付报告后补发一条完成通知。
+1. **若尚未向{{lead_name}}发送过完成通知**（含此前漏发、仅口头汇总未调用工具等情况）→ 按需写交付报告、`gatehouse_publish_blog(report_path=.gatehouse/trees/{{mission_id}}/reports/root-delivery.md)` 发布到 Portal 博客后补发一条完成通知。
 2. **若此前已向{{lead_name}}发送过完成通知** → 再向{{lead_name}}发送一条：`已工作完成，请勿回复`，以关闭看门狗。
 
 **注意：** 等待期间勿反复 `send_message` 催促仍在 busy 的队友；排查完成后勿持续 snapshot 轮询。

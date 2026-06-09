@@ -30,6 +30,7 @@
 1. 根据上方执行团队结构，通过 `gatehouse_send_message` 将任务分配给你**直接管理的下属** `node_id`（快照里 `parent` 指向你的节点）。若下属为中间协调层，由其继续向下分派；叶子执行成员（profile `build`）负责具体产出。
 2. 等待队友时：可**单次** `gatehouse_session_snapshot(recipient="<node_id>")` 确认**直接下属**仍在执行；禁止循环 snapshot，等待回报优先 `send_message`。
 3. 收集或自行完成交付后，写 `.gatehouse/trees/{{mission_id}}/reports/root-delivery.md`。
-4. 任务执行交付完成后：`gatehouse_send_message(recipient="lead", message=...)` 通知{{lead_name}}（说明 delivery 路径与完成摘要）。**不要**联系{{architect_name}}；**不要**自行启动复盘。
+4. `gatehouse_publish_blog(report_path=.gatehouse/trees/{{mission_id}}/reports/root-delivery.md)` 发布到 Portal 博客。
+5. 任务执行交付完成后：`gatehouse_send_message(recipient="lead", message=...)` 通知{{lead_name}}（说明 delivery 路径与完成摘要）。**不要**联系{{architect_name}}；**不要**自行启动复盘。
 
 **注意：** 上方任务说明是用户意图；你的 system constraints 中的 must_not 仍有效。任务**执行期不要提炼 skill**；若 system 中附有 `skill_domain` 目录路径，仅作执行时自行查阅。交付后验收与复盘由 {{lead_name}} 负责，你无需介入。

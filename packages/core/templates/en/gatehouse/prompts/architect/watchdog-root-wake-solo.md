@@ -9,6 +9,7 @@ Likely causes: work is done but delivery report or {{lead_name}} notification wa
 1. Review the objective and done_when—confirm whether all work is complete.
 2. If complete but not yet delivered:
    - Write `.gatehouse/trees/{{mission_id}}/reports/root-delivery.md`
+   - `gatehouse_publish_blog(report_path=.gatehouse/trees/{{mission_id}}/reports/root-delivery.md)` to publish to Portal blog
    - `gatehouse_send_message(recipient="lead", message=...)` to notify {{lead_name}} (include delivery path and summary; this pauses the watchdog)
 3. If work is not complete → resume execution, then deliver as above when done.
 4. **If you already notified {{lead_name}} of completion** but were woken again → send one more: `Work complete, no reply needed` to close the watchdog.

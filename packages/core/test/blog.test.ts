@@ -23,7 +23,7 @@ async function write(rel: string, content: string) {
   return abs
 }
 
-test("buildBlogSnapshot groups mission posts flat and hides running mission from mission groups", async () => {
+test("buildBlogSnapshot groups mission posts flat and includes running mission posts", async () => {
   await write(
     ".gatehouse/lead/missions.yaml",
     `schema_version: 1
@@ -126,7 +126,7 @@ nodes:
   expect(blog.groups.map((group) => [group.kind, group.id])).toEqual([
     ["mission", "mission-new"],
     ["mission", "mission-old"],
-    ["team-building", "__team_building__"],
+    ["mission", "mission-running"],
   ])
   expect(blog.groups[0]?.expanded).toBe(true)
   expect(blog.groups[0]?.posts.map((post) => post.title)).toEqual(["新任务验收", "leaf-b 复盘"])
@@ -139,8 +139,8 @@ nodes:
     "leaf-a 复盘",
   ])
 
-  const team = blog.groups.find((group) => group.kind === "team-building")
-  expect(team?.posts[0]?.title).toBe("进行中汇报")
+  const running = blog.groups.find((group) => group.id === "mission-running")
+  expect(running?.posts[0]?.title).toBe("进行中汇报")
 })
 
 test("buildBlogSnapshot hides unpublished markdown", async () => {

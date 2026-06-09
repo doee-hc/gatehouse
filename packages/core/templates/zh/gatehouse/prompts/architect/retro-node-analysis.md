@@ -9,7 +9,7 @@
 ### 数据来源（唯一真相源）
 
 ```
-.gatehouse/architect/trees/{{mission_id}}/context/
+.gatehouse/trees/{{mission_id}}/context/
   index.json                 # 所辖分支全部 node_id、subtree-metrics 路径
   subtree-metrics.json       # 各 retro coord 所辖子树的 token/耗时/工具聚合（读 retro_nodes["{{node_id}}"]）
   <node_id>/
@@ -17,15 +17,14 @@
     timeline.md              # grep 友好时间线（含 kind、tokens=）
     metrics.json             # 单节点 session 级 token/耗时/工具聚合
 
-.gatehouse/skills/retro-toolkit/     # 历史 retro 工具与方法论（先读再分析）
-  SKILL.md
-  tools/<verb-noun>/SKILL.md + 脚本
+skill({ name: "retro-toolkit" })     # 方法论（或读 .gatehouse/<locale>/skills/retro-toolkit/SKILL.md）
+.gatehouse/skills/retro-toolkit/tools/<verb-noun>/SKILL.md + 脚本
 ```
 
 **系统已预计算的 API 级指标**（直接读文件，无需调用工具）：
 
-- 所辖子树汇总：`context/subtree-metrics.json` → `retro_nodes["{{node_id}}"]`
-- 单节点明细：`context/<node_id>/metrics.json`
+- 所辖子树汇总：`.gatehouse/trees/{{mission_id}}/context/subtree-metrics.json` → `retro_nodes["{{node_id}}"]`
+- 单节点明细：`.gatehouse/trees/{{mission_id}}/context/<node_id>/metrics.json`
 
 这些指标**不能**替代你从 messages/timeline 自制的语义特征提取（压缩次数、todo 段 token、send_message 模式等）。
 
@@ -35,8 +34,8 @@
 2. **不要通读**全部 `messages.json`。先用 `timeline.md` grep 定位异常片段（见下表）。
 3. 对可疑模式：**自制或扩展 Python 脚本**提取特征（压缩次数、todo 段 token、send_message 序列等）。
 4. 若新工具有复用价值：写入 `.gatehouse/skills/retro-toolkit/tools/<verb-noun>/`（含 `SKILL.md`）。
-5. 用 `subtree-metrics.json` 与脚本输出交叉验证 token/耗时/工具调用统计。
-6. 写 retro 报告（含工具贡献说明）→ `gatehouse_retro_record` 登记 → `gatehouse_publish_blog(report_path=...)` 发布到 Portal 博客。
+5. 用 `.gatehouse/trees/{{mission_id}}/context/subtree-metrics.json` 与脚本输出交叉验证 token/耗时/工具调用统计。
+6. 写 `.gatehouse/trees/{{mission_id}}/reports/nodes/{{node_id}}-retro.md`（含「工具贡献」章节）→ `gatehouse_retro_record` 登记 → `gatehouse_publish_blog(report_path=.gatehouse/trees/{{mission_id}}/reports/nodes/{{node_id}}-retro.md)` 发布到 Portal 博客。
 
 **grep 指引（timeline.md）：**
 
@@ -54,7 +53,7 @@
 
 ### 输出
 
-写文件：`.gatehouse/architect/trees/{{mission_id}}/reports/nodes/{{node_id}}-retro.md`
+写文件：`.gatehouse/trees/{{mission_id}}/reports/nodes/{{node_id}}-retro.md`
 
 **报告面向{{architect_name}}（任务分配与 prompt 约束），不要写领域 skill 或业务实现细节。**
 
@@ -95,7 +94,7 @@
 
 ```
 gatehouse_retro_record()
-gatehouse_publish_blog(report_path=".gatehouse/architect/trees/{{mission_id}}/reports/nodes/{{node_id}}-retro.md")
+gatehouse_publish_blog(report_path=".gatehouse/trees/{{mission_id}}/reports/nodes/{{node_id}}-retro.md")
 ```
 
 **不要** `gatehouse_send_message` 联系{{architect_name}} — 全部节点登记后 Gatehouse 会自动通知{{architect_name}}汇总（含各 retro 报告与 retro-toolkit 整理任务）。

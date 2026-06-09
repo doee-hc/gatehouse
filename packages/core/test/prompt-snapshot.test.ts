@@ -148,6 +148,12 @@ nodes:
       expect(prompt).toContain("node-doc")
       expect(prompt).toContain("tokens_total=3")
       expect(prompt).not.toContain("{{retro_context_snapshot}}")
+      expect(prompt).toContain(".gatehouse/trees/retro-m1/context/")
+      expect(prompt).toContain(".gatehouse/trees/retro-m1/context/subtree-metrics.json")
+      expect(prompt).toContain(".gatehouse/trees/retro-m1/reports/nodes/node-root-retro.md")
+      expect(prompt).toContain("工具贡献")
+      expect(prompt).not.toContain("architect/trees")
+      expect(prompt).not.toMatch(/report_path=reports\/nodes/)
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

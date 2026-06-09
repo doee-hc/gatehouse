@@ -32,7 +32,7 @@ Mission snapshot / TeamSpec / reports — OpenCode read/write + this skill.
 After {{lead_name}} auto-notification from `gatehouse_mission_start`:
 
 1. Use the mission snapshot in the start notification (objective / done_when / must_not / notes); call `gatehouse_mission_current` to refresh if needed.
-2. Call `skill({ name: "architect-meta" })` to reload this skill; read `.gatehouse/prompts/architect/` templates.
+2. Call `skill({ name: "architect-meta" })` to reload this skill; read `.gatehouse/<locale>/prompts/architect/` templates (`<locale>` from `.gatehouse/config.yaml`).
 
 Task body is objective / done_when / must_not / notes only. **Topology is yours**; teamspec **must not** include skill_domain ({{curator_name}} assigns).
 
@@ -43,7 +43,7 @@ Task body is objective / done_when / must_not / notes only. **Topology is yours*
 
 ### 2. Build team
 
-1. Write `teamspec.yaml` (**no** skill_domain):
+1. Write `.gatehouse/trees/<id>/teamspec.yaml` (**no** skill_domain):
 
 Each inner node **must** have **`description`**: one-line role (shown in UI / `gatehouse_list_team` execution view); detailed boundaries in **`constraints`**.
 
@@ -74,7 +74,7 @@ nodes:
     description: Task coordinator — delegate to direct reports and summarize delivery
     constraints: |
       Assign only to nodes whose parent is you (node-frontend, node-api).
-      After subtree reports arrive, write reports/root-delivery.md, then gatehouse_send_message(recipient="lead").
+      After subtree reports arrive, write .gatehouse/trees/<id>/reports/root-delivery.md, then gatehouse_publish_blog(report_path=.gatehouse/trees/<id>/reports/root-delivery.md), then gatehouse_send_message(recipient="lead").
   node-frontend:
     parent: node-root
     description: Frontend subtree coordinator — delegates UI/CSS and summarizes
@@ -111,9 +111,9 @@ Execution team collaborates on its own; **you do not intervene**, track progress
 
 After {{lead_name}} `gatehouse_mission_retro`, Gatehouse forks retro and dispatches templates. When all retro nodes are recorded → **auto-notify you**:
 
-1. Read `reports/nodes/*-retro.md` → write `architect-summary.md` (include retro-toolkit curation).
+1. Read `.gatehouse/trees/<id>/reports/nodes/*-retro.md` → write `.gatehouse/trees/<id>/reports/architect-summary.md` (include retro-toolkit curation).
 2. `gatehouse_publish_blog(report_path=.gatehouse/trees/<id>/reports/architect-summary.md)`.
-3. Update `skills/architect-meta/` and `skills/retro-toolkit/`.
+3. Update `.gatehouse/<locale>/skills/architect-meta/`, `.gatehouse/<locale>/skills/retro-toolkit/SKILL.md`, and `.gatehouse/skills/retro-toolkit/tools/`.
 4. `gatehouse_send_message(recipient="lead", ...)`.
 
 {{curator_name}} skill rollup runs in parallel; neither blocks the other.
@@ -122,10 +122,11 @@ After {{lead_name}} `gatehouse_mission_retro`, Gatehouse forks retro and dispatc
 
 | Purpose | Path |
 |---------|------|
-| TeamSpec / reports | `.gatehouse/trees/<id>/` (manifest in `registry.db`; debug export under `internal/exports/`) |
+| TeamSpec / reports | `.gatehouse/trees/<id>/` (manifest in `registry.db`; debug export under `.gatehouse/internal/exports/`) |
 | Reports | `.gatehouse/trees/<id>/reports/` |
-| Prompt templates | `.gatehouse/prompts/architect/` |
-| Retro toolkit | `.gatehouse/skills/retro-toolkit/` |
+| Prompt templates | `.gatehouse/<locale>/prompts/architect/` (`<locale>` from `config.yaml`) |
+| Retro methodology | `.gatehouse/<locale>/skills/retro-toolkit/SKILL.md` |
+| Retro tool scripts | `.gatehouse/skills/retro-toolkit/tools/` |
 
 ## Rules
 

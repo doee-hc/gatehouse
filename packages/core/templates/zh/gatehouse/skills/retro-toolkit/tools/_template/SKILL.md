@@ -6,9 +6,9 @@
 
 ## 输入
 
-- `context/<node_id>/messages.json` 或 `timeline.md`
-- `context/subtree-metrics.json` → `retro_nodes[<node_id>]`（子树 token/耗时/工具汇总）
-- `context/<node_id>/metrics.json`（单节点汇总）
+- `.gatehouse/trees/<mission_id>/context/<node_id>/messages.json` 或 `timeline.md`
+- `.gatehouse/trees/<mission_id>/context/subtree-metrics.json` → `retro_nodes[<node_id>]`（子树 token/耗时/工具汇总）
+- `.gatehouse/trees/<mission_id>/context/<node_id>/metrics.json`（单节点汇总）
 
 ## 运行
 

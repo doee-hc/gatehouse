@@ -9,6 +9,7 @@ Gatehouse 检测到任务 **{{mission_id}}** 已连续 **{{idle_seconds}} 秒** 
 1. 回顾任务目标与验收条件，确认工作是否已全部完成。
 2. 若已完成但尚未交付：
    - 写 `.gatehouse/trees/{{mission_id}}/reports/root-delivery.md`
+   - `gatehouse_publish_blog(report_path=.gatehouse/trees/{{mission_id}}/reports/root-delivery.md)` 发布到 Portal 博客
    - `gatehouse_send_message(recipient="lead", message=...)` 通知{{lead_name}}（含 delivery 路径与完成摘要；此操作会暂停看门狗）
 3. 若工作尚未完成 → 继续执行，完成后按上一步交付。
 4. **若此前已向{{lead_name}}发送过完成通知** 但仍被唤醒 → 再发一条：`已工作完成，请勿回复`，以关闭看门狗。

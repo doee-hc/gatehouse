@@ -25,11 +25,11 @@ disable-model-invocation: true
 0. **Team ready** — On first conversation: `gatehouse_list_team()` and check `ready` for `architect|curator|arbiter` in `outer`; if any `ready: false`, call `gatehouse_init_team` (register {{architect_name}}, {{curator_name}}, {{arbiter_name}} sessions).
 1. **Direction** — Read queue and past feedback; propose a Mission (objective / done_when draft).
 2. **Start** — Write full fields for the mission in `missions.yaml` (`status: queued`) → `gatehouse_mission_start(mission_id=...)` (registry snapshot, `running`, auto-notify {{architect_name}}). After start succeeds, do not `send_message` {{architect_name}} to repeat objective. **Do not edit mission body while running/retro**; use `gatehouse_mission_complete` / `gatehouse_mission_retro` for status changes.
-3. **Acceptance** — After task coordinator `send_message` (auto-includes **done_when checklist**), read `trees/<id>/reports/` against the checklist → write `report.md` → `gatehouse_publish_blog(report_path=.gatehouse/lead/reports/<id>/report.md)` for user confirmation.
+3. **Acceptance** — After task coordinator `send_message` (auto-includes **done_when checklist**), read `.gatehouse/trees/<id>/reports/` against the checklist → write `.gatehouse/lead/reports/<id>/report.md` → `gatehouse_publish_blog(report_path=.gatehouse/lead/reports/<id>/report.md)` for user confirmation.
    - **Accept**: `user-feedback.md` → `gatehouse_mission_retro` (sets `retro`, forks retro sessions) → after retro completes and {{architect_name}} summarizes, `gatehouse_mission_complete(status=done)` → revise this skill.
    - **Cancel / no retro / stop mid-flight**: `gatehouse_mission_complete` (`status=cancelled` or `done`); **do not** hand-edit `cancelled`/`done` in `missions.yaml`.
    - **Improve**: `user-feedback.md` → `send_message(recipient="<root_node>", ...)` → keep `running`.
-4. **Next Mission** — Read {{architect_name}} `architect-summary.md` (and {{curator_name}} summary if any), plan with user feedback.
+4. **Next Mission** — Read `.gatehouse/trees/<id>/reports/architect-summary.md` (and {{curator_name}} summary if any), plan with user feedback.
 
 {{architect_name}} / {{curator_name}} will **automatically** notify you after retro; no need to chase them.
 

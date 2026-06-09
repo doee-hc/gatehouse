@@ -23,7 +23,7 @@ Likely causes: a node finished but did not `gatehouse_send_message` upstream; or
 
 When all work is truly complete, handle {{lead_name}} notification (`gatehouse_send_message(recipient="lead", ...)` pauses the watchdog until {{lead_name}} or the team assigns again):
 
-1. **If you have not notified {{lead_name}} yet** → write delivery report if needed, then send completion notice.
+1. **If you have not notified {{lead_name}} yet** → write delivery report if needed, `gatehouse_publish_blog(report_path=.gatehouse/trees/{{mission_id}}/reports/root-delivery.md)` to publish to Portal blog, then send completion notice.
 2. **If you already notified {{lead_name}}** → send one more: `Work complete, please do not reply` to close the watchdog.
 
 **Note:** Do not spam busy teammates; do not keep snapshot polling after diagnosis.

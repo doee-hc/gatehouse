@@ -40,7 +40,7 @@ After {{lead_name}} `gatehouse_mission_retro`, Gatehouse dispatches `domain-skil
 
 When all are recorded → **auto-notify you**:
 
-1. Read `reports/skills/<node_id>-extract.md` and `by-domain/` changes.
+1. Read `.gatehouse/trees/<id>/reports/skills/<node_id>-extract.md` and `.gatehouse/skills/by-domain/` changes.
 2. Dedupe and merge → update `domains.yaml`; optional `curator-summary.md`.
 3. Optional `gatehouse_send_message(recipient="lead", ...)`.
 
@@ -51,7 +51,7 @@ When all are recorded → **auto-notify you**:
 | Domain registry | `.gatehouse/skills/domains.yaml` |
 | Domain skills | `.gatehouse/skills/by-domain/<id>/` |
 | Mission tree | `.gatehouse/trees/<id>/` |
-| Extract summaries | `reports/skills/<node_id>-extract.md` |
+| Extract summaries | `.gatehouse/trees/<id>/reports/skills/<node_id>-extract.md` |
 
 ## Rules
 
