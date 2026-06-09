@@ -1,4 +1,5 @@
 import { loadGatehouseConfig, type PortalDisplayConfig } from "../gatehouse-config.ts"
+import { getPortalOfficeSettings, toBrowserOfficeConfig } from "./portal-office-settings.ts"
 
 export type PortalDisplaySettings = {
   sseMax: number
@@ -127,5 +128,6 @@ export function toBrowserDisplayConfig(settings: PortalDisplaySettings) {
   return {
     snapshot_poll_ms: settings.snapshotPollMs,
     team_stats_poll_ms: settings.teamStatsPollMs,
+    office: toBrowserOfficeConfig(getPortalOfficeSettings()),
   }
 }

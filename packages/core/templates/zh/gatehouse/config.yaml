@@ -11,6 +11,9 @@ portal:
   #     - https://portal.example.com
   #   snapshot_poll_ms: 15000
   #   team_stats_poll_ms: 12000
+  # office:
+  #   idle_wander: true
+  #   play_release: seat   # seat | wander — 地板点击彩蛋结束后
   brand:
     title: Gatehouse
     subtitle: 团队门户

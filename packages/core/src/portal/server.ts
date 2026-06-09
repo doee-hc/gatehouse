@@ -22,6 +22,7 @@ import {
 } from "./vite-dev.ts"
 import { setPortalInProcessDelivery } from "./events.ts"
 import { initPortalDisplaySettings } from "./portal-display-settings.ts"
+import { initPortalOfficeSettings } from "./portal-office-settings.ts"
 import { ensureOpencodeBridge, stopOpencodeBridge } from "./opencode-bridge.ts"
 import { getCachedPortalSnapshot } from "./snapshot.ts"
 
@@ -135,6 +136,7 @@ export async function ensurePortalServer(projectDirectory: string, packageRoot?:
   defaultProjectDirectory = path.resolve(projectDirectory)
   if (packageRoot) portalPackageRoot = path.resolve(packageRoot)
   initPortalDisplaySettings(defaultProjectDirectory)
+  initPortalOfficeSettings(defaultProjectDirectory)
 
   if (sharedServer) {
     const port = activePortalPort ?? sharedServer.port ?? preferredPortalDisplayPort()

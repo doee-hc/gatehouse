@@ -40,6 +40,13 @@ export type PortalDisplayConfig = {
   team_stats_poll_ms?: number
 }
 
+export type PortalOfficeConfig = {
+  /** When false, idle agents stay at desks instead of wandering. Default true. */
+  idle_wander?: boolean
+  /** After floor-click easter egg: seat (return to desk) or wander. Default seat. */
+  play_release?: "seat" | "wander"
+}
+
 export type GatehouseConfigFile = {
   schema_version?: number
   locale?: string
@@ -54,6 +61,7 @@ export type GatehouseConfigFile = {
       icp_url?: string
     }
     display?: PortalDisplayConfig
+    office?: PortalOfficeConfig
   }
   agents?: Partial<Record<OuterProfile, { name?: string }>>
   models?: Partial<Record<GatehouseModelProfile, string>>
@@ -71,7 +79,12 @@ export type ResolvedGatehouseConfig = {
   locale: GatehouseLocale
   agents: Record<OuterProfile, string>
   models: Partial<Record<GatehouseModelProfile, string>>
-  portal: { brand: PortalBrandConfig; project_slug?: string; display?: PortalDisplayConfig }
+  portal: {
+    brand: PortalBrandConfig
+    project_slug?: string
+    display?: PortalDisplayConfig
+    office?: PortalOfficeConfig
+  }
 }
 
 export function gatehouseGlobalConfigDir() {
@@ -195,6 +208,20 @@ function positiveConfigInt(value: unknown) {
   return Math.floor(value)
 }
 
+function mergePortalOffice(
+  base: PortalOfficeConfig,
+  layer: GatehouseConfigFile | undefined,
+): PortalOfficeConfig {
+  const office = layer?.portal?.office
+  if (!office) return base
+  const next = { ...base }
+  if (typeof office.idle_wander === "boolean") next.idle_wander = office.idle_wander
+  if (office.play_release === "seat" || office.play_release === "wander") {
+    next.play_release = office.play_release
+  }
+  return next
+}
+
 function mergeBrand(base: PortalBrandConfig, layer: GatehouseConfigFile | undefined, configDir: string) {
   const brand = layer?.portal?.brand
   if (!brand) return base
@@ -251,6 +278,9 @@ export function loadGatehouseConfig(projectDirectory: string): ResolvedGatehouse
   let portalDisplay = mergePortalDisplay({}, global)
   portalDisplay = mergePortalDisplay(portalDisplay, project)
   const hasPortalDisplay = Object.keys(portalDisplay).length > 0
+  let portalOffice = mergePortalOffice({}, global)
+  portalOffice = mergePortalOffice(portalOffice, project)
+  const hasPortalOffice = Object.keys(portalOffice).length > 0
 
   return {
     agents,
@@ -260,6 +290,7 @@ export function loadGatehouseConfig(projectDirectory: string): ResolvedGatehouse
       brand: portalBrand,
       ...(projectSlug && { project_slug: projectSlug }),
       ...(hasPortalDisplay && { display: portalDisplay }),
+      ...(hasPortalOffice && { office: portalOffice }),
     },
   }
 }
