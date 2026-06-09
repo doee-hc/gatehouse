@@ -11,7 +11,17 @@ import {
 } from "../../src/channels/registry/agent-target.ts"
 import { loadAgentDescriptions } from "../../src/channels/registry/agent-descriptions.ts"
 
-function writeRegistry(dir: string, rows: Array<Record<string, string | null>>) {
+type RegistryRow = {
+  agent_id: string
+  scope: string
+  profile?: string
+  session_id: string
+  display_name: string
+  mission_id?: string | null
+  node_id?: string | null
+}
+
+function writeRegistry(dir: string, rows: Array<RegistryRow>) {
   const gatehouse = path.join(dir, ".gatehouse")
   mkdirSync(path.join(gatehouse, "lead"), { recursive: true })
   const dbPath = path.join(gatehouse, "registry.db")

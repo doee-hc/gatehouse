@@ -11,6 +11,8 @@ declare module "bun:test" {
     toMatchObject(value: unknown): void
     toMatch(value: RegExp | string): void
     toBeUndefined(): void
+    toBeGreaterThanOrEqual(value: number): void
+    toThrow(expected?: RegExp | string | Error): void
     not: Expectation
   }
 

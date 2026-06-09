@@ -10,6 +10,7 @@
     "packages/*"
   ],
   "scripts": {
+    "prepare": "husky",
     "dev": "bun packages/core/script/dev-opencode.ts",
     "dev:portal": "bun run --cwd packages/portal dev",
     "dev:weixin-bridge": "bun run --cwd packages/weixin-bridge dev",
@@ -25,5 +26,8 @@
   "prettier": {
     "semi": false,
     "printWidth": 120
+  },
+  "devDependencies": {
+    "husky": "9.1.7"
   }
 }
