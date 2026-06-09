@@ -1,6 +1,11 @@
+import type { PortalOfficeConfig } from "./office-behavior.ts"
+
+export type { PortalOfficeConfig }
+
 export type PortalDisplayConfig = {
   snapshot_poll_ms: number
   team_stats_poll_ms: number
+  office: PortalOfficeConfig
 }
 
 /** HTTP poll cadence — live agent status comes from /portal/events SSE. */

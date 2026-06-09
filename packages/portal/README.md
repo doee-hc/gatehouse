@@ -17,7 +17,15 @@ Disable portal sidecars:
 ```bash
 GATEHOUSE_PORTAL=0 bun run dev ../your-project      # no portal at all
 GATEHOUSE_PORTAL_UI=0 bun run dev ../your-project   # API only, static UI from dist/portal (requires bun run build)
-GATEHOUSE_IDLE_WANDER=0 bun run dev ../your-project # idle agents stay at desks (no office wandering)
+```
+
+Office agent behavior (idle wander, floor-click release) is configured in `.gatehouse/config.yaml` under `portal.office` (project overrides `~/.config/gatehouse/config.yaml`).
+
+```yaml
+portal:
+  office:
+    idle_wander: true      # false = idle agents stay at desks
+    play_release: seat     # seat | wander — after floor-click easter egg
 ```
 
 ### UI / Portal development (restart without OpenCode)

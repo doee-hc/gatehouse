@@ -24,7 +24,10 @@ import {
   characterSheetTextureKey,
 } from "../office/character-sheets.ts"
 import { setOfficeTileSize } from "../office/office-tile-size.ts"
-import { IDLE_WANDER_ENABLED } from "../portal/office-behavior.ts"
+import {
+  isIdleWanderEnabled,
+  officePlayReleaseMode,
+} from "../portal/office-behavior.ts"
 import { resolveAgentDisplayStatus } from "../portal/live-status.ts"
 import { getPortalSnapshot } from "../portal/state.ts"
 import { findPath, type GridPoint } from "../pathfinding/astar.ts"
@@ -156,10 +159,11 @@ class Agent extends Phaser.GameObjects.Container {
   behavior: BehaviorKind = "stand"
   facing: Facing = "down"
   pathDone?: () => void
-  pathIntent?: "chat"
+  pathIntent?: "chat" | "play"
   seatedChairId?: string
   pendingSitChairId?: string
   ghost = false
+  fixed = false
 
   constructor(
     scene: Phaser.Scene,
@@ -175,6 +179,7 @@ class Agent extends Phaser.GameObjects.Container {
     this.grid = grid
     this.atlasPrefix = def.atlasPrefix
     this.ghost = def.ghost === true
+    this.fixed = def.fixed === true
 
     const surface = characterSpriteFrame(scene, def.atlasPrefix, "stand", "down", false)
     this.sprite = scene.make
@@ -295,6 +300,25 @@ class Agent extends Phaser.GameObjects.Container {
     this.syncBehavior()
   }
 
+  /** Floor-click easter egg: walk to tile, then scene releases agent per portal.office.play_release. */
+  walkToPlay(grid: GridPoint, blocked: boolean[][]) {
+    const scene = this.scene as OfficeScene
+    if (grid.x === this.grid.x && grid.y === this.grid.y && !this.isMoving) return
+    scene.playReleasedAgents.delete(this.agentId)
+    this.clearSeat()
+    this.pendingSitChairId = undefined
+    this.pathDone = undefined
+    this.pathIntent = "play"
+    const path = findPath(blocked, this.grid, grid)
+    if (path.length <= 1) {
+      this.pathIntent = undefined
+      scene.onAgentPlayEnd(this)
+      return
+    }
+    this.pathWorld = gridPathToWorldWaypoints(path)
+    this.syncBehavior()
+  }
+
   walkToThen(grid: GridPoint, blocked: boolean[][], onDone: () => void) {
     this.clearSeat()
     this.pendingSitChairId = undefined
@@ -326,7 +350,7 @@ class Agent extends Phaser.GameObjects.Container {
     const intent = this.pathIntent
     this.pathDone?.()
     this.pathDone = undefined
-    if (intent !== "chat") this.pathIntent = undefined
+    if (intent !== "chat" && intent !== "play") this.pathIntent = undefined
   }
 
   updateAgent(_time: number, delta: number) {
@@ -389,6 +413,8 @@ export class OfficeScene extends Phaser.Scene {
   chatChaseTargets = new Map<string, ChatChaseState>()
   retroFollowArchitectGrid?: GridPoint
   layoutErrorText?: Phaser.GameObjects.Text
+  /** Agents released after floor-click play in wander mode (outer idle otherwise stay seated). */
+  playReleasedAgents = new Set<string>()
 
   constructor() {
     super("OfficeScene")
@@ -511,7 +537,7 @@ export class OfficeScene extends Phaser.Scene {
     this.blocked = this.readCollision(map)
     this.deskAnchors = readDeskAnchors(map)
     for (const anchor of this.deskAnchors) {
-      if (!anchor.chairId?.startsWith("inner-")) continue
+      if (!anchor.chairId) continue
       const chair = this.chairs.get(anchor.chairId)
       if (!chair) continue
       anchor.grid = chair.sitGrid
@@ -551,7 +577,7 @@ export class OfficeScene extends Phaser.Scene {
       const grid = worldToGrid(world.x, world.y)
       if (grid.x < 0 || grid.y < 0 || grid.x >= this.mapWidth || grid.y >= this.mapHeight) return
       if (this.blocked[grid.y]?.[grid.x]) return
-      agent.walkTo(grid, this.blocked)
+      agent.walkToPlay(grid, this.blocked)
     })
 
     this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels)
@@ -569,6 +595,12 @@ export class OfficeScene extends Phaser.Scene {
     const anchor = this.deskAnchors.find((entry) => entry.agentId === agentId && entry.chairId)
     if (!anchor?.chairId) return undefined
     return this.chairs.get(anchor.chairId)
+  }
+
+  dedicatedGridForAgent(agentId: string) {
+    const anchor = this.deskAnchors.find((entry) => entry.agentId === agentId)
+    if (anchor) return anchor.grid
+    return this.tiledSpawns.get(agentId)
   }
 
   boundWorkstationChair(agentId: string) {
@@ -664,7 +696,9 @@ export class OfficeScene extends Phaser.Scene {
   }
 
   routeAgentForStatus(agent: Agent, status: AgentStatus) {
-    if (agent.pathIntent === "chat" || this.chatInFlight.has(agent.agentId)) return
+    if (agent.pathIntent === "chat" || agent.pathIntent === "play" || this.chatInFlight.has(agent.agentId)) {
+      return
+    }
     if ((this.chatQueues.get(agent.agentId)?.length ?? 0) > 0) return
     const record = getPortalSnapshot()?.agents.find((item) => item.spawn_id === agent.agentId)
     if (record?.scope === "retro") {
@@ -672,16 +706,11 @@ export class OfficeScene extends Phaser.Scene {
       return
     }
     if (record?.scope === "outer") {
-      if (status === "idle" && IDLE_WANDER_ENABLED) {
-        agent.clearSeat()
-        if (!agent.isMoving) this.resetWanderTimer(agent.agentId)
-        return
-      }
       this.routeAgentToDedicatedSeat(agent)
       return
     }
     if (this.boundWorkstationChair(agent.agentId)) {
-      if (status === "idle" && IDLE_WANDER_ENABLED) {
+      if (status === "idle" && isIdleWanderEnabled()) {
         agent.clearSeat()
         if (!agent.isMoving) this.resetWanderTimer(agent.agentId)
         return
@@ -721,6 +750,7 @@ export class OfficeScene extends Phaser.Scene {
   }
 
   applySit(agent: Agent, chair: ChairSpot) {
+    this.playReleasedAgents.delete(agent.agentId)
     agent.seatedChairId = chair.id
     agent.pendingSitChairId = undefined
     const sit = agentSitWorld(chair)
@@ -736,6 +766,11 @@ export class OfficeScene extends Phaser.Scene {
   }
 
   onAgentPathEnd(agent: Agent) {
+    if (agent.pathIntent === "play") {
+      agent.pathIntent = undefined
+      this.onAgentPlayEnd(agent)
+      return
+    }
     if (agent.pendingSitChairId) {
       const chair = this.chairs.get(agent.pendingSitChairId)
       agent.pendingSitChairId = undefined
@@ -744,6 +779,24 @@ export class OfficeScene extends Phaser.Scene {
       return
     }
     this.resetWanderTimer(agent.agentId)
+  }
+
+  onAgentPlayEnd(agent: Agent) {
+    this.releasePlayAgent(agent)
+  }
+
+  releasePlayAgent(agent: Agent) {
+    if (
+      officePlayReleaseMode() === "wander" &&
+      agent.agentStatus === "idle" &&
+      isIdleWanderEnabled()
+    ) {
+      this.playReleasedAgents.add(agent.agentId)
+      this.resetWanderTimer(agent.agentId)
+      return
+    }
+    this.playReleasedAgents.delete(agent.agentId)
+    this.routeAgentForStatus(agent, agent.agentStatus)
   }
 
   idleBehaviorContext(agentId: string, grid: GridPoint) {
@@ -761,7 +814,7 @@ export class OfficeScene extends Phaser.Scene {
 
   routeAgentToWorkstation(agent: Agent, reserved = occupiedAnchorKeys(this.agents.values(), agent.agentId)) {
     if (!agentShouldSitAtDesk(agent.agentStatus)) return
-    if (agent.pathIntent === "chat") return
+    if (agent.pathIntent === "chat" || agent.pathIntent === "play") return
     const target = pickAnchorForAgent(agent.agentId, agent.grid, agent.agentStatus, this.deskAnchors, reserved)
     if (!target) return
     const anchor = this.deskAnchors.find(
@@ -784,9 +837,9 @@ export class OfficeScene extends Phaser.Scene {
   }
 
   maybeWanderAgent(agent: Agent, now: number, options?: { allowWhenBusy?: boolean }) {
-    if (!IDLE_WANDER_ENABLED) return
+    if (!isIdleWanderEnabled()) return
     if (!options?.allowWhenBusy && agent.agentStatus !== "idle") return
-    if (agent.isMoving || agent.pathIntent === "chat") return
+    if (agent.isMoving || agent.pathIntent === "chat" || agent.pathIntent === "play") return
     if (agent.seatedChairId) agent.clearSeat()
     const last = this.wanderTicks.get(agent.agentId) ?? 0
     if (now - last < WANDER_INTERVAL_MS) return
@@ -806,7 +859,13 @@ export class OfficeScene extends Phaser.Scene {
   ensureBoundSeat(agent: Agent, now: number) {
     const chair = this.boundWorkstationChair(agent.agentId)
     if (!chair) return
-    if (agent.seatedChairId === chair.id || agent.isMoving || agent.pendingSitChairId || agent.pathIntent === "chat") {
+    if (
+      agent.seatedChairId === chair.id ||
+      agent.isMoving ||
+      agent.pendingSitChairId ||
+      agent.pathIntent === "chat" ||
+      agent.pathIntent === "play"
+    ) {
       return
     }
     const key = `bound:${agent.agentId}`
@@ -817,7 +876,7 @@ export class OfficeScene extends Phaser.Scene {
   }
 
   ensureRetroFollowArchitect(agent: Agent, now: number, architectMoved: boolean) {
-    if (agent.isMoving || agent.pathIntent === "chat") return
+    if (agent.isMoving || agent.pathIntent === "chat" || agent.pathIntent === "play") return
     const grid = this.retroFollowGridForAgent(agent.agentId)
     if (!grid) return
     if (agent.grid.x === grid.x && agent.grid.y === grid.y && !architectMoved) return
@@ -831,7 +890,13 @@ export class OfficeScene extends Phaser.Scene {
   ensureDedicatedSeat(agent: Agent, now: number) {
     const chair = this.dedicatedChairForAgent(agent.agentId)
     if (!chair) return
-    if (agent.seatedChairId === chair.id || agent.isMoving || agent.pendingSitChairId || agent.pathIntent === "chat") {
+    if (
+      agent.seatedChairId === chair.id ||
+      agent.isMoving ||
+      agent.pendingSitChairId ||
+      agent.pathIntent === "chat" ||
+      agent.pathIntent === "play"
+    ) {
       return
     }
     const key = `dedicated:${agent.agentId}`
@@ -843,7 +908,15 @@ export class OfficeScene extends Phaser.Scene {
 
   ensureAgentSeated(agent: Agent, now?: number) {
     if (!agentShouldSitAtDesk(agent.agentStatus)) return
-    if (agent.seatedChairId || agent.isMoving || agent.pendingSitChairId || agent.pathIntent === "chat") return
+    if (
+      agent.seatedChairId ||
+      agent.isMoving ||
+      agent.pendingSitChairId ||
+      agent.pathIntent === "chat" ||
+      agent.pathIntent === "play"
+    ) {
+      return
+    }
     if (now !== undefined) {
       const key = `seat:${agent.agentId}`
       const last = this.wanderTicks.get(key) ?? 0
@@ -894,6 +967,10 @@ export class OfficeScene extends Phaser.Scene {
       )
       if (grid) return grid
     }
+    if (record?.scope === "outer") {
+      const dedicated = this.dedicatedGridForAgent(spawnId)
+      if (dedicated) return dedicated
+    }
     const slot = snapshot.office_layout?.bindings?.find((entry) => entry.spawn_id === spawnId)?.slot
     if (slot !== undefined) {
       const chair = this.chairs.get(`inner-${slot}`)
@@ -924,6 +1001,7 @@ export class OfficeScene extends Phaser.Scene {
       this.chatQueues.delete(id)
       this.chatInFlight.delete(id)
       this.chatHomeGrid.delete(id)
+      this.playReleasedAgents.delete(id)
       agent.destroy()
       this.agents.delete(id)
       if (this.selectedId === id) this.selectedId = ""
@@ -942,7 +1020,9 @@ export class OfficeScene extends Phaser.Scene {
       }
       const grid = this.resolveAgentGrid(snapshot, def.id)
       const agent = this.spawnAgent({ ...def, status }, grid)
-      this.routeAgentForStatus(agent, status)
+      const dedicatedChair = this.dedicatedChairForAgent(def.id)
+      if (dedicatedChair) this.applySit(agent, dedicatedChair)
+      else this.routeAgentForStatus(agent, status)
     }
 
     if (defs.length > 0 && !this.agents.has(this.selectedId)) {
@@ -1274,21 +1354,30 @@ export class OfficeScene extends Phaser.Scene {
         continue
       }
       if (record?.scope === "outer") {
-        if (agent.agentStatus === "idle" && IDLE_WANDER_ENABLED) this.maybeWanderAgent(agent, _time)
-        else this.ensureDedicatedSeat(agent, _time)
+        if (
+          this.playReleasedAgents.has(agent.agentId) &&
+          agent.agentStatus === "idle" &&
+          isIdleWanderEnabled() &&
+          officePlayReleaseMode() === "wander"
+        ) {
+          this.maybeWanderAgent(agent, _time)
+        } else {
+          if (agent.agentStatus !== "idle") this.playReleasedAgents.delete(agent.agentId)
+          this.ensureDedicatedSeat(agent, _time)
+        }
         continue
       }
       if (this.boundWorkstationChair(agent.agentId)) {
-        if (agent.agentStatus === "idle" && IDLE_WANDER_ENABLED) this.maybeWanderAgent(agent, _time)
+        if (agent.agentStatus === "idle" && isIdleWanderEnabled()) this.maybeWanderAgent(agent, _time)
         else this.ensureBoundSeat(agent, _time)
         continue
       }
       if (this.isOverflowInnerAgent(agent.agentId)) {
-        if (IDLE_WANDER_ENABLED) this.maybeWanderAgent(agent, _time, { allowWhenBusy: true })
+        if (isIdleWanderEnabled()) this.maybeWanderAgent(agent, _time, { allowWhenBusy: true })
         continue
       }
       if (agentShouldSitAtDesk(agent.agentStatus)) this.ensureAgentSeated(agent, _time)
-      else if (IDLE_WANDER_ENABLED) this.maybeWanderAgent(agent, _time)
+      else if (isIdleWanderEnabled()) this.maybeWanderAgent(agent, _time)
     }
     getOfficeDomLabels()?.syncLayout()
     this.repositionDomLabels()
