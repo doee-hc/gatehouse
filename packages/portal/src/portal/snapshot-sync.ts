@@ -8,16 +8,19 @@ import {
 } from "../office/game.ts"
 import { replaySessionActivity, syncAgentsFromSnapshotStatus } from "./session-activity.ts"
 import { getPortalSnapshot, setPortalSnapshot } from "./state.ts"
+import { shouldLogAgentStatus } from "./status-log.ts"
 
 let lastOpencodeReachable: boolean | undefined
 let loggedPortalStream = false
 
 export function applySnapshotUpdate(next: PortalSnapshot) {
   const prev = getPortalSnapshot()
-  if (prev && next.opencode_reachable !== true) {
+  if (prev) {
     for (const agent of next.agents) {
       const before = prev.agents.find((item) => item.spawn_id === agent.spawn_id)
-      if (before && before.status !== agent.status) logAgentStatus(agent, before.status)
+      if (before && before.status !== agent.status && shouldLogAgentStatus(agent.spawn_id, agent.status)) {
+        logAgentStatus(agent, before.status)
+      }
     }
   }
 

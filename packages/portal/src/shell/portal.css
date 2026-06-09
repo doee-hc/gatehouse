@@ -255,9 +255,16 @@ body {
   animation: pulse 2s step-end infinite;
 }
 
+.live-dot.standby,
 .live-dot.idle {
   background: var(--curator);
   box-shadow: 0 0 0 1px #14532d;
+}
+
+.live-dot.retro {
+  background: var(--architect);
+  box-shadow: 0 0 0 1px #4c1d95;
+  animation: pulse 2.4s step-end infinite;
 }
 
 .live-dot.offline {
@@ -369,27 +376,20 @@ body {
   white-space: nowrap;
 }
 
-.esc-status.live {
-  color: #f87171;
-  animation: blink 1.2s step-end infinite;
+.nav-activity-live #nav-status-label {
+  color: #fca5a5;
 }
 
-.esc-status.idle {
+.nav-activity-retro #nav-status-label {
+  color: var(--architect);
+}
+
+.nav-activity-standby #nav-status-label {
   color: var(--curator);
 }
 
-.esc-status.connected {
-  color: var(--esc-hud-text);
-}
-
-.esc-status.offline {
+.nav-activity-offline #nav-status-label {
   color: #94a3b8;
-}
-
-@keyframes blink {
-  50% {
-    opacity: 0.35;
-  }
 }
 
 .office-game-stack {

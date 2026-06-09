@@ -1,40 +1,54 @@
 import type { PortalSnapshot, PortalTreeNode } from "../api/types.ts"
-import { isBackendConnected } from "../portal/connection.ts"
+import { isQuietOffice, resolvePortalActivity, type PortalActivity } from "../portal/portal-activity.ts"
+import { getBlogSnapshot, getPortalSnapshot } from "../portal/state.ts"
 import { refreshAgentOverlay } from "./agent-overlay.ts"
-import { getBlogSnapshot } from "../portal/state.ts"
 import { renderBlog } from "./blog.ts"
 import { localeTag, t } from "./i18n.ts"
 import { renderKnowledge } from "./knowledge.ts"
 import { renderMissions } from "./office-sidebar.ts"
 
 export function renderPortal(snapshot: PortalSnapshot) {
-  renderStatus(snapshot)
+  renderNavStatus(snapshot)
   renderOffice(snapshot)
   renderKnowledge(snapshot)
   renderBlog(getBlogSnapshot())
   refreshAgentOverlay()
 }
 
-function renderStatus(snapshot: PortalSnapshot) {
+export function refreshPortalActivityUi() {
+  const snapshot = getPortalSnapshot()
+  if (snapshot) renderNavStatus(snapshot)
+}
+
+function renderNavStatus(snapshot: PortalSnapshot) {
+  const activity = resolvePortalActivity(snapshot)
   const statusLabel = document.getElementById("nav-status-label")
   if (statusLabel) {
-    if (!isBackendConnected()) {
-      statusLabel.textContent = t("nav.offline")
-    } else {
-      statusLabel.textContent = snapshot.project
-        ? t("nav.project", { name: snapshot.project })
-        : t("nav.connected")
-    }
+    statusLabel.textContent = formatNavStatusLabel(snapshot, activity)
   }
 
   const liveDot = document.getElementById("nav-live-dot")
   if (liveDot) {
-    if (!isBackendConnected()) {
-      liveDot.className = "live-dot offline"
-    } else {
-      liveDot.className = isPortalLive(snapshot) ? "live-dot live" : "live-dot idle"
-    }
+    liveDot.className = `live-dot ${activityDotClass(activity)}`
   }
+
+  const navStatus = document.querySelector(".nav-status")
+  if (navStatus) {
+    navStatus.className = `nav-status nav-activity-${activity}`
+  }
+}
+
+function formatNavStatusLabel(snapshot: PortalSnapshot, activity: PortalActivity) {
+  const activityLabel = t(`nav.activity.${activity}`)
+  if (snapshot.project) return t("nav.status", { project: snapshot.project, activity: activityLabel })
+  return activityLabel
+}
+
+function activityDotClass(activity: PortalActivity) {
+  if (activity === "live") return "live"
+  if (activity === "retro") return "retro"
+  if (activity === "offline") return "offline"
+  return "standby"
 }
 
 function renderOffice(snapshot: PortalSnapshot) {
@@ -52,20 +66,6 @@ function renderOffice(snapshot: PortalSnapshot) {
     } else {
       const id = snapshot.active_mission_id ?? running[0]!.id
       escMission.textContent = t("esc.mission", { id })
-    }
-  }
-
-  const escStatus = document.getElementById("esc-status")
-  if (escStatus) {
-    if (!isBackendConnected()) {
-      escStatus.textContent = t("esc.status.offline")
-      escStatus.className = "esc-status offline"
-    } else if (isPortalLive(snapshot)) {
-      escStatus.textContent = t("esc.status.live")
-      escStatus.className = "esc-status live"
-    } else {
-      escStatus.textContent = quiet ? t("esc.status.idle") : t("esc.status.connected")
-      escStatus.className = quiet ? "esc-status idle" : "esc-status connected"
     }
   }
 
@@ -115,24 +115,6 @@ function renderOffice(snapshot: PortalSnapshot) {
         )}</p>`
       : `<p class="empty-state">${escapeHtml(t("empty.waitingEvents"))}</p>`
   }
-}
-
-function isPortalLive(snapshot: PortalSnapshot) {
-  if (
-    snapshot.missions.some((mission) => mission.status === "running" || mission.status === "retro")
-  ) {
-    return true
-  }
-  return snapshot.agents.some((agent) => agent.status === "busy" || agent.status === "research")
-}
-
-function isQuietOffice(snapshot: PortalSnapshot) {
-  if (snapshot.missions.length === 0) return false
-  const noActive = !snapshot.missions.some(
-    (mission) => mission.status === "running" || mission.status === "retro",
-  )
-  const noBusy = !snapshot.agents.some((agent) => agent.status === "busy" || agent.status === "research")
-  return noActive && noBusy
 }
 
 function formatExecTreeLines(
