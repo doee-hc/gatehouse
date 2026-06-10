@@ -97,31 +97,19 @@ bun run dev /path/to/project
 
 **Gatehouse Portal：** 展示 API 默认 `18471`（只读 + SSE + UI）；Admin 控制面默认 `18472`（`/admin`、Channel API，仅 loopback）。`bun run build` 后 UI 为静态 `dist/portal/`；Monorepo 开发时 `bun run dev` 在 `18471` 嵌入 Vite middleware（HMR）。关闭：`GATEHOUSE_PORTAL=0`。
 
-**IM Channels (WeChat / Feishu / QQ):** unified CLI + Supervisor. Start OpenCode first (`bun run dev <project>`), then:
+## IM Channels
+
+Unified CLI + Supervisor for WeChat / Feishu / QQ. Start OpenCode first (`bun run dev <project>`), then:
 
 ```bash
-bun run channels init -C /path/to/project      # writes .gatehouse/channels.yaml + @gatehouse/core/channels/plugin in opencode.jsonc
+bun run channels init -C /path/to/project      # writes .gatehouse/channels.yaml + channels plugin in opencode.jsonc
 bun run channels login weixin                  # or feishu / qq
 bun run channels serve -C /path/to/project     # one supervisor for all enabled channels
 bun run channels status --probe
 bun run channels stop -C /path/to/project
 ```
 
-User guide: [docs/guide/channels.md](../../docs/guide/channels.md) · [docs/guide/channels.zh.md](../../docs/guide/channels.zh.md)
-
-Platform bridge packages ([weixin](../weixin-bridge/README.md) / [feishu](../feishu-bridge/README.md) / [qq](../qq-bridge/README.md)) depend on `@gatehouse/core` and import `@gatehouse/core/channels`. Legacy `bun run dev:weixin-bridge` still works in the monorepo.
-
-## IM Channels
-
-IM logic lives in [`src/channels/`](./src/channels/) and ships as:
-
-| Surface | Value |
-| --- | --- |
-| Import | `@gatehouse/core/channels` |
-| OpenCode plugin (project) | `@gatehouse/core/channels/plugin` |
-| Extra agent tool | `gatehouse_channels_send_file` (queue outbound files to IM) |
-
-`channels init` / `ensureOpencodeConfig` adds the channels plugin to project `opencode.jsonc`. End-user bridges are bundled under `bridges/` at build time — separate `@gatehouse/*-bridge` npm installs are not required.
+User guide: [docs/guide/channels.md](../../docs/guide/channels.md) · [docs/guide/channels.zh.md](../../docs/guide/channels.zh.md). Platform setup: [weixin](../weixin-bridge/README.md) / [feishu](../feishu-bridge/README.md) / [qq](../qq-bridge/README.md). Monorepo source: [`src/channels/`](./src/channels/). Legacy `bun run dev:weixin-bridge` still works.
 
 **注意：** 必须把**项目目录**传给 dev 脚本（如上），OpenCode 才会在正确 cwd 下加载配置；`--port` 与项目路径顺序可互换。
 

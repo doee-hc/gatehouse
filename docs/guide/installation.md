@@ -194,9 +194,9 @@ opencode auth login
 
 Complete OAuth / API key setup per OpenCode prompts.
 
-### Step 6: (Optional) IM Channels
+### Step 6: IM Channels
 
-Built into `@gatehouse/core` — enables WeChat / Feishu / QQ when you run:
+Connect WeChat, Feishu, or QQ to chat with your team remotely:
 
 ```bash
 bunx @gatehouse/core channels init

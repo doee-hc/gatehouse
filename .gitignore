@@ -29,8 +29,7 @@ packages/test/
 # 构建产物
 *.tgz
 
-packages/**/test/.tmp-*
-packages/**/test/.tmp-attachments/
+packages/**/test/**/.tmp-*
 oh-my-openagent
 
 # LimeZu 本地合成工具输出（只发布 portal 内成品 sheets）

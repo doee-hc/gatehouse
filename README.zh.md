@@ -112,7 +112,7 @@ bunx @gatehouse/core doctor
 - **任务生命周期** — 排队 → 执行 → 验收 → 复盘 → 技能沉淀；团队状态持久化在项目 `.gatehouse/` 中。
 - **自我迭代** — 复盘与技能提取会反哺后续任务，团队能力随项目演进。
 - **Portal 办公室** — Phaser 像素风办公室：agent 忙碌时在工位、空闲时走动；附带博客与 Skill Tab。
-- **IM 通道（可选）** — 通过微信 / 飞书 / QQ 与任意团队成员远程对话（[IM 通道指南](./docs/guide/channels.zh.md)）。
+- **IM 通道** — 通过微信 / 飞书 / QQ 与任意团队成员远程对话（[IM 通道指南](./docs/guide/channels.zh.md)）。
 
 ### 配置
 

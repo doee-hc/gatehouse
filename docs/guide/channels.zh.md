@@ -1,16 +1,8 @@
 # IM 通道（微信 / 飞书 / QQ）
 
-IM 通道能力内置于 **`@gatehouse/core`**，没有单独的 channels npm 包。
+通过微信、飞书或 QQ 与团队远程对话。入站消息转发到绑定的 registry agent（默认 Lead）；OpenCode session idle 后，助手回复会自动推送到 IM。Agent 可用 `gatehouse_channels_send_file` 将项目内文件加入出站队列。
 
-| 入口 | 值 |
-| --- | --- |
-| npm 包 | `@gatehouse/core` |
-| 库 import | `@gatehouse/core/channels` |
-| OpenCode 插件（项目级） | `@gatehouse/core/channels/plugin` |
-| 源码（monorepo） | [`packages/core/src/channels/`](../../packages/core/src/channels/) |
-| Agent 工具 | `gatehouse_channels_send_file` |
-
-`channels init` / `channels serve` 会在**项目**根目录 `opencode.jsonc` 中写入 `@gatehouse/core/channels/plugin`（与 `@gatehouse/core` 并列）。首次写入后请重启 OpenCode 以加载该工具。
+每个项目运行一次 `channels init`，然后重启 OpenCode 以加载 channels 插件与相关工具。
 
 ## 前置条件
 
@@ -52,17 +44,13 @@ bun run channels serve -C /path/to/project
 
 Portal 通道管理（可选）：`http://127.0.0.1:18472/admin` — 使用 `.gatehouse/config.yaml` 中的 `portal.admin_key` 解锁。
 
-## 平台 Bridge
-
-终端用户**不需要**单独安装 bridge npm 包；`@gatehouse/core` 在 build 时会 bundle bridge 入口。Monorepo 开发者可直接运行各平台包：
+## 各平台配置
 
 | 平台 | 文档 |
 | --- | --- |
 | 微信 | [packages/weixin-bridge/README.md](../../packages/weixin-bridge/README.md) |
 | 飞书 | [packages/feishu-bridge/README.md](../../packages/feishu-bridge/README.md) |
 | QQ | [packages/qq-bridge/README.md](../../packages/qq-bridge/README.md) |
-
-Bridge 包依赖 `@gatehouse/core`，共享逻辑从 `@gatehouse/core/channels` import。
 
 ## Agent 与 IM 互通
 
@@ -72,6 +60,6 @@ Bridge 包依赖 `@gatehouse/core`，共享逻辑从 `@gatehouse/core/channels` 
 
 ## 延伸阅读
 
-- [快速上手 — IM 通道](../getting-started.zh.md#im-通道可选)
+- [快速上手 — IM 通道](../getting-started.zh.md#im-通道)
 - [packages/core/README.md — IM Channels](../../packages/core/README.md#im-channels)（英文）
 - [开发者指南](../dev.md)（英文）

@@ -2,9 +2,7 @@
 
 Bridges Feishu Bot DMs (and group @mentions) to Gatehouse registry agent sessions (default `outer:lead`).
 
-Bridges Feishu Bot DMs (and group @mentions) to Gatehouse registry agent sessions (default `outer:lead`).
-
-Protocol reference: Feishu WebSocket long-connection from [opencode-im-bridge](https://github.com/ET06731/opencode-im-bridge). Gatehouse integration: [`@gatehouse/core/channels`](../../docs/guide/channels.md) — see [IM Channels guide](../../docs/guide/channels.md).
+Protocol reference: Feishu WebSocket long-connection from [opencode-im-bridge](https://github.com/ET06731/opencode-im-bridge). Gatehouse setup: [IM Channels guide](../../docs/guide/channels.md).
 
 ## Prerequisites
 

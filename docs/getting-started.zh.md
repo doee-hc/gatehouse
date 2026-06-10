@@ -139,9 +139,9 @@ portal:
 
 Admin key 位于 `.gatehouse/config.yaml` 的 `portal.admin_key`。也可用环境变量 `GATEHOUSE_PORTAL_ADMIN_KEY` 覆盖（适合 CI 或临时调试）。
 
-## IM 通道（可选）
+## IM 通道
 
-IM 通道内置于 `@gatehouse/core`（无独立 npm 包）。若希望通过微信、飞书或 QQ 与 Lead 对话：
+若希望通过微信、飞书或 QQ 与 Lead 对话：
 
 ```bash
 bunx @gatehouse/core channels init

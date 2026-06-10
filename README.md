@@ -112,7 +112,7 @@ For the full user workflow, see the [Getting Started guide](./docs/getting-start
 - **Mission lifecycle** — Queue → execute → review → retrospective → skill distillation; team state persists in the project's `.gatehouse/`.
 - **Self-improvement** — Retrospectives and skill extraction feed back into future Missions as the team evolves with your project.
 - **Portal office** — Phaser pixel-art office: agents at their desks when busy, wandering when idle; includes a blog and Skill tab.
-- **IM channels (optional)** — Chat remotely with any team member via WeChat / Feishu / QQ ([IM Channels guide](./docs/guide/channels.md)).
+- **IM channels** — Chat remotely with any team member via WeChat / Feishu / QQ ([IM Channels guide](./docs/guide/channels.md)).
 
 ### Configuration
 

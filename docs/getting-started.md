@@ -139,9 +139,9 @@ portal:
 
 The admin key is in `.gatehouse/config.yaml` under `portal.admin_key`. Override with `GATEHOUSE_PORTAL_ADMIN_KEY` (useful for CI or temporary debugging).
 
-## IM Channels (Optional)
+## IM Channels
 
-IM channels are part of `@gatehouse/core` (not a separate package). To chat with Lead via WeChat, Feishu, or QQ:
+To chat with Lead via WeChat, Feishu, or QQ:
 
 ```bash
 bunx @gatehouse/core channels init

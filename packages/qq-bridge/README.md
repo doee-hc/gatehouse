@@ -2,7 +2,7 @@
 
 Bridges QQ official Bot **DMs** to Gatehouse registry agent sessions (default `outer:lead`).
 
-WebSocket integration reference: [opencode-im-bridge](https://github.com/ET06731/opencode-im-bridge) (`qq-official-bot` SDK). Gatehouse integration: [`@gatehouse/core/channels`](../../docs/guide/channels.md) — see [IM Channels guide](../../docs/guide/channels.md).
+WebSocket integration reference: [opencode-im-bridge](https://github.com/ET06731/opencode-im-bridge) (`qq-official-bot` SDK). Gatehouse setup: [IM Channels guide](../../docs/guide/channels.md).
 
 ## Prerequisites
 

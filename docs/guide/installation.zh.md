@@ -194,9 +194,9 @@ opencode auth login
 
 按 OpenCode 提示完成 OAuth / API key 配置。
 
-### Step 6：（可选）IM 通道
+### Step 6：IM 通道
 
-内置于 `@gatehouse/core`，运行以下命令启用微信 / 飞书 / QQ：
+连接微信、飞书或 QQ，与团队远程对话：
 
 ```bash
 bunx @gatehouse/core channels init

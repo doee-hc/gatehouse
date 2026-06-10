@@ -1,16 +1,8 @@
 # IM Channels (WeChat / Feishu / QQ)
 
-IM channel support ships **inside `@gatehouse/core`**. There is no separate channels npm package.
+Chat with your team remotely via WeChat, Feishu, or QQ. Inbound messages route to the bound registry agent (default Lead); assistant replies are delivered when the OpenCode session goes idle. Agents can queue outbound files with `gatehouse_channels_send_file`.
 
-| Surface | Value |
-| --- | --- |
-| npm package | `@gatehouse/core` |
-| Library import | `@gatehouse/core/channels` |
-| OpenCode plugin (project) | `@gatehouse/core/channels/plugin` |
-| Source (monorepo) | [`packages/core/src/channels/`](../../packages/core/src/channels/) |
-| Agent tool | `gatehouse_channels_send_file` |
-
-`channels init` / `channels serve` writes `@gatehouse/core/channels/plugin` into the **project** root `opencode.jsonc` alongside `@gatehouse/core`. Restart OpenCode after the first write so the tool loads.
+Run `channels init` once per project, then restart OpenCode so the channels plugin and tools load.
 
 ## Prerequisites
 
@@ -52,17 +44,13 @@ Typical flow: start OpenCode in the project (`bun run dev <project>` or `opencod
 
 Portal channel admin (optional): `http://127.0.0.1:18472/admin` — unlock with `portal.admin_key` from `.gatehouse/config.yaml`.
 
-## Platform bridges
+## Platform setup
 
-End users do **not** need separate bridge npm packages; `@gatehouse/core` bundles bridge entrypoints at build time. Monorepo developers may run platform packages directly:
-
-| Platform | Doc |
+| Platform | Guide |
 | --- | --- |
 | WeChat | [packages/weixin-bridge/README.md](../../packages/weixin-bridge/README.md) |
 | Feishu | [packages/feishu-bridge/README.md](../../packages/feishu-bridge/README.md) |
 | QQ | [packages/qq-bridge/README.md](../../packages/qq-bridge/README.md) |
-
-Bridge packages depend on `@gatehouse/core` and import shared logic from `@gatehouse/core/channels`.
 
 ## Agent ↔ IM
 
@@ -72,6 +60,6 @@ Bridge packages depend on `@gatehouse/core` and import shared logic from `@gateh
 
 ## See also
 
-- [Getting Started — IM Channels](../getting-started.md#im-channels-optional)
+- [Getting Started — IM Channels](../getting-started.md#im-channels)
 - [packages/core/README.md — IM Channels](../../packages/core/README.md#im-channels)
 - [Developer guide](../dev.md)
