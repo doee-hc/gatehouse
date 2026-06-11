@@ -115,8 +115,8 @@ Optional CLI (registers plugin + can write global config.yaml):
 
 ```bash
 bunx @gatehouse/core install
-bunx @gatehouse/core install --no-tui --locale=zh --model=opencode/big-pickle
-bunx @gatehouse/core doctor
+bunx @gatehouse/core install --no-tui --locale=zh
+bunx @gatehouse/core doctor --global-only
 ```
 
 Full guide: `docs/guide/installation.md`

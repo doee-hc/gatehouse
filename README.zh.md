@@ -80,22 +80,23 @@ flowchart TB
 
 ### 安装
 
-**前置条件：** 已安装 [OpenCode](https://opencode.ai) >= 1.14.40。
+**前置条件：** [OpenCode](https://opencode.ai) >= 1.14.40，[Bun](https://bun.sh)。
 
 ```bash
-# 注册 Gatehouse 插件（全局，一次即可）
-opencode plug @gatehouse/core --global
-
-# 或使用安装助手（推荐：可配置 locale / 模型）
+# 全局安装（推荐）
 bunx @gatehouse/core install
 
-# 验证安装
-bunx @gatehouse/core doctor
+# 验证全局层
+bunx @gatehouse/core doctor --global-only
+
+# 项目初始化（二选一）
+bunx @gatehouse/core scaffold -C /path/to/project   # 提前创建 .gatehouse/
+cd /path/to/project && opencode                        # 或首次启动时自动创建
 ```
 
 完整安装指南（含 LLM Agent 逐步说明）：[docs/guide/installation.zh.md](./docs/guide/installation.zh.md)
 
-然后在**你的项目目录**启动 OpenCode。插件会自动初始化 `.gatehouse/` 配置与 agent 定义，并将默认对话 agent 设为 **Lead**（显示名可在配置中修改）。
+模型等高级配置不在安装阶段设置，需要时编辑 `~/.config/gatehouse/config.yaml` 或 `.gatehouse/config.yaml`。
 
 ### 快速开始
 

@@ -80,22 +80,23 @@ flowchart TB
 
 ### Installation
 
-**Prerequisites:** [OpenCode](https://opencode.ai) >= 1.14.40 installed.
+**Prerequisites:** [OpenCode](https://opencode.ai) >= 1.14.40, [Bun](https://bun.sh).
 
 ```bash
-# Register the Gatehouse plugin (global, one-time)
-opencode plug @gatehouse/core --global
-
-# Or use the install helper (recommended: configurable locale / models)
+# Global install (recommended)
 bunx @gatehouse/core install
 
-# Verify installation
-bunx @gatehouse/core doctor
+# Verify global layer
+bunx @gatehouse/core doctor --global-only
+
+# Project setup (pick one)
+bunx @gatehouse/core scaffold -C /path/to/project   # create .gatehouse/ now
+cd /path/to/project && opencode                        # or auto-create on first start
 ```
 
 Full installation guide (including step-by-step LLM Agent instructions): [docs/guide/installation.md](./docs/guide/installation.md)
 
-Then start OpenCode in **your project directory**. The plugin automatically initializes `.gatehouse/` config and agent definitions, and sets the default conversation agent to **Lead** (display name is configurable).
+Models and other advanced settings are not configured during install — edit `~/.config/gatehouse/config.yaml` or `.gatehouse/config.yaml` when needed.
 
 ### Quick Start
 

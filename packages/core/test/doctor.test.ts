@@ -61,13 +61,17 @@ describe("gatehouse doctor", () => {
   test("passes config and agents after global install", async () => {
     await withIsolatedEnv(async ({ project }) => {
       await mkdir(path.join(project, ".gatehouse"), { recursive: true })
-      await ensureGlobalGatehouseConfig({ locale: "zh", model: "opencode/gpt-5.4" })
+      await ensureGlobalGatehouseConfig({ locale: "zh" })
       await registerGatehouseInGlobalOpencodeConfig({ locale: "zh" })
 
       const report = await runGatehouseDoctor(project, false)
       expect(report.issues.filter((issue) => issue.category === "Config" && issue.level === "error")).toHaveLength(0)
       expect(report.issues.filter((issue) => issue.category === "Agents" && issue.level === "error")).toHaveLength(0)
-      expect(report.issues.some((issue) => issue.category === "Models" && issue.message.includes("lead:"))).toBe(true)
+      expect(
+        report.issues.some(
+          (issue) => issue.category === "Models" && issue.message.includes("未配置 models"),
+        ),
+      ).toBe(true)
     })
   })
 

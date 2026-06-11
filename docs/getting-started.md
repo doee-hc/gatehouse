@@ -15,23 +15,20 @@ Gatehouse is a multi-agent team plugin for [OpenCode](https://opencode.ai). Afte
 ## Install the Plugin
 
 ```bash
+# 1. Global install
 bunx @gatehouse/core install
+
+# 2. Verify global layer
+bunx @gatehouse/core doctor --global-only
+
+# 3. Project setup (pick one)
+bunx @gatehouse/core scaffold -C /path/to/project
+cd /path/to/project && opencode
 ```
 
-Or use the native OpenCode command (registers the plugin only; does not write global `config.yaml`):
+Full verification: `bunx @gatehouse/core doctor -C /path/to/project --probe`
 
-```bash
-opencode plug @gatehouse/core --global
-```
-
-Verify:
-
-```bash
-bunx @gatehouse/core doctor
-bunx @gatehouse/core doctor --probe
-```
-
-For detailed steps, see the [Installation Guide](./guide/installation.md).
+For detailed steps, see the [Installation Guide](./guide/installation.md). Models are not configured during install — edit `config.yaml` when needed.
 
 ## First Launch
 

@@ -15,23 +15,20 @@ Gatehouse 是 OpenCode 的多智能体团队插件。安装后，你在终端里
 ## 安装插件
 
 ```bash
+# 1. 全局安装
 bunx @gatehouse/core install
+
+# 2. 验证全局层
+bunx @gatehouse/core doctor --global-only
+
+# 3. 项目初始化（二选一）
+bunx @gatehouse/core scaffold -C /path/to/project
+cd /path/to/project && opencode
 ```
 
-或使用 OpenCode 原生命令（仅注册插件，不写入全局 `config.yaml`）：
+完整验证：`bunx @gatehouse/core doctor -C /path/to/project --probe`
 
-```bash
-opencode plug @gatehouse/core --global
-```
-
-验证：
-
-```bash
-bunx @gatehouse/core doctor
-bunx @gatehouse/core doctor --probe
-```
-
-详细步骤见 [安装指南](./guide/installation.zh.md)。
+详细步骤见 [安装指南](./guide/installation.zh.md)。模型等配置不在安装阶段设置，需要时编辑 `config.yaml`。
 
 ## 第一次启动
 

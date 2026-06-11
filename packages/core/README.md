@@ -20,12 +20,19 @@ Architecture & workflow: project `.gatehouse/**/SKILL.md` prompts (scaffolded on
 | `gatehouse_mission_complete` | **profile lead** — end mission (`done` or `cancelled`): abort all inner/retro sessions, archive manifest, auto-notify architect + curator |
 | `gatehouse_retro_record` | Retro session marks report done in registry; when all complete, auto-notifies **profile architect** |
 | `gatehouse_skill_extract_record` | Exec session marks skill extract done; when all complete, auto-notifies **profile curator** |
-| `gatehouse_publish_blog` | Publish a report/skill markdown to Portal blog UI (`report_path` only; `.gatehouse/portal/blog-published.yaml`; unpublished files stay hidden) |
+| `gatehouse_publish_blog` | Publish a project deliverable (`done_when publish:` path) or domain SKILL to Portal; `.gatehouse/.../reports/` coordination files cannot be published |
 | `gatehouse_unpublish_blog` | Remove a published post from Portal blog (`report_path`; only the original publisher, per `published_by`) |
+| `gatehouse_execution_complete` | **inner** — mark node done; execution-plan runtime activates dependents |
+| `gatehouse_execution_rework` | **inner** — reopen a dependency node (in-flight rework) |
+| `gatehouse_execution_status` | **lead / architect / root / coordinators** — read execution-plan runtime state |
+| `gatehouse_mission_context` | **execution + lead / architect** — shared objective & must_not boundaries |
+| `gatehouse_node_brief` | **execution + lead / architect** — node brief (your_work / acceptance_slice); leaves read own node only |
+| `gatehouse_mission_contract` | **coordinators + lead / architect** — frozen contract from registry; inner leaves get summary view |
+| `gatehouse_execution_plan` | **execution + lead / architect** — plan from registry; inner leaves see dependency slice only |
 
 Everything else (missions queue, reports, skills) uses OpenCode **read/write** + SKILL prompts under `.gatehouse/`. Portal blog only shows posts after `gatehouse_publish_blog`.
 
-Personnel registry (outer + inner + retro agents ↔ OpenCode `session_id`) and **execution-tree manifests** (`manifest` / `retro-manifest`) live in **`.gatehouse/registry.db`** (SQLite). Plugin code reads trees from the DB only. Optional YAML exports for human inspection live under **`.gatehouse/internal/exports/trees/<mission_id>/`** — inner agents must use `gatehouse_list_team()`, not these files. `trees/<mission_id>/` holds authoring (`teamspec.yaml`) and reports only. `gatehouse_send_message` resolves recipients and enforces who may message whom; OpenCode `task` child sessions for lead/architect are disabled. **Lead should call `gatehouse_init_team` on first conversation** to register architect/curator/arbiter; thereafter `send_message` and architect `gatehouse_bootstrap_tree` require registered targets. Curator `apply_skill_domains` creates Mission execution sessions.
+Personnel registry (outer + inner + retro agents ↔ OpenCode `session_id`) and **execution-tree manifests** (`manifest` / `retro-manifest`) live in **`.gatehouse/registry.db`** (SQLite). Frozen mission contract, node briefs, execution plan, and runtime state are also stored in `registry.db`; agents read them via `gatehouse_mission_*` / `gatehouse_execution_*` tools — not plaintext under `.gatehouse/trees/`. Optional YAML exports for human inspection live under **`.gatehouse/internal/exports/trees/<mission_id>/`**. Authoring files (`teamspec.yaml`, optional `execution-plan.yaml`, `node-briefs/*.yaml`) are imported into the DB at bootstrap. When an execution plan exists, bootstrap starts a runtime that auto-activates ready nodes via work orders. `gatehouse_send_message` resolves recipients and enforces who may message whom; OpenCode `task` child sessions for lead/architect are disabled. **Lead should call `gatehouse_init_team` on first conversation** to register architect/curator/arbiter; thereafter `send_message` and architect `gatehouse_bootstrap_tree` require registered targets. Curator `apply_skill_domains` creates Mission execution sessions.
 
 **Delivery queue:** if the recipient session is `busy` or `retry`, the prompt is appended to `registry_pending_delivery` and the tool returns `delivery: queued`. The plugin flushes the FIFO queue when OpenCode emits `session.status: idle` for that session, and every 15s as a fallback.
 
@@ -35,35 +42,23 @@ Personnel registry (outer + inner + retro agents ↔ OpenCode `session_id`) and 
 
 ## Enable (global plugin — no per-project install)
 
-Register once in **global** OpenCode config (pick one):
+Recommended one-time global setup:
 
 ```bash
-opencode plug @gatehouse/core --global
+bunx @gatehouse/core install
+bunx @gatehouse/core doctor --global-only
 ```
 
-```jsonc
-// ~/.config/opencode/opencode.jsonc
-{
-  "plugin": ["@gatehouse/core"]
-}
+Project setup (pick one):
+
+```bash
+bunx @gatehouse/core scaffold -C /path/to/project
+cd /path/to/project && opencode
 ```
 
-```jsonc
-// ~/.config/opencode/tui.json (TUI client guard — package root; OpenCode resolves exports["./tui"])
-{
-  "plugin": ["@gatehouse/core"]
-}
-```
+Other lifecycle commands: `upgrade`, `uninstall`, `doctor --probe`.
 
-Optional helper (registers plugin + optional global config): `bunx @gatehouse/core install`
-
-Verify: `bunx @gatehouse/core doctor`
-
-Then **start OpenCode in your project directory**. The plugin automatically:
-
-- scaffolds `.gatehouse/` (project-owned files are not overwritten)
-- syncs Gatehouse agent definitions to `~/.config/opencode/agent/`
-- merges project root `opencode.jsonc` with `default_agent: lead` and `skills.paths: [".gatehouse"]`
+The installer writes `~/.config/opencode/opencode.jsonc`, `tui.json`, agent definitions, and `~/.config/gatehouse/config.yaml`. Models are not configured during install — edit `config.yaml` if needed.
 
 Monorepo dev uses `bun run dev` (local `file://` plugin in the **project** config). See [docs/PUBLISH.md](./docs/PUBLISH.md).
 

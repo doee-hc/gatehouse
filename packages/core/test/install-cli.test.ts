@@ -8,38 +8,35 @@ import { registerGatehouseInGlobalOpencodeConfig } from "../src/setup/project.ts
 import { detectGlobalOpencodeConfigPath, isGatehouseTuiPluginSpec } from "../src/setup/global-opencode.ts"
 import { parseCliArgs, hasFlag, optionValue } from "../src/cli/parse-args.ts"
 import { normalizeGatehouseLocale } from "../src/locale.ts"
+import { checkInstallPrerequisites } from "../src/cli/prerequisites.ts"
+import { runGatehouseDoctor } from "../src/cli/doctor.ts"
 
 describe("install cli helpers", () => {
   test("parseCliArgs handles flags and options", () => {
     const args = parseCliArgs([
       "--no-tui",
       "--locale=zh",
-      "--model=opencode/gpt-5.4",
       "--skip-doctor",
       "-C",
       "/tmp/project",
     ])
     expect(hasFlag(args, "--no-tui")).toBe(true)
     expect(optionValue(args, "locale")).toBe("zh")
-    expect(optionValue(args, "model")).toBe("opencode/gpt-5.4")
     expect(optionValue(args, "project")).toBe("/tmp/project")
     expect(normalizeGatehouseLocale(optionValue(args, "locale"))).toBe("zh")
   })
 
-  test("ensureGlobalGatehouseConfig writes locale and model", async () => {
+  test("ensureGlobalGatehouseConfig writes locale without model", async () => {
     const globalDir = await mkdtemp(path.join(tmpdir(), "gh-install-global-"))
     const prev = process.env.GATEHOUSE_GLOBAL_CONFIG_DIR
     process.env.GATEHOUSE_GLOBAL_CONFIG_DIR = globalDir
     try {
-      const first = await ensureGlobalGatehouseConfig({
-        locale: "en",
-        model: "opencode/gpt-5.4",
-      })
+      const first = await ensureGlobalGatehouseConfig({ locale: "en" })
       expect(first.created).toBe(true)
       expect(existsSync(gatehouseGlobalConfigPath())).toBe(true)
       const yaml = readFileSync(gatehouseGlobalConfigPath(), "utf8")
       expect(yaml).toContain("locale: en")
-      expect(yaml).toContain("lead: opencode/gpt-5.4")
+      expect(yaml).not.toContain("models:")
 
       const second = await ensureGlobalGatehouseConfig({ locale: "zh" })
       expect(second.updated).toBe(true)
@@ -76,6 +73,39 @@ describe("install cli helpers", () => {
       if (prev === undefined) delete process.env.GATEHOUSE_GLOBAL_OPENCODE_DIR
       else process.env.GATEHOUSE_GLOBAL_OPENCODE_DIR = prev
       await rm(globalOpencode, { recursive: true, force: true })
+    }
+  })
+
+  test("doctor global scope skips project warnings", async () => {
+    const globalOpencode = await mkdtemp(path.join(tmpdir(), "gh-install-doc-"))
+    const project = await mkdtemp(path.join(tmpdir(), "gh-install-proj-"))
+    const prev = process.env.GATEHOUSE_GLOBAL_OPENCODE_DIR
+    process.env.GATEHOUSE_GLOBAL_OPENCODE_DIR = globalOpencode
+    try {
+      await registerGatehouseInGlobalOpencodeConfig({ locale: "zh" })
+      const globalReport = await runGatehouseDoctor(project, false, "global")
+      expect(globalReport.issues.some((issue) => issue.category === "Project")).toBe(false)
+      expect(globalReport.issues.some((issue) => issue.category === "Portal")).toBe(false)
+
+      const fullReport = await runGatehouseDoctor(project, false, "full")
+      expect(fullReport.issues.some((issue) => issue.category === "Project")).toBe(true)
+    } finally {
+      if (prev === undefined) delete process.env.GATEHOUSE_GLOBAL_OPENCODE_DIR
+      else process.env.GATEHOUSE_GLOBAL_OPENCODE_DIR = prev
+      await rm(globalOpencode, { recursive: true, force: true })
+      await rm(project, { recursive: true, force: true })
+    }
+  })
+
+  test("checkInstallPrerequisites reports missing opencode", async () => {
+    const prev = process.env.OPENCODE_BIN
+    process.env.OPENCODE_BIN = "__gatehouse_missing_opencode_test__"
+    try {
+      const issues = await checkInstallPrerequisites()
+      expect(issues.some((issue) => issue.message.includes("OpenCode"))).toBe(true)
+    } finally {
+      if (prev === undefined) delete process.env.OPENCODE_BIN
+      else process.env.OPENCODE_BIN = prev
     }
   })
 })

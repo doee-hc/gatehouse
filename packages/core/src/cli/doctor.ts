@@ -27,12 +27,18 @@ export type DoctorIssue = {
   message: string
 }
 
+export type DoctorScope = "full" | "global"
+
 export type DoctorReport = {
   issues: DoctorIssue[]
   exitCode: 0 | 1 | 2
 }
 
-export async function runGatehouseDoctor(projectDir: string, probe = false): Promise<DoctorReport> {
+export async function runGatehouseDoctor(
+  projectDir: string,
+  probe = false,
+  scope: DoctorScope = "full",
+): Promise<DoctorReport> {
   const issues: DoctorIssue[] = []
   const root = path.resolve(projectDir)
 
@@ -142,58 +148,61 @@ export async function runGatehouseDoctor(projectDir: string, probe = false): Pro
     }
   }
 
-  if (!existsSync(root)) {
-    issues.push({
-      level: "error",
-      category: "Project",
-      message: `项目目录不存在: ${root}`,
-    })
-  } else if (!existsSync(gatehouseRoot(root))) {
-    issues.push({
-      level: "warn",
-      category: "Project",
-      message: "缺少 .gatehouse/ — 在项目目录启动 OpenCode 后会自动 scaffold",
-    })
-  } else {
-    issues.push({
-      level: "ok",
-      category: "Project",
-      message: `.gatehouse/ 已存在 (${gatehouseRoot(root)})`,
-    })
-
-    const projectConfigPath = projectOpencodeConfigPath(root)
-    if (existsSync(projectConfigPath)) {
-      const projectConfig = await readProjectOpencodeConfig(root)
-      const defaultAgent = projectConfig.default_agent
-      const skillPaths = (projectConfig.skills as { paths?: string[] } | undefined)?.paths ?? []
-      if (defaultAgent === "lead") {
-        issues.push({ level: "ok", category: "Project", message: "项目 default_agent=lead" })
-      } else {
-        issues.push({
-          level: "warn",
-          category: "Project",
-          message: `项目 default_agent=${String(defaultAgent)}（期望 lead）`,
-        })
-      }
-      if (skillPaths.includes(".gatehouse")) {
-        issues.push({ level: "ok", category: "Project", message: "skills.paths 包含 .gatehouse" })
-      } else {
-        issues.push({
-          level: "warn",
-          category: "Project",
-          message: "项目 opencode.jsonc 未包含 skills.paths: [\".gatehouse\"]",
-        })
-      }
-    } else {
+  if (scope === "full") {
+    if (!existsSync(root)) {
+      issues.push({
+        level: "error",
+        category: "Project",
+        message: `项目目录不存在: ${root}`,
+      })
+    } else if (!existsSync(gatehouseRoot(root))) {
       issues.push({
         level: "warn",
         category: "Project",
-        message: "缺少项目 opencode.jsonc — 首次启动 OpenCode 时会自动创建",
+        message:
+          "缺少 .gatehouse/ — 运行 bunx @gatehouse/core scaffold -C <项目> 或在项目目录启动 opencode",
       })
+    } else {
+      issues.push({
+        level: "ok",
+        category: "Project",
+        message: `.gatehouse/ 已存在 (${gatehouseRoot(root)})`,
+      })
+
+      const projectConfigPath = projectOpencodeConfigPath(root)
+      if (existsSync(projectConfigPath)) {
+        const projectConfig = await readProjectOpencodeConfig(root)
+        const defaultAgent = projectConfig.default_agent
+        const skillPaths = (projectConfig.skills as { paths?: string[] } | undefined)?.paths ?? []
+        if (defaultAgent === "lead") {
+          issues.push({ level: "ok", category: "Project", message: "项目 default_agent=lead" })
+        } else {
+          issues.push({
+            level: "warn",
+            category: "Project",
+            message: `项目 default_agent=${String(defaultAgent)}（期望 lead）`,
+          })
+        }
+        if (skillPaths.includes(".gatehouse")) {
+          issues.push({ level: "ok", category: "Project", message: "skills.paths 包含 .gatehouse" })
+        } else {
+          issues.push({
+            level: "warn",
+            category: "Project",
+            message: "项目 opencode.jsonc 未包含 skills.paths: [\".gatehouse\"]",
+          })
+        }
+      } else {
+        issues.push({
+          level: "warn",
+          category: "Project",
+          message: "缺少项目 opencode.jsonc — scaffold 或首次启动 OpenCode 时会自动创建",
+        })
+      }
     }
   }
 
-  if (probe) {
+  if (scope === "full" && probe) {
     try {
       const endpoints = await discoverPortalEndpoints(root)
       if (endpoints.displayReachable) {
@@ -220,7 +229,7 @@ export async function runGatehouseDoctor(projectDir: string, probe = false): Pro
       const message = error instanceof Error ? error.message : String(error)
       issues.push({ level: "warn", category: "Portal", message: `Portal probe failed: ${message}` })
     }
-  } else {
+  } else if (scope === "full") {
     issues.push({
       level: "warn",
       category: "Portal",
@@ -228,14 +237,14 @@ export async function runGatehouseDoctor(projectDir: string, probe = false): Pro
     })
   }
 
-  if (existsSync(gatehouseRoot(root))) {
+  if (scope === "full" && existsSync(gatehouseRoot(root))) {
     const config = loadGatehouseConfig(root)
     const configuredModels = Object.entries(config.models).filter(([, value]) => Boolean(value))
     if (configuredModels.length === 0) {
       issues.push({
         level: "warn",
         category: "Models",
-        message: "未配置 models — 将使用 OpenCode 默认模型；可在 config.yaml 或 install --model 设置",
+        message: "未配置 models — 将使用 OpenCode 默认模型；可在 config.yaml 中设置",
       })
     } else {
       for (const [profile, model] of configuredModels) {
@@ -252,7 +261,7 @@ export async function runGatehouseDoctor(projectDir: string, probe = false): Pro
         }
       }
     }
-  } else {
+  } else if (scope === "full") {
     issues.push({
       level: "warn",
       category: "Models",
@@ -289,7 +298,8 @@ export async function runGatehouseDoctorCli(args: string[]) {
   const parsed = parseCliArgs(args)
   const projectDir = optionValue(parsed, "project") ?? process.cwd()
   const probe = hasFlag(parsed, "--probe", "-probe", "probe")
-  const report = await runGatehouseDoctor(projectDir, probe)
+  const globalOnly = hasFlag(parsed, "--global-only", "global-only")
+  const report = await runGatehouseDoctor(projectDir, probe, globalOnly ? "global" : "full")
   console.log(formatDoctorReport(report.issues))
   if (report.exitCode === 2) {
     console.log("\nDoctor 完成，存在警告。")
