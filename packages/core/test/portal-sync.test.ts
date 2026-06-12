@@ -7,6 +7,7 @@ import {
   setPortalInProcessDelivery,
   subscribePortalEvents,
 } from "../src/portal/events.ts"
+import { startPortalInternalEventCapture, withPortalEnv } from "./portal-test-server.ts"
 
 describe("portal activity", () => {
   test("maps rag tools to research while busy", () => {
@@ -172,47 +173,16 @@ describe("portal events", () => {
       toSpawnId: "architect",
       text: "hello",
     }
-    let posted: unknown
-    let resolvePosted!: () => void
-    const postedPromise = new Promise<void>((resolve) => {
-      resolvePosted = resolve
-    })
-    const server = Bun.serve({
-      port: 0,
-      hostname: "127.0.0.1",
-      fetch: async (request) => {
-        if (request.method !== "POST" || new URL(request.url).pathname !== "/portal/api/internal/event") {
-          return new Response("not found", { status: 404 })
-        }
-        if (request.headers.get("X-Gatehouse-Portal-Internal-Token") !== token) {
-          return new Response("unauthorized", { status: 401 })
-        }
-        posted = await request.json()
-        resolvePosted()
-        return Response.json(posted)
-      },
-    })
-
-    const prevPort = process.env.GATEHOUSE_PORTAL_PORT
-    const prevToken = process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN
-    process.env.GATEHOUSE_PORTAL_PORT = String(server.port)
-    process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN = token
+    const capture = startPortalInternalEventCapture(token)
     setPortalInProcessDelivery(false)
     try {
-      emitPortalEvent(expected)
-      await Promise.race([
-        postedPromise,
-        Bun.sleep(5000).then(() => {
-          throw new Error("timed out waiting for portal internal event POST")
-        }),
-      ])
-      expect(posted).toEqual(expected)
+      await withPortalEnv(capture.port, token, async () => {
+        emitPortalEvent(expected)
+        await capture.waitPosted()
+      })
+      expect(capture.posted).toEqual(expected)
     } finally {
-      server.stop()
-      if (prevPort === undefined) delete process.env.GATEHOUSE_PORTAL_PORT
-      else process.env.GATEHOUSE_PORTAL_PORT = prevPort
-      if (prevToken === undefined) delete process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN
-      else process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN = prevToken
+      capture.server.stop()
     }
   })
 })

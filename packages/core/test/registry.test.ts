@@ -13,6 +13,7 @@ import { initTeamTool } from "../src/tools/init-team.ts"
 import { bootstrapTreeTool } from "../src/tools/bootstrap.ts"
 import { applySkillDomainsTool } from "../src/tools/apply-skill-domains.ts"
 import { copyExampleMission, seedActiveMissionRegistry } from "./copy-example-mission.ts"
+import { startPortalInternalEventCapture, withPortalEnv } from "./portal-test-server.ts"
 
 const scaffoldScript = path.join(import.meta.dir, "../script/scaffold.ts")
 
@@ -202,72 +203,56 @@ describe("registry harness", () => {
 
   test("send_message emits agent.chat to portal api when delivered", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-registry-portal-chat-"))
-    const port = String(19000 + Math.floor(Math.random() * 1000))
-    let posted: unknown
-    const server = Bun.serve({
-      port: Number(port),
-      hostname: "127.0.0.1",
-      fetch: async (request) => {
-        if (request.method !== "POST" || new URL(request.url).pathname !== "/portal/api/internal/event") {
-          return new Response("not found", { status: 404 })
-        }
-        if (request.headers.get("X-Gatehouse-Portal-Internal-Token") !== "registry-test-token") {
-          return new Response("unauthorized", { status: 401 })
-        }
-        posted = await request.json()
-        return Response.json(posted)
-      },
-    })
-    process.env.GATEHOUSE_PORTAL_PORT = port
-    process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN = "registry-test-token"
+    const token = "registry-test-token"
+    const capture = startPortalInternalEventCapture(token)
     try {
-      let sessionCounter = 0
-      const mockClient: GatehouseClient = {
-        session: {
-          async create(input: unknown) {
-            sessionCounter += 1
-            const record = input as { body?: { agent?: string } }
-            return { id: `ses_architect_${sessionCounter}` }
+      await withPortalEnv(capture.port, token, async () => {
+        let sessionCounter = 0
+        const mockClient: GatehouseClient = {
+          session: {
+            async create(input: unknown) {
+              sessionCounter += 1
+              const record = input as { body?: { agent?: string } }
+              return { id: `ses_architect_${sessionCounter}` }
+            },
+            async promptAsync() {},
+            async messages() {
+              return { data: [] }
+            },
+            async get() {
+              return { data: {} }
+            },
+            async status() {
+              return { data: {} }
+            },
           },
-          async promptAsync() {},
-          async messages() {
-            return { data: [] }
-          },
-          async get() {
-            return { data: {} }
-          },
-          async status() {
-            return { data: {} }
-          },
-        },
-      }
+        }
 
-      const store = await RegistryStore.create({ directory: dir, client: mockClient })
-      store.registerOuterSession({
-        profile: "lead",
-        sessionId: "ses_lead",
-        projectRootSessionId: "ses_lead",
+        const store = await RegistryStore.create({ directory: dir, client: mockClient })
+        store.registerOuterSession({
+          profile: "lead",
+          sessionId: "ses_lead",
+          projectRootSessionId: "ses_lead",
+        })
+        const init = initTeamTool({ directory: dir, client: mockClient } as unknown as PluginInput)
+        await init.execute({}, mockToolContext(dir, "ses_lead", "lead"))
+
+        const send = sendMessageTool({ directory: dir, client: mockClient } as unknown as PluginInput)
+        await send.execute(
+          { recipient: "architect", message: "portal chat test" },
+          mockToolContext(dir, "ses_lead", "lead"),
+        )
+        await capture.waitPosted()
       })
-      const init = initTeamTool({ directory: dir, client: mockClient } as unknown as PluginInput)
-      await init.execute({}, mockToolContext(dir, "ses_lead", "lead"))
 
-      const send = sendMessageTool({ directory: dir, client: mockClient } as unknown as PluginInput)
-      await send.execute(
-        { recipient: "architect", message: "portal chat test" },
-        mockToolContext(dir, "ses_lead", "lead"),
-      )
-      await Bun.sleep(50)
-
-      expect(posted).toEqual({
+      expect(capture.posted).toEqual({
         type: "agent.chat",
         fromSpawnId: "lead",
         toSpawnId: "architect",
         text: "portal chat test",
       })
     } finally {
-      server.stop()
-      delete process.env.GATEHOUSE_PORTAL_PORT
-      delete process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN
+      capture.server.stop()
       await rm(dir, { recursive: true, force: true })
     }
   })
@@ -481,55 +466,39 @@ describe("registry harness", () => {
 
   test("inner structural root send_message emits agent.chat with node spawn id", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-registry-inner-portal-chat-"))
-    const port = String(19000 + Math.floor(Math.random() * 1000))
-    let posted: unknown
-    const server = Bun.serve({
-      port: Number(port),
-      hostname: "127.0.0.1",
-      fetch: async (request) => {
-        if (request.method !== "POST" || new URL(request.url).pathname !== "/portal/api/internal/event") {
-          return new Response("not found", { status: 404 })
-        }
-        if (request.headers.get("X-Gatehouse-Portal-Internal-Token") !== "registry-test-token") {
-          return new Response("unauthorized", { status: 401 })
-        }
-        posted = await request.json()
-        return Response.json(posted)
-      },
-    })
-    process.env.GATEHOUSE_PORTAL_PORT = port
-    process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN = "registry-test-token"
+    const token = "registry-test-token"
+    const capture = startPortalInternalEventCapture(token)
     try {
-      const pluginInput = { directory: dir, client: mockClientMinimal() } as unknown as PluginInput
-      const store = await getRegistryStore(pluginInput)
-      store.registerOuterSession({
-        profile: "lead",
-        sessionId: "ses_lead",
-        projectRootSessionId: "ses_lead",
+      await withPortalEnv(capture.port, token, async () => {
+        const pluginInput = { directory: dir, client: mockClientMinimal() } as unknown as PluginInput
+        const store = await getRegistryStore(pluginInput)
+        store.registerOuterSession({
+          profile: "lead",
+          sessionId: "ses_lead",
+          projectRootSessionId: "ses_lead",
+        })
+        store.registerInnerNode({
+          missionId: "m1",
+          nodeId: "node-root",
+          profile: "build-root",
+          sessionId: "ses_root",
+        })
+        const send = sendMessageTool(pluginInput)
+        await send.execute(
+          { recipient: "lead", message: "inner portal chat" },
+          mockToolContext(dir, "ses_root", "build-root"),
+        )
+        await capture.waitPosted()
       })
-      store.registerInnerNode({
-        missionId: "m1",
-        nodeId: "node-root",
-        profile: "build-root",
-        sessionId: "ses_root",
-      })
-      const send = sendMessageTool(pluginInput)
-      await send.execute(
-        { recipient: "lead", message: "inner portal chat" },
-        mockToolContext(dir, "ses_root", "build-root"),
-      )
-      await Bun.sleep(50)
 
-      expect(posted).toEqual({
+      expect(capture.posted).toEqual({
         type: "agent.chat",
         fromSpawnId: "node-root",
         toSpawnId: "lead",
         text: "inner portal chat",
       })
     } finally {
-      server.stop()
-      delete process.env.GATEHOUSE_PORTAL_PORT
-      delete process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN
+      capture.server.stop()
       await rm(dir, { recursive: true, force: true })
     }
   })

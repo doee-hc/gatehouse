@@ -19,7 +19,7 @@
     "pack": "bun script/pack.ts",
     "prepublishOnly": "bun run build",
     "typecheck": "tsgo --noEmit",
-    "test": "GATEHOUSE_USE_OPENCODE_HTTP=0 bun test --timeout 30000",
+    "test": "GATEHOUSE_USE_OPENCODE_HTTP=0 bun test --timeout 30000 --max-concurrency=1",
     "scaffold": "bun script/scaffold.ts",
     "dev:opencode": "bun script/dev-opencode.ts",
     "bake:office-layout-presets": "bun script/bake-office-layout-presets.ts"

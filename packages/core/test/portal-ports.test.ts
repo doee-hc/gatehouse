@@ -13,6 +13,7 @@ import {
   probePortalEndpoints,
 } from "../src/portal/ports.ts"
 import { readTuiNotificationsFromOffset } from "../src/tui/notifications.ts"
+import { startEphemeralServer } from "./portal-test-server.ts"
 
 describe("portal ports", () => {
   test("portalHealthMatchesProject accepts project slug", () => {
@@ -33,43 +34,36 @@ describe("portal ports", () => {
     const project = await mkdtemp(path.join(tmpdir(), "gh-portal-ports-"))
     resetPortalProjectSlugCacheForTests()
     const projectSlug = resolvePortalProjectSlug(project)
-    const displayPort = String(18100 + Math.floor(Math.random() * 500))
-    const adminPort = String(Number(displayPort) + 3)
-    const displayServer = Bun.serve({
-      port: Number(displayPort),
-      hostname: "127.0.0.1",
-      fetch: () =>
-        Response.json({
-          ok: true,
-          project: projectSlug,
-          opencode_reachable: false,
-          bridge_running: false,
-          sse_active: 0,
-        }),
+    const displayServer = startEphemeralServer(() =>
+      Response.json({
+        ok: true,
+        project: projectSlug,
+        opencode_reachable: false,
+        bridge_running: false,
+        sse_active: 0,
+      }),
+    )
+    const displayPort = displayServer.port!
+    const adminServer = startEphemeralServer((request) => {
+      if (new URL(request.url).pathname === "/portal/api/admin/status") {
+        return Response.json({ configured: true })
+      }
+      return new Response("not found", { status: 404 })
     })
-    const adminServer = Bun.serve({
-      port: Number(adminPort),
-      hostname: "127.0.0.1",
-      fetch: (request) => {
-        if (new URL(request.url).pathname === "/portal/api/admin/status") {
-          return Response.json({ configured: true })
-        }
-        return new Response("not found", { status: 404 })
-      },
-    })
+    const adminPort = adminServer.port!
 
     const endpoints = await probePortalEndpoints(project, {
-      displayPreferred: Number(displayPort),
-      adminPreferred: Number(adminPort),
+      displayPreferred: displayPort,
+      adminPreferred: adminPort,
       displayApiEnv: `http://127.0.0.1:${displayPort}`,
       adminApiEnv: `http://127.0.0.1:${adminPort}`,
     })
 
     expect(endpoints.displayReachable).toBe(true)
-    expect(endpoints.displayPort).toBe(Number(displayPort))
-    expect(endpoints.adminPort).toBe(Number(adminPort))
+    expect(endpoints.displayPort).toBe(displayPort)
+    expect(endpoints.adminPort).toBe(adminPort)
     expect(endpoints.adminReachable).toBe(true)
-    expect(await fetchAdminReachable(Number(adminPort))).toBe(true)
+    expect(await fetchAdminReachable(adminPort)).toBe(true)
 
     displayServer.stop()
     adminServer.stop()
@@ -77,12 +71,8 @@ describe("portal ports", () => {
   })
 
   test("assertPortalPortAvailable fails when configured port is listening", async () => {
-    const port = 18150 + Math.floor(Math.random() * 500)
-    const server = Bun.serve({
-      port,
-      hostname: "127.0.0.1",
-      fetch: () => new Response("ok"),
-    })
+    const server = startEphemeralServer(() => new Response("ok"))
+    const port = server.port!
 
     let thrown: unknown
     try {

@@ -12,6 +12,7 @@ import { isRecord, parseYaml } from "../src/yaml.ts"
 import { getRegistryStore } from "../src/registry/context.ts"
 import { OUTER_ARCHITECT_ID, OUTER_CURATOR_ID } from "../src/registry/types.ts"
 import { gatehouseMessage } from "../src/i18n.ts"
+import { startPortalInternalEventCapture, withPortalEnv } from "./portal-test-server.ts"
 
 const scaffoldScript = path.join(import.meta.dir, "../script/scaffold.ts")
 
@@ -135,70 +136,54 @@ describe("example flow", () => {
 
   test("bootstrap_tree emits architect to curator portal chat", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-bootstrap-portal-chat-"))
-    const port = String(19000 + Math.floor(Math.random() * 1000))
-    let posted: unknown
-    const server = Bun.serve({
-      port: Number(port),
-      hostname: "127.0.0.1",
-      fetch: async (request) => {
-        if (request.method !== "POST" || new URL(request.url).pathname !== "/portal/api/internal/event") {
-          return new Response("not found", { status: 404 })
-        }
-        if (request.headers.get("X-Gatehouse-Portal-Internal-Token") !== "bootstrap-portal-chat-token") {
-          return new Response("unauthorized", { status: 401 })
-        }
-        posted = await request.json()
-        return Response.json(posted)
-      },
-    })
-    process.env.GATEHOUSE_PORTAL_PORT = port
-    process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN = "bootstrap-portal-chat-token"
+    const token = "bootstrap-portal-chat-token"
+    const capture = startPortalInternalEventCapture(token)
     try {
-      await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
-      await copyExampleMission(dir)
+      await withPortalEnv(capture.port, token, async () => {
+        await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
+        await copyExampleMission(dir)
 
-      const mockClient = {
-        session: {
-          async create() {
-            throw new Error("should not create sessions")
+        const mockClient = {
+          session: {
+            async create() {
+              throw new Error("should not create sessions")
+            },
+            async promptAsync() {},
+            async status() {
+              return { data: {} }
+            },
           },
-          async promptAsync() {},
-          async status() {
-            return { data: {} }
-          },
-        },
-      }
+        }
 
-      const pluginInput = { directory: dir, client: mockClient } as unknown as PluginInput
-      const preStore = await getRegistryStore(pluginInput)
-      preStore.register({
-        agentId: OUTER_ARCHITECT_ID,
-        scope: "outer",
-        profile: "architect",
-        sessionId: "ses_architect",
-        displayName: "Architect",
+        const pluginInput = { directory: dir, client: mockClient } as unknown as PluginInput
+        const preStore = await getRegistryStore(pluginInput)
+        preStore.register({
+          agentId: OUTER_ARCHITECT_ID,
+          scope: "outer",
+          profile: "architect",
+          sessionId: "ses_architect",
+          displayName: "Architect",
+        })
+        preStore.register({
+          agentId: OUTER_CURATOR_ID,
+          scope: "outer",
+          profile: "curator",
+          sessionId: "ses_curator",
+          displayName: "Curator",
+        })
+
+        await bootstrapTreeTool(pluginInput).execute({}, mockToolContext(dir, "architect"))
+        await capture.waitPosted()
       })
-      preStore.register({
-        agentId: OUTER_CURATOR_ID,
-        scope: "outer",
-        profile: "curator",
-        sessionId: "ses_curator",
-        displayName: "Curator",
-      })
 
-      await bootstrapTreeTool(pluginInput).execute({}, mockToolContext(dir, "architect"))
-      await Bun.sleep(50)
-
-      expect(posted).toEqual({
+      expect(capture.posted).toEqual({
         type: "agent.chat",
         fromSpawnId: "architect",
         toSpawnId: "curator",
         text: gatehouseMessage("portal.architectBootstrapCuratorHint", "zh"),
       })
     } finally {
-      server.stop()
-      delete process.env.GATEHOUSE_PORTAL_PORT
-      delete process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN
+      capture.server.stop()
       await rm(dir, { recursive: true, force: true })
     }
   })

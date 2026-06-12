@@ -5,6 +5,7 @@ import { tmpdir } from "node:os"
 import { buildBlogSnapshot, clearBlogCacheForTests } from "../src/portal/blog.ts"
 import { publishBlogPost, readBlogPublishedRevision, unpublishBlogPost } from "../src/portal/blog-publish.ts"
 import { requestPortalBlogCacheRefresh } from "../src/portal/blog-cache-sync.ts"
+import { startEphemeralServer, withPortalEnv } from "./portal-test-server.ts"
 
 let dir: string
 
@@ -249,32 +250,32 @@ posts:
 })
 
 test("requestPortalBlogCacheRefresh hits portal internal endpoint", async () => {
-  const port = String(18200 + Math.floor(Math.random() * 500))
   const token = "blog-cache-refresh-token"
   let invalidated = false
-
-  const server = Bun.serve({
-    port: Number(port),
-    hostname: "127.0.0.1",
-    fetch: async (request) => {
-      if (new URL(request.url).pathname !== "/portal/api/internal/blog-invalidate") {
-        return new Response("not found", { status: 404 })
-      }
-      if (request.headers.get("X-Gatehouse-Portal-Internal-Token") !== token) {
-        return new Response("unauthorized", { status: 401 })
-      }
-      invalidated = true
-      return Response.json({ ok: true })
-    },
+  let resolveInvalidated!: () => void
+  const invalidatedPromise = new Promise<void>((resolve) => {
+    resolveInvalidated = resolve
   })
 
-  process.env.GATEHOUSE_PORTAL_PORT = port
-  process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN = token
+  const server = startEphemeralServer(async (request) => {
+    if (new URL(request.url).pathname !== "/portal/api/internal/blog-invalidate") {
+      return new Response("not found", { status: 404 })
+    }
+    if (request.headers.get("X-Gatehouse-Portal-Internal-Token") !== token) {
+      return new Response("unauthorized", { status: 401 })
+    }
+    invalidated = true
+    resolveInvalidated()
+    return Response.json({ ok: true })
+  })
 
-  expect(await requestPortalBlogCacheRefresh(dir)).toBe(true)
-  expect(invalidated).toBe(true)
-
-  server.stop()
-  delete process.env.GATEHOUSE_PORTAL_PORT
-  delete process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN
+  try {
+    await withPortalEnv(server.port!, token, async () => {
+      expect(await requestPortalBlogCacheRefresh(dir)).toBe(true)
+      await invalidatedPromise
+    })
+    expect(invalidated).toBe(true)
+  } finally {
+    server.stop()
+  }
 })

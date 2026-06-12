@@ -21,6 +21,7 @@ import { validateReworkRequest } from "../src/orchestration/rework.ts"
 import { notifyOrchestrationWaiters } from "../src/orchestration/wait.ts"
 import type { TeamSpec } from "../src/tree/types.ts"
 import { loadMissionScript } from "../src/orchestration/script-load.ts"
+import { startPortalInternalEventCapture, withPortalEnv } from "./portal-test-server.ts"
 
 const sampleTeam: TeamSpec = {
   mission_id: "orch-m1",
@@ -135,140 +136,130 @@ describe("mission.script fixture", () => {
 describe("orchestration prompt portal", () => {
   test("reply:true emits agent.chat from architect to inner node", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-orch-portal-chat-"))
-    const port = String(19000 + Math.floor(Math.random() * 1000))
-    let posted: unknown
-    const server = Bun.serve({
-      port: Number(port),
-      hostname: "127.0.0.1",
-      fetch: async (request) => {
-        if (request.method !== "POST" || new URL(request.url).pathname !== "/portal/api/internal/event") {
-          return new Response("not found", { status: 404 })
-        }
-        if (request.headers.get("X-Gatehouse-Portal-Internal-Token") !== "orch-test-token") {
-          return new Response("unauthorized", { status: 401 })
-        }
-        posted = await request.json()
-        return Response.json(posted)
-      },
-    })
-    process.env.GATEHOUSE_PORTAL_PORT = port
-    process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN = "orch-test-token"
+    const token = "orch-test-token"
+    const capture = startPortalInternalEventCapture(token)
     try {
-      const mockClient: GatehouseClient = {
-        session: {
-          async create() {
-            return { id: "ses_unused" }
+      await withPortalEnv(capture.port, token, async () => {
+        const mockClient: GatehouseClient = {
+          session: {
+            async create() {
+              return { id: "ses_unused" }
+            },
+            async promptAsync() {},
+            async messages() {
+              return { data: [] }
+            },
+            async get() {
+              return { data: {} }
+            },
+            async status() {
+              return { data: {} }
+            },
           },
-          async promptAsync() {},
-          async messages() {
-            return { data: [] }
-          },
-          async get() {
-            return { data: {} }
-          },
-          async status() {
-            return { data: {} }
-          },
-        },
-      }
-      const pluginInput = { directory: dir, client: mockClient } as unknown as PluginInput
-      const store = await RegistryStore.create({ directory: dir, client: mockClient })
-      store.register({
-        agentId: OUTER_ARCHITECT_ID,
-        scope: "outer",
-        profile: "architect",
-        sessionId: "ses_architect",
-        displayName: "Architect",
-      })
-      store.registerInnerNode({
-        missionId: "m1",
-        nodeId: "node-doc",
-        profile: "build",
-        sessionId: "ses_doc",
-      })
-      await mergeAndSaveBrief(dir, "m1", "node-doc", { your_work: ["document"] })
+        }
+        const pluginInput = { directory: dir, client: mockClient } as unknown as PluginInput
+        const store = await RegistryStore.create({ directory: dir, client: mockClient })
+        store.register({
+          agentId: OUTER_ARCHITECT_ID,
+          scope: "outer",
+          profile: "architect",
+          sessionId: "ses_architect",
+          displayName: "Architect",
+        })
+        store.registerInnerNode({
+          missionId: "m1",
+          nodeId: "node-doc",
+          profile: "build",
+          sessionId: "ses_doc",
+        })
+        await mergeAndSaveBrief(dir, "m1", "node-doc", { your_work: ["document"] })
 
-      await deliverOrchestrationPrompt({
-        plugin: pluginInput,
-        store,
-        missionId: "m1",
-        nodeId: "node-doc",
-        prompt: { text: "start documentation work", reply: true },
+        await deliverOrchestrationPrompt({
+          plugin: pluginInput,
+          store,
+          missionId: "m1",
+          nodeId: "node-doc",
+          prompt: { text: "start documentation work", reply: true },
+        })
+        await capture.waitPosted()
       })
-      await Bun.sleep(50)
 
-      expect(posted).toEqual({
+      expect(capture.posted).toEqual({
         type: "agent.chat",
         fromSpawnId: "architect",
         toSpawnId: "node-doc",
         text: "start documentation work",
       })
     } finally {
-      server.stop()
-      delete process.env.GATEHOUSE_PORTAL_PORT
-      delete process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN
+      capture.server.stop()
       await rm(dir, { recursive: true, force: true })
     }
   })
 
   test("reply:false does not emit agent.chat", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-orch-portal-no-chat-"))
-    const port = String(19000 + Math.floor(Math.random() * 1000))
+    const token = "orch-test-token"
     let posted = false
+    let resolvePosted!: () => void
+    const postedPromise = new Promise<void>((resolve) => {
+      resolvePosted = resolve
+    })
     const server = Bun.serve({
-      port: Number(port),
+      port: 0,
       hostname: "127.0.0.1",
       fetch: async (request) => {
         if (request.method !== "POST" || new URL(request.url).pathname !== "/portal/api/internal/event") {
           return new Response("not found", { status: 404 })
         }
         posted = true
+        resolvePosted()
         return Response.json({})
       },
     })
-    process.env.GATEHOUSE_PORTAL_PORT = port
-    process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN = "orch-test-token"
     try {
-      const mockClient: GatehouseClient = {
-        session: {
-          async create() {
-            return { id: "ses_unused" }
+      await withPortalEnv(server.port!, token, async () => {
+        const mockClient: GatehouseClient = {
+          session: {
+            async create() {
+              return { id: "ses_unused" }
+            },
+            async promptAsync() {},
+            async messages() {
+              return { data: [] }
+            },
+            async get() {
+              return { data: {} }
+            },
+            async status() {
+              return { data: {} }
+            },
           },
-          async promptAsync() {},
-          async messages() {
-            return { data: [] }
-          },
-          async get() {
-            return { data: {} }
-          },
-          async status() {
-            return { data: {} }
-          },
-        },
-      }
-      const pluginInput = { directory: dir, client: mockClient } as unknown as PluginInput
-      const store = await RegistryStore.create({ directory: dir, client: mockClient })
-      store.registerInnerNode({
-        missionId: "m1",
-        nodeId: "node-doc",
-        profile: "build",
-        sessionId: "ses_doc",
-      })
+        }
+        const pluginInput = { directory: dir, client: mockClient } as unknown as PluginInput
+        const store = await RegistryStore.create({ directory: dir, client: mockClient })
+        store.registerInnerNode({
+          missionId: "m1",
+          nodeId: "node-doc",
+          profile: "build",
+          sessionId: "ses_doc",
+        })
 
-      await deliverOrchestrationPrompt({
-        plugin: pluginInput,
-        store,
-        missionId: "m1",
-        nodeId: "node-doc",
-        prompt: { text: "silent context injection", reply: false },
+        await deliverOrchestrationPrompt({
+          plugin: pluginInput,
+          store,
+          missionId: "m1",
+          nodeId: "node-doc",
+          prompt: { text: "silent context injection", reply: false },
+        })
+        await Promise.race([
+          postedPromise,
+          Bun.sleep(200).then(() => undefined),
+        ])
       })
-      await Bun.sleep(50)
 
       expect(posted).toBe(false)
     } finally {
       server.stop()
-      delete process.env.GATEHOUSE_PORTAL_PORT
-      delete process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN
       await rm(dir, { recursive: true, force: true })
     }
   })
