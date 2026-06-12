@@ -11,7 +11,7 @@ describe("loadArchitectPrompt", () => {
       const prompt = await loadArchitectPrompt(dir)
       expect(prompt).toContain("Architect")
       expect(prompt).not.toContain("name: architect")
-      expect(prompt).toContain("会话开场")
+      expect(prompt).toContain("architect-meta")
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

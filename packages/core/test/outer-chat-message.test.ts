@@ -55,7 +55,7 @@ describe("outer chat.message", () => {
       createdAt: "",
       updatedAt: "",
     }
-    const reason = outerChatMessageBlockReason(tmpdir(), owner, "lead")
+    const reason = outerChatMessageBlockReason(tmpdir(), owner, "ses_architect", "lead")
     expect(reason?.includes("registered as Architect")).toBe(true)
     expect(reason?.includes("cannot send as Lead")).toBe(true)
   })
@@ -71,7 +71,7 @@ describe("outer chat.message", () => {
       createdAt: "",
       updatedAt: "",
     }
-    assertOuterChatMessageAllowed(tmpdir(), owner, "architect")
+    assertOuterChatMessageAllowed(tmpdir(), owner, "ses_architect", "architect")
   })
 
   test("handleOuterChatMessage does not reassign lead when sending from architect session", async () => {
@@ -134,6 +134,29 @@ describe("outer chat.message", () => {
 
       expect(updates).toEqual([{ sessionId: "ses_new", title: "项目经理" }])
       expect(store.byAgentId(OUTER_LEAD_ID)?.displayName).toBe("项目经理")
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  test("handleOuterChatMessage rejects second lead session when lead already exists", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-outer-chat-"))
+    try {
+      const store = await RegistryStore.create({ directory: dir, client: mockClientMinimal() })
+      store.registerOuterSession({
+        profile: "lead",
+        sessionId: "ses_lead",
+        projectRootSessionId: "ses_lead",
+      })
+
+      let blocked = ""
+      try {
+        await handleOuterChatMessage(store, { sessionID: "ses_new", agent: "lead" })
+      } catch (error) {
+        blocked = error instanceof Error ? error.message : String(error)
+      }
+      expect(blocked.includes("lead session already exists")).toBe(true)
+      expect(store.byAgentId(OUTER_LEAD_ID)?.sessionId).toBe("ses_lead")
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

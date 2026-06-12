@@ -19,8 +19,11 @@ const innerExecutionGatehousePermissions = {
   gatehouse_send_message: "allow",
   gatehouse_session_snapshot: "allow",
   gatehouse_skill_extract_record: "allow",
-  gatehouse_publish_blog: "allow",
-  gatehouse_unpublish_blog: "allow",
+  gatehouse_execution_complete: "allow",
+  gatehouse_execution_rework: "allow",
+  gatehouse_mission_context: "allow",
+  gatehouse_node_brief: "allow",
+  gatehouse_mission_contract: "allow",
 } as const
 
 /** Retro fork sessions (managerRetroOrder nodes → build-root / build-coordinator). */
@@ -34,6 +37,7 @@ const innerMissionLifecycleDenials = {
   gatehouse_mission_current: "deny",
   gatehouse_mission_retro: "deny",
   gatehouse_mission_complete: "deny",
+  gatehouse_delivery_review: "deny",
 } as const
 
 const nonArbiterInspectorDenials = {
@@ -60,8 +64,17 @@ export const leadPermissions = {
   gatehouse_session_snapshot: "allow",
   gatehouse_apply_skill_domains: "deny",
   gatehouse_skill_extract_record: "deny",
-  gatehouse_publish_blog: "allow",
+  gatehouse_publish_blog: "deny",
   gatehouse_unpublish_blog: "allow",
+  gatehouse_delivery_submit: "deny",
+  gatehouse_delivery_review: "allow",
+  gatehouse_delivery_status: "allow",
+  gatehouse_execution_complete: "deny",
+  gatehouse_execution_rework: "deny",
+  gatehouse_execution_status: "allow",
+  gatehouse_mission_context: "allow",
+  gatehouse_mission_contract: "allow",
+  gatehouse_node_brief: "allow",
   ...outerRetroRecordDenials,
   ...nonArbiterInspectorDenials,
 } as const
@@ -80,8 +93,17 @@ export const architectSessionPermissions = {
   gatehouse_session_snapshot: "allow",
   gatehouse_apply_skill_domains: "deny",
   gatehouse_skill_extract_record: "deny",
-  gatehouse_publish_blog: "allow",
-  gatehouse_unpublish_blog: "allow",
+  gatehouse_publish_blog: "deny",
+  gatehouse_unpublish_blog: "deny",
+  gatehouse_delivery_submit: "deny",
+  gatehouse_delivery_review: "deny",
+  gatehouse_delivery_status: "allow",
+  gatehouse_execution_complete: "deny",
+  gatehouse_execution_rework: "deny",
+  gatehouse_execution_status: "allow",
+  gatehouse_mission_context: "allow",
+  gatehouse_mission_contract: "allow",
+  gatehouse_node_brief: "allow",
   ...outerRetroRecordDenials,
   ...nonArbiterInspectorDenials,
 } as const
@@ -100,14 +122,28 @@ export const curatorSessionPermissions = {
   gatehouse_mission_complete: "deny",
   gatehouse_session_snapshot: "allow",
   gatehouse_skill_extract_record: "deny",
-  gatehouse_publish_blog: "allow",
-  gatehouse_unpublish_blog: "allow",
+  gatehouse_publish_blog: "deny",
+  gatehouse_unpublish_blog: "deny",
+  gatehouse_delivery_submit: "deny",
+  gatehouse_delivery_review: "deny",
+  gatehouse_delivery_status: "deny",
+  gatehouse_execution_complete: "deny",
+  gatehouse_execution_rework: "deny",
+  gatehouse_execution_status: "deny",
+  gatehouse_mission_context: "deny",
+  gatehouse_node_brief: "deny",
+  gatehouse_mission_contract: "deny",
   ...outerRetroRecordDenials,
   ...nonArbiterInspectorDenials,
 } as const
 
 /** Leaf execution (OpenCode build) — mission lifecycle hidden; coordination tools unchanged. */
 export const buildExecutionPermissions = {
+  gatehouse_execution_complete: "allow",
+  gatehouse_execution_rework: "allow",
+  gatehouse_mission_context: "allow",
+  gatehouse_node_brief: "allow",
+  gatehouse_mission_contract: "deny",
   ...innerMissionLifecycleDenials,
   ...nonArbiterInspectorDenials,
 } as const
@@ -123,12 +159,22 @@ const innerCoordinatorPermissions = {
   ...nonArbiterInspectorDenials,
 } as const
 
+const structuralRootDeliveryPermissions = {
+  gatehouse_delivery_submit: "allow",
+  gatehouse_delivery_status: "allow",
+  gatehouse_execution_status: "allow",
+} as const
+
 /** Structural root with delegates — may notify lead; task denied. */
-export const buildRootPermissions = innerCoordinatorPermissions
+export const buildRootPermissions = {
+  ...innerCoordinatorPermissions,
+  ...structuralRootDeliveryPermissions,
+} as const
 
 /** Solo structural root — may notify lead and use task for parallel exploration. */
 export const buildRootSoloPermissions = {
   ...innerCoordinatorPermissions,
+  ...structuralRootDeliveryPermissions,
   task: "allow",
 } as const
 
@@ -165,6 +211,15 @@ export const arbiterSessionPermissions = {
   gatehouse_inspector_decide: "allow",
   gatehouse_publish_blog: "deny",
   gatehouse_unpublish_blog: "deny",
+  gatehouse_delivery_submit: "deny",
+  gatehouse_delivery_review: "deny",
+  gatehouse_delivery_status: "deny",
+  gatehouse_execution_complete: "deny",
+  gatehouse_execution_rework: "deny",
+  gatehouse_execution_status: "deny",
+  gatehouse_mission_context: "deny",
+  gatehouse_node_brief: "deny",
+  gatehouse_mission_contract: "deny",
 } as const
 
 export const agentPermissionByAgentFile: Record<string, AgentPermissionMap> = {

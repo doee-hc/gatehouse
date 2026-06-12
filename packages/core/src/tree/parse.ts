@@ -7,10 +7,13 @@ import {
 import type { TeamSpec, TeamSpecNode, TreeManifest, TreeNode } from "./types.ts"
 import { isRecord, parseYaml, readString } from "../yaml.ts"
 
-function parseTeamSpecNode(value: unknown): TeamSpecNode | undefined {
+function parseTeamSpecNode(value: unknown, nodeId: string): TeamSpecNode | undefined {
   if (!isRecord(value)) return
-  const constraints = readString(value.constraints)
-  if (constraints === undefined) return
+  if (value.constraints !== undefined) {
+    throw new Error(
+      `TeamSpec node ${nodeId} must not include constraints; use ctx.setBrief in mission.script.ts orchestrate()`,
+    )
+  }
   const parentRaw = value.parent
   const parent = parentRaw === null ? null : readString(parentRaw) ?? null
   const description = readString(value.description)
@@ -19,7 +22,6 @@ function parseTeamSpecNode(value: unknown): TeamSpecNode | undefined {
   return {
     parent,
     description,
-    constraints,
     ...(skill_domain && { skill_domain }),
   }
 }
@@ -38,7 +40,7 @@ export function parseTeamSpec(text: string): TeamSpec {
         `TeamSpec node ${nodeId} must not include profile (bootstrap assigns build-root-solo / build-root / build-coordinator / build from topology)`,
       )
     }
-    const node = parseTeamSpecNode(nodeValue)
+    const node = parseTeamSpecNode(nodeValue, nodeId)
     if (!node) throw new Error(`Invalid TeamSpec node: ${nodeId}`)
     nodes[nodeId] = node
   }
@@ -162,6 +164,12 @@ export function manifestMembers(manifest: TreeManifest): import("./types.ts").Tr
 
 export function validateTeamSpec(spec: TeamSpec) {
   for (const [nodeId, node] of Object.entries(spec.nodes)) {
+    const raw = node as TeamSpecNode & { constraints?: unknown }
+    if (raw.constraints !== undefined) {
+      throw new Error(
+        `TeamSpec node ${nodeId} must not include constraints; use ctx.setBrief in mission.script.ts orchestrate()`,
+      )
+    }
     if (!node.description.trim()) throw new Error(`TeamSpec node ${nodeId} requires a non-empty description`)
     if (node.parent === null) continue
     if (!spec.nodes[node.parent]) throw new Error(`TeamSpec node ${nodeId} references missing parent ${node.parent}`)

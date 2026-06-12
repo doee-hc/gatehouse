@@ -18,12 +18,10 @@
         "gatehouse": "./bin/gatehouse.ts",
       },
       "dependencies": {
-        "@larksuiteoapi/node-sdk": "^1.54.0",
         "@opencode-ai/plugin": "^1.15.13",
         "@opencode-ai/sdk": "^1.15.13",
         "@opentui/solid": "^0.3.1",
         "jsonc-parser": "3.3.1",
-        "qq-official-bot": "^1.2.1",
         "solid-js": "^1.9.10",
       },
       "devDependencies": {
@@ -83,6 +81,21 @@
         "@gatehouse/core": "0.1.1",
         "@opencode-ai/sdk": "^1.15.13",
         "qq-official-bot": "^1.2.1",
+      },
+      "devDependencies": {
+        "@tsconfig/bun": "^1.0.9",
+        "@types/bun": "^1.3.13",
+        "@types/node": "^24.12.2",
+        "@typescript/native-preview": "7.0.0-dev.20251207.1",
+        "typescript": "^5.8.2",
+      },
+    },
+    "packages/qq-onebot-bridge": {
+      "name": "@gatehouse/qq-onebot-bridge",
+      "version": "0.1.0",
+      "dependencies": {
+        "@gatehouse/core": "0.1.1",
+        "@opencode-ai/sdk": "^1.15.13",
       },
       "devDependencies": {
         "@tsconfig/bun": "^1.0.9",
@@ -228,6 +241,8 @@
     "@gatehouse/portal": ["@gatehouse/portal@workspace:packages/portal"],
 
     "@gatehouse/qq-bridge": ["@gatehouse/qq-bridge@workspace:packages/qq-bridge"],
+
+    "@gatehouse/qq-onebot-bridge": ["@gatehouse/qq-onebot-bridge@workspace:packages/qq-onebot-bridge"],
 
     "@gatehouse/weixin-bridge": ["@gatehouse/weixin-bridge@workspace:packages/weixin-bridge"],
 

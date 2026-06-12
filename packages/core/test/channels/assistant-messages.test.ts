@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 import {
   collectDeliverableAssistantMessages,
   isDeliverableAssistantMessage,
+  latestDeliverableAssistantMessageId,
 } from "../../src/channels/opencode/assistant-messages.ts"
 
 describe("assistant message delivery", () => {
@@ -12,6 +13,15 @@ describe("assistant message delivery", () => {
       { info: { id: "m3", role: "assistant" }, parts: [{ type: "text", text: "second" }] },
     ]
     expect(collectDeliverableAssistantMessages(rows, "m1")).toEqual([{ id: "m3", text: "second" }])
+  })
+
+  test("latestDeliverableAssistantMessageId returns last deliverable assistant id", () => {
+    const rows = [
+      { info: { id: "m1", role: "assistant" }, parts: [{ type: "text", text: "first" }] },
+      { info: { id: "m2", role: "user" }, parts: [{ type: "text", text: "hi" }] },
+      { info: { id: "m3", role: "assistant" }, parts: [{ type: "text", text: "second" }] },
+    ]
+    expect(latestDeliverableAssistantMessageId(rows)).toBe("m3")
   })
 
   test("skips compaction and summary assistant rows", () => {

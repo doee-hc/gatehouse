@@ -11,7 +11,7 @@
 - 节点数：{{node_count}}
 
 ## 任务分配与 prompt 约束（来自各节点 retro 报告）
-- 任务分配 / done_when / constraints 是否有效：
+- 任务分配 / done_when / node brief 是否有效：
 - 哪些约束措辞需收紧或放宽：
 - 拓扑（when_pair_with、层级）调整建议：
 

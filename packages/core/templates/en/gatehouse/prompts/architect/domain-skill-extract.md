@@ -1,6 +1,6 @@
 # Domain skill extract · {{mission_id}}
 
-{{lead_name}} accepted delivery and started retro. Extract domain skills from **this execution**.
+{{lead_name}} confirmed delivery and started retro. Extract domain skills from **this execution**.
 
 **Your node:** {{node_id}}
 **Skill domain for this node:** `{{skill_domain}}`

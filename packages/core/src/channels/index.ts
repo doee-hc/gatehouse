@@ -56,8 +56,13 @@ export {
 export { ensureLeadAgentTarget } from "./registry/lead-session.ts"
 export type { RegistryAgentTarget } from "./registry/agent-target.ts"
 
-export { handleAgentCommand, parseAgentCommand, resolveActiveAgentTarget } from "./registry/agent-command.ts"
-export type { AgentCommand } from "./registry/agent-command.ts"
+export {
+  handleAgentCommand,
+  parseAgentCommand,
+  resolveActiveAgentTarget,
+  syncAgentDeliveryWatermark,
+} from "./registry/agent-command.ts"
+export type { AgentCommand, AgentCommandResult } from "./registry/agent-command.ts"
 
 export { createOpencodeClientForBridge } from "./opencode/client.ts"
 export type { OpencodeClient } from "./opencode/client.ts"
@@ -76,6 +81,7 @@ export {
   assistantMessageText,
   collectDeliverableAssistantMessages,
   isDeliverableAssistantMessage,
+  latestDeliverableAssistantMessageId,
   listNewDeliverableAssistantMessages,
   listSessionMessages,
 } from "./opencode/assistant-messages.ts"

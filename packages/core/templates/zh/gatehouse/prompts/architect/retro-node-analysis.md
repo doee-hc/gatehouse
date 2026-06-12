@@ -35,7 +35,7 @@ skill({ name: "retro-toolkit" })     # 方法论（或读 .gatehouse/<locale>/sk
 3. 对可疑模式：**自制或扩展 Python 脚本**提取特征（压缩次数、todo 段 token、send_message 序列等）。
 4. 若新工具有复用价值：写入 `.gatehouse/skills/retro-toolkit/tools/<verb-noun>/`（含 `SKILL.md`）。
 5. 用 `.gatehouse/trees/{{mission_id}}/context/subtree-metrics.json` 与脚本输出交叉验证 token/耗时/工具调用统计。
-6. 写 `.gatehouse/trees/{{mission_id}}/reports/nodes/{{node_id}}-retro.md`（含「工具贡献」章节）→ `gatehouse_retro_record` 登记 → `gatehouse_publish_blog(report_path=.gatehouse/trees/{{mission_id}}/reports/nodes/{{node_id}}-retro.md)` 发布到 Portal 博客。
+6. 写 `.gatehouse/trees/{{mission_id}}/reports/nodes/{{node_id}}-retro.md`（含「工具贡献」章节）→ `gatehouse_retro_record` 登记（内部报告，勿 publish）。
 
 **grep 指引（timeline.md）：**
 
@@ -72,7 +72,7 @@ skill({ name: "retro-toolkit" })     # 方法论（或读 .gatehouse/<locale>/sk
 
 ## 任务分配与 prompt 约束
 - 任务分配是否清晰（who / what / done_when）：
-- teamspec constraints 是否被遵守、过松/过紧：
+- 各节点 `gatehouse_node_brief` 是否有效、过松/过紧：
 - 子节点 prompt 是否导致重复劳动或职责重叠：
 
 ## 协调与拓扑（给 {{architect_name}} architect-meta）
@@ -94,7 +94,7 @@ skill({ name: "retro-toolkit" })     # 方法论（或读 .gatehouse/<locale>/sk
 
 ```
 gatehouse_retro_record()
-gatehouse_publish_blog(report_path=".gatehouse/trees/{{mission_id}}/reports/nodes/{{node_id}}-retro.md")
+# 勿 gatehouse_publish_blog 复盘报告
 ```
 
 **不要** `gatehouse_send_message` 联系{{architect_name}} — 全部节点登记后 Gatehouse 会自动通知{{architect_name}}汇总（含各 retro 报告与 retro-toolkit 整理任务）。

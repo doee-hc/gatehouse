@@ -28,6 +28,8 @@ agents:
     name: Kurt
   arbiter:
     name: Art
+# 调试 session 上下文（仅开发者 CLI，运行时不会读取）:
+# bunx @gatehouse/core dump-context -C . --mission <mission_id>
 # Optional per-role models (provider/model-id). Project overrides ~/.config/gatehouse/config.yaml.
 # models:
 #   lead: opencode/big-pickle

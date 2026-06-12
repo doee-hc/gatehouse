@@ -8,7 +8,7 @@ const distRoot = path.join(coreRoot, "dist")
 const portalDist = path.join(distRoot, "portal")
 const bridgesRoot = path.join(coreRoot, "bridges")
 
-const BUNDLED_BRIDGE_PACKAGES = ["weixin-bridge", "feishu-bridge", "qq-bridge"] as const
+const BUNDLED_BRIDGE_PACKAGES = ["weixin-bridge", "feishu-bridge", "qq-bridge", "qq-onebot-bridge"] as const
 
 async function run(cwd: string, cmd: string[], label: string, env?: Record<string, string | undefined>) {
   const proc = Bun.spawn(cmd, {

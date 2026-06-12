@@ -10,7 +10,8 @@ import { copyExampleMission } from "./copy-example-mission.ts"
 import { readManifest } from "../src/tree/store.ts"
 import { isRecord, parseYaml } from "../src/yaml.ts"
 import { getRegistryStore } from "../src/registry/context.ts"
-import { OUTER_CURATOR_ID, OUTER_ARCHITECT_ID } from "../src/registry/types.ts"
+import { OUTER_ARCHITECT_ID, OUTER_CURATOR_ID } from "../src/registry/types.ts"
+import { gatehouseMessage } from "../src/i18n.ts"
 
 const scaffoldScript = path.join(import.meta.dir, "../script/scaffold.ts")
 
@@ -34,7 +35,7 @@ function mockToolContext(directory: string, agent = "architect", sessionID = "se
 }
 
 describe("example flow", () => {
-  test("bootstrap_tree from example teamspec with mock client", async () => {
+  test("bootstrap_tree from example mission.script with mock client", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-bootstrap-"))
     try {
       await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
@@ -87,10 +88,11 @@ describe("example flow", () => {
       )
       expect(apoOutput).toContain("awaiting_skill_domains")
       expect(apoOutput).toContain("core-example-smoke-v1")
+      expect(apoOutput).toContain("script")
       expect(await readManifest(dir, "core-example-smoke-v1")).toBeUndefined()
       expect(sessionCounter).toBe(0)
       expect(kickoffTexts.some((text) => text.includes("skill_domain 分配"))).toBe(true)
-      expect(kickoffTexts.some((text) => text.includes("尚未创建"))).toBe(true)
+      expect(kickoffTexts.some((text) => text.includes("已提交协作脚本"))).toBe(true)
 
       const apply = applySkillDomainsTool(pluginInput)
       const jiyiOutput = toolOutput(
@@ -120,8 +122,83 @@ describe("example flow", () => {
       expect(manifest?.nodes["node-doc"]?.description).toBe("文档执行成员，负责 README 示例章节")
       expect(sessionCounter).toBe(2)
       expect(kickoffTexts.some((text) => text.includes("来自 Gatehouse"))).toBe(true)
-      expect(kickoffTexts.some((text) => text.includes("执行启动"))).toBe(true)
+      expect(kickoffTexts.some((text) => text.includes("执行激活"))).toBe(true)
+      expect(kickoffTexts.some((text) => text.includes("node-doc"))).toBe(true)
+      if (!isRecord(parsed.data.bootstrap) || !isRecord(parsed.data.bootstrap.orchestration_runtime)) {
+        throw new Error("expected orchestration_runtime in bootstrap output")
+      }
+      expect(parsed.data.bootstrap.orchestration_runtime.status).toBe("started")
     } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  test("bootstrap_tree emits architect to curator portal chat", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-bootstrap-portal-chat-"))
+    const port = String(19000 + Math.floor(Math.random() * 1000))
+    let posted: unknown
+    const server = Bun.serve({
+      port: Number(port),
+      hostname: "127.0.0.1",
+      fetch: async (request) => {
+        if (request.method !== "POST" || new URL(request.url).pathname !== "/portal/api/internal/event") {
+          return new Response("not found", { status: 404 })
+        }
+        if (request.headers.get("X-Gatehouse-Portal-Internal-Token") !== "bootstrap-portal-chat-token") {
+          return new Response("unauthorized", { status: 401 })
+        }
+        posted = await request.json()
+        return Response.json(posted)
+      },
+    })
+    process.env.GATEHOUSE_PORTAL_PORT = port
+    process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN = "bootstrap-portal-chat-token"
+    try {
+      await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
+      await copyExampleMission(dir)
+
+      const mockClient = {
+        session: {
+          async create() {
+            throw new Error("should not create sessions")
+          },
+          async promptAsync() {},
+          async status() {
+            return { data: {} }
+          },
+        },
+      }
+
+      const pluginInput = { directory: dir, client: mockClient } as unknown as PluginInput
+      const preStore = await getRegistryStore(pluginInput)
+      preStore.register({
+        agentId: OUTER_ARCHITECT_ID,
+        scope: "outer",
+        profile: "architect",
+        sessionId: "ses_architect",
+        displayName: "Architect",
+      })
+      preStore.register({
+        agentId: OUTER_CURATOR_ID,
+        scope: "outer",
+        profile: "curator",
+        sessionId: "ses_curator",
+        displayName: "Curator",
+      })
+
+      await bootstrapTreeTool(pluginInput).execute({}, mockToolContext(dir, "architect"))
+      await Bun.sleep(50)
+
+      expect(posted).toEqual({
+        type: "agent.chat",
+        fromSpawnId: "architect",
+        toSpawnId: "curator",
+        text: gatehouseMessage("portal.architectBootstrapCuratorHint", "zh"),
+      })
+    } finally {
+      server.stop()
+      delete process.env.GATEHOUSE_PORTAL_PORT
+      delete process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN
       await rm(dir, { recursive: true, force: true })
     }
   })

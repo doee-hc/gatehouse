@@ -12,6 +12,7 @@ import {
   PortalPortInUseError,
   type PortalEndpoints,
 } from "../../core/src/portal/ports.ts"
+import { localDevEnv } from "../../core/src/dev/local-env.ts"
 import { readPortalRuntimeSync } from "../../core/src/portal/runtime-info.ts"
 
 const portalRoot = path.resolve(import.meta.dir, "..")
@@ -27,19 +28,6 @@ let endpoints: PortalEndpoints | undefined
 
 let apiProc: ReturnType<typeof Bun.spawn> | undefined
 let ownedApi = false
-
-function localDevEnv(extra: Record<string, string | undefined>) {
-  return {
-    ...process.env,
-    ...extra,
-    NO_PROXY: "127.0.0.1,localhost,127.*,[::1]",
-    no_proxy: "127.0.0.1,localhost,127.*,[::1]",
-    HTTP_PROXY: "",
-    HTTPS_PROXY: "",
-    http_proxy: "",
-    https_proxy: "",
-  }
-}
 
 function portalFastStopEnabled(options?: { fast?: boolean }) {
   return options?.fast === true || process.env.GATEHOUSE_PORTAL_FAST_STOP === "1"

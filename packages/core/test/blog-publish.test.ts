@@ -21,12 +21,9 @@ afterEach(async () => {
   await rm(dir, { recursive: true, force: true })
 })
 
-test("resolveBlogPostId maps known report paths", () => {
-  expect(resolveBlogPostId(".gatehouse/lead/reports/m1/report.md")).toBe("m1:lead:report")
-  expect(resolveBlogPostId(".gatehouse/trees/m1/reports/architect-summary.md")).toBe(
-    "m1:architect:summary",
-  )
-  expect(resolveBlogPostId(".gatehouse/trees/m1/reports/nodes/n1-retro.md")).toBe("m1:retro:n1")
+test("resolveBlogPostId only maps skill paths", () => {
+  expect(resolveBlogPostId(".gatehouse/lead/reports/m1/report.md")).toBeUndefined()
+  expect(resolveBlogPostId(".gatehouse/trees/m1/reports/root-delivery.md")).toBeUndefined()
   expect(resolveBlogPostId(".gatehouse/skills/by-domain/dft/x/SKILL.md")).toBe("skill:dft:x")
 })
 
@@ -83,7 +80,7 @@ test("unpublishBlogPost removes entry for owner only", async () => {
   })
 })
 
-test("unpublishBlogPost rejects legacy posts without published_by", async () => {
+test("unpublishBlogPost allows lead to remove legacy posts without published_by", async () => {
   const rel = ".gatehouse/lead/reports/m1/report.md"
   const manifest = path.join(dir, ".gatehouse", "portal", "blog-published.yaml")
   await mkdir(path.dirname(manifest), { recursive: true })
@@ -97,8 +94,7 @@ posts:
 `,
   )
 
-  expect(await unpublishBlogPost(dir, { postId: "m1:lead:report", actor: "lead" })).toEqual({
-    ok: false,
-    code: "NO_OWNER",
-  })
+  const removed = await unpublishBlogPost(dir, { postId: "m1:lead:report", actor: "lead" })
+  expect(removed.ok).toBe(true)
+  expect((await readBlogPublishedDocument(dir)).posts).toHaveLength(0)
 })

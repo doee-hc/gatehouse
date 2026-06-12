@@ -2,18 +2,20 @@ import { tool, type PluginInput } from "@opencode-ai/plugin"
 import { retroSessionTitle, retroNodeReportRelPath, resolveProjectPath } from "../paths.ts"
 import { childNodeIds, managerRetroOrder } from "../tree/parse.ts"
 import { getRegistryStore } from "../registry/context.ts"
-import { readManifest, readTeamSpecFile, writeRetroManifest } from "../tree/store.ts"
+import { readManifest, writeRetroManifest } from "../tree/store.ts"
+import { resolveTeamSource } from "../orchestration/resolve-team.ts"
 import { forkSession } from "../session/client.ts"
 import { dumpMissionContext } from "../session/context-dump.ts"
 import { readMissionsDocument, setMissionStatus } from "../missions/store.ts"
 import { assertAllMissionAgentsIdle, requireLeadCaller, requireMission } from "../missions/lifecycle.ts"
 import { requireActiveMissionId, requireSenderMissionId } from "../missions/scope.ts"
+import { deliveryIsSubmitted, readDeliveryDocument } from "../delivery/store.ts"
 import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
 
 export function missionRetroTool(input: PluginInput) {
   return tool({
     description:
-      "profile lead only: start mission retro after user acceptance. Requires active mission running in missions.yaml, manifest present, and all inner exec sessions idle. Forks retro sessions, dumps context/, kickoffs retro analysis + domain skill-extract (only exec nodes with manifest skill_domain receive skill-extract), sets missions.yaml to retro.",
+      "profile lead only: start mission retro after user confirms delivery in chat. Requires delivery submitted (not yet finalized), active mission running in missions.yaml, manifest present, and all inner exec sessions idle. Forks retro sessions, dumps context/, kickoffs retro analysis + domain skill-extract (only exec nodes with manifest skill_domain receive skill-extract), sets missions.yaml to retro. Portal publish happens on gatehouse_mission_complete(done).",
     args: {},
     async execute(_args, context) {
       const toolName = "gatehouse_mission_retro"
@@ -60,6 +62,21 @@ export function missionRetroTool(input: PluginInput) {
           }
         }
 
+        const deliveryDoc = await readDeliveryDocument(input.directory, missionId)
+        if (!deliveryIsSubmitted(deliveryDoc)) {
+          return {
+            output: toolFail(
+              toolName,
+              "DELIVERY_NOT_SUBMITTED",
+              `Mission ${missionId} delivery must be submitted via gatehouse_delivery_submit before retro`,
+              deliveryDoc?.active
+                ? { delivery_version: deliveryDoc.active.version, status: deliveryDoc.active.status }
+                : undefined,
+            ),
+            ...toolMetadata(toolName),
+          }
+        }
+
         await assertAllMissionAgentsIdle({
           registry: lead.registry,
           client: input.client,
@@ -100,7 +117,18 @@ export function missionRetroTool(input: PluginInput) {
           manifest,
         })
         registry.syncInnerFromManifest(manifest)
-        const spec = await readTeamSpecFile(input.directory, missionId)
+        const resolved = await resolveTeamSource(input.directory, missionId)
+        if (!resolved) {
+          return {
+            output: toolFail(
+              toolName,
+              "TEAM_NOT_FOUND",
+              `No mission.script.ts for mission ${missionId}`,
+            ),
+            ...toolMetadata(toolName),
+          }
+        }
+        const spec = resolved.spec
         const [kickoffs, skillKickoffs] = await Promise.all([
           registry.kickoffRetroSessions(manifest, retroOrder),
           registry.kickoffExecSkillExtraction(manifest, { spec }),

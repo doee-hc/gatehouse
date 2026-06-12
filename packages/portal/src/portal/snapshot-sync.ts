@@ -1,5 +1,5 @@
-import type { PortalAgent, PortalSnapshot } from "../api/types.ts"
-import { agentStatusLabel, t } from "../shell/i18n.ts"
+import type { PortalSnapshot } from "../api/types.ts"
+import { t } from "../shell/i18n.ts"
 import { clearEventLogPlaceholder, logEvent } from "../shell/event-log.ts"
 import {
   applyPortalSnapshot,
@@ -7,22 +7,15 @@ import {
   reloadOfficeLayoutIfNeeded,
 } from "../office/game.ts"
 import { replaySessionActivity, syncAgentsFromSnapshotStatus } from "./session-activity.ts"
+import { logSnapshotDiff } from "./snapshot-events.ts"
 import { getPortalSnapshot, setPortalSnapshot } from "./state.ts"
-import { shouldLogAgentStatus } from "./status-log.ts"
 
 let lastOpencodeReachable: boolean | undefined
 let loggedPortalStream = false
 
 export function applySnapshotUpdate(next: PortalSnapshot) {
   const prev = getPortalSnapshot()
-  if (prev) {
-    for (const agent of next.agents) {
-      const before = prev.agents.find((item) => item.spawn_id === agent.spawn_id)
-      if (before && before.status !== agent.status && shouldLogAgentStatus(agent.spawn_id, agent.status)) {
-        logAgentStatus(agent, before.status)
-      }
-    }
-  }
+  if (prev) logSnapshotDiff(prev, next)
 
   if (next.opencode_reachable !== lastOpencodeReachable) {
     lastOpencodeReachable = next.opencode_reachable
@@ -47,21 +40,3 @@ export function notePortalEventStreamReady() {
   clearEventLogPlaceholder()
   logEvent(() => t("event.portalStreamReady"), "evt-live")
 }
-
-function logAgentStatus(agent: PortalAgent, before: PortalAgent["status"]) {
-  clearEventLogPlaceholder()
-  logEvent(
-    () =>
-      t("event.agentStatus", {
-        name: agent.display_name,
-        to: agentStatusLabel(agent.status),
-      }),
-    eventClass(agent.status),
-  )
-}
-
-function eventClass(status: PortalAgent["status"]) {
-  if (status === "research" || status === "busy") return "evt-busy"
-  return "evt-msg"
-}
-

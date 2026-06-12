@@ -1,4 +1,4 @@
-export const CHANNEL_IDS = ["weixin", "feishu", "qq"] as const
+export const CHANNEL_IDS = ["weixin", "feishu", "qq", "qq-onebot"] as const
 export type ChannelId = (typeof CHANNEL_IDS)[number]
 
 export type WeixinChannelConfig = {
@@ -19,6 +19,14 @@ export type QqChannelConfig = {
   sandbox?: boolean
 }
 
+export type QqOnebotChannelConfig = {
+  enabled: boolean
+  wsUrl?: string
+  accessToken?: string
+  requireAt?: boolean
+  groupAllowList?: string[]
+}
+
 export type ChannelsFileConfig = {
   opencodeUrl: string
   leadReplyTimeoutMs?: number
@@ -26,6 +34,7 @@ export type ChannelsFileConfig = {
     weixin: WeixinChannelConfig
     feishu: FeishuChannelConfig
     qq: QqChannelConfig
+    "qq-onebot": QqOnebotChannelConfig
   }
 }
 

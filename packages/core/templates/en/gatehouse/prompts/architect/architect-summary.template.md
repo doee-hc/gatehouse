@@ -11,7 +11,7 @@ Write to: `.gatehouse/trees/<mission_id>/reports/architect-summary.md`
 - Node count: {{node_count}}
 
 ## Task assignment & prompt constraints (from node retro reports)
-- Were assignment / done_when / constraints effective:
+- Were assignment / done_when / node briefs effective:
 - Constraints to tighten or relax:
 - Topology (when_pair_with, hierarchy) adjustments:
 

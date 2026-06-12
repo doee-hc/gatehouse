@@ -2,10 +2,23 @@ import { formatMissionContractForRole } from "../missions/contract-format.ts"
 import { readActiveMissionContract } from "../missions/contract.ts"
 import { bulletList } from "../missions/parse.ts"
 import { gatehouseMessage } from "../i18n.ts"
-import { readLocaleSync } from "../locale.ts"
+import { readLocaleSync, type GatehouseLocale } from "../locale.ts"
 import { LEAD_OPENCODE } from "../registry/types.ts"
 import type { RegistryAgent } from "../registry/types.ts"
 import { isInnerStructuralRoot } from "../registry/types.ts"
+
+/** True when the message already carries a delivery checklist (e.g. from formatLeadDeliveryNotification). */
+export function leadDeliveryMessageAlreadyEnriched(message: string, locale?: GatehouseLocale) {
+  const locales: GatehouseLocale[] = locale ? [locale] : ["zh", "en"]
+  return locales.some((loc) => {
+    const doneWhenHeader = gatehouseMessage("delivery.lead.doneWhenHeader", loc)
+    if (message.includes(doneWhenHeader)) return true
+    const submitPrefix = gatehouseMessage("delivery.submit.leadHeader", loc, { mission_id: "" })
+      .replace(/\{mission_id\}/, "")
+      .trim()
+    return submitPrefix.length > 0 && message.includes(submitPrefix)
+  })
+}
 
 export function enrichLeadDeliveryMessage(
   projectDirectory: string,
@@ -17,6 +30,7 @@ export function enrichLeadDeliveryMessage(
   if (!missionId) return input.message
 
   const locale = readLocaleSync(projectDirectory)
+  if (leadDeliveryMessageAlreadyEnriched(input.message, locale)) return input.message
   const contract = readActiveMissionContract(projectDirectory, missionId)
   if (!contract) return input.message
 

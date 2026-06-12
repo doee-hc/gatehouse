@@ -17,4 +17,4 @@
 
 ## 上下文策略
 
-执行期与复盘期均**不**将已有 SKILL 全文注入 agent context；TeamSpec 的 `skill_domain` 只告知领域 id 与目录路径，agent 自行 read。
+执行期与复盘期均**不**将已有 SKILL 全文注入 agent context；manifest 中的 `skill_domain` 只告知领域 id 与目录路径，agent 自行 read。

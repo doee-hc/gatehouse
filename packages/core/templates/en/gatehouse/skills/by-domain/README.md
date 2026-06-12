@@ -17,4 +17,4 @@ Repository-wide domain list: `.gatehouse/skills/domains.yaml` (read by profile l
 
 ## Context policy
 
-Neither execution nor retro injects full existing SKILL text into agent context; TeamSpec `skill_domain` only gives domain id and directory path — agents read on demand.
+Neither execution nor retro injects full existing SKILL text into agent context; manifest `skill_domain` only gives domain id and directory path — agents read on demand.

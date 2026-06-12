@@ -28,6 +28,8 @@ agents:
     name: Kurt
   arbiter:
     name: Art
+# Debug session context (developer CLI only; runtime never reads dumps):
+# bunx @gatehouse/core dump-context -C . --mission <mission_id>
 # Optional per-role models (provider/model-id). Project overrides ~/.config/gatehouse/config.yaml.
 # models:
 #   lead: opencode/big-pickle

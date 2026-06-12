@@ -8,24 +8,55 @@ export function outerAgentDisplay(projectDirectory: string, profileSlug: string)
   return agentName(readAgentNamesSync(projectDirectory), profile)
 }
 
+function duplicateLeadMessage(registeredLead: RegistryAgent) {
+  return `A lead session already exists (${registeredLead.displayName}, profile: lead); open that session instead of creating another lead.`
+}
+
+export function duplicateLeadBlockReason(
+  registeredLead: RegistryAgent | undefined,
+  sessionId: string,
+  requestedProfile: string,
+) {
+  const requested = normalizeOuterProfile(requestedProfile)
+  if (requested !== LEAD_OPENCODE) return
+  if (!registeredLead || registeredLead.sessionId === sessionId) return
+  return duplicateLeadMessage(registeredLead)
+}
+
+export function duplicateLeadCreateBlockReason(
+  registeredLead: RegistryAgent | undefined,
+  requestedAgent?: string,
+) {
+  const requested = requestedAgent ? normalizeOuterProfile(requestedAgent) : undefined
+  if (requested !== LEAD_OPENCODE) return
+  if (!registeredLead) return
+  return duplicateLeadMessage(registeredLead)
+}
+
 export function outerChatMessageBlockReason(
   projectDirectory: string,
   owner: RegistryAgent | undefined,
+  sessionId: string,
   agent: string,
+  registeredLead?: RegistryAgent,
 ) {
-  if (!owner || owner.scope !== "outer") return
-  const requested = normalizeOuterProfile(agent)
-  if (!requested) return
-  if (owner.profile === requested) return
-  return `This session is registered as ${owner.displayName} (profile: ${owner.profile}); cannot send as ${outerAgentDisplay(projectDirectory, requested)} (profile: ${requested}). Open that role's dedicated session instead.`
+  if (owner?.scope === "outer") {
+    const requested = normalizeOuterProfile(agent)
+    if (!requested) return
+    if (owner.profile === requested) return
+    return `This session is registered as ${owner.displayName} (profile: ${owner.profile}); cannot send as ${outerAgentDisplay(projectDirectory, requested)} (profile: ${requested}). Open that role's dedicated session instead.`
+  }
+  return duplicateLeadBlockReason(registeredLead, sessionId, agent)
 }
 
 export function assertOuterChatMessageAllowed(
   projectDirectory: string,
   owner: RegistryAgent | undefined,
+  sessionId: string,
   agent: string,
+  registeredLead?: RegistryAgent,
 ) {
-  const reason = outerChatMessageBlockReason(projectDirectory, owner, agent)
+  const reason = outerChatMessageBlockReason(projectDirectory, owner, sessionId, agent, registeredLead)
   if (reason) throw new Error(reason)
 }
 
@@ -37,7 +68,14 @@ export async function handleOuterChatMessage(
   const agent = rawAgent ? normalizeOuterProfile(rawAgent) : undefined
   if (!agent || !GATEHOUSE_OUTER_AGENTS.has(agent)) return
 
-  assertOuterChatMessageAllowed(registry.directory, registry.bySession(input.sessionID), agent)
+  const registeredLead = registry.byProfile("lead", "outer")
+  assertOuterChatMessageAllowed(
+    registry.directory,
+    registry.bySession(input.sessionID),
+    input.sessionID,
+    agent,
+    registeredLead,
+  )
 
   const existing = registry.bySession(input.sessionID)
   registry.registerOuterSession({

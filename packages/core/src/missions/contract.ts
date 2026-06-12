@@ -1,6 +1,7 @@
 import { RegistryDatabase } from "../registry/db.ts"
 import type { RegistryMissionRecord } from "../registry/types.ts"
 import type { MissionEntry } from "./parse.ts"
+import { normalizeMissionOverrideFields } from "./normalize.ts"
 
 export type MissionContract = {
   mission_id: string
@@ -10,6 +11,8 @@ export type MissionContract = {
   done_when: string[]
   must_not: string[]
   notes?: string
+  user_topology?: string
+  user_skill?: string
   started_at?: string
   completed_at?: string
   locked_at: string
@@ -32,12 +35,19 @@ export function missionEntryToRecord(
     ...(entry.priority && { priority: entry.priority }),
     ...(entry.objective && { objective: entry.objective }),
     ...(entry.notes && { notes: entry.notes }),
+    ...(entry.user_topology && { userTopology: entry.user_topology }),
+    ...(entry.user_skill && { userSkill: entry.user_skill }),
     ...(entry.started_at && { startedAt: entry.started_at }),
     ...(entry.completed_at && { completedAt: entry.completed_at }),
   }
 }
 
 export function registryMissionToContract(record: RegistryMissionRecord): MissionContract {
+  const overrides = normalizeMissionOverrideFields({
+    notes: record.notes,
+    user_topology: record.userTopology,
+    user_skill: record.userSkill,
+  })
   return {
     mission_id: record.missionId,
     status: record.status,
@@ -47,7 +57,7 @@ export function registryMissionToContract(record: RegistryMissionRecord): Missio
     is_active: record.isActive,
     ...(record.priority && { priority: record.priority }),
     ...(record.objective && { objective: record.objective }),
-    ...(record.notes && { notes: record.notes }),
+    ...overrides,
     ...(record.startedAt && { started_at: record.startedAt }),
     ...(record.completedAt && { completed_at: record.completedAt }),
   }

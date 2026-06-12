@@ -1,10 +1,13 @@
 import type { RegistryStore } from "../registry/store.ts"
+import { gatehouseLog } from "../log.ts"
 import { readMissionsDocument, writeMissionsDocument } from "./store.ts"
 import { assertCanStartRunning, type MissionEntry } from "./parse.ts"
 import { missionEntryToRecord } from "./contract.ts"
 import { writeActiveMission } from "../portal/active-mission.ts"
 import { mkdir } from "node:fs/promises"
 import { treeDir } from "../paths.ts"
+import { freezeMissionContract } from "./contract-freeze.ts"
+import { collectMissionPublishWarnings } from "./contract-audit.ts"
 
 export function validateMissionStartEntry(entry: MissionEntry) {
   if (entry.status !== "queued") {
@@ -15,6 +18,19 @@ export function validateMissionStartEntry(entry: MissionEntry) {
   }
   if (entry.done_when.length === 0) {
     throw new Error(`Mission ${entry.id} requires at least one done_when entry in missions.yaml`)
+  }
+  const seen = new Set<string>()
+  for (const item of entry.done_when) {
+    const normalized = item.trim()
+    if (!normalized) {
+      throw new Error(`Mission ${entry.id} has an empty done_when entry in missions.yaml`)
+    }
+    if (seen.has(normalized)) {
+      throw new Error(
+        `Mission ${entry.id} has duplicate done_when entry in missions.yaml: ${JSON.stringify(normalized)}`,
+      )
+    }
+    seen.add(normalized)
   }
 }
 
@@ -28,17 +44,24 @@ export async function startMissionFromYaml(input: {
   const entry = doc.missions.find((mission) => mission.id === input.missionId)
   if (!entry) throw new Error(`Mission not found in missions.yaml: ${input.missionId}`)
   validateMissionStartEntry(entry)
+  const warnings = await collectMissionPublishWarnings(input.projectDirectory, input.missionId)
+  for (const warning of warnings) {
+    gatehouseLog("warn", `[mission:${input.missionId}] ${warning}`)
+  }
 
   const startedAt = new Date().toISOString()
   const lockedAt = startedAt
   entry.status = "running"
   entry.started_at = startedAt
-  await writeMissionsDocument(input.projectDirectory, doc)
 
   const record = missionEntryToRecord(entry, { lockedAt, isActive: true, status: "running" })
   input.registry.activateMission(record)
   await writeActiveMission(input.projectDirectory, input.missionId)
   await mkdir(treeDir(input.projectDirectory, input.missionId), { recursive: true })
+  // Freeze structured done_when (publish:, check:, etc.) from raw YAML after the
+  // registry row exists, but before writeMissionsDocument flattens missions.yaml.
+  await freezeMissionContract(input.projectDirectory, input.missionId)
+  await writeMissionsDocument(input.projectDirectory, doc)
 
-  return { entry, record, started_at: startedAt }
+  return { entry, record, started_at: startedAt, warnings }
 }

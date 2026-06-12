@@ -81,6 +81,43 @@ describe("registry harness", () => {
     }
   })
 
+  test("init_team rejects a second unregistered lead session", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-registry-dup-lead-"))
+    try {
+      const mockClient: GatehouseClient = {
+        session: {
+          async create() {
+            return { id: "ses_unused" }
+          },
+          async promptAsync() {},
+          async messages() {
+            return { data: [] }
+          },
+          async get() {
+            return { data: {} }
+          },
+          async status() {
+            return { data: {} }
+          },
+        },
+      }
+
+      const store = await RegistryStore.create({ directory: dir, client: mockClient })
+      store.registerOuterSession({
+        profile: "lead",
+        sessionId: "ses_lead",
+        projectRootSessionId: "ses_lead",
+      })
+
+      const init = initTeamTool({ directory: dir, client: mockClient } as unknown as PluginInput)
+      const output = toolOutput(await init.execute({}, mockToolContext(dir, "ses_other_lead", "lead")))
+      expect(output).toContain("registered lead session")
+      expect(store.byAgentId(OUTER_LEAD_ID)?.sessionId).toBe("ses_lead")
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
   test("init_team registers outer agents and send_message delivers to architect", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-registry-"))
     try {

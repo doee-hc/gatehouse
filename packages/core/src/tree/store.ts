@@ -7,12 +7,11 @@ import {
   legacyRetroManifestPath,
   manifestExportPath,
   retroManifestExportPath,
-  teamSpecPath,
   treeDir,
   treesIndexPath,
 } from "../paths.ts"
 import type { RetroManifest, TeamSpec, TreeManifest, TreesIndex, TreesIndexEntry } from "./types.ts"
-import { parseTeamSpec, parseTreeManifest } from "./parse.ts"
+import { parseTreeManifest } from "./parse.ts"
 import { isRecord, parseYaml, readString, stringifyYaml } from "../yaml.ts"
 
 async function readText(filePath: string) {
@@ -80,23 +79,6 @@ export async function exportRetroManifestYaml(projectDirectory: string, retro: R
   await writeText(filePath, stringifyYaml(retro))
 }
 
-export async function readTeamSpecFile(projectDirectory: string, missionId: string) {
-  const text = await readText(teamSpecPath(projectDirectory, missionId))
-  if (!text) throw new Error(`TeamSpec not found: ${teamSpecPath(projectDirectory, missionId)}`)
-  return parseTeamSpec(text)
-}
-
-export async function writeTeamSpec(projectDirectory: string, spec: TeamSpec) {
-  const dir = treeDir(projectDirectory, spec.mission_id)
-  await Bun.$`mkdir -p ${dir}`.quiet()
-  await writeText(teamSpecPath(projectDirectory, spec.mission_id), stringifyYaml(spec))
-}
-
-export async function readTeamSpecFromPath(specPath: string) {
-  const text = await readText(specPath)
-  if (!text) throw new Error(`TeamSpec not found: ${specPath}`)
-  return parseTeamSpec(text)
-}
 
 export function readManifestSync(projectDirectory: string, missionId: string) {
   const manifest = treeRegistry(projectDirectory, true).getTreeManifest(missionId)

@@ -8,6 +8,7 @@ const BRIDGE_DIR: Record<ChannelId, string> = {
   weixin: "weixin-bridge",
   feishu: "feishu-bridge",
   qq: "qq-bridge",
+  "qq-onebot": "qq-onebot-bridge",
 }
 
 function findMonorepoRoot(startDir: string): string | undefined {

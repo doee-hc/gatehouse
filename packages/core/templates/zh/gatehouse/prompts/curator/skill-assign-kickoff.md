@@ -1,14 +1,14 @@
 # skill_domain 分配 · 任务 {{mission_id}}
 
-{{architect_name}}已提交 teamspec，**任务执行团队尚未创建**。为需沉淀的执行节点选定 `skill_domain` 后，**仅**调用 `gatehouse_apply_skill_domains`（工具会写入分配并组建执行团队）。
+{{architect_name}} 已提交协作脚本。为需沉淀的执行节点选定 `skill_domain` 后，**仅**调用 `gatehouse_apply_skill_domains`。
 
 ## 任务快照
 
 {{mission_contract}}
 
-## TeamSpec 摘要
+## 执行团队结构摘要
 
-{{teamspec_summary}}
+{{team_structure_summary}}
 
 ## 领域注册表
 
@@ -21,7 +21,7 @@
 
 ## 步骤
 
-1. 按上方 TeamSpec 各节点 `constraints` 决定是否在 `assignments` 中列入 `skill_domain`（**未列入 = 不分配**，复盘期也不会收到 skill 提炼系统消息）。任务快照 `notes` 中若有 `[用户指定·skill]` 须遵守；**无此行则全权自行决定**，勿期待 {{lead_name}} 提供 skill hint。
+1. 按上方各节点 `description` 与职责决定是否在 `assignments` 中列入 `skill_domain`（**未列入 = 不分配**，复盘期也不会收到 skill 提炼系统消息）。任务快照中 `user_skill` 有值须遵守；**无该字段则全权自行决定**，勿期待 {{lead_name}} 提供 skill hint。
 2. 若使用仓库中尚未登记的 domain-id：可先更新 `domains.yaml`（仅元数据）。
 3. `gatehouse_apply_skill_domains(assignments='{"node-id":"domain-id"}')` → **结束本轮**。
 

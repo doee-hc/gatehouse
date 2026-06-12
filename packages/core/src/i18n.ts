@@ -15,14 +15,14 @@ const messages = {
 
 {mission_contract}
 
-下一步：在 \`.gatehouse/trees/{mission_id}/\` 编写 teamspec.yaml，完成后 **gatehouse_bootstrap_tree**。若需刷新任务快照，可调用 **gatehouse_mission_current**。`,
+下一步：在 \`.gatehouse/trees/{mission_id}/\` 编写 **mission.script.ts**，完成后 **gatehouse_bootstrap_tree**。若需刷新任务快照，可调用 **gatehouse_mission_current**。`,
     en: `[Gatehouse · Mission started · {mission_id}]
 
 {lead_name} started this Mission via gatehouse_mission_start.
 
 {mission_contract}
 
-Next: write teamspec.yaml under \`.gatehouse/trees/{mission_id}/\`, then **gatehouse_bootstrap_tree**. Call **gatehouse_mission_current** to refresh the snapshot if needed.`,
+Next: write **mission.script.ts** under \`.gatehouse/trees/{mission_id}/\`, then **gatehouse_bootstrap_tree**. Call **gatehouse_mission_current** to refresh the snapshot if needed.`,
   },
   "mission.started.fallback": {
     zh: `[Gatehouse · Mission 已启动 · {mission_id}]
@@ -104,6 +104,10 @@ All exec nodes with skill_domain finished retro skill extraction and registratio
     zh: "[Gatehouse 消息 · 来自 {sender}]",
     en: "[Gatehouse message · from {sender}]",
   },
+  "portal.architectBootstrapCuratorHint": {
+    zh: "协作脚本已提交，请为执行节点分配 skill_domain",
+    en: "Collaboration script submitted — please assign skill_domain to execution nodes",
+  },
   "arbiter.caseHeader": { zh: "[Gatehouse 权限案卷]", en: "[Gatehouse permission case]" },
   "arbiter.requesterHeader": { zh: "请求方 registry:", en: "Requester registry:" },
   "arbiter.reviewHint": {
@@ -117,22 +121,79 @@ All exec nodes with skill_domain finished retro skill extraction and registratio
   "dispatch.teamSnapshot.parent": { zh: "`parent: {parent}`", en: "`parent: {parent}`" },
   "dispatch.teamSnapshot.children": { zh: "下属: {list}", en: "children: {list}" },
   "dispatch.teamSnapshot.outerHint": {
-    zh: "核心团队（建队已完成）；执行期勿联系；交付后仅 `gatehouse_send_message(recipient=\"lead\")`",
-    en: "Core team (team build complete); do not contact during execution; after delivery only `gatehouse_send_message(recipient=\"lead\")`",
+    zh: "核心团队（建队已完成）；执行期勿联系；结构化交付用 `gatehouse_delivery_submit`",
+    en: "Core team (team build complete); do not contact during execution; structured delivery via `gatehouse_delivery_submit`",
   },
-  "dispatch.teamSnapshot.teamspecHeader": { zh: "### TeamSpec 节点", en: "### TeamSpec nodes" },
+  "dispatch.teamSnapshot.teamspecHeader": { zh: "### 执行团队节点", en: "### Execution team nodes" },
   "dispatch.teamSnapshot.subtreeHeader": {
-    zh: "### 所辖执行分支（启动快照）\n\n你是**中间协调层**（`build-coordinator`）：仅管理此分支；**禁止**联系 lead；子树完成后向父节点汇报。",
-    en: "### Your execution subtree (kickoff snapshot)\n\nYou are an **intermediate coordinator** (`build-coordinator`): manage this branch only; **do not** contact lead; report upstream to parent when done.",
+    zh: "### 所辖执行分支（启动快照）\n\n你是**中间协调层**（`build-coordinator`）：仅管理此分支；**禁止**联系 lead。按协作脚本工单执行；完成后 `gatehouse_execution_complete`；汇总时写索引（引用路径，勿复述下属正文）。",
+    en: "### Your execution subtree (kickoff snapshot)\n\nYou are an **intermediate coordinator** (`build-coordinator`): manage this branch only; **do not** contact lead. Follow collaboration-script work orders; call `gatehouse_execution_complete` when done; roll up with an index (paths only — do not copy child bodies).",
   },
   "dispatch.teamSnapshot.noNonRootNodes": { zh: "（无下属节点）", en: "(no delegate nodes)" },
-  "dispatch.teamSnapshot.watchdogSnapshotHeader": {
-    zh: "### 执行团队（当前快照）",
-    en: "### Execution team (current snapshot)",
+  "execution.nodeRole.header": {
+    zh: "## 节点角色（Node Role · {node_id}）",
+    en: "## Node role ({node_id})",
   },
-  "dispatch.teamSnapshot.watchdogSnapshotNodesHeader": {
-    zh: "### 待 snapshot 排查的非根 node_id",
-    en: "### Non-root node_id values to snapshot once each",
+  "execution.nodeRole.description": {
+    zh: "**职责：** {description}",
+    en: "**Role:** {description}",
+  },
+  "execution.nodeRole.briefHint": {
+    zh: "**行动依据：** `gatehouse_node_brief`（编排器通过 `setBrief` 写入）；**边界：** `gatehouse_mission_context`。",
+    en: "**Action guide:** `gatehouse_node_brief` (written via orchestrator `setBrief`); **boundaries:** `gatehouse_mission_context`.",
+  },
+  "execution.workOrder.activateHeader": {
+    zh: "[Gatehouse · 执行激活 · {node_id}]",
+    en: "[Gatehouse · execution activate · {node_id}]",
+  },
+  "execution.workOrder.reworkHeader": {
+    zh: "[Gatehouse · 修正请求 · {node_id}]",
+    en: "[Gatehouse · correction request · {node_id}]",
+  },
+  "execution.workOrder.reworkBecause": {
+    zh: "**修正要求（尽量具体：路径/行号/验收项）：** {reason}",
+    en: "**Correction scope (be specific: path, lines, or acceptance item):** {reason}",
+  },
+  "execution.workOrder.reworkRequester": {
+    zh: "**请求方：** {requester}",
+    en: "**Requested by:** {requester}",
+  },
+  "execution.workOrder.evidence": { zh: "**证据路径：** {path}", en: "**Evidence path:** {path}" },
+  "execution.workOrder.briefRef": {
+    zh: "**任务书：** `gatehouse_node_brief`（行动依据）",
+    en: "**Node brief:** `gatehouse_node_brief` (primary action guide)",
+  },
+  "execution.workOrder.missingBriefWarning": {
+    zh: "**⚠ 任务书缺失：** 编排器未对本节点调用 `ctx.setBrief`。请用 `gatehouse_mission_contract`（协调者）或激活消息中的上下文行动；并通知 {lead_name} 修正 mission.script.ts。",
+    en: "**⚠ Missing node brief:** orchestrator did not call `ctx.setBrief` for this node. Use `gatehouse_mission_contract` (coordinators) or activation context; notify {lead_name} to fix mission.script.ts.",
+  },
+  "execution.workOrder.contractRef": {
+    zh: "**边界只读：** `gatehouse_mission_context` · **任务书：** `gatehouse_node_brief`",
+    en: "**Boundaries:** `gatehouse_mission_context` · **Node brief:** `gatehouse_node_brief`",
+  },
+  "execution.workOrder.planRef": {
+    zh: "**执行进度：** `gatehouse_execution_status`",
+    en: "**Execution progress:** `gatehouse_execution_status`",
+  },
+  "execution.workOrder.completeHint": {
+    zh: "完成后调用 `gatehouse_execution_complete(summary=..., delivery_path=...)`。",
+    en: "When done, call `gatehouse_execution_complete(summary=..., delivery_path=...)`.",
+  },
+  "execution.workOrder.reworkHint": {
+    zh: "依赖产出不合格（含小范围修正）且你仍在 running：`gatehouse_execution_rework(blocked_by=..., reason=..., evidence_path=...)` — reason 只写最小修改面，不要求整单重做。",
+    en: "Dependency output is wrong (including a small fix) while you are still running: `gatehouse_execution_rework(blocked_by=..., reason=..., evidence_path=...)` — reason states the minimal change only; unrelated work stays done.",
+  },
+  "execution.workOrder.peerMessageHint": {
+    zh: "同伴仍在 running、尚未 complete，只需对齐或指出几处改动：`gatehouse_send_message`（写清具体修改）；不改编排。",
+    en: "Peer still running and not yet complete — align or point to specific edits: `gatehouse_send_message` (exact change); does not change orchestration.",
+  },
+  "execution.workOrder.reworkNotSendMessage": {
+    zh: "勿用 send_message 代替 rework（对方已 complete 或你必须等其修正后再 complete 时）。",
+    en: "Do not use send_message instead of rework when they already completed or orchestration must wait for their fix.",
+  },
+  "execution.workOrder.reworkScopeHint": {
+    zh: "仅按上述修正要求改动；无需重做无关部分。完成后 `gatehouse_execution_complete`。",
+    en: "Change only what the correction scope requires; do not redo unrelated work. Then call `gatehouse_execution_complete`.",
   },
   "mission.contract.header": { zh: "## 任务快照（registry 冻结）", en: "## Mission snapshot (registry freeze)" },
   "mission.contract.missionId": { zh: "**任务 ID：** {mission_id}", en: "**Mission ID:** {mission_id}" },
@@ -140,6 +201,14 @@ All exec nodes with skill_domain finished retro skill extraction and registratio
   "mission.contract.doneWhenHeader": { zh: "**验收条件（done_when）：**", en: "**Acceptance criteria (done_when):**" },
   "mission.contract.mustNotHeader": { zh: "**边界（must_not）：**", en: "**Boundaries (must_not):**" },
   "mission.contract.notesHeader": { zh: "**备注（notes）：**", en: "**Notes:**" },
+  "mission.contract.userTopologyHeader": {
+    zh: "**用户指定拓扑（user_topology）：**",
+    en: "**User-specified topology (user_topology):**",
+  },
+  "mission.contract.userSkillHeader": {
+    zh: "**用户指定 skill（user_skill）：**",
+    en: "**User-specified skill (user_skill):**",
+  },
   "domains.registry.header": { zh: "### 已登记 domain-id", en: "### Registered domain ids" },
   "domains.registry.empty": { zh: "（domains.yaml 尚无条目）", en: "(no entries in domains.yaml yet)" },
   "delivery.lead.doneWhenHeader": {
@@ -149,6 +218,42 @@ All exec nodes with skill_domain finished retro skill extraction and registratio
   "delivery.lead.refreshHint": {
     zh: "（registry 快照；可用 `gatehouse_mission_current` 刷新）",
     en: "(registry snapshot; call `gatehouse_mission_current` to refresh)",
+  },
+  "delivery.submit.leadHeader": {
+    zh: "## 任务交付已提交 · {mission_id}",
+    en: "## Delivery submitted · {mission_id}",
+  },
+  "delivery.submit.version": { zh: "**交付版本：** v{version}", en: "**Delivery version:** v{version}" },
+  "delivery.submit.reportPath": { zh: "**报告路径：** {report_path}", en: "**Report path:** {report_path}" },
+  "delivery.submit.recordPath": {
+    zh: "**结构化记录：** {record_path}",
+    en: "**Structured record:** {record_path}",
+  },
+  "delivery.submit.summaryHeader": { zh: "**交付摘要：**", en: "**Summary:**" },
+  "delivery.submit.precheckHeader": { zh: "**自动预检（precheck）：**", en: "**Automated precheck:**" },
+  "delivery.submit.forceReasonHeader": {
+    zh: "**强制提交说明（precheck 未全通过）：**",
+    en: "**Force submit reason (precheck not fully met):**",
+  },
+  "delivery.submit.portalHint": {
+    zh: "**协调报告**（`root-delivery`）仅作内部上传下达，不上 Portal。`done_when` 中 `publish:` 的项目交付物会在你 `gatehouse_mission_complete(done)` 时由系统自动发布。",
+    en: "**Coordination report** (`root-delivery`) is internal only — not on Portal. Project paths marked `publish:` in done_when are auto-published when you call `gatehouse_mission_complete(done)`.",
+  },
+  "delivery.submit.reviewHint": {
+    zh: "对照 `root-delivery.md` 与 precheck 后，在对话中请用户确认；可选 `gatehouse_mission_retro`，再调用 `gatehouse_mission_complete(done)`。返工或拒绝时调用 `gatehouse_delivery_review(revision_requested | rejected)`。",
+    en: "After checking `root-delivery.md` and precheck, confirm with the user in chat; optionally call `gatehouse_mission_retro`, then `gatehouse_mission_complete(done)`. For rework or rejection use `gatehouse_delivery_review(revision_requested | rejected)`.",
+  },
+  "delivery.revision.header": {
+    zh: "# 交付返工 · 任务 {mission_id} · v{from_version} → v{to_version}",
+    en: "# Delivery revision · Mission {mission_id} · v{from_version} → v{to_version}",
+  },
+  "delivery.revision.failedHeader": { zh: "## 未通过验收项", en: "## Failed acceptance criteria" },
+  "delivery.revision.briefHeader": { zh: "## 返工目标", en: "## Revision goals" },
+  "delivery.revision.userFeedbackHeader": { zh: "## 用户原话", en: "## User feedback" },
+  "delivery.revision.mustNotHeader": { zh: "## 边界（must_not）", en: "## Boundaries (must_not)" },
+  "delivery.revision.submitHint": {
+    zh: "完成后更新 root-delivery 报告并调用 `gatehouse_delivery_submit(mission_id=\"{mission_id}\")`。",
+    en: "Update root-delivery report, then call `gatehouse_delivery_submit(mission_id=\"{mission_id}\")`.",
   },
   "retro.kickoff.contextHeader": { zh: "## 所辖分支（启动快照）", en: "## Your subtree (kickoff snapshot)" },
   "retro.kickoff.scopeNodes": { zh: "**node_ids：** {list}", en: "**node_ids:** {list}" },

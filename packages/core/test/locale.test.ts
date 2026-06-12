@@ -10,10 +10,10 @@ describe("locale", () => {
   test("resolveGatehouseContentPath prefers locale-specific project files", async () => {
     const project = await mkdtemp(path.join(tmpdir(), "gh-locale-path-"))
     try {
-      const relative = "prompts/architect/dispatch-root.md"
+      const relative = "prompts/architect/watchdog-node-wake.md"
       const localized = path.join(project, ".gatehouse", "en", relative)
       await mkdir(path.dirname(localized), { recursive: true })
-      await writeFile(localized, "# English dispatch-root\n")
+      await writeFile(localized, "# English watchdog\n")
 
       await mkdir(path.join(project, ".gatehouse"), { recursive: true })
       await writeFile(gatehouseProjectConfigPath(project), "locale: en\n")
@@ -31,7 +31,7 @@ describe("locale", () => {
       await writeFile(gatehouseProjectConfigPath(project), "locale: en\n")
 
       const prompt = await loadArchitectPrompt(project)
-      expect(prompt).toContain("Session opening")
+      expect(prompt).toContain("architect-meta")
       expect(prompt).not.toContain("会话开场")
     } finally {
       await rm(project, { recursive: true, force: true })

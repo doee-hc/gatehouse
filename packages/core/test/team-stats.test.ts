@@ -1,10 +1,16 @@
-import { test, expect, beforeEach } from "bun:test"
+import { test, expect, beforeEach, afterEach } from "bun:test"
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
+import os from "node:os"
+import path from "node:path"
 import {
   buildMissionStats,
   buildOuterOverview,
+  buildTeamStatsSnapshot,
   clearTeamStatsCacheForTests,
+  usageFromNodeMetrics,
   usageFromSessionDetail,
 } from "../src/portal/team-stats.ts"
+import { RegistryDatabase } from "../src/registry/db.ts"
 import { emptyTokens } from "../src/metrics/aggregate.ts"
 import type { MissionEntry } from "../src/missions/parse.ts"
 import type { RegistryAgent } from "../src/registry/types.ts"
@@ -38,6 +44,102 @@ test("usageFromSessionDetail handles missing detail", () => {
   expect(usage.cost).toBe(0)
   expect(usage.tokens).toEqual(emptyTokens())
   expect(usage.duration_ms).toBe(0)
+})
+
+test("usageFromNodeMetrics reads dumped context metrics", () => {
+  const usage = usageFromNodeMetrics({
+    cost: 0.0158380544,
+    duration_ms: 407_441,
+    tokens: {
+      input: 50_000,
+      output: 30_000,
+      reasoning: 5_000,
+      cache: { read: 100, write: 0 },
+      total: 85_000,
+    },
+  })
+  expect(usage?.cost).toBe(0.0158380544)
+  expect(usage?.duration_ms).toBe(407_441)
+  expect(usage?.tokens.total).toBe(85_000)
+})
+
+const originalFetch = globalThis.fetch
+
+afterEach(() => {
+  globalThis.fetch = originalFetch
+})
+
+test("buildTeamStatsSnapshot falls back to local context metrics when OpenCode sessions are gone", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "gh-team-stats-local-"))
+  try {
+    await mkdir(path.join(dir, ".gatehouse/lead"), { recursive: true })
+    await mkdir(path.join(dir, ".gatehouse/trees/m1/context/root"), { recursive: true })
+    await writeFile(
+      path.join(dir, ".gatehouse/lead/missions.yaml"),
+      `schema_version: 1
+missions:
+  - id: m1
+    status: done
+    objective: Local metrics fallback
+    done_when: []
+    must_not: []
+`,
+    )
+    await writeFile(
+      path.join(dir, ".gatehouse/trees-index.yaml"),
+      `schema_version: 1
+trees:
+  - mission_id: m1
+    status: archived
+`,
+    )
+    await mkdir(path.join(dir, ".gatehouse/internal/exports/trees/m1"), { recursive: true })
+    await writeFile(
+      path.join(dir, ".gatehouse/internal/exports/trees/m1/manifest.yaml"),
+      `mission_id: m1
+status: archived
+root_node: root
+created_at: 2026-06-12T00:00:00.000Z
+nodes:
+  root:
+    session_id: ses-archived
+    parent: null
+    display_name: root
+`,
+    )
+    await writeFile(
+      path.join(dir, ".gatehouse/trees/m1/context/root/metrics.json"),
+      JSON.stringify({
+        mission_id: "m1",
+        node_id: "root",
+        session_id: "ses-archived",
+        duration_ms: 120_000,
+        cost: 0.42,
+        tokens: { input: 100, output: 50, reasoning: 0, cache: { read: 0, write: 0 }, total: 150 },
+      }),
+    )
+
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? new URL(input) : input instanceof URL ? input : new URL(input.url)
+      if (url.pathname === "/global/health") {
+        return new Response(JSON.stringify({ healthy: true }), { status: 200 })
+      }
+      if (url.pathname.startsWith("/session/")) {
+        return new Response(JSON.stringify({ message: "not found" }), { status: 404 })
+      }
+      return new Response("not found", { status: 404 })
+    }) as typeof fetch
+
+    new RegistryDatabase(dir)
+    clearTeamStatsCacheForTests()
+    const snapshot = await buildTeamStatsSnapshot(dir, "http://127.0.0.1:4096")
+    expect(snapshot.missions).toHaveLength(1)
+    expect(snapshot.missions[0]?.cost).toBe(0.42)
+    expect(snapshot.missions[0]?.tokens.total).toBe(150)
+    expect(snapshot.missions[0]?.duration_ms).toBe(120_000)
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
 })
 
 test("buildMissionStats aggregates inner node sessions", () => {

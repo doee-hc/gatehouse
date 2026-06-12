@@ -29,6 +29,24 @@ import {
   TREE_MANIFEST_SCHEMA_SQL,
 } from "./tree-manifest-db.ts"
 import {
+  migrateMissionArtifactsTables,
+  readMissionContractRaw,
+  readNodeBrief,
+  saveMissionContractRaw,
+  saveNodeBrief,
+  listNodeBriefIds,
+} from "./mission-artifacts-db.ts"
+import {
+  migrateOrchestrationTables,
+  readMissionScript,
+  readOrchestrationState,
+  saveMissionScript as persistMissionScript,
+  saveOrchestrationState as persistOrchestrationState,
+} from "./orchestration-db.ts"
+import type { OrchestrationState } from "../orchestration/types.ts"
+import type { MissionScriptMeta } from "../orchestration/types.ts"
+import type { TeamSpec } from "../tree/types.ts"
+import {
   deleteWatchdogState as deleteWatchdogStateRow,
   loadAllWatchdogStates,
   migrateWatchdogStateTable,
@@ -146,6 +164,8 @@ function applySchema(db: Database) {
   migrateTreeManifestDescriptionColumn(db)
   migrateRegistryProfileOnly(db)
   migrateWatchdogStateTable(db)
+  migrateMissionArtifactsTables(db)
+  migrateOrchestrationTables(db)
   if (schemaReady(db)) return
   db.exec(`
     PRAGMA user_version = ${REGISTRY_SCHEMA_VERSION};
@@ -222,7 +242,10 @@ function applySchema(db: Database) {
       objective TEXT,
       done_when_json TEXT NOT NULL,
       must_not_json TEXT NOT NULL,
+      contract_raw_json TEXT,
       notes TEXT,
+      user_topology TEXT,
+      user_skill TEXT,
       started_at TEXT,
       completed_at TEXT,
       is_active INTEGER NOT NULL DEFAULT 0,
@@ -235,6 +258,7 @@ function applySchema(db: Database) {
 
     ${TREE_MANIFEST_SCHEMA_SQL}
   `)
+  migrateMissionArtifactsTables(db)
 }
 
 type MissionRow = {
@@ -244,7 +268,10 @@ type MissionRow = {
   objective: string | null
   done_when_json: string
   must_not_json: string
+  contract_raw_json: string | null
   notes: string | null
+  user_topology: string | null
+  user_skill: string | null
   started_at: string | null
   completed_at: string | null
   is_active: number
@@ -264,8 +291,11 @@ function rowToMission(row: MissionRow): RegistryMissionRecord {
     ...(row.priority && { priority: row.priority }),
     ...(row.objective && { objective: row.objective }),
     ...(row.notes && { notes: row.notes }),
+    ...(row.user_topology && { userTopology: row.user_topology }),
+    ...(row.user_skill && { userSkill: row.user_skill }),
     ...(row.started_at && { startedAt: row.started_at }),
     ...(row.completed_at && { completedAt: row.completed_at }),
+    ...(row.contract_raw_json && { contractRawJson: JSON.parse(row.contract_raw_json) as unknown }),
   }
 }
 
@@ -515,11 +545,11 @@ export class RegistryDatabase {
       this.db.run("UPDATE registry_mission SET is_active = 0 WHERE is_active = 1")
       const upsert = this.db.prepare(
         `INSERT INTO registry_mission (
-          mission_id, status, priority, objective, done_when_json, must_not_json, notes,
-          started_at, completed_at, is_active, locked_at, updated_at
+          mission_id, status, priority, objective, done_when_json, must_not_json, contract_raw_json, notes,
+          user_topology, user_skill, started_at, completed_at, is_active, locked_at, updated_at
         ) VALUES (
-          $mission_id, $status, $priority, $objective, $done_when_json, $must_not_json, $notes,
-          $started_at, $completed_at, 1, $locked_at, $updated_at
+          $mission_id, $status, $priority, $objective, $done_when_json, $must_not_json, $contract_raw_json, $notes,
+          $user_topology, $user_skill, $started_at, $completed_at, 1, $locked_at, $updated_at
         )
         ON CONFLICT(mission_id) DO UPDATE SET
           status = excluded.status,
@@ -527,7 +557,10 @@ export class RegistryDatabase {
           objective = excluded.objective,
           done_when_json = excluded.done_when_json,
           must_not_json = excluded.must_not_json,
+          contract_raw_json = COALESCE(excluded.contract_raw_json, registry_mission.contract_raw_json),
           notes = excluded.notes,
+          user_topology = excluded.user_topology,
+          user_skill = excluded.user_skill,
           started_at = excluded.started_at,
           completed_at = excluded.completed_at,
           is_active = 1,
@@ -541,7 +574,11 @@ export class RegistryDatabase {
         $objective: record.objective ?? null,
         $done_when_json: JSON.stringify(record.doneWhen),
         $must_not_json: JSON.stringify(record.mustNot),
+        $contract_raw_json:
+          record.contractRawJson !== undefined ? JSON.stringify(record.contractRawJson) : null,
         $notes: record.notes ?? null,
+        $user_topology: record.userTopology ?? null,
+        $user_skill: record.userSkill ?? null,
         $started_at: record.startedAt ?? null,
         $completed_at: record.completedAt ?? null,
         $locked_at: record.lockedAt,
@@ -620,5 +657,47 @@ export class RegistryDatabase {
 
   deleteWatchdogState(missionId: string, kind: WatchdogKind) {
     deleteWatchdogStateRow(this.db, missionId, kind)
+  }
+
+  saveMissionContractRaw(missionId: string, contractRaw: unknown) {
+    saveMissionContractRaw(this.db, missionId, contractRaw)
+  }
+
+  getMissionContractRaw(missionId: string) {
+    return readMissionContractRaw(this.db, missionId)
+  }
+
+  saveNodeBrief(missionId: string, nodeId: string, brief: import("../execution/types.ts").NodeBrief) {
+    saveNodeBrief(this.db, missionId, nodeId, brief)
+  }
+
+  getNodeBrief(missionId: string, nodeId: string) {
+    return readNodeBrief(this.db, missionId, nodeId)
+  }
+
+  listNodeBriefIds(missionId: string) {
+    return listNodeBriefIds(this.db, missionId)
+  }
+
+  saveMissionScript(input: {
+    missionId: string
+    team: TeamSpec
+    meta?: MissionScriptMeta
+    scriptPath?: string
+    scriptHash?: string
+  }) {
+    persistMissionScript(this.db, input)
+  }
+
+  getMissionScript(missionId: string) {
+    return readMissionScript(this.db, missionId)
+  }
+
+  saveOrchestrationState(state: OrchestrationState) {
+    persistOrchestrationState(this.db, state)
+  }
+
+  getOrchestrationState(missionId: string) {
+    return readOrchestrationState(this.db, missionId)
   }
 }

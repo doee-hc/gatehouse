@@ -1,16 +1,16 @@
-# 在 .gatehouse/lead/missions.yaml 的 missions 列表中追加条目（全局唯一文件）
+# Append to the missions list in .gatehouse/lead/missions.yaml (single global file)
 
 - id: <mission_id>
   status: queued
   priority: P1
-  objective: "一句话目标"
+  objective: "one-line goal"
   done_when:
-    - "可验证验收条件"
+    - "verifiable acceptance criterion"
   must_not:
-    - "边界约束"
-  # notes optional. Default: user background/context only — no topology or skill hints.
-  # Only when the user explicitly specifies:
-  #   [user-specified·topology] …
-  #   [user-specified·skill] …
+    - "boundary constraint"
+  # notes optional: user background / motivation / style only (not verifiable)
   notes: |
     Optional: user background and context.
+  # user_topology / user_skill: only when the user explicitly specifies; omit otherwise
+  # user_topology: "user-explicit topology requirement"
+  # user_skill: "user-explicit skill requirement"

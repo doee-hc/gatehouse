@@ -13,6 +13,11 @@ import { sessionRuntimeStatus, sessionStatusById } from "../session/status.ts"
 import { readAgentNamesSync } from "../names.ts"
 import { resolveRecipientMissionId } from "../missions/scope.ts"
 import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
+import {
+  checkSessionSnapshotPollGuard,
+  MAX_CONSECUTIVE_SESSION_SNAPSHOTS,
+  SNAPSHOT_POLL_LIMIT_GUIDANCE,
+} from "./session-snapshot-poll-guard.ts"
 import { trimRecipientQuery } from "./recipient.ts"
 
 function registryDirectory(recipients: { agentId: string; sessionId: string; displayName: string; profile: string }[]) {
@@ -151,6 +156,29 @@ export function sessionSnapshotTool(input: PluginInput) {
               sender_agent_id: sender.agentId,
               recipient_agent_id: recipient.agentId,
             }),
+            ...toolMetadata(toolName),
+          }
+        }
+
+        const pollGuard = checkSessionSnapshotPollGuard({
+          senderSessionId: context.sessionID,
+          messageId: context.messageID,
+          recipientSessionId: recipient.sessionId,
+        })
+        if (!pollGuard.allowed) {
+          return {
+            output: toolFail(
+              toolName,
+              "SNAPSHOT_POLL_LIMIT",
+              SNAPSHOT_POLL_LIMIT_GUIDANCE,
+              {
+                recipient: query,
+                recipient_session_id: recipient.sessionId,
+                consecutive_snapshot_count: pollGuard.consecutiveCount,
+                max_consecutive_snapshots: MAX_CONSECUTIVE_SESSION_SNAPSHOTS,
+                guidance: pollGuard.guidance,
+              },
+            ),
             ...toolMetadata(toolName),
           }
         }

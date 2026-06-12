@@ -59,6 +59,23 @@ export function internalExportsDir(projectDirectory: string) {
   return path.join(gatehouseRoot(projectDirectory), "internal", "exports")
 }
 
+/** Debug-only session dumps — Gatehouse runtime never reads these. */
+export function debugSessionsDir(projectDirectory: string) {
+  return path.join(gatehouseRoot(projectDirectory), "internal", "debug", "sessions")
+}
+
+export function debugSessionMissionDir(projectDirectory: string, missionId: string) {
+  return path.join(debugSessionsDir(projectDirectory), missionId)
+}
+
+export function debugOuterSessionRelDir(missionId: string, profile: string) {
+  return path.join(".gatehouse", "internal", "debug", "sessions", missionId, "outer", profile)
+}
+
+export function debugSessionIndexRelPath(missionId: string) {
+  return path.join(".gatehouse", "internal", "debug", "sessions", missionId, "index.json")
+}
+
 export function manifestExportPath(projectDirectory: string, missionId: string) {
   return path.join(internalExportsDir(projectDirectory), "trees", missionId, "manifest.yaml")
 }
@@ -86,18 +103,28 @@ export function retroManifestPath(projectDirectory: string, missionId: string) {
   return retroManifestExportPath(projectDirectory, missionId)
 }
 
-export function teamSpecPath(projectDirectory: string, missionId: string) {
-  return path.join(treeDir(projectDirectory, missionId), "teamspec.yaml")
+export function missionScriptPath(projectDirectory: string, missionId: string) {
+  return path.join(treeDir(projectDirectory, missionId), "mission.script.ts")
 }
 
-export function dispatchRootPromptPath(projectDirectory: string, solo = false) {
-  const file = solo ? "dispatch-root-solo.md" : "dispatch-root.md"
-  return resolveGatehouseContentPath(projectDirectory, `prompts/architect/${file}`)
+export function missionScriptRelPath(missionId: string) {
+  return path.join(treeRelDir(missionId), "mission.script.ts")
 }
 
-export function watchdogRootWakePromptPath(projectDirectory: string, solo = false) {
-  const file = solo ? "watchdog-root-wake-solo.md" : "watchdog-root-wake.md"
-  return resolveGatehouseContentPath(projectDirectory, `prompts/architect/${file}`)
+export function missionContractPath(projectDirectory: string, missionId: string) {
+  return path.join(treeDir(projectDirectory, missionId), "mission-contract.yaml")
+}
+
+export function missionContractRelPath(missionId: string) {
+  return path.join(treeRelDir(missionId), "mission-contract.yaml")
+}
+
+export function nodeBriefRelPath(missionId: string, nodeId: string) {
+  return path.join(treeRelDir(missionId), "node-briefs", `${nodeId}.yaml`)
+}
+
+export function watchdogNodeWakePromptPath(projectDirectory: string) {
+  return resolveGatehouseContentPath(projectDirectory, "prompts/architect/watchdog-node-wake.md")
 }
 
 export function watchdogRetroRecordWakePromptPath(projectDirectory: string) {
@@ -132,6 +159,14 @@ export function sessionTitle(_missionId: string, nodeId: string, retro = false) 
 
 export function retroSessionTitle(missionId: string, nodeId: string) {
   return sessionTitle(missionId, nodeId, true)
+}
+
+export function nodeDeliveryRelPath(missionId: string, nodeId: string) {
+  return path.join(treeRelDir(missionId), "reports", "nodes", `${nodeId}-delivery.md`)
+}
+
+export function nodeDeliveryReportPath(projectDirectory: string, missionId: string, nodeId: string) {
+  return path.join(projectDirectory, nodeDeliveryRelPath(missionId, nodeId))
 }
 
 export function retroNodeReportRelPath(missionId: string, nodeId: string) {
@@ -192,6 +227,18 @@ export function architectSummaryRelPath(missionId: string) {
 
 export function rootDeliveryRelPath(missionId: string) {
   return path.join(treeRelDir(missionId), "reports", "root-delivery.md")
+}
+
+export function deliveryDocumentPath(projectDirectory: string, missionId: string) {
+  return path.join(treeDir(projectDirectory, missionId), "delivery.yaml")
+}
+
+export function deliveryDocumentRelPath(missionId: string) {
+  return path.join(treeRelDir(missionId), "delivery.yaml")
+}
+
+export function deliveryRevisionPromptPath(projectDirectory: string) {
+  return resolveGatehouseContentPath(projectDirectory, "prompts/architect/delivery-revision.md")
 }
 
 export function portalOfficeDir(projectDirectory: string) {

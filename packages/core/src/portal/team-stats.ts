@@ -1,7 +1,7 @@
 import path from "node:path"
 import { agentName, readAgentNamesSync } from "../names.ts"
 import { parseMissionsFile, type MissionEntry } from "../missions/parse.ts"
-import { leadDir, portalNodeDisplayName } from "../paths.ts"
+import { leadDir, nodeContextDir, portalNodeDisplayName } from "../paths.ts"
 import { addTokens, emptyTokens, type TokenBreakdown } from "../metrics/aggregate.ts"
 import { RegistryDatabase } from "../registry/db.ts"
 import type { RegistryAgent } from "../registry/types.ts"
@@ -70,7 +70,30 @@ export function usageFromSessionDetail(detail: Record<string, unknown> | undefin
   if (!detail) {
     return { tokens: emptyTokens(), cost: 0, duration_ms: 0 }
   }
-  const rawTokens = isRecord(detail.tokens) ? detail.tokens : undefined
+  return usageFromMetricsRecord({
+    cost: detail.cost,
+    tokens: detail.tokens,
+    duration_ms: sessionDurationMs(detail) ?? 0,
+  })
+}
+
+export function usageFromNodeMetrics(raw: unknown): SessionUsage | undefined {
+  if (!isRecord(raw)) return undefined
+  const usage = usageFromMetricsRecord({
+    cost: raw.cost,
+    tokens: raw.tokens,
+    duration_ms: raw.duration_ms,
+  })
+  if (usage.cost === 0 && usage.tokens.total === 0 && usage.duration_ms === 0) return undefined
+  return usage
+}
+
+function usageFromMetricsRecord(input: {
+  cost: unknown
+  tokens: unknown
+  duration_ms: unknown
+}): SessionUsage {
+  const rawTokens = isRecord(input.tokens) ? input.tokens : undefined
   const cache = isRecord(rawTokens?.cache) ? rawTokens.cache : undefined
   const tokens = emptyTokens()
   addTokens(tokens, {
@@ -84,9 +107,14 @@ export function usageFromSessionDetail(detail: Record<string, unknown> | undefin
   })
   return {
     tokens,
-    cost: typeof detail.cost === "number" ? detail.cost : 0,
-    duration_ms: sessionDurationMs(detail) ?? 0,
+    cost: typeof input.cost === "number" ? input.cost : 0,
+    duration_ms: typeof input.duration_ms === "number" ? input.duration_ms : 0,
   }
+}
+
+function sessionUsageIsEmpty(usage: SessionUsage | undefined) {
+  if (!usage) return true
+  return usage.cost === 0 && usage.tokens.total === 0 && usage.duration_ms === 0
 }
 
 function mergeUsage(target: SessionUsage, source: SessionUsage) {
@@ -226,6 +254,31 @@ async function loadSessionUsageMap(
   return usage
 }
 
+async function readLocalNodeMetricsUsage(projectDirectory: string, missionId: string, nodeId: string) {
+  const metricsPath = path.join(nodeContextDir(projectDirectory, missionId, nodeId), "metrics.json")
+  const file = Bun.file(metricsPath)
+  if (!(await file.exists())) return undefined
+  try {
+    return usageFromNodeMetrics(JSON.parse(await file.text()))
+  } catch {
+    return undefined
+  }
+}
+
+async function enrichSessionUsageFromLocalContext(
+  projectDirectory: string,
+  manifests: Map<string, TreeManifest>,
+  sessionUsage: Map<string, SessionUsage>,
+) {
+  for (const [missionId, manifest] of manifests) {
+    for (const [nodeId, node] of Object.entries(manifest.nodes)) {
+      if (!sessionUsageIsEmpty(sessionUsage.get(node.session_id))) continue
+      const local = await readLocalNodeMetricsUsage(projectDirectory, missionId, nodeId)
+      if (local) sessionUsage.set(node.session_id, local)
+    }
+  }
+}
+
 async function readMissions(projectDirectory: string) {
   const file = Bun.file(path.join(leadDir(projectDirectory), "missions.yaml"))
   if (!(await file.exists())) return parseMissionsFile("schema_version: 1\nmissions: []\n").missions
@@ -264,6 +317,7 @@ async function loadTeamStatsSnapshot(projectDirectory: string, opencodeUrl?: str
   const baseUrl = opencodeUrl ?? process.env.OPENCODE_URL ?? process.env.OPENCODE_SERVER_URL ?? "http://127.0.0.1:4096"
   const reachable = await opencodeReachable(baseUrl)
   const sessionUsage = await loadSessionUsageMap(baseUrl, projectDirectory, [...sessionIds], reachable)
+  await enrichSessionUsageFromLocalContext(projectDirectory, manifests, sessionUsage)
 
   const snapshot: TeamStatsSnapshot = {
     project_directory: projectDirectory,

@@ -69,6 +69,50 @@ describe("gatehouse tui client guard", () => {
     }
   })
 
+  test("blocks creating a second lead session when one already exists", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-client-guard-create-"))
+    try {
+      const store = await RegistryStore.create({ directory: dir, client: mockClient() })
+      store.registerOuterSession({
+        profile: "lead",
+        sessionId: "ses_lead",
+        projectRootSessionId: "ses_lead",
+      })
+
+      const toasts: Array<{ message: string }> = []
+      let created = false
+      const session = {
+        prompt: async () => ({ data: {} }),
+        command: async () => ({ data: {} }),
+        shell: async () => ({ data: {} }),
+        promptAsync: async () => ({ data: {} }),
+        create: async (_input?: unknown) => {
+          created = true
+          return { data: { id: "ses_new_lead" } }
+        },
+      }
+
+      const api = {
+        state: { path: { directory: dir } },
+        ui: {
+          toast(input: { message: string }) {
+            toasts.push(input)
+          },
+        },
+        client: { session },
+      } as unknown as TuiPluginApi
+
+      installGatehouseClientGuard(api)
+
+      const result = await session.create({ body: { agent: "lead", title: "Lead" } })
+      expect(created).toBe(false)
+      expect(result).toEqual({ error: { message: expect.stringContaining("lead session already exists") } })
+      expect(toasts).toHaveLength(1)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
   test("allows matching outer agent", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-client-guard-"))
     try {

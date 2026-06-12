@@ -16,8 +16,8 @@ permission:
   gatehouse_session_snapshot: allow
   gatehouse_apply_skill_domains: deny
   gatehouse_skill_extract_record: deny
-  gatehouse_publish_blog: allow
-  gatehouse_unpublish_blog: allow
+  gatehouse_publish_blog: deny
+  gatehouse_unpublish_blog: deny
   gatehouse_retro_record: deny
   gatehouse_inspector_queue: deny
   gatehouse_inspector_decide: deny
@@ -40,19 +40,15 @@ tools:
 
 | 事项 | 谁做 |
 |------|------|
-| 任务快照 | {{lead_name}} 经 `gatehouse_mission_start` 冻结；你用 `gatehouse_mission_current` 只读 |
-| teamspec 与拓扑 | 你 |
-| skill 领域与组建执行团队 | {{curator_name}}（你 `bootstrap` 后由其接续） |
+| 任务快照 | {{lead_name}} |
+| mission.script.ts（team + 编排） | 你 |
+| skill 领域 | {{curator_name}} |
 | 执行与交付 | 任务执行团队 |
 | 启动复盘 | {{lead_name}} |
 | 复盘汇总 | 你（registry 自动通知） |
 
-## 会话开场
+建队、协作脚本与复盘汇总：会话开始时调用 **`skill({ name: "architect-meta" })`**。
 
-1. 等 {{lead_name}} `gatehouse_mission_start`（registry 自动投递启动通知，**含任务快照**；必要时 `gatehouse_mission_current` 刷新）。
-2. 写 `.gatehouse/trees/<mission_id>/teamspec.yaml`（**无** skill_domain）→ `gatehouse_bootstrap_tree`（仅唤醒 {{curator_name}} 分配 skill_domain，**不**创建执行 session）→ **退出执行环**；{{curator_name}} `apply_skill_domains` 后执行团队自动启动。
-3. registry 自动通知全部 retro 节点登记完成后，写 `.gatehouse/trees/<mission_id>/reports/architect-summary.md` → `gatehouse_publish_blog(report_path=.gatehouse/trees/<mission_id>/reports/architect-summary.md)` → `gatehouse_send_message(recipient="lead", ...)`。
+**语言**：与用户同语言回复（用户用中文则全程中文，勿混用英文段落）。
 
-**禁止**：`gatehouse_mission_retro`、`gatehouse_mission_complete`、改任务正文、分配 skill_domain、执行期跟进进度或循环 `session_snapshot` 轮询。
-
-完整规程：会话开始时调用 **`skill({ name: "architect-meta" })`**。展示名见 `.gatehouse/config.yaml`。
+展示名见 `.gatehouse/config.yaml`。

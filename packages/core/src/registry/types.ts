@@ -112,11 +112,15 @@ export type RegistryMissionRecord = {
   doneWhen: string[]
   mustNot: string[]
   notes?: string
+  userTopology?: string
+  userSkill?: string
   startedAt?: string
   completedAt?: string
   isActive: boolean
   lockedAt: string
   updatedAt: string
+  /** Raw frozen missions.yaml entry (structured done_when preserved). */
+  contractRawJson?: unknown
 }
 
 export type RegistrySnapshot = {

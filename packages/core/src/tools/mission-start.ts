@@ -65,6 +65,7 @@ export function missionStartTool(input: PluginInput) {
             started_at: started.started_at,
             locked_at: started.record.lockedAt,
             architect_delivery: delivery.status,
+            ...(started.warnings.length > 0 && { warnings: started.warnings }),
             ...(delivery.status === "failed" && "error" in delivery && { error: delivery.error }),
           }),
           ...toolMetadata(toolName),

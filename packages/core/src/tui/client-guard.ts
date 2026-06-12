@@ -1,7 +1,10 @@
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui"
 import { normalizeOuterProfile } from "../names.ts"
 import { RegistryDatabase } from "../registry/db.ts"
-import { outerChatMessageBlockReason } from "../registry/outer-chat-message.ts"
+import {
+  duplicateLeadCreateBlockReason,
+  outerChatMessageBlockReason,
+} from "../registry/outer-chat-message.ts"
 
 function projectDirectory(api: TuiPluginApi) {
   return api.state.path.directory || process.cwd()
@@ -13,19 +16,33 @@ export function installGatehouseClientGuard(api: TuiPluginApi) {
     directory: undefined as string | undefined,
   }
 
-  const ownerForSession = (sessionID: string) => {
+  const loadSnapshot = () => {
     const directory = projectDirectory(api)
     if (registry.directory !== directory) {
       registry.directory = directory
       registry.db = new RegistryDatabase(directory, { readonly: true })
     }
-    return registry.db?.load().agents.find((agent) => agent.sessionId === sessionID)
+    return registry.db?.load()
   }
+
+  const registeredLead = () =>
+    loadSnapshot()?.agents.find(
+      (agent) => agent.scope === "outer" && agent.profile === "lead" && agent.status === "active",
+    )
+
+  const ownerForSession = (sessionID: string) =>
+    loadSnapshot()?.agents.find((agent) => agent.sessionId === sessionID)
 
   const blockReason = (sessionID: string, agent?: string) => {
     const profile = agent ? normalizeOuterProfile(agent) : undefined
     if (!profile) return
-    return outerChatMessageBlockReason(projectDirectory(api), ownerForSession(sessionID), profile)
+    return outerChatMessageBlockReason(
+      projectDirectory(api),
+      ownerForSession(sessionID),
+      sessionID,
+      profile,
+      registeredLead(),
+    )
   }
 
   const toastBlock = (reason: string) => {
@@ -56,4 +73,17 @@ export function installGatehouseClientGuard(api: TuiPluginApi) {
   session.command = guard(command) as typeof session.command
   session.shell = guard(shell) as typeof session.shell
   session.promptAsync = guard(promptAsync) as typeof session.promptAsync
+
+  if (typeof session.create === "function") {
+    const create = session.create.bind(session)
+    session.create = (async (args) => {
+      const body = (args as { body?: { agent?: string } })?.body
+      const reason = duplicateLeadCreateBlockReason(registeredLead(), body?.agent)
+      if (reason) {
+        toastBlock(reason)
+        return { error: { message: reason } }
+      }
+      return create(args)
+    }) as typeof session.create
+  }
 }

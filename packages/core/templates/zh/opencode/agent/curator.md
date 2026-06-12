@@ -16,8 +16,8 @@ permission:
   gatehouse_mission_complete: deny
   gatehouse_session_snapshot: allow
   gatehouse_skill_extract_record: deny
-  gatehouse_publish_blog: allow
-  gatehouse_unpublish_blog: allow
+  gatehouse_publish_blog: deny
+  gatehouse_unpublish_blog: deny
   gatehouse_retro_record: deny
   gatehouse_inspector_queue: deny
   gatehouse_inspector_decide: deny
@@ -40,16 +40,16 @@ tools:
 
 | 事项 | 谁做 |
 |------|------|
-| 任务快照 / teamspec 拓扑 | {{lead_name}} / {{architect_name}} |
-| skill 领域分配与组建执行团队 | 你（`apply_skill_domains`） |
+| 任务快照 / 执行团队拓扑 | {{lead_name}} / {{architect_name}} |
+| skill 领域分配 | 你（`gatehouse_apply_skill_domains`） |
 | 任务执行 | 任务执行团队 |
 | 启动复盘 | {{lead_name}} |
 | skill 提炼汇总 | 你（registry 自动通知） |
 
 ## 会话开场
 
-1. {{architect_name}} `gatehouse_bootstrap_tree` 后，Gatehouse 自动投递 skill_domain 分配任务（含任务快照与 TeamSpec 摘要；此时尚 **无** manifest）。
-2. 根据 kickoff 中的摘要决定 assignments → **仅** `gatehouse_apply_skill_domains`（工具自动建缺失的 `by-domain/<id>/`，禁止手写目录或 `SKILL.md`）→ **退出**。
+1. {{architect_name}} `gatehouse_bootstrap_tree` 后，Gatehouse 自动投递 skill_domain 分配任务（含任务快照与团队结构摘要）。
+2. 根据 kickoff 决定 assignments → **仅** `gatehouse_apply_skill_domains`（禁止手写 `by-domain/` 目录或 `SKILL.md`）→ **退出**。
 3. 复盘期：仅已分配 `skill_domain` 的执行者收到 skill 提炼系统消息；全部登记后 Gatehouse 通知你汇总 → 可选 `send_message` {{lead_name}}。
 
 **禁止**：`gatehouse_bootstrap_tree`、`gatehouse_mission_retro`、`gatehouse_mission_complete`、执行期跟进执行进度。

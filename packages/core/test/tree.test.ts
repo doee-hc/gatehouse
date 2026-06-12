@@ -24,11 +24,9 @@ nodes:
   root:
     parent: null
     description: 任务协调者
-    constraints: "coord"
   leaf:
     parent: root
     description: 执行成员
-    constraints: "work"
 `
 
 describe("TeamSpec", () => {
@@ -47,12 +45,29 @@ root: root
 nodes:
   root:
     parent: null
-    constraints: "coord"
 `)
     } catch (error) {
       message = error instanceof Error ? error.message : String(error)
     }
     expect(message).toContain("Invalid TeamSpec node")
+  })
+
+  test("parseTeamSpec rejects deprecated constraints field", () => {
+    let message = ""
+    try {
+      parseTeamSpec(`
+mission_id: demo-mission
+root: root
+nodes:
+  root:
+    parent: null
+    description: 任务协调者
+    constraints: "coord"
+`)
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error)
+    }
+    expect(message).toContain("must not include constraints")
   })
 
   test("validateTeamSpec rejects empty description", () => {
@@ -66,7 +81,6 @@ nodes:
   root:
     parent: null
     description: "   "
-    constraints: "coord"
 `),
       )
     } catch (error) {
@@ -122,15 +136,12 @@ nodes:
   node-root:
     parent: null
     description: 根
-    constraints: "root"
   node-mid:
     parent: node-root
     description: 中层
-    constraints: "mid"
   node-leaf:
     parent: node-mid
     description: 叶
-    constraints: "leaf"
 `)
     expect(resolveInnerProfile(multi, "node-mid")).toBe(INNER_COORDINATOR_AGENT)
   })
@@ -143,8 +154,6 @@ nodes:
   node-root:
     parent: null
     description: 单人根节点
-    constraints: |
-      兼协调与执行
 `)
     expect(resolveInnerProfile(spec, "node-root")).toBe(INNER_ROOT_SOLO_AGENT)
   })
@@ -160,7 +169,6 @@ nodes:
     parent: null
     description: 根
     profile: build-root
-    constraints: "x"
 `)
     } catch (error) {
       message = error instanceof Error ? error.message : String(error)

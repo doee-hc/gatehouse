@@ -35,7 +35,7 @@ These **do not** replace semantic features you derive from messages/timeline (co
 3. For suspicious patterns: **write or extend Python scripts** for features (compaction, todo tokens, send_message sequences, etc.).
 4. If a new tool is reusable: add `.gatehouse/skills/retro-toolkit/tools/<verb-noun>/` with `SKILL.md`.
 5. Cross-check `.gatehouse/trees/{{mission_id}}/context/subtree-metrics.json` with script output.
-6. Write `.gatehouse/trees/{{mission_id}}/reports/nodes/{{node_id}}-retro.md` (include "Tool contribution" section) → `gatehouse_retro_record` → `gatehouse_publish_blog(report_path=.gatehouse/trees/{{mission_id}}/reports/nodes/{{node_id}}-retro.md)`.
+6. Write `.gatehouse/trees/{{mission_id}}/reports/nodes/{{node_id}}-retro.md` (include "Tool contribution" section) → `gatehouse_retro_record` (internal — do not publish).
 
 **Grep guide (timeline.md):**
 
@@ -72,7 +72,7 @@ Suggested structure:
 
 ## Task assignment & prompt constraints
 - Was assignment clear (who / what / done_when):
-- teamspec constraints followed, too loose/tight:
+- Node `gatehouse_node_brief` effective, too loose/tight:
 - Child prompts causing duplicate work or overlap:
 
 ## Coordination & topology (for {{architect_name}} architect-meta)
@@ -94,7 +94,7 @@ Suggested structure:
 
 ```
 gatehouse_retro_record()
-gatehouse_publish_blog(report_path=".gatehouse/trees/{{mission_id}}/reports/nodes/{{node_id}}-retro.md")
+# do not gatehouse_publish_blog retro reports
 ```
 
 **Do not** `gatehouse_send_message` {{architect_name}} — Gatehouse auto-notifies {{architect_name}} after all nodes record (with retro reports and retro-toolkit curation tasks).

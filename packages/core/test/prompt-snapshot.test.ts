@@ -3,9 +3,14 @@ import path from "node:path"
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { formatMissionContractBlock } from "../src/missions/contract-format.ts"
-import { formatMissionStartedMessage, enrichLeadDeliveryMessage } from "../src/messaging/delivery-notify.ts"
+import { formatLeadDeliveryNotification } from "../src/delivery/notify.ts"
+import {
+  enrichLeadDeliveryMessage,
+  formatMissionStartedMessage,
+  leadDeliveryMessageAlreadyEnriched,
+} from "../src/messaging/delivery-notify.ts"
 import { loadCuratorSkillAssignKickoff } from "../src/curator/prompt.ts"
-import { loadWatchdogRootWakePrompt } from "../src/watchdog/prompt.ts"
+import { loadWatchdogNodeWakePrompt } from "../src/watchdog/prompt.ts"
 import { loadRetroKickoffPrompt } from "../src/retro/prompt.ts"
 import {
   formatCoordinatorSubtreeSnapshot,
@@ -25,13 +30,9 @@ nodes:
   node-root:
     parent: null
     description: 任务协调者
-    constraints: |
-      协调 node-doc
   node-doc:
     parent: node-root
     description: 文档执行成员
-    constraints: |
-      写 README
 `
 
 describe("prompt snapshot injections", () => {
@@ -64,7 +65,7 @@ describe("prompt snapshot injections", () => {
       })
       expect(prompt).toContain("任务快照")
       expect(prompt).toContain("node-doc")
-      expect(prompt).toContain("TeamSpec")
+      expect(prompt).toContain("user_skill")
       expect(prompt).not.toContain("{{mission_contract}}")
       expect(prompt).not.toContain("gatehouse_mission_current` — 任务全文")
     } finally {
@@ -72,30 +73,20 @@ describe("prompt snapshot injections", () => {
     }
   })
 
-  test("loadWatchdogRootWakePrompt injects team snapshot and non-root ids", async () => {
+  test("loadWatchdogNodeWakePrompt injects node and delivery path", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-watchdog-snap-"))
     try {
       await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
-      const manifest = parseTreeManifest(`
-mission_id: m1
-status: running
-root_node: node-root
-created_at: "2026-01-01T00:00:00.000Z"
-nodes:
-  node-root:
-    session_id: s1
-    parent: null
-    description: root
-  node-doc:
-    session_id: s2
-    parent: node-root
-    description: doc
-`)
-      const prompt = await loadWatchdogRootWakePrompt(dir, "m1", 12, manifest)
+      const prompt = await loadWatchdogNodeWakePrompt(dir, {
+        missionId: "m1",
+        nodeId: "node-doc",
+        idleSeconds: 12,
+        rootNodeId: "node-root",
+      })
       expect(prompt).toContain("node-doc")
-      expect(prompt).toContain("node-root")
-      expect(prompt).not.toContain("{{team_execution_snapshot}}")
-      expect(prompt).not.toContain("先 `gatehouse_list_team()`")
+      expect(prompt).toContain("m1")
+      expect(prompt).toContain("node-doc-delivery.md")
+      expect(prompt).not.toContain("{{delivery_path}}")
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
@@ -159,6 +150,59 @@ nodes:
     }
   })
 
+  test("leadDeliveryMessageAlreadyEnriched detects formatted delivery submit body", () => {
+    const formatted = formatLeadDeliveryNotification("/tmp", {
+      missionId: "m1",
+      record: {
+        version: 1,
+        status: "submitted",
+        submitted_at: "2026-01-01T00:00:00.000Z",
+        submitted_by_node: "root",
+        report_path: ".gatehouse/trees/m1/reports/root-delivery.md",
+        criteria: [],
+        evidence: [],
+        precheck: [],
+      },
+      contract: {
+        mission_id: "m1",
+        status: "running",
+        objective: "goal",
+        done_when: ["file exists"],
+        must_not: [],
+        locked_at: "2026-01-01T00:00:00.000Z",
+        is_active: true,
+      },
+    })
+    expect(leadDeliveryMessageAlreadyEnriched(formatted, "zh")).toBe(true)
+    expect(
+      enrichLeadDeliveryMessage("/tmp", {
+        sender: {
+          agentId: "inner:m1:root",
+          sessionId: "s-root",
+          profile: "build-root",
+          scope: "inner",
+          missionId: "m1",
+          nodeId: "root",
+          displayName: "root",
+          status: "active",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+        recipient: {
+          agentId: "outer:lead",
+          sessionId: "s-lead",
+          profile: "lead",
+          scope: "outer",
+          displayName: "Lead",
+          status: "active",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+        message: formatted,
+      }),
+    ).toBe(formatted)
+  })
+
   test("enrichLeadDeliveryMessage appends done_when checklist for structural root → lead", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-lead-delivery-"))
     try {
@@ -204,10 +248,11 @@ nodes:
     expect(snapshot).toContain("node-doc")
   })
 
-  test("formatTeamSpecAssignmentSummary includes constraint preview", () => {
+  test("formatTeamSpecAssignmentSummary lists node descriptions", () => {
     const spec = parseTeamSpec(teamSpecYaml)
     const summary = formatTeamSpecAssignmentSummary(spec, "zh")
-    expect(summary).toContain("协调 node-doc")
+    expect(summary).toContain("任务协调者")
+    expect(summary).toContain("文档执行成员")
   })
 
   test("formatSkillDomainsRegistry handles empty registry", () => {

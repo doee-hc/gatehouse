@@ -13,6 +13,7 @@ import { RegistryDatabase } from "../src/registry/db.ts"
 import { isRecord, parseYaml } from "../src/yaml.ts"
 import { getRegistryStore } from "../src/registry/context.ts"
 import { OUTER_CURATOR_ID, OUTER_LEAD_ID } from "../src/registry/types.ts"
+import { seedSubmittedDelivery } from "./seed-delivery.ts"
 
 const scaffoldScript = path.join(import.meta.dir, "../script/scaffold.ts")
 
@@ -116,6 +117,7 @@ describe("retro_fork_batch skill kickoffs", () => {
       promptCalls.length = 0
 
       await registerLeadForTest(pluginInput)
+      await seedSubmittedDelivery(dir, "core-example-smoke-v1")
       const retro = missionRetroTool(pluginInput)
       const output = toolOutput(
         await retro.execute({}, mockToolContext(dir, "ses_lead", "lead")),
@@ -154,15 +156,27 @@ describe("retro_fork_batch skill kickoffs", () => {
       const treeDir = path.join(dir, ".gatehouse/trees", missionId)
       await mkdir(treeDir, { recursive: true })
       await Bun.write(
-        path.join(treeDir, "teamspec.yaml"),
-        `mission_id: ${missionId}
-root: node-root
-nodes:
-  node-root:
-    parent: null
-    description: 任务协调者兼执行者
-    constraints: |
-      任务协调者兼执行者；交付后通知 lead。
+        path.join(treeDir, "mission.script.ts"),
+        `export const team = {
+  mission_id: "${missionId}",
+  root: "node-root",
+  nodes: {
+    "node-root": {
+      parent: null,
+      description: "任务协调者兼执行者",
+    },
+  },
+}
+
+export default async function orchestrate(ctx) {
+  await ctx.setBrief("node-root", {
+    role: "任务协调者兼执行者",
+    your_work: ["执行并汇总交付"],
+    acceptance_slice: ["交付已提交"],
+  })
+  await ctx.prompt("node-root", { text: "执行", reply: true })
+  await ctx.waitFor("node-root", "complete")
+}
 `,
       )
       await Bun.write(
@@ -240,6 +254,7 @@ nodes:
       promptCalls.length = 0
 
       await registerLeadForTest(pluginInput)
+      await seedSubmittedDelivery(dir, missionId)
       const output = toolOutput(
         await missionRetroTool(pluginInput).execute(
           {},
@@ -318,6 +333,7 @@ nodes:
       )
 
       await registerLeadForTest(pluginInput)
+      await seedSubmittedDelivery(dir, "core-example-smoke-v1")
       const output = toolOutput(
         await missionRetroTool(pluginInput).execute(
           {},

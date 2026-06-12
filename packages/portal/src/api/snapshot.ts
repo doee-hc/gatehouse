@@ -35,13 +35,18 @@ export async function loadPortalSnapshotWithRetry(
   throw lastError ?? new Error(t("error.snapshotUnavailable"))
 }
 
-export function startSnapshotPolling(onUpdate: (snapshot: PortalSnapshot) => void, intervalMs = SNAPSHOT_POLL_MS) {
+export function startSnapshotPolling(
+  onUpdate: (snapshot: PortalSnapshot) => void,
+  intervalMs = SNAPSHOT_POLL_MS,
+  onFailure?: () => void,
+) {
   return startAdaptivePolling({
     intervalMs,
     hiddenIntervalMs: SNAPSHOT_POLL_HIDDEN_MS,
     run: async () => {
       const snapshot = await loadPortalSnapshot().catch(() => undefined)
       if (snapshot) onUpdate(snapshot)
+      else onFailure?.()
     },
   })
 }

@@ -16,7 +16,7 @@ From any directory (recommended: pass `-C /path/to/project`):
 
 ```bash
 bunx @gatehouse/core channels init [-C project]
-bunx @gatehouse/core channels login <weixin|feishu|qq>
+bunx @gatehouse/core channels login <weixin|feishu|qq|qq-onebot>
 bunx @gatehouse/core channels serve [-C project]
 bunx @gatehouse/core channels status [--probe]
 bunx @gatehouse/core channels stop [-C project]
@@ -50,7 +50,8 @@ Portal channel admin (optional): `http://127.0.0.1:18472/admin` — unlock with 
 | --- | --- |
 | WeChat | [packages/weixin-bridge/README.md](../../packages/weixin-bridge/README.md) |
 | Feishu | [packages/feishu-bridge/README.md](../../packages/feishu-bridge/README.md) |
-| QQ | [packages/qq-bridge/README.md](../../packages/qq-bridge/README.md) |
+| QQ (official DM) | [packages/qq-bridge/README.md](../../packages/qq-bridge/README.md) |
+| QQ group (NapCat / OneBot) | [packages/qq-onebot-bridge/README.md](../../packages/qq-onebot-bridge/README.md) |
 
 ## Agent ↔ IM
 

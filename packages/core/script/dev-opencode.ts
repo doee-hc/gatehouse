@@ -25,6 +25,7 @@ import {
   notifyPortalPortInUse,
   PortalPortInUseError,
 } from "../src/portal/ports.ts"
+import { localDevEnv } from "../src/dev/local-env.ts"
 import { ensureGlobalOpencodeTuiDev } from "../src/setup/global-opencode.ts"
 import { prepareGatehouseProject } from "../src/setup/project.ts"
 
@@ -34,19 +35,6 @@ const opencodeRoot = process.env.OPENCODE_ROOT?.trim()
 const opencodeBin = process.env.OPENCODE_BIN?.trim() || "opencode"
 
 const networkFlags = new Set(["--port", "-p", "--hostname", "--mdns-domain"])
-
-function localDevEnv(extra: Record<string, string | undefined>) {
-  return {
-    ...process.env,
-    ...extra,
-    NO_PROXY: "127.0.0.1,localhost,127.*,[::1]",
-    no_proxy: "127.0.0.1,localhost,127.*,[::1]",
-    HTTP_PROXY: "",
-    HTTPS_PROXY: "",
-    http_proxy: "",
-    https_proxy: "",
-  }
-}
 
 function parseDevArgs(argv: string[]) {
   const tokens = argv.slice(2)

@@ -1,7 +1,12 @@
 import path from "node:path"
+import { blogMissionIdFromDeliverablePostId } from "../delivery/publish-policy.ts"
+
+export const BLOG_PUBLISHER_SYSTEM = "system"
+export const BLOG_PUBLISHER_LEAD = "lead"
 import { architectSummaryRelPath, gatehouseRoot, retroNodeReportRelPath, rootDeliveryRelPath } from "../paths.ts"
 import { isRecord, parseYaml, readString, stringifyYaml } from "../yaml.ts"
 import { requestPortalBlogCacheRefresh } from "./blog-cache-sync.ts"
+import { emitPortalEvent } from "./events.ts"
 
 export async function readBlogPublishedRevision(projectDirectory: string) {
   const file = Bun.file(blogPublishedPath(projectDirectory))
@@ -25,6 +30,13 @@ export function blogPublishedPath(projectDirectory: string) {
   return path.join(gatehouseRoot(projectDirectory), "portal", "blog-published.yaml")
 }
 
+async function readBlogPostTitle(projectDirectory: string, reportPath: string) {
+  const file = Bun.file(path.join(projectDirectory, reportPath))
+  if (!(await file.exists())) return undefined
+  const match = (await file.text()).match(/^#\s+(.+)$/m)
+  return match?.[1]?.trim()
+}
+
 export function leadBlogReportRel(missionId: string) {
   return path.join(".gatehouse", "lead", "reports", missionId, "report.md")
 }
@@ -45,20 +57,9 @@ export function skillBlogRel(domain: string, skillName: string) {
   return path.join(".gatehouse", "skills", "by-domain", domain, skillName, "SKILL.md")
 }
 
+/** @deprecated Coordination reports are not publishable; use resolveSkillBlogPostId or deliverableBlogPostId. */
 export function resolveBlogPostId(reportPath: string) {
   const rel = reportPath.replace(/\\/g, "/").replace(/^\.\//, "")
-
-  const leadMatch = rel.match(/^\.gatehouse\/lead\/reports\/([^/]+)\/report\.md$/)
-  if (leadMatch?.[1]) return `${leadMatch[1]}:lead:report`
-
-  const architectMatch = rel.match(/^\.gatehouse\/trees\/([^/]+)\/reports\/architect-summary\.md$/)
-  if (architectMatch?.[1]) return `${architectMatch[1]}:architect:summary`
-
-  const rootMatch = rel.match(/^\.gatehouse\/trees\/([^/]+)\/reports\/root-delivery\.md$/)
-  if (rootMatch?.[1]) return `${rootMatch[1]}:root:delivery`
-
-  const retroMatch = rel.match(/^\.gatehouse\/trees\/([^/]+)\/reports\/nodes\/([^/]+)-retro\.md$/)
-  if (retroMatch?.[1] && retroMatch[2]) return `${retroMatch[1]}:retro:${retroMatch[2]}`
 
   const skillMatch = rel.match(/^\.gatehouse\/skills\/by-domain\/([^/]+)\/([^/]+)\/SKILL\.md$/)
   if (skillMatch?.[1] && skillMatch[2]) return `skill:${skillMatch[1]}:${skillMatch[2]}`
@@ -68,6 +69,8 @@ export function resolveBlogPostId(reportPath: string) {
 
 export function blogMissionIdFromPostId(postId: string) {
   if (postId.startsWith("skill:")) return undefined
+  const deliverableMissionId = blogMissionIdFromDeliverablePostId(postId)
+  if (deliverableMissionId) return deliverableMissionId
   if (postId.endsWith(":lead:report")) {
     const missionId = postId.slice(0, -":lead:report".length)
     return missionId || undefined
@@ -163,6 +166,8 @@ export async function publishBlogPost(
   }
   const target = blogPublishedPath(projectDirectory)
   await Bun.write(target, stringifyYaml(doc))
+  const title = await readBlogPostTitle(projectDirectory, input.reportPath)
+  emitPortalEvent({ type: "blog.publish", postId: input.postId, ...(title && { title }) })
   void requestPortalBlogCacheRefresh(projectDirectory)
   return { post_id: input.postId, path: input.reportPath, published_at, republished: Boolean(existing) }
 }
@@ -179,12 +184,15 @@ export async function unpublishBlogPost(
   const index = doc.posts.findIndex((entry) => entry.id === input.postId)
   if (index < 0) return { ok: false, code: "NOT_PUBLISHED" }
   const entry = doc.posts[index]!
-  if (!entry.published_by) return { ok: false, code: "NO_OWNER" }
-  if (entry.published_by !== input.actor) {
+  const leadOverride = input.actor === BLOG_PUBLISHER_LEAD
+  if (!entry.published_by && !leadOverride) return { ok: false, code: "NO_OWNER" }
+  if (entry.published_by && entry.published_by !== input.actor && !leadOverride) {
     return { ok: false, code: "NOT_OWNER", published_by: entry.published_by }
   }
   doc.posts.splice(index, 1)
   await Bun.write(blogPublishedPath(projectDirectory), stringifyYaml(doc))
+  const title = await readBlogPostTitle(projectDirectory, entry.path)
+  emitPortalEvent({ type: "blog.unpublish", postId: input.postId, ...(title && { title }) })
   void requestPortalBlogCacheRefresh(projectDirectory)
   return {
     ok: true,

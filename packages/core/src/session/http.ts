@@ -80,6 +80,17 @@ export async function abortSessionHttp(input: PluginInput, sessionId: string) {
   }
 }
 
+export async function deleteSessionHttp(input: PluginInput, sessionId: string) {
+  const url = directoryUrl(input, `/session/${encodeURIComponent(sessionId)}`)
+  const response = await opencodeServerFetch(input)(
+    new Request(url, { method: "DELETE", headers: { accept: "application/json" } }),
+  )
+  if (response.status === 404) return
+  if (!response.ok) {
+    throw new Error(`session delete failed (${response.status}) for session ${sessionId}`)
+  }
+}
+
 export async function sessionStatusMapHttp(input: PluginInput) {
   const url = directoryUrl(input, "/session/status")
   const response = await opencodeServerFetch(input)(

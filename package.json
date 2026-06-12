@@ -17,11 +17,12 @@
     "login:weixin-bridge": "bun run --cwd packages/weixin-bridge login",
     "dev:feishu-bridge": "bun run --cwd packages/feishu-bridge dev",
     "dev:qq-bridge": "bun run --cwd packages/qq-bridge dev",
+    "dev:qq-onebot-bridge": "bun run --cwd packages/qq-onebot-bridge dev",
     "channels": "bun run --cwd packages/core bin/gatehouse.ts channels",
     "channels:serve": "bun run --cwd packages/core bin/gatehouse.ts channels serve",
     "build": "bun run --cwd packages/core build",
     "typecheck": "bun run --filter '@gatehouse/*' typecheck",
-    "test": "bun run --filter '@gatehouse/{core,weixin-bridge,feishu-bridge,qq-bridge}' test"
+    "test": "bun run --filter '@gatehouse/{core,weixin-bridge,feishu-bridge,qq-bridge,qq-onebot-bridge}' test"
   },
   "prettier": {
     "semi": false,

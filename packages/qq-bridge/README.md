@@ -49,7 +49,7 @@ bun run dev:qq-bridge
 - Official Bot **DM text + images**
 - Agents can use **`gatehouse_channels_send_file`** to send project images back to QQ
 - Files/voice/video show unsupported message
-- No OneBot/NapCat legacy QQ groups (may add later)
+- QQ group chat: use [`qq-onebot-bridge`](../qq-onebot-bridge/README.md) (NapCat + OneBot V11) alongside this package for official private DMs
 
 ## Commands
 

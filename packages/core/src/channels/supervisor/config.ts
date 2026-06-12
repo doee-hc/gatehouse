@@ -8,6 +8,7 @@ import {
   type ChannelsFileConfig,
   type FeishuChannelConfig,
   type QqChannelConfig,
+  type QqOnebotChannelConfig,
   type WeixinChannelConfig,
 } from "./types.ts"
 
@@ -17,6 +18,7 @@ const DEFAULT_CONFIG: ChannelsFileConfig = {
     weixin: { enabled: false },
     feishu: { enabled: false, appId: "", appSecret: "" },
     qq: { enabled: false, appId: "", secret: "", sandbox: true },
+    "qq-onebot": { enabled: false, wsUrl: "ws://127.0.0.1:3001", accessToken: "", requireAt: true, groupAllowList: [] },
   },
 }
 
@@ -36,6 +38,15 @@ function readString(value: unknown, fallback = "") {
 function readPositiveInt(value: unknown, fallback: number) {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return fallback
   return Math.floor(value)
+}
+
+function readStringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((item) => {
+    if (typeof item === "number" && Number.isFinite(item)) return [String(item)]
+    if (typeof item === "string" && item.trim()) return [item.trim()]
+    return []
+  })
 }
 
 function parseChannelSection<T extends Record<string, unknown>>(
@@ -108,6 +119,17 @@ export function loadChannelsConfig(projectDir: string): ChannelsFileConfig {
         secret: readString(entry.secret, base.secret),
         sandbox: readBool(entry.sandbox, base.sandbox ?? true),
       })),
+      "qq-onebot": parseChannelSection(
+        channelsRaw["qq-onebot"],
+        DEFAULT_CONFIG.channels["qq-onebot"],
+        (entry, base) => ({
+          enabled: readBool(entry.enabled, base.enabled),
+          wsUrl: readString(entry.wsUrl, base.wsUrl),
+          accessToken: readString(entry.accessToken, base.accessToken),
+          requireAt: readBool(entry.requireAt, base.requireAt ?? true),
+          groupAllowList: readStringList(entry.groupAllowList),
+        }),
+      ),
     },
   }
 }
@@ -130,7 +152,7 @@ export function initChannelsConfig(projectDir: string, overwrite = false) {
 export function updateChannelConfig(
   projectDir: string,
   channelId: ChannelId,
-  patch: Partial<WeixinChannelConfig | FeishuChannelConfig | QqChannelConfig>,
+  patch: Partial<WeixinChannelConfig | FeishuChannelConfig | QqChannelConfig | QqOnebotChannelConfig>,
 ) {
   const config = loadChannelsConfig(projectDir)
   config.channels[channelId] = { ...config.channels[channelId], ...patch, enabled: true }
@@ -156,6 +178,10 @@ export function isChannelConfigured(projectDir: string, channelId: ChannelId, co
   if (channelId === "feishu") {
     const feishu = config.channels.feishu
     return Boolean(feishu.appId?.trim() && feishu.appSecret?.trim())
+  }
+  if (channelId === "qq-onebot") {
+    const onebot = config.channels["qq-onebot"]
+    return Boolean(onebot.wsUrl?.trim())
   }
   const qq = config.channels.qq
   return Boolean(qq.appId?.trim() && qq.secret?.trim())
@@ -185,6 +211,14 @@ export function buildBridgeEnv(projectDir: string, config: ChannelsFileConfig, c
     env.QQ_APP_ID = qq.appId?.trim() ?? ""
     env.QQ_SECRET = qq.secret?.trim() ?? ""
     env.QQ_SANDBOX = qq.sandbox === false ? "false" : "true"
+  }
+
+  if (channelId === "qq-onebot") {
+    const onebot = config.channels["qq-onebot"]
+    env.QQ_ONEBOT_WS_URL = onebot.wsUrl?.trim() || "ws://127.0.0.1:3001"
+    env.QQ_ONEBOT_ACCESS_TOKEN = onebot.accessToken?.trim() ?? ""
+    env.QQ_ONEBOT_REQUIRE_AT = onebot.requireAt === false ? "false" : "true"
+    env.QQ_ONEBOT_GROUP_ALLOWLIST = (onebot.groupAllowList ?? []).join(",")
   }
 
   return env

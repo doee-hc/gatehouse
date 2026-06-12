@@ -1,6 +1,17 @@
 import { describe, expect, test } from "bun:test"
+import path from "node:path"
+import { mkdir, mkdtemp, rm } from "node:fs/promises"
+import { tmpdir } from "node:os"
 import { aggregateSessionMetrics, mergeSessionMetrics } from "../src/metrics/aggregate.ts"
-import { classifyMessageKind, formatTimelineMarkdown } from "../src/session/context-dump.ts"
+import {
+  classifyMessageKind,
+  dumpSessionContext,
+  ensureMissionContextDumped,
+  formatTimelineMarkdown,
+  missionContextAlreadyDumped,
+} from "../src/session/context-dump.ts"
+import type { GatehouseClient } from "../src/session/client.ts"
+import type { TreeManifest } from "../src/tree/types.ts"
 
 describe("context dump", () => {
   test("classifyMessageKind distinguishes user, gatehouse, summary, compaction", () => {
@@ -115,5 +126,100 @@ describe("context dump", () => {
     expect(subtree.tools.by_name.bash?.total).toBe(2)
     expect(subtree.tools.errors).toBe(1)
     expect(subtree.sessions).toHaveLength(2)
+  })
+
+  test("dumpSessionContext supports custom output directory", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-context-custom-"))
+    try {
+      const missionId = "m-custom"
+      const relDir = ".gatehouse/internal/debug/sessions/m-custom/outer/lead"
+      const client: GatehouseClient = {
+        session: {
+          async create() {
+            return { id: "unused" }
+          },
+          async messages() {
+            return {
+              data: [
+                {
+                  info: { role: "user", id: "u1", time: { created: 1000 } },
+                  parts: [{ type: "text", text: "hello" }],
+                },
+              ],
+            }
+          },
+          async get() {
+            return { data: { created: 1000, updated: 2000 } }
+          },
+          async promptAsync() {
+            return undefined
+          },
+        },
+      }
+
+      const dumped = await dumpSessionContext({
+        client,
+        projectDirectory: dir,
+        missionId,
+        nodeId: "lead",
+        sessionId: "ses_lead",
+        profile: "lead",
+        relDir,
+        absDir: path.join(dir, relDir),
+      })
+      expect(dumped.rel_dir).toBe(relDir)
+      expect(await Bun.file(path.join(dir, relDir, "messages.json")).exists()).toBe(true)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  test("ensureMissionContextDumped skips when index.json already exists", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-context-skip-"))
+    try {
+      const missionId = "m-skip"
+      const contextRoot = path.join(dir, ".gatehouse/trees", missionId, "context")
+      await mkdir(contextRoot, { recursive: true })
+      await Bun.write(path.join(contextRoot, "index.json"), JSON.stringify({ mission_id: missionId }))
+
+      expect(missionContextAlreadyDumped(dir, missionId)).toBe(true)
+
+      const manifest: TreeManifest = {
+        mission_id: missionId,
+        status: "running",
+        root_node: "root",
+        created_at: new Date().toISOString(),
+        nodes: {
+          root: { session_id: "ses_root", parent: null, display_name: "root", profile: "build-root" },
+        },
+      }
+
+      const client: GatehouseClient = {
+        session: {
+          async create() {
+            return { id: "unused" }
+          },
+          async messages() {
+            throw new Error("messages should not run when context already dumped")
+          },
+          async get() {
+            throw new Error("get should not run when context already dumped")
+          },
+          async promptAsync() {
+            return undefined
+          },
+        },
+      }
+
+      const result = await ensureMissionContextDumped({
+        client,
+        projectDirectory: dir,
+        manifest,
+      })
+      expect(result.skipped).toBe(true)
+      expect(result.reason).toBe("already_dumped")
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
   })
 })

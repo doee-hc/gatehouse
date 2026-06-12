@@ -1,6 +1,7 @@
 import { tool, type PluginInput } from "@opencode-ai/plugin"
 import { getRegistryStore } from "../registry/context.ts"
-import { readManifest, readTeamSpecFile, writeManifest, writeTeamSpec } from "../tree/store.ts"
+import { readManifest, writeManifest } from "../tree/store.ts"
+import { resolveTeamSource } from "../orchestration/resolve-team.ts"
 import { runBootstrapTree } from "../tree/bootstrap-run.ts"
 import { skillDomainContextNote, listSkillSlugsInDomain } from "../retro/skill-kickoff.ts"
 import { readLocaleSync } from "../locale.ts"
@@ -14,11 +15,11 @@ import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
 export function applySkillDomainsTool(input: PluginInput) {
   return tool({
     description:
-      "profile curator only: fill teamspec skill_domain and bootstrap when no manifest exists; update manifest skill_domain and notify inner sessions otherwise. Creates missing `.gatehouse/skills/by-domain/<domain-id>/` dirs (no SKILL.md). Uses the active mission from registry.",
+      "profile curator only: assign skill_domain on execution nodes for the active Mission. Creates missing `.gatehouse/skills/by-domain/<domain-id>/` dirs (no SKILL.md). Call after architect gatehouse_bootstrap_tree.",
     args: {
       assignments: tool.schema
         .string()
-        .describe('JSON 对象：{ "<node_id>": "<domain-id>", ... }；仅列需分配领域的节点'),
+        .describe('JSON object: { "<node_id>": "<domain-id>", ... } — include only nodes that need a domain'),
       objective: tool.schema.string().optional().describe("Optional one-line objective for trees-index; default from active mission contract"),
     },
     async execute(args, context) {
@@ -50,19 +51,25 @@ export function applySkillDomainsTool(input: PluginInput) {
 
         const manifest = await readManifest(input.directory, missionId)
         if (!manifest) {
-          const spec = await readTeamSpecFile(input.directory, missionId)
+          const resolved = await resolveTeamSource(input.directory, missionId)
+          if (!resolved) {
+            return {
+              output: toolFail(toolName, "MISSION_SCRIPT_NOT_FOUND", "No mission.script.ts for active mission"),
+              ...toolMetadata(toolName),
+            }
+          }
+          const spec = structuredClone(resolved.spec)
           for (const [nodeId, domainValue] of Object.entries(parsed)) {
             if (typeof domainValue !== "string" || !domainValue.trim()) continue
             const node = spec.nodes[nodeId]
             if (!node) {
               return {
-                output: toolFail(toolName, "UNKNOWN_NODE", `TeamSpec has no node ${nodeId}`),
+                output: toolFail(toolName, "UNKNOWN_NODE", `Execution team has no node ${nodeId}`),
                 ...toolMetadata(toolName),
               }
             }
             node.skill_domain = domainValue.trim()
           }
-          await writeTeamSpec(input.directory, spec)
           const contract = readActiveMissionContract(input.directory, missionId)
           const bootstrap = await runBootstrapTree(input, spec, {
             objective: args.objective ?? contract?.objective,

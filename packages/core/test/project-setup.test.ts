@@ -184,8 +184,8 @@ describe("project setup", () => {
         const skillMarker = "# agent-revised lead-meta\n"
         await Bun.write(skillPath, skillMarker)
 
-        const promptPath = path.join(dir, ".gatehouse/prompts/architect/dispatch-root.md")
-        const promptMarker = "# agent-revised dispatch-root\n"
+        const promptPath = path.join(dir, ".gatehouse/prompts/architect/watchdog-node-wake.md")
+        const promptMarker = "# agent-revised watchdog\n"
         await Bun.write(promptPath, promptMarker)
 
         await syncManagedTemplates(dir)

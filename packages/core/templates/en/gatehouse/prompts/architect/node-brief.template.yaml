@@ -1,0 +1,9 @@
+# Copy to .gatehouse/trees/<mission_id>/node-briefs/<node_id>.yaml
+node_id: <node_id>
+role: Execution member
+your_work:
+  - Concrete deliverable for this node (primary guide)
+not_your_job:
+  - Out of scope for this node
+acceptance_slice:
+  - Node-level acceptance slice (not full-mission done_when)

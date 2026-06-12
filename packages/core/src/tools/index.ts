@@ -13,6 +13,17 @@ import { sessionSnapshotTool } from "./session-snapshot.ts"
 import { initTeamTool } from "./init-team.ts"
 import { publishBlogTool } from "./publish-blog.ts"
 import { unpublishBlogTool } from "./unpublish-blog.ts"
+import { deliveryReviewTool, deliveryStatusTool, deliverySubmitTool } from "./delivery.ts"
+import {
+  executionCompleteTool,
+  executionReworkTool,
+  executionStatusTool,
+} from "./execution.ts"
+import {
+  missionContextTool,
+  missionContractTool,
+  nodeBriefTool,
+} from "./mission-read.ts"
 
 export function createGatehouseCoreTools(input: PluginInput) {
   return {
@@ -32,5 +43,14 @@ export function createGatehouseCoreTools(input: PluginInput) {
     gatehouse_inspector_decide: inspectorDecideTool(input),
     gatehouse_publish_blog: publishBlogTool(input),
     gatehouse_unpublish_blog: unpublishBlogTool(input),
+    gatehouse_delivery_submit: deliverySubmitTool(input),
+    gatehouse_delivery_review: deliveryReviewTool(input),
+    gatehouse_delivery_status: deliveryStatusTool(input),
+    gatehouse_execution_complete: executionCompleteTool(input),
+    gatehouse_execution_rework: executionReworkTool(input),
+    gatehouse_execution_status: executionStatusTool(input),
+    gatehouse_mission_context: missionContextTool(input),
+    gatehouse_node_brief: nodeBriefTool(input),
+    gatehouse_mission_contract: missionContractTool(input),
   }
 }

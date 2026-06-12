@@ -1,6 +1,6 @@
 import type { PluginInput } from "@opencode-ai/plugin"
 import { sessionModelFromConfig, type GatehouseSessionModelRef } from "../gatehouse-config.ts"
-import { opencodeHttpReady, promptSessionHttp } from "./http.ts"
+import { deleteSessionHttp, opencodeHttpReady, promptSessionHttp } from "./http.ts"
 import { readString } from "../yaml.ts"
 
 export type { GatehouseSessionModelRef }
@@ -22,12 +22,17 @@ export type GatehouseClient = {
     create(input: unknown): Promise<unknown>
     fork?(input: unknown): Promise<unknown>
     update?(input: unknown): Promise<unknown>
+    delete?(input: unknown): Promise<unknown>
     promptAsync(input: unknown): Promise<unknown>
     messages(input: unknown): Promise<unknown>
     get(input: unknown): Promise<unknown>
     status?(input?: unknown): Promise<unknown>
     todo?(input: unknown): Promise<unknown>
   }
+}
+
+export function shouldRetainInnerSessions() {
+  return process.env.GATEHOUSE_RETAIN_INNER_SESSIONS === "1"
 }
 
 export function directoryQuery(directory: string) {
@@ -160,6 +165,29 @@ export async function sessionWorkspaceId(client: GatehouseClient, queryDirectory
 
 export async function sessionExists(client: GatehouseClient, directory: string, sessionId: string) {
   return (await sessionDetail(client, directory, sessionId)) !== undefined
+}
+
+export async function deleteSession(
+  client: GatehouseClient,
+  directory: string,
+  sessionId: string,
+  plugin?: PluginInput,
+) {
+  if (plugin && (await opencodeHttpReady(plugin))) {
+    try {
+      await deleteSessionHttp(plugin, sessionId)
+      return
+    } catch {
+      // Fall back to SDK when the HTTP route fails mid-flight.
+    }
+  }
+  if (typeof client.session.delete !== "function") {
+    throw new Error("client.session.delete is unavailable")
+  }
+  await client.session.delete({
+    ...directoryQuery(directory),
+    path: { id: sessionId },
+  })
 }
 
 export async function sessionTodo(client: GatehouseClient, directory: string, sessionId: string) {

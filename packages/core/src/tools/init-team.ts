@@ -1,5 +1,5 @@
 import { tool, type PluginInput } from "@opencode-ai/plugin"
-import { getRegistryStore } from "../registry/context.ts"
+import { requireLeadCaller } from "../missions/lifecycle.ts"
 import { LEAD_OPENCODE } from "../registry/types.ts"
 import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
 
@@ -11,13 +11,18 @@ export function initTeamTool(input: PluginInput) {
     async execute(_args, context) {
       const toolName = "gatehouse_init_team"
       try {
-        if (context.agent !== LEAD_OPENCODE) {
+        const lead = await requireLeadCaller(input, context)
+        if (!lead) {
           return {
-            output: toolFail(toolName, "FORBIDDEN", "Only profile lead may initialize the outer team"),
+            output: toolFail(
+              toolName,
+              "FORBIDDEN",
+              "Only the registered lead session may initialize the outer team",
+            ),
             ...toolMetadata(toolName),
           }
         }
-        const store = await getRegistryStore(input)
+        const store = lead.registry
         if (!store.bySession(context.sessionID)) {
           store.registerOuterSession({
             profile: LEAD_OPENCODE,

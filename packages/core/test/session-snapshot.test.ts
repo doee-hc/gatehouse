@@ -13,6 +13,7 @@ import {
   tailSessionSnapshotLines,
 } from "../src/session/snapshot.ts"
 import { seedActiveMissionRegistry } from "./copy-example-mission.ts"
+import { resetSessionSnapshotPollGuardForTests } from "../src/tools/session-snapshot-poll-guard.ts"
 import { sessionSnapshotTool } from "../src/tools/session-snapshot.ts"
 
 function mockToolContext(directory: string, sessionID: string, agent: string): ToolContext {
@@ -185,6 +186,193 @@ describe("session snapshot", () => {
       expect(envelope.ok).toBe(true)
       expect(envelope.data?.tail).toContain("assistant: planning next mission")
     } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  test("blocks consecutive snapshot polling of the same recipient after 3 calls", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-snapshot-poll-"))
+    try {
+      resetSessionSnapshotPollGuardForTests()
+      const mockMessages = [
+        {
+          info: { role: "assistant" },
+          parts: [{ type: "text", text: "still working" }],
+        },
+      ]
+      const mockClient: GatehouseClient = {
+        session: {
+          async create() {
+            return { id: "unused" }
+          },
+          async promptAsync() {},
+          async messages() {
+            return { data: mockMessages }
+          },
+          async get() {
+            return { data: {} }
+          },
+          async status() {
+            return { data: { ses_worker: { type: "busy" } } }
+          },
+        },
+      }
+
+      const store = await RegistryStore.create({ directory: dir, client: mockClient })
+      store.registerOuterSession({
+        profile: "architect",
+        sessionId: "ses_architect",
+        projectRootSessionId: "ses_lead",
+      })
+      store.registerInnerNode({
+        missionId: "m1",
+        nodeId: "node-root",
+        profile: "build-root",
+        sessionId: "ses_worker",
+      })
+      seedActiveMissionRegistry(dir, "m1")
+
+      const snapshot = sessionSnapshotTool({ directory: dir, client: mockClient } as unknown as PluginInput)
+      const context = mockToolContext(dir, "ses_architect", "architect")
+      for (let attempt = 1; attempt <= 3; attempt += 1) {
+        const output = toolOutput(await snapshot.execute({ recipient: "node-root" }, context))
+        const envelope = parseEnvelope(output)
+        expect(envelope.ok).toBe(true)
+      }
+
+      const blocked = toolOutput(await snapshot.execute({ recipient: "node-root" }, context))
+      const envelope = parseEnvelope(blocked)
+      expect(envelope.ok).toBe(false)
+      expect(envelope.error?.code).toBe("SNAPSHOT_POLL_LIMIT")
+    } finally {
+      resetSessionSnapshotPollGuardForTests()
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  test("allows snapshotting different recipients in the same turn", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-snapshot-poll-multi-"))
+    try {
+      resetSessionSnapshotPollGuardForTests()
+      const mockMessages = [
+        {
+          info: { role: "assistant" },
+          parts: [{ type: "text", text: "status" }],
+        },
+      ]
+      const mockClient: GatehouseClient = {
+        session: {
+          async create() {
+            return { id: "unused" }
+          },
+          async promptAsync() {},
+          async messages() {
+            return { data: mockMessages }
+          },
+          async get() {
+            return { data: {} }
+          },
+          async status() {
+            return {
+              data: {
+                ses_worker_a: { type: "idle" },
+                ses_worker_b: { type: "idle" },
+                ses_worker_c: { type: "idle" },
+                ses_worker_d: { type: "idle" },
+              },
+            }
+          },
+        },
+      }
+
+      const store = await RegistryStore.create({ directory: dir, client: mockClient })
+      store.registerOuterSession({
+        profile: "architect",
+        sessionId: "ses_architect",
+        projectRootSessionId: "ses_lead",
+      })
+      for (const [nodeId, sessionId] of [
+        ["node-a", "ses_worker_a"],
+        ["node-b", "ses_worker_b"],
+        ["node-c", "ses_worker_c"],
+        ["node-d", "ses_worker_d"],
+      ] as const) {
+        store.registerInnerNode({
+          missionId: "m1",
+          nodeId,
+          profile: "build",
+          sessionId,
+        })
+      }
+      seedActiveMissionRegistry(dir, "m1")
+
+      const snapshot = sessionSnapshotTool({ directory: dir, client: mockClient } as unknown as PluginInput)
+      const context = mockToolContext(dir, "ses_architect", "architect")
+      for (const nodeId of ["node-a", "node-b", "node-c", "node-d"]) {
+        const output = toolOutput(await snapshot.execute({ recipient: nodeId }, context))
+        const envelope = parseEnvelope(output)
+        expect(envelope.ok).toBe(true)
+      }
+    } finally {
+      resetSessionSnapshotPollGuardForTests()
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  test("resets poll guard on a new assistant turn", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-snapshot-poll-turn-"))
+    try {
+      resetSessionSnapshotPollGuardForTests()
+      const mockMessages = [
+        {
+          info: { role: "assistant" },
+          parts: [{ type: "text", text: "status" }],
+        },
+      ]
+      const mockClient: GatehouseClient = {
+        session: {
+          async create() {
+            return { id: "unused" }
+          },
+          async promptAsync() {},
+          async messages() {
+            return { data: mockMessages }
+          },
+          async get() {
+            return { data: {} }
+          },
+          async status() {
+            return { data: { ses_worker: { type: "busy" } } }
+          },
+        },
+      }
+
+      const store = await RegistryStore.create({ directory: dir, client: mockClient })
+      store.registerOuterSession({
+        profile: "architect",
+        sessionId: "ses_architect",
+        projectRootSessionId: "ses_lead",
+      })
+      store.registerInnerNode({
+        missionId: "m1",
+        nodeId: "node-root",
+        profile: "build-root",
+        sessionId: "ses_worker",
+      })
+      seedActiveMissionRegistry(dir, "m1")
+
+      const snapshot = sessionSnapshotTool({ directory: dir, client: mockClient } as unknown as PluginInput)
+      const firstTurn = mockToolContext(dir, "ses_architect", "architect")
+      for (let attempt = 1; attempt <= 3; attempt += 1) {
+        const output = toolOutput(await snapshot.execute({ recipient: "node-root" }, firstTurn))
+        expect(parseEnvelope(output).ok).toBe(true)
+      }
+
+      const secondTurn = { ...firstTurn, messageID: "next-turn-message" }
+      const output = toolOutput(await snapshot.execute({ recipient: "node-root" }, secondTurn))
+      expect(parseEnvelope(output).ok).toBe(true)
+    } finally {
+      resetSessionSnapshotPollGuardForTests()
       await rm(dir, { recursive: true, force: true })
     }
   })

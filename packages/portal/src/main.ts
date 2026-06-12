@@ -8,7 +8,8 @@ import { applySnapshotUpdate } from "./portal/snapshot-sync.ts"
 import { BLOG_POLL_MS } from "./portal/poll-intervals.ts"
 import { applyPortalDisplayConfig, resolveSnapshotPollMs } from "./portal/runtime-poll.ts"
 import { mergeOfflineBundle, readOfflineBundle } from "./portal/offline-cache.ts"
-import { setBlogSnapshot, setPortalSnapshot } from "./portal/state.ts"
+import { logBlogSnapshotDiff } from "./portal/snapshot-events.ts"
+import { getBlogSnapshot, setBlogSnapshot, setPortalSnapshot } from "./portal/state.ts"
 import { startPortalLiveSync } from "./portal/live-sync.ts"
 import { startOfficeGame } from "./office/game.ts"
 import { showPortalError } from "./shell/error.ts"
@@ -81,16 +82,24 @@ async function boot() {
 
   if (!offline) startPortalLiveSync()
 
-  startSnapshotPolling((next) => {
-    const wasOffline = !isBackendConnected()
-    setBackendConnected(true)
-    mergeOfflineBundle(project, { snapshot: next })
-    applySnapshotUpdate(next)
-    if (wasOffline) {
-      startPortalLiveSync()
-      logEvent(() => t("event.portalReconnected"), "evt-live")
-    }
-  }, resolveSnapshotPollMs())
+  startSnapshotPolling(
+    (next) => {
+      const wasOffline = !isBackendConnected()
+      setBackendConnected(true)
+      mergeOfflineBundle(project, { snapshot: next })
+      applySnapshotUpdate(next)
+      if (wasOffline) {
+        startPortalLiveSync()
+        logEvent(() => t("event.portalReconnected"), "evt-live")
+      }
+    },
+    resolveSnapshotPollMs(),
+    () => {
+      if (!isBackendConnected()) return
+      setBackendConnected(false)
+      logEvent(() => t("event.portalDisconnected"), "evt-warn")
+    },
+  )
   applySnapshotUpdate(snapshot)
 
   if (offline) {
@@ -100,6 +109,7 @@ async function boot() {
   if (blog) setBlogSnapshot(blog)
 
   startBlogPolling((next) => {
+    logBlogSnapshotDiff(getBlogSnapshot(), next)
     mergeOfflineBundle(project, { blog: next })
     setBlogSnapshot(next)
     renderBlog(next)

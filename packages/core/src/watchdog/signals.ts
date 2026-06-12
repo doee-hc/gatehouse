@@ -1,6 +1,14 @@
 import { isInnerStructuralRoot, type RegistryAgent } from "../registry/types.ts"
 
+export type NodeWatchState = {
+  idleSince?: number
+  lastWakeAt?: number
+}
+
 export type MissionWatchState = {
+  /** Per-node idle tracking for execution watchdog. */
+  nodes?: Record<string, NodeWatchState>
+  /** Mission-level idle tracking for record watchdogs. */
   allIdleSince?: number
   lastWakeAt?: number
   /** 执行树已向 lead send_message，等待答复期间不触发看门狗 */
@@ -36,6 +44,15 @@ export function isSendToTreeMember(recipient: RegistryAgent, missionId: string) 
 export function mergeWatchdogTickState(prev: MissionWatchState, tick: MissionWatchState): MissionWatchState {
   if (prev.paused) return { paused: true }
   return tick
+}
+
+export function watchdogDeliveryEventState(
+  state: MissionWatchState,
+  kind: "submitted" | "revision_requested",
+): MissionWatchState {
+  if (kind === "revision_requested") return {}
+  if (kind === "submitted") return { paused: true }
+  return state
 }
 
 export function watchdogSendMessageState(

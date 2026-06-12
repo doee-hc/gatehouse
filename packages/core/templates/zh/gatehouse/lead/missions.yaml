@@ -1,4 +1,4 @@
-schema_version: 2
+schema_version: 3
 
 # 本项目任务队列（独立于 gatehouse monorepo；由 {{lead_name}} 维护）
 # 串行策略：同时最多一条 status 为 running 或 retro

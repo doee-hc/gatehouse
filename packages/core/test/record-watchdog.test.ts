@@ -7,7 +7,7 @@ import {
   pendingSessionIds,
   type IncompleteRecordRun,
 } from "../src/watchdog/record-watchdog.ts"
-import { EXECUTION_TREE_IDLE_THRESHOLD_MS } from "../src/watchdog/prompt.ts"
+import { WATCHDOG_IDLE_THRESHOLD_MS } from "../src/watchdog/prompt.ts"
 import { deleteMissionWatchState, getMissionWatchState, setMissionWatchState } from "../src/watchdog/state-store.ts"
 import type { RegistryStore } from "../src/registry/store.ts"
 import type { PluginInput } from "@opencode-ai/plugin"
@@ -93,7 +93,7 @@ describe("record watchdog helpers", () => {
       ["ses_retro_node-a", "busy"],
       ["ses_retro_node-b", "idle"],
     ] as const)
-    const allIdleSince = 20_000 - EXECUTION_TREE_IDLE_THRESHOLD_MS - 1_000
+    const allIdleSince = 20_000 - WATCHDOG_IDLE_THRESHOLD_MS - 1_000
 
     setMissionWatchState(dir, missionId, { allIdleSince }, "retro_record")
 
@@ -122,7 +122,7 @@ describe("record watchdog helpers", () => {
     } as unknown as RegistryStore
 
     const idleMap = new Map([["ses_retro_node-b", "idle"]] as const)
-    const allIdleSince = 20_000 - EXECUTION_TREE_IDLE_THRESHOLD_MS - 1_000
+    const allIdleSince = 20_000 - WATCHDOG_IDLE_THRESHOLD_MS - 1_000
     setMissionWatchState(dir, missionId, { allIdleSince }, "retro_record")
 
     await checkRecordWatchdogMission({
@@ -182,7 +182,7 @@ describe("record watchdog helpers", () => {
       ["ses_retro_node-a", "idle"],
       ["ses_retro_node-b", "idle"],
     ] as const)
-    const allIdleSince = 20_000 - EXECUTION_TREE_IDLE_THRESHOLD_MS - 1_000
+    const allIdleSince = 20_000 - WATCHDOG_IDLE_THRESHOLD_MS - 1_000
 
     setMissionWatchState(dir, missionId, { allIdleSince }, "retro_record")
 

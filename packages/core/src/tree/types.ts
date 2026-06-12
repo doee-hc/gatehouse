@@ -36,7 +36,6 @@ export type TeamSpecNode = {
   parent: string | null
   /** One-line role summary; copied into manifest at bootstrap */
   description: string
-  constraints: string
   /** Curator apply_skill_domains writes before bootstrap; copied into manifest at bootstrap */
   skill_domain?: string
 }

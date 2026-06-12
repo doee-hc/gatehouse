@@ -18,6 +18,7 @@ import {
   runOpencodeEventLoop,
   saveAttachment,
   saveSyncBuf,
+  syncAgentDeliveryWatermark,
   verifyOpencode,
   type ChannelPromptFile,
   type OpencodeClient,
@@ -233,7 +234,7 @@ export class WeixinLeadBridge {
 
       const agentCommand = text ? parseAgentCommand(text) : undefined
       if (agentCommand) {
-        const reply = await handleAgentCommand(client, this.config, userId, agentCommand)
+        const { text: reply } = await handleAgentCommand(client, this.config, userId, agentCommand)
         await cancelTyping(opts, userId, msg.context_token)
         await sendTextChunks(opts, userId, reply, msg.context_token)
         if (msg.message_id !== undefined) {
@@ -264,6 +265,7 @@ export class WeixinLeadBridge {
       }
 
       const target = await resolveActiveAgentTarget(client, this.config, userId)
+      await syncAgentDeliveryWatermark(client, this.config, userId, target.sessionId)
       const promptText =
         text || (files.length ? "用户发送了一张图片，请查看并根据图片内容回复。" : unsupportedMediaReply(msg))
       await promptSession(client, this.config, {

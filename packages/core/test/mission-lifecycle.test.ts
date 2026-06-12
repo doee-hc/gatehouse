@@ -10,6 +10,7 @@ import { getRegistryStore } from "../src/registry/context.ts"
 import { OUTER_LEAD_ID, OUTER_ARCHITECT_ID, OUTER_CURATOR_ID } from "../src/registry/types.ts"
 import { stringifyYaml, isRecord, parseYaml } from "../src/yaml.ts"
 import { seedActiveMissionRegistry } from "./copy-example-mission.ts"
+import { seedSubmittedDelivery } from "./seed-delivery.ts"
 
 const scaffoldScript = path.join(import.meta.dir, "../script/scaffold.ts")
 
@@ -97,6 +98,7 @@ describe("mission lifecycle tools", () => {
       })
 
       seedActiveMissionRegistry(dir, missionId)
+      await seedSubmittedDelivery(dir, missionId)
 
       const mockClient = {
         session: {
@@ -156,6 +158,7 @@ describe("mission lifecycle tools", () => {
       )
 
       const promptCalls: string[] = []
+      const deleteCalls: string[] = []
       const pluginInput = {
         directory: dir,
         serverUrl: new URL("http://127.0.0.1:5099"),
@@ -166,6 +169,15 @@ describe("mission lifecycle tools", () => {
             },
             async promptAsync(input: { path?: { id: string } }) {
               promptCalls.push(input.path?.id ?? "")
+            },
+            async messages() {
+              return { data: [] }
+            },
+            async get() {
+              return { data: { time: { created: 0, updated: 1000 } } }
+            },
+            async delete(input: { path?: { id: string } }) {
+              deleteCalls.push(input.path?.id ?? "")
             },
           },
         },
@@ -194,6 +206,10 @@ describe("mission lifecycle tools", () => {
       expect(parsed.ok).toBe(true)
       expect(promptCalls).toContain("ses_architect")
       expect(promptCalls).toContain("ses_curator")
+      expect(deleteCalls).toContain("ses_root")
+
+      const contextIndex = path.join(dir, ".gatehouse/trees", missionId, "context/index.json")
+      expect(await Bun.file(contextIndex).exists()).toBe(true)
 
       const missions = parseYaml(await Bun.file(path.join(dir, ".gatehouse/lead/missions.yaml")).text())
       if (!isRecord(missions) || !Array.isArray(missions.missions)) throw new Error("bad missions")

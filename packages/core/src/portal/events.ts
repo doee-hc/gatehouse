@@ -16,7 +16,24 @@ export type PortalAgentStatusEvent = {
   status: "idle" | "busy" | "research"
 }
 
-export type PortalInjectedEvent = PortalChatEvent | PortalAgentStatusEvent | { type: "ping" }
+export type PortalBlogPublishEvent = {
+  type: "blog.publish"
+  postId: string
+  title?: string
+}
+
+export type PortalBlogUnpublishEvent = {
+  type: "blog.unpublish"
+  postId: string
+  title?: string
+}
+
+export type PortalInjectedEvent =
+  | PortalChatEvent
+  | PortalAgentStatusEvent
+  | PortalBlogPublishEvent
+  | PortalBlogUnpublishEvent
+  | { type: "ping" }
 
 const listeners = new Set<(event: PortalInjectedEvent) => void>()
 let inProcessDelivery = false
@@ -78,7 +95,13 @@ export function deliverPortalEvent(event: PortalInjectedEvent) {
 }
 
 export function isSupportedPortalInjectedEvent(event: PortalInjectedEvent) {
-  return event.type === "agent.chat" || event.type === "agent.status" || event.type === "ping"
+  return (
+    event.type === "agent.chat" ||
+    event.type === "agent.status" ||
+    event.type === "blog.publish" ||
+    event.type === "blog.unpublish" ||
+    event.type === "ping"
+  )
 }
 
 export function handlePortalInternalEventRequest(request: Request) {

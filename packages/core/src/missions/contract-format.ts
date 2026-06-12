@@ -5,31 +5,10 @@ import type { MissionContract } from "./contract.ts"
 
 export type MissionContractAudience = "architect" | "curator" | "execution" | "full"
 
-const SKILL_NOTE_PREFIXES = ["[用户指定·skill]", "[user-specified·skill]"] as const
-const TOPOLOGY_NOTE_PREFIXES = ["[用户指定·拓扑]", "[user-specified·topology]"] as const
-
-function lineStartsWithPrefix(line: string, prefixes: readonly string[]) {
-  const trimmed = line.trimStart()
-  return prefixes.some((prefix) => trimmed.startsWith(prefix))
-}
-
-export function filterMissionNotesForAudience(
-  notes: string | undefined,
-  audience: MissionContractAudience,
-): string | undefined {
-  if (!notes?.trim() || audience === "execution") return undefined
-  const lines = notes.split("\n")
-  if (audience === "curator") {
-    const filtered = lines.filter((line) => lineStartsWithPrefix(line, SKILL_NOTE_PREFIXES))
-    const text = filtered.join("\n").trim()
-    return text || undefined
+function appendOptionalSection(lines: string[], header: string, body: string | undefined) {
+  if (body?.trim()) {
+    lines.push("", header, body.trim())
   }
-  if (audience === "architect") {
-    const filtered = lines.filter((line) => !lineStartsWithPrefix(line, SKILL_NOTE_PREFIXES))
-    const text = filtered.join("\n").trim()
-    return text || undefined
-  }
-  return notes.trim()
 }
 
 function formatMissionContractCore(
@@ -51,10 +30,29 @@ function formatMissionContractCore(
     gatehouseMessage("mission.contract.mustNotHeader", locale),
     bulletList(contract.must_not, locale),
   ]
-  const notes = filterMissionNotesForAudience(contract.notes, audience)
-  if (notes) {
-    lines.push("", gatehouseMessage("mission.contract.notesHeader", locale), notes)
+
+  const showTopology = audience === "architect" || audience === "full"
+  const showNotes = audience === "architect" || audience === "full"
+  const showSkill = audience === "curator" || audience === "full"
+
+  if (showTopology) {
+    appendOptionalSection(
+      lines,
+      gatehouseMessage("mission.contract.userTopologyHeader", locale),
+      contract.user_topology,
+    )
   }
+  if (showNotes) {
+    appendOptionalSection(lines, gatehouseMessage("mission.contract.notesHeader", locale), contract.notes)
+  }
+  if (showSkill) {
+    appendOptionalSection(
+      lines,
+      gatehouseMessage("mission.contract.userSkillHeader", locale),
+      contract.user_skill,
+    )
+  }
+
   return lines.join("\n")
 }
 
@@ -70,5 +68,3 @@ export function formatMissionContractForRole(
 export function formatMissionContractBlock(contract: MissionContract, locale: GatehouseLocale) {
   return formatMissionContractForRole(contract, locale, "full")
 }
-
-export { SKILL_NOTE_PREFIXES, TOPOLOGY_NOTE_PREFIXES }

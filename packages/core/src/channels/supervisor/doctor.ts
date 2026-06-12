@@ -81,6 +81,13 @@ export async function runChannelsDoctor(projectDir: string, probe = false): Prom
       })
     } else if (channelId === "feishu") {
       issues.push({ level: "ok", channel: channelId, message: "App ID / Secret 已配置" })
+    } else if (channelId === "qq-onebot") {
+      const onebot = config.channels["qq-onebot"]
+      issues.push({
+        level: "ok",
+        channel: channelId,
+        message: `OneBot WS 已配置（${onebot.wsUrl?.trim() || "ws://127.0.0.1:3001"}，requireAt=${onebot.requireAt !== false}）`,
+      })
     } else {
       issues.push({
         level: "ok",

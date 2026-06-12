@@ -3,6 +3,7 @@ import { DEFAULT_PORTAL_ADMIN_PORT, DEFAULT_PORTAL_DISPLAY_PORT } from "../porta
 import { registerGatehouseGlobal, printInstallHelp } from "./install.ts"
 import { runGatehouseDoctorCli } from "./doctor.ts"
 import { runChannelsCommand } from "./channels.ts"
+import { runDumpContextCommand } from "./dump-context.ts"
 import { runGatehouseScaffold, printScaffoldHelp } from "./scaffold.ts"
 import { upgradeGatehouseGlobal, printUpgradeHelp } from "./upgrade.ts"
 import { uninstallGatehouseGlobal, printUninstallHelp } from "./uninstall.ts"
@@ -24,6 +25,15 @@ async function runOrExit(fn: () => Promise<void>) {
 if (command === "channels") {
   await runChannelsCommand(args.slice(1))
   process.exit(process.exitCode ?? 0)
+}
+
+if (command === "dump-context") {
+  const rest = args.slice(1)
+  if (rest.includes("--help") || rest.includes("-h")) {
+    await runDumpContextCommand(["--help"])
+    process.exit(0)
+  }
+  await runOrExit(() => runDumpContextCommand(rest))
 }
 
 if (command === "install") {
@@ -113,6 +123,7 @@ Other commands:
   bunx @gatehouse/core uninstall            # remove from global OpenCode config
   bunx @gatehouse/core doctor [-C project] [--probe]
   bunx @gatehouse/core channels init|list|doctor|login|serve|stop|status
+  bunx @gatehouse/core dump-context [-C project] [--mission <id>] [--inner|--outer|--all]
   bunx @gatehouse/core portal
 
 Local .tgz from bun pm pack in packages/core:

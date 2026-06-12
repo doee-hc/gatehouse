@@ -1,18 +1,16 @@
 import { describe, expect, test } from "bun:test"
 import { parseTreeManifest } from "../src/tree/parse.ts"
+import { orchestrationProblemNodeIds, initOrchestrationState } from "../src/orchestration/state.ts"
 import {
   allSessionsIdle,
-  manifestSessionIds,
-  watchdogTickDecision,
+  checkExecutionWatchdogMission,
 } from "../src/watchdog/execution-tree.ts"
-import {
-  EXECUTION_TREE_IDLE_THRESHOLD_MS,
-  EXECUTION_TREE_WATCHDOG_WAKE_COOLDOWN_MS,
-} from "../src/watchdog/prompt.ts"
+import { WATCHDOG_IDLE_THRESHOLD_MS, WATCHDOG_WAKE_COOLDOWN_MS } from "../src/watchdog/prompt.ts"
 import {
   isInnerNotifyingLead,
   isSendToTreeMember,
   mergeWatchdogTickState,
+  watchdogDeliveryEventState,
   watchdogSendMessageState,
 } from "../src/watchdog/signals.ts"
 import {
@@ -23,9 +21,10 @@ import {
   resetWatchdogStateStoreForTests,
   setMissionWatchState,
 } from "../src/watchdog/state-store.ts"
-import { RegistryDatabase } from "../src/registry/db.ts"
 import { ExecutionTreeWatchdog } from "../src/watchdog/execution-tree.ts"
+import { watchdogIdleTickDecision, watchdogNodeIdleTickDecision } from "../src/watchdog/tick.ts"
 import type { RegistryAgent } from "../src/registry/types.ts"
+import { RegistryDatabase } from "../src/registry/db.ts"
 
 const sampleManifest = parseTreeManifest(`
 mission_id: mission-a
@@ -41,11 +40,7 @@ nodes:
     parent: root
 `)
 
-describe("execution tree watchdog", () => {
-  test("manifestSessionIds collects all node sessions", () => {
-    expect(manifestSessionIds(sampleManifest)).toEqual(["ses_root", "ses_leaf"])
-  })
-
+describe("execution watchdog helpers", () => {
   test("allSessionsIdle treats absent sessions as idle (OpenCode status API omits idle)", () => {
     expect(allSessionsIdle(new Map(), ["ses_root", "ses_leaf"])).toBe(true)
 
@@ -63,58 +58,69 @@ describe("execution tree watchdog", () => {
     expect(allSessionsIdle(statusMap, [])).toBe(false)
   })
 
-  test("watchdogTickDecision resets when any session is active", () => {
-    const decision = watchdogTickDecision({
+  test("orchestrationProblemNodeIds includes running and rework only", () => {
+    const state = initOrchestrationState("mission-a", ["root", "leaf"])
+    state.nodes.root = { status: "running" }
+    state.nodes.leaf = { status: "done" }
+    expect(orchestrationProblemNodeIds(state)).toEqual(["root"])
+    state.nodes.leaf = { status: "rework" }
+    expect(orchestrationProblemNodeIds(state)).toEqual(["root", "leaf"])
+    state.nodes.root = { status: "blocked" }
+    expect(orchestrationProblemNodeIds(state)).toEqual(["leaf"])
+  })
+
+  test("watchdogNodeIdleTickDecision resets when session is active", () => {
+    const decision = watchdogNodeIdleTickDecision({
       now: 20_000,
-      allIdle: false,
-      state: { allIdleSince: 5_000, lastWakeAt: 1_000 },
+      sessionIdle: false,
+      nodeState: { idleSince: 5_000, lastWakeAt: 1_000 },
     })
     expect(decision.action).toBe("reset")
-    expect(decision.nextState).toEqual({})
+    expect(decision.nextNodeState).toEqual({})
   })
 
-  test("watchdogTickDecision waits until idle threshold", () => {
-    const decision = watchdogTickDecision({
+  test("watchdogNodeIdleTickDecision waits until idle threshold", () => {
+    const decision = watchdogNodeIdleTickDecision({
       now: 14_000,
-      allIdle: true,
-      state: {},
-      idleThresholdMs: EXECUTION_TREE_IDLE_THRESHOLD_MS,
+      sessionIdle: true,
+      nodeState: undefined,
+      idleThresholdMs: WATCHDOG_IDLE_THRESHOLD_MS,
     })
     expect(decision.action).toBe("wait")
-    if (decision.action === "wait") expect(decision.nextState.allIdleSince).toBe(14_000)
+    expect(decision.nextNodeState.idleSince).toBe(14_000)
   })
 
-  test("watchdogTickDecision wakes after idle threshold", () => {
-    const decision = watchdogTickDecision({
+  test("watchdogNodeIdleTickDecision wakes after idle threshold", () => {
+    const decision = watchdogNodeIdleTickDecision({
       now: 20_000,
-      allIdle: true,
-      state: { allIdleSince: 9_000 },
-      idleThresholdMs: EXECUTION_TREE_IDLE_THRESHOLD_MS,
+      sessionIdle: true,
+      nodeState: { idleSince: 9_000 },
+      idleThresholdMs: WATCHDOG_IDLE_THRESHOLD_MS,
     })
     expect(decision.action).toBe("wake")
     expect(decision.idleDurationMs).toBe(11_000)
   })
 
-  test("watchdogTickDecision respects wake cooldown", () => {
-    const decision = watchdogTickDecision({
+  test("watchdogNodeIdleTickDecision respects wake cooldown", () => {
+    const decision = watchdogNodeIdleTickDecision({
       now: 20_000,
-      allIdle: true,
-      state: { allIdleSince: 0, lastWakeAt: 19_000 },
-      idleThresholdMs: EXECUTION_TREE_IDLE_THRESHOLD_MS,
-      wakeCooldownMs: EXECUTION_TREE_WATCHDOG_WAKE_COOLDOWN_MS,
+      sessionIdle: true,
+      nodeState: { idleSince: 0, lastWakeAt: 19_000 },
+      idleThresholdMs: WATCHDOG_IDLE_THRESHOLD_MS,
+      wakeCooldownMs: WATCHDOG_WAKE_COOLDOWN_MS,
     })
     expect(decision.action).toBe("cooldown")
   })
 
-  test("watchdogTickDecision preserves paused across wake", () => {
-    const decision = watchdogTickDecision({
+  test("watchdogIdleTickDecision resets when any session is active", () => {
+    const decision = watchdogIdleTickDecision({
       now: 20_000,
-      allIdle: true,
-      state: { paused: true, allIdleSince: 0 },
-      idleThresholdMs: EXECUTION_TREE_IDLE_THRESHOLD_MS,
+      allIdle: false,
+      idleSince: 5_000,
+      lastWakeAt: 1_000,
     })
-    expect(decision.action).toBe("wake")
-    expect(decision.nextState).toEqual({ paused: true })
+    expect(decision.action).toBe("reset")
+    expect(decision.nextIdleSince).toBeUndefined()
   })
 })
 
@@ -149,7 +155,9 @@ const leadAgent: RegistryAgent = {
 
 describe("watchdog send_message signals", () => {
   test("mergeWatchdogTickState keeps paused", () => {
-    expect(mergeWatchdogTickState({ paused: true }, { lastWakeAt: 99 })).toEqual({ paused: true })
+    expect(mergeWatchdogTickState({ paused: true }, { nodes: { leaf: { idleSince: 1 } } })).toEqual({
+      paused: true,
+    })
   })
 
   test("isInnerNotifyingLead matches structural root to lead when tool mission_id differs from sender", () => {
@@ -169,6 +177,11 @@ describe("watchdog send_message signals", () => {
     expect(isSendToTreeMember(leadAgent, missionId)).toBe(false)
   })
 
+  test("watchdogDeliveryEventState pauses on submit and resumes on revision", () => {
+    expect(watchdogDeliveryEventState({}, "submitted")).toEqual({ paused: true })
+    expect(watchdogDeliveryEventState({ paused: true }, "revision_requested")).toEqual({})
+  })
+
   test("watchdogSendMessageState pauses on root to lead and resumes on tree send", () => {
     const root = innerAgent("root")
     const leaf = innerAgent("leaf", "ses_root")
@@ -181,7 +194,68 @@ describe("watchdog send_message signals", () => {
   })
 })
 
-describe("execution tree watchdog integration", () => {
+describe("execution watchdog mission check", () => {
+  test("wakes only running nodes whose sessions are idle", async () => {
+    const dir = `/tmp/gh-watchdog-wake-${Date.now()}`
+    const orchState = initOrchestrationState(missionId, ["root", "leaf"])
+    orchState.nodes.root = { status: "done" }
+    orchState.nodes.leaf = { status: "running" }
+
+    const delivered: string[] = []
+    const registry = {
+      byAgentId: (agentId: string) => {
+        if (agentId === `inner:${missionId}:leaf`) return innerAgent("leaf", "ses_root")
+        return undefined
+      },
+      deliverSystemMessage: async (agent: RegistryAgent) => {
+        delivered.push(agent.nodeId!)
+        return { status: "sent" as const }
+      },
+    } as unknown as import("../src/registry/store.ts").RegistryStore
+
+    setMissionWatchState(dir, missionId, { nodes: { leaf: { idleSince: 9_000 } } })
+
+    const result = await checkExecutionWatchdogMission({
+      pluginInput: { directory: dir, client: {} } as import("@opencode-ai/plugin").PluginInput,
+      registry,
+      missionId,
+      manifest: sampleManifest,
+      orchState,
+      statusMap: new Map([["ses_leaf", "idle"]]),
+      now: 20_000,
+      loadWakePrompt: async () => "wake leaf",
+    })
+
+    expect(result.action).toBe("wake")
+    expect(result.wakes).toEqual(["leaf"])
+    expect(delivered).toEqual(["leaf"])
+    expect(getMissionWatchState(dir, missionId)?.nodes?.leaf?.lastWakeAt).toBe(20_000)
+    deleteMissionWatchState(dir, missionId)
+  })
+
+  test("skips when mission watchdog is paused", async () => {
+    const dir = `/tmp/gh-watchdog-paused-${Date.now()}`
+    setMissionWatchState(dir, missionId, { paused: true })
+    const orchState = initOrchestrationState(missionId, ["leaf"])
+    orchState.nodes.leaf = { status: "running" }
+
+    const result = await checkExecutionWatchdogMission({
+      pluginInput: { directory: dir, client: {} } as import("@opencode-ai/plugin").PluginInput,
+      registry: { byAgentId: () => innerAgent("leaf"), deliverSystemMessage: async () => ({ status: "sent" }) } as never,
+      missionId,
+      manifest: sampleManifest,
+      orchState,
+      statusMap: new Map([["ses_leaf", "idle"]]),
+      now: 20_000,
+      loadWakePrompt: async () => "wake",
+    })
+
+    expect(result.action).toBe("paused")
+    deleteMissionWatchState(dir, missionId)
+  })
+})
+
+describe("execution watchdog integration", () => {
   test("recordSendMessage pauses using sender mission id when tool mission_id differs", () => {
     const dir = `/tmp/gh-watchdog-pause-${Date.now()}`
     const registry = { byAgentId: () => undefined } as unknown as import("../src/registry/store.ts").RegistryStore
@@ -199,13 +273,13 @@ describe("execution tree watchdog integration", () => {
 })
 
 describe("watchdog state persistence", () => {
-  test("setMissionWatchState writes paused flag to registry.db", () => {
+  test("setMissionWatchState writes per-node idle tracking to registry.db", () => {
     const dir = `/tmp/gh-watchdog-db-${Date.now()}`
     const db = new RegistryDatabase(dir)
     bindWatchdogStateStore(dir, db)
-    setMissionWatchState(dir, "mission-a", { paused: true })
+    setMissionWatchState(dir, "mission-a", { nodes: { leaf: { idleSince: 42, lastWakeAt: 99 } } })
     expect(db.loadWatchdogStates()).toEqual([
-      { missionId: "mission-a", kind: "execution", state: { paused: true } },
+      { missionId: "mission-a", kind: "execution", state: { nodes: { leaf: { idleSince: 42, lastWakeAt: 99 } } } },
     ])
     resetWatchdogStateStoreForTests()
   })
@@ -214,15 +288,14 @@ describe("watchdog state persistence", () => {
     const dir = `/tmp/gh-watchdog-restart-${Date.now()}`
     const db = new RegistryDatabase(dir)
     bindWatchdogStateStore(dir, db)
-    setMissionWatchState(dir, "mission-a", { paused: true, allIdleSince: 42, lastWakeAt: 99 })
+    setMissionWatchState(dir, "mission-a", { paused: true, nodes: { leaf: { idleSince: 42 } } })
     resetWatchdogStateStoreForTests()
 
     const db2 = new RegistryDatabase(dir)
     bindWatchdogStateStore(dir, db2)
     expect(getMissionWatchState(dir, "mission-a")).toEqual({
       paused: true,
-      allIdleSince: 42,
-      lastWakeAt: 99,
+      nodes: { leaf: { idleSince: 42 } },
     })
     resetWatchdogStateStoreForTests()
   })
@@ -240,7 +313,7 @@ describe("watchdog state persistence", () => {
   test("pruneWatchdogStates removes stale mission rows", () => {
     const dir = `/tmp/gh-watchdog-prune-${Date.now()}`
     bindWatchdogStateStore(dir, new RegistryDatabase(dir))
-    setMissionWatchState(dir, "mission-a", { allIdleSince: 1 })
+    setMissionWatchState(dir, "mission-a", { nodes: { leaf: { idleSince: 1 } } })
     setMissionWatchState(dir, "mission-b", { allIdleSince: 2 }, "retro_record")
     pruneWatchdogStates(dir, "execution", ["mission-z"])
     pruneWatchdogStates(dir, "retro_record", [])

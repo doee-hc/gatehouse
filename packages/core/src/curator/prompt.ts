@@ -26,7 +26,7 @@ export async function loadCuratorSkillAssignKickoff(
       input.objective ?? contract.objective ?? gatehouseMessage("mission.objectiveMissing", locale),
     )
     .replaceAll("{{mission_contract}}", formatMissionContractForRole(contract, locale, "curator"))
-    .replaceAll("{{teamspec_summary}}", formatTeamSpecAssignmentSummary(input.spec, locale))
+    .replaceAll("{{team_structure_summary}}", formatTeamSpecAssignmentSummary(input.spec, locale))
     .replaceAll("{{domains_registry}}", formatSkillDomainsRegistry(domains, locale))
 }
 

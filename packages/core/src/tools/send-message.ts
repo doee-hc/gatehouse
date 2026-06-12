@@ -15,13 +15,16 @@ function registryDirectory(recipients: { agentId: string; sessionId: string; dis
 export function sendMessageTool(input: PluginInput) {
   return tool({
     description:
-      "Send a message via registry (.gatehouse/registry.db). recipient: outer profile (lead|architect|curator|arbiter), execution-tree node_id, OpenCode session_id, or registry agent_id (e.g. retro:<mission_id>:<node_id>). Inner node_id resolves against the active mission. Busy recipients queue delivery (flushed on idle or every 15s). Returns delivery: sent|queued.",
+      "Send a message to another Gatehouse agent. Does NOT change orchestration state. Use for peer/outer conversation, in-flight alignment, or small course corrections while the peer is still running and has not completed. recipient: outer profile (lead|architect|curator|arbiter), execution-tree node_id, OpenCode session_id, or registry agent_id. Busy recipients queue delivery (flushed on idle or every 15s). Do not use for phase completion — gatehouse_execution_complete. Do not use for in-flight acceptance rejection when orchestration must wait — gatehouse_execution_rework with a narrow reason.",
     args: {
       recipient: tool.schema
         .string()
         .min(1)
         .describe("Target: lead|architect|curator|arbiter, node_id, session_id, or agent_id"),
-      message: tool.schema.string().min(1),
+      message: tool.schema
+        .string()
+        .min(1)
+        .describe("Conversation or in-flight fix instructions (specific path/lines when correcting work)"),
     },
     async execute(args, context) {
       const toolName = "gatehouse_send_message"

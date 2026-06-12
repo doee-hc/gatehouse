@@ -1,0 +1,9 @@
+# 复制到 .gatehouse/trees/<mission_id>/node-briefs/<node_id>.yaml
+node_id: <node_id>
+role: 执行成员
+your_work:
+  - 本节点具体产出（行动依据）
+not_your_job:
+  - 非本节点职责（勿扩大范围）
+acceptance_slice:
+  - 本节点验收切片（非全队 done_when）

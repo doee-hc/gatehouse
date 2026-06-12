@@ -74,6 +74,24 @@ describe("channels supervisor config", () => {
     expect(env.QQ_SANDBOX).toBe("false")
     expect(env.GATEHOUSE_PROJECT_DIR).toBe(dir)
   })
+
+  test("buildBridgeEnv maps qq-onebot settings", () => {
+    const dir = makeProject()
+    initChannelsConfig(dir)
+    updateChannelConfig(dir, "qq-onebot", {
+      wsUrl: "ws://127.0.0.1:3002",
+      accessToken: "token",
+      requireAt: false,
+      groupAllowList: ["111", "222"],
+    })
+    const config = loadChannelsConfig(dir)
+    const env = buildBridgeEnv(dir, config, "qq-onebot")
+    expect(env.QQ_ONEBOT_WS_URL).toBe("ws://127.0.0.1:3002")
+    expect(env.QQ_ONEBOT_ACCESS_TOKEN).toBe("token")
+    expect(env.QQ_ONEBOT_REQUIRE_AT).toBe("false")
+    expect(env.QQ_ONEBOT_GROUP_ALLOWLIST).toBe("111,222")
+    expect(isChannelConfigured(dir, "qq-onebot", config)).toBe(true)
+  })
 })
 
 describe("resolveBridgeEntry", () => {

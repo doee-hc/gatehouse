@@ -1,6 +1,5 @@
 import type { PluginInput } from "@opencode-ai/plugin"
 import { RegistryDatabase } from "./db.ts"
-import { loadDispatchRootPrompt } from "../dispatch/prompt.ts"
 import { enrichLeadDeliveryMessage } from "../messaging/delivery-notify.ts"
 import { architectRetroBatchReadyMessage, loadRetroKickoffPrompt } from "../retro/prompt.ts"
 import { loadDomainSkillExtractPrompt, execSkillKickoffTargets } from "../retro/skill-kickoff.ts"
@@ -11,7 +10,7 @@ import { loadArchitectPrompt } from "../prompt/architect.ts"
 import { loadArbiterPrompt } from "../prompt/arbiter.ts"
 import { loadCuratorPrompt } from "../prompt/curator.ts"
 import { curatorSkillSummaryRelPath, nodeDisplayLabel, retroNodeReportRelPath, sessionTitle } from "../paths.ts"
-import { buildDirectedNotification, parseDirectedNotification } from "../i18n.ts"
+import { buildDirectedNotification, gatehouseMessage, parseDirectedNotification } from "../i18n.ts"
 import { loadGatehouseConfig, modelForOuterProfile } from "../gatehouse-config.ts"
 import { readLocaleSync } from "../locale.ts"
 import { agentName, normalizeOuterProfile, OUTER_PROFILES, readAgentNamesSync, type OuterProfile } from "../names.ts"
@@ -628,12 +627,15 @@ export class RegistryStore {
 
   async sendMessage(input: SendMessageInput): Promise<SendMessageResult> {
     if (input.senderProfile === LEAD_OPENCODE && !this.bySession(input.senderSessionId)) {
-      this.registerOuterSession({
-        profile: LEAD_OPENCODE,
-        sessionId: input.senderSessionId,
-        projectRootSessionId: input.senderSessionId,
-      })
-      await this.syncOuterSessionTitle(input.senderSessionId, "lead")
+      const existingLead = this.byProfile("lead", "outer")
+      if (!existingLead) {
+        this.registerOuterSession({
+          profile: LEAD_OPENCODE,
+          sessionId: input.senderSessionId,
+          projectRootSessionId: input.senderSessionId,
+        })
+        await this.syncOuterSessionTitle(input.senderSessionId, "lead")
+      }
     }
     const resolvedSender = input.senderAgentId
       ? this.byAgentId(input.senderAgentId)
@@ -689,6 +691,15 @@ export class RegistryStore {
     }
   }
 
+  private emitPortalAgentChat(sender: RegistryAgent, recipient: RegistryAgent, text: string) {
+    emitPortalEvent({
+      type: "agent.chat",
+      fromSpawnId: spawnIdForAgent(sender),
+      toSpawnId: spawnIdForAgent(recipient),
+      text,
+    })
+  }
+
   private emitPortalChat(
     recipient: RegistryAgent,
     promptText: string,
@@ -696,15 +707,10 @@ export class RegistryStore {
   ) {
     const parsed = parseDirectedNotification(promptText)
     if (!parsed) return
-    const fromSpawnId = options?.sender ? spawnIdForAgent(options.sender) : undefined
-    if (!fromSpawnId) return
+    const sender = options?.sender
+    if (!sender) return
     const suffix = options?.suffix ?? ""
-    emitPortalEvent({
-      type: "agent.chat",
-      fromSpawnId,
-      toSpawnId: spawnIdForAgent(recipient),
-      text: suffix ? `${parsed.text}${suffix}` : parsed.text,
-    })
+    this.emitPortalAgentChat(sender, recipient, suffix ? `${parsed.text}${suffix}` : parsed.text)
   }
 
   beginRetroRun(missionId: string, expectedNodeIds: string[]) {
@@ -793,38 +799,6 @@ export class RegistryStore {
     })
   }
 
-  async kickoffRootSession(manifest: TreeManifest, input?: { objective?: string }) {
-    const recipient = this.byAgentId(innerAgentId(manifest.mission_id, manifest.root_node))
-    if (!recipient) {
-      return {
-        root_node: manifest.root_node,
-        delivery: "failed" as const,
-        error: "root agent not in registry",
-      }
-    }
-    const promptText = formatDirectedNotification(
-      this.options.directory,
-      "Gatehouse",
-      await loadDispatchRootPrompt(this.options.directory, manifest.mission_id, {
-        objective: input?.objective,
-        manifest,
-        store: this,
-        rootSessionId: recipient.sessionId,
-        rootProfile: recipient.profile,
-      }),
-    )
-    const result = await this.deliverToRecipient({
-      recipient,
-      promptText,
-      promptProfile: recipient.profile,
-    })
-    return {
-      root_node: manifest.root_node,
-      delivery: result.status,
-      ...(result.error && { error: result.error }),
-    }
-  }
-
   async kickoffCuratorSkillAssignment(input: { missionId: string; objective?: string; spec: TeamSpec }) {
     const curator = this.byProfile("curator", "outer")
     if (!curator?.sessionId) {
@@ -847,6 +821,17 @@ export class RegistryStore {
       promptText,
       promptProfile: curator.profile,
     })
+    if (result.status !== "failed") {
+      const architect = this.byProfile("architect", "outer")
+      if (architect) {
+        const locale = readLocaleSync(this.options.directory)
+        this.emitPortalAgentChat(
+          architect,
+          curator,
+          gatehouseMessage("portal.architectBootstrapCuratorHint", locale),
+        )
+      }
+    }
     return {
       curator_session_id: curator.sessionId,
       delivery: result.status,
@@ -1044,6 +1029,20 @@ export class RegistryStore {
       const run = this.skillExtractRuns.get(missionId)
       if (!run) return
       this.skillExtractRuns.set(missionId, { ...run, curatorNotifiedAt: now() })
+    })
+  }
+
+  /** System / runtime delivery (execution work orders, kickoff). */
+  async deliverSystemPrompt(
+    recipient: RegistryAgent,
+    promptText: string,
+    options?: { promptProfile?: string; senderAgentId?: string },
+  ) {
+    return this.deliverToRecipient({
+      recipient,
+      promptText,
+      ...(options?.promptProfile && { promptProfile: options.promptProfile }),
+      ...(options?.senderAgentId && { senderAgentId: options.senderAgentId }),
     })
   }
 

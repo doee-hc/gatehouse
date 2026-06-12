@@ -26,8 +26,8 @@ Usage:
   bunx @gatehouse/core channels init [-C project]
   bunx @gatehouse/core channels list [-C project]
   bunx @gatehouse/core channels doctor [-C project] [--probe]
-  bunx @gatehouse/core channels login <weixin|feishu|qq> [-C project]
-  bunx @gatehouse/core channels serve [-C project] [weixin feishu qq ...]
+  bunx @gatehouse/core channels login <weixin|feishu|qq|qq-onebot> [-C project]
+  bunx @gatehouse/core channels serve [-C project] [weixin feishu qq qq-onebot ...]
   bunx @gatehouse/core channels stop [-C project]
   bunx @gatehouse/core channels status [-C project]
 
@@ -132,7 +132,7 @@ export async function runChannelsCommand(rawArgs: string[]) {
 
     case "login": {
       const channelId = positional[1]
-      if (!channelId) throw new Error("用法: bunx @gatehouse/core channels login <weixin|feishu|qq>")
+      if (!channelId) throw new Error("用法: bunx @gatehouse/core channels login <weixin|feishu|qq|qq-onebot>")
       if (!CHANNEL_IDS.includes(channelId as ChannelId)) {
         throw new Error(`未知 channel: ${channelId}`)
       }

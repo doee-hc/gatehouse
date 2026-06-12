@@ -27,6 +27,15 @@ const GATEHOUSE_TOOLS = [
   "gatehouse_inspector_decide",
   "gatehouse_publish_blog",
   "gatehouse_unpublish_blog",
+  "gatehouse_delivery_submit",
+  "gatehouse_delivery_review",
+  "gatehouse_delivery_status",
+  "gatehouse_execution_complete",
+  "gatehouse_execution_rework",
+  "gatehouse_execution_status",
+  "gatehouse_mission_context",
+  "gatehouse_node_brief",
+  "gatehouse_mission_contract",
 ] as const
 
 const OUTER_PERMISSIONS = {
@@ -39,8 +48,9 @@ const OUTER_PERMISSIONS = {
 describe("outer agent permission matrix", () => {
   test("every outer profile declares all gatehouse tools explicitly", () => {
     for (const [profile, permission] of Object.entries(OUTER_PERMISSIONS)) {
+      const map = permission as Record<string, unknown>
       for (const tool of GATEHOUSE_TOOLS) {
-        expect(permission[tool] !== undefined).toBe(true)
+        expect(map[tool] !== undefined).toBe(true)
       }
     }
   })
@@ -67,6 +77,17 @@ describe("inner execution permission matrix", () => {
   test("build-root-solo allows task", async () => {
     const { buildRootSoloPermissions } = await import("../src/setup/permissions.ts")
     expect(buildRootSoloPermissions.task).toBe("allow")
+  })
+
+  test("inner coordinators omit blog publish tools", () => {
+    const coordinator = buildCoordinatorPermissions as Record<string, unknown>
+    expect(coordinator.gatehouse_publish_blog).toBeUndefined()
+    expect(coordinator.gatehouse_unpublish_blog).toBeUndefined()
+  })
+
+  test("lead denies publish_blog but allows unpublish_blog", () => {
+    expect(leadPermissions.gatehouse_publish_blog).toBe("deny")
+    expect(leadPermissions.gatehouse_unpublish_blog).toBe("allow")
   })
 
   test("build-coordinator denies mission lifecycle tools and hides them from tool schema", () => {

@@ -133,9 +133,9 @@ nodes:
 
   const old = blog.groups.find((group) => group.id === "mission-old")
   expect(old?.posts.map((post) => post.title)).toEqual([
+    "任务协调者交付",
     "旧任务验收",
     "旧任务复盘",
-    "任务协调者交付",
     "leaf-a 复盘",
   ])
 
@@ -159,7 +159,7 @@ missions:
   expect(blog.groups).toHaveLength(0)
 })
 
-test("buildBlogSnapshot puts skills and orphan lead reports in team building", async () => {
+test("buildBlogSnapshot puts orphan lead reports in team building but omits skills", async () => {
   await write(".gatehouse/lead/reports/standalone/report.md", "# 无 Mission 汇报\n\n团队建设正文。")
   await write(
     ".gatehouse/skills/by-domain/dft-handoff/dft-handoff-engineer/SKILL.md",
@@ -179,10 +179,7 @@ test("buildBlogSnapshot puts skills and orphan lead reports in team building", a
   expect(blog.groups).toHaveLength(1)
   expect(blog.groups[0]?.kind).toBe("team-building")
   expect(blog.groups[0]?.expanded).toBe(true)
-  expect(blog.groups[0]?.posts.map((post) => post.title).sort()).toEqual([
-    "dft-handoff-engineer",
-    "无 Mission 汇报",
-  ])
+  expect(blog.groups[0]?.posts.map((post) => post.title)).toEqual(["无 Mission 汇报"])
 })
 
 test("buildBlogSnapshot hides post after unpublish", async () => {

@@ -1,56 +1,38 @@
 import { RegistryDatabase } from "../registry/db.ts"
 import {
   curatorSkillSummaryRelPath,
+  nodeDeliveryRelPath,
   retroNodeReportRelPath,
+  treeRelDir,
+  watchdogNodeWakePromptPath,
   watchdogRetroRecordWakePromptPath,
-  watchdogRootWakePromptPath,
   watchdogSkillRecordWakePromptPath,
 } from "../paths.ts"
 import { readAgentNamesSync, renderGatehouseTemplate } from "../names.ts"
-import { gatehouseMessage } from "../i18n.ts"
-import { readLocaleSync } from "../locale.ts"
-import {
-  formatExecutionTeamSnapshotFromManifest,
-  formatNonRootNodeIdList,
-} from "../dispatch/team-snapshot.ts"
-import { isSoloExecutionTeam } from "../tree/parse.ts"
-import type { TreeManifest } from "../tree/types.ts"
 
-export const EXECUTION_TREE_IDLE_THRESHOLD_MS = 10_000
-export const EXECUTION_TREE_WATCHDOG_POLL_MS = 2_000
-export const EXECUTION_TREE_WATCHDOG_WAKE_COOLDOWN_MS = 30_000
+export {
+  WATCHDOG_IDLE_THRESHOLD_MS,
+  WATCHDOG_POLL_MS,
+  WATCHDOG_WAKE_COOLDOWN_MS,
+} from "./tick.ts"
 
-export async function loadWatchdogRootWakePrompt(
+export async function loadWatchdogNodeWakePrompt(
   projectDirectory: string,
-  missionId: string,
-  idleSeconds: number,
-  manifest?: TreeManifest,
+  input: { missionId: string; nodeId: string; idleSeconds: number; rootNodeId: string },
 ) {
-  const solo = manifest ? isSoloExecutionTeam(manifest) : false
-  const locale = readLocaleSync(projectDirectory)
   const template = renderGatehouseTemplate(
-    await Bun.file(watchdogRootWakePromptPath(projectDirectory, solo)).text(),
+    await Bun.file(watchdogNodeWakePromptPath(projectDirectory)).text(),
     readAgentNamesSync(projectDirectory),
   )
-  let teamExecutionSnapshot = ""
-  let nonRootNodeIds = ""
-  if (!solo && manifest) {
-    teamExecutionSnapshot = [
-      gatehouseMessage("dispatch.teamSnapshot.watchdogSnapshotHeader", locale),
-      "",
-      formatExecutionTeamSnapshotFromManifest(manifest, locale),
-    ].join("\n")
-    nonRootNodeIds = [
-      gatehouseMessage("dispatch.teamSnapshot.watchdogSnapshotNodesHeader", locale),
-      "",
-      formatNonRootNodeIdList(manifest, locale),
-    ].join("\n")
-  }
+  const isRoot = input.nodeId === input.rootNodeId
+  const deliveryPath = isRoot
+    ? `${treeRelDir(input.missionId)}/reports/root-delivery.md`
+    : nodeDeliveryRelPath(input.missionId, input.nodeId)
   return template
-    .replaceAll("{{mission_id}}", missionId)
-    .replaceAll("{{idle_seconds}}", String(idleSeconds))
-    .replaceAll("{{team_execution_snapshot}}", teamExecutionSnapshot)
-    .replaceAll("{{non_root_node_ids}}", nonRootNodeIds)
+    .replaceAll("{{mission_id}}", input.missionId)
+    .replaceAll("{{node_id}}", input.nodeId)
+    .replaceAll("{{idle_seconds}}", String(input.idleSeconds))
+    .replaceAll("{{delivery_path}}", deliveryPath)
 }
 
 export async function loadWatchdogRetroRecordWakePrompt(

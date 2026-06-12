@@ -1,14 +1,24 @@
 import type { ChannelBridgeConfig } from "../types.ts"
 import type { OpencodeClient } from "../opencode/client.ts"
 import {
+  latestDeliverableAssistantMessageId,
+  listSessionMessages,
+} from "../opencode/assistant-messages.ts"
+import {
   formatAgentDirectoryForProject,
   listSwitchableAgents,
   resolveAgentTarget,
 } from "./agent-target.ts"
 import { readCurrentMissionId } from "../missions.ts"
-import { getActiveAgentId, setActiveAgentId } from "../store/state.ts"
+import { getActiveAgentId, setActiveAgentId, setLastDeliveredAssistantMessageId } from "../store/state.ts"
 
 export type AgentCommand = { kind: "list" } | { kind: "switch"; agentId: string }
+
+export type AgentCommandResult = {
+  text: string
+  /** Set when the user switched agents; used by relay bridges for proactive delivery. */
+  switchedSessionId?: string
+}
 
 export function parseAgentCommand(text: string): AgentCommand | undefined {
   const trimmed = text.trim()
@@ -29,20 +39,38 @@ async function buildAgentListReply(config: ChannelBridgeConfig, userId: string) 
   })
 }
 
+/** Mark existing assistant messages as already delivered so only subsequent replies are relayed. */
+export async function syncAgentDeliveryWatermark(
+  client: OpencodeClient,
+  config: ChannelBridgeConfig,
+  userId: string,
+  sessionId: string,
+) {
+  const rows = await listSessionMessages(client, config, sessionId)
+  const latestId = latestDeliverableAssistantMessageId(rows)
+  if (latestId) {
+    setLastDeliveredAssistantMessageId(config.stateDir, userId, sessionId, latestId)
+  }
+}
+
 export async function handleAgentCommand(
   client: OpencodeClient,
   config: ChannelBridgeConfig,
   userId: string,
   command: AgentCommand,
-) {
+): Promise<AgentCommandResult> {
   if (command.kind === "list") {
-    return buildAgentListReply(config, userId)
+    return { text: await buildAgentListReply(config, userId) }
   }
 
   const requestedId = command.agentId
   const agent = await resolveAgentTarget(client, config, requestedId)
   setActiveAgentId(config.stateDir, userId, agent.agentId)
-  return `已切换到 ${agent.agentId}（${agent.displayName}）`
+  await syncAgentDeliveryWatermark(client, config, userId, agent.sessionId)
+  return {
+    text: `已切换到 ${agent.agentId}（${agent.displayName}）`,
+    switchedSessionId: agent.sessionId,
+  }
 }
 
 export async function resolveActiveAgentTarget(client: OpencodeClient, config: ChannelBridgeConfig, userId: string) {

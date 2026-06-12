@@ -12,6 +12,7 @@ import {
   deactivateRetroAgentsForMissions,
 } from "../registry/mission-agents.ts"
 import { abortSessionHttp, opencodeHttpReady } from "../session/http.ts"
+import { deleteSession, shouldRetainInnerSessions, type GatehouseClient } from "../session/client.ts"
 import { sessionStatusById, sessionRuntimeStatus } from "../session/status.ts"
 import { gatehouseMessage } from "../i18n.ts"
 import { readLocaleSync } from "../locale.ts"
@@ -30,14 +31,16 @@ export function requireMission(doc: MissionsDocument, missionId: string) {
 }
 
 export async function requireLeadCaller(input: PluginInput, context: ToolContext) {
+  if (context.agent !== LEAD_OPENCODE) return undefined
+
   const registry = await getRegistryStore(input)
+  const registeredLead = registry.byProfile("lead", "outer")
+  if (registeredLead && registeredLead.sessionId !== context.sessionID) return undefined
+
   const sender = registry.bySession(context.sessionID)
-  if (sender?.scope === "outer" && sender.profile === "lead") return { registry, sender }
-  if (context.agent === LEAD_OPENCODE) {
-    const lead = registry.byProfile("lead", "outer")
-    if (lead) return { registry, sender: lead }
-  }
-  return undefined
+  if (sender && (sender.scope !== "outer" || sender.profile !== "lead")) return undefined
+
+  return { registry, sender: sender ?? registeredLead }
 }
 
 export function collectManifestSessionIds(manifest: TreeManifest, retro?: RetroManifest) {
@@ -107,6 +110,29 @@ export async function abortMissionSessions(plugin: PluginInput, sessionIds: stri
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         return { session_id: sessionId, aborted: false as const, error: message }
+      }
+    }),
+  )
+}
+
+export async function deleteMissionSessions(
+  plugin: PluginInput,
+  sessionIds: string[],
+  client: GatehouseClient = plugin.client as GatehouseClient,
+) {
+  const unique = [...new Set(sessionIds)]
+  if (unique.length === 0) return []
+  if (shouldRetainInnerSessions()) {
+    return unique.map((sessionId) => ({ session_id: sessionId, deleted: false as const, retained: true as const }))
+  }
+  return Promise.all(
+    unique.map(async (sessionId) => {
+      try {
+        await deleteSession(client, plugin.directory, sessionId, plugin)
+        return { session_id: sessionId, deleted: true as const }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        return { session_id: sessionId, deleted: false as const, error: message }
       }
     }),
   )

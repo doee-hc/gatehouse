@@ -53,12 +53,31 @@ export async function runChannelLogin(
     return
   }
 
-  console.log("QQ 官方 Bot 配置")
-  const appId = await promptLine("App ID: ")
-  const secret = await promptLine("Client Secret: ")
-  if (!appId || !secret) throw new Error("App ID 与 Client Secret 不能为空")
-  const sandboxAnswer = (await promptLine("使用沙箱环境? [Y/n]: ")).toLowerCase()
-  const sandbox = sandboxAnswer !== "n" && sandboxAnswer !== "no"
-  updateChannelConfig(projectDir, "qq", { appId, secret, sandbox })
-  console.log("已保存 QQ 凭证到 .gatehouse/channels.yaml")
+  if (channelId === "qq-onebot") {
+    console.log("QQ 群聊 OneBot 配置（NapCat 正向 WebSocket）")
+    const wsUrl = (await promptLine("WebSocket URL [ws://127.0.0.1:3001]: ")) || "ws://127.0.0.1:3001"
+    const accessToken = await promptLine("Access Token（可选，直接回车跳过）: ")
+    const requireAtAnswer = (await promptLine("仅在被 @ 时回复? [Y/n]: ")).toLowerCase()
+    const requireAt = requireAtAnswer !== "n" && requireAtAnswer !== "no"
+    const allowListRaw = await promptLine("群号白名单（逗号分隔，留空表示全部群）: ")
+    const groupAllowList = allowListRaw
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
+    updateChannelConfig(projectDir, "qq-onebot", { wsUrl, accessToken, requireAt, groupAllowList })
+    console.log("已保存 QQ OneBot 配置到 .gatehouse/channels.yaml")
+    console.log("提示: 请确保 NapCat 已登录并开启正向 WebSocket，然后运行 channels serve。")
+    return
+  }
+
+  if (channelId === "qq") {
+    console.log("QQ 官方 Bot 配置")
+    const appId = await promptLine("App ID: ")
+    const secret = await promptLine("Client Secret: ")
+    if (!appId || !secret) throw new Error("App ID 与 Client Secret 不能为空")
+    const sandboxAnswer = (await promptLine("使用沙箱环境? [Y/n]: ")).toLowerCase()
+    const sandbox = sandboxAnswer !== "n" && sandboxAnswer !== "no"
+    updateChannelConfig(projectDir, "qq", { appId, secret, sandbox })
+    console.log("已保存 QQ 凭证到 .gatehouse/channels.yaml")
+  }
 }

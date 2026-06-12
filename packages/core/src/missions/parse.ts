@@ -1,6 +1,7 @@
 import { gatehouseMessage } from "../i18n.ts"
 import { DEFAULT_GATEHOUSE_LOCALE, type GatehouseLocale } from "../locale.ts"
 import { isRecord, parseYaml, readString } from "../yaml.ts"
+import { normalizeMissionOverrideFields } from "./normalize.ts"
 
 export type MissionEntry = {
   id: string
@@ -10,6 +11,10 @@ export type MissionEntry = {
   done_when: string[]
   must_not: string[]
   notes?: string
+  /** User-explicit topology override for architect; omit when user did not specify. */
+  user_topology?: string
+  /** User-explicit skill override for curator; omit when user did not specify. */
+  user_skill?: string
   started_at?: string
   completed_at?: string
 }
@@ -40,7 +45,11 @@ function parseMissionEntry(item: Record<string, unknown>): MissionEntry | undefi
   const id = readString(item.id)
   const status = readString(item.status)
   if (!id || !status) return undefined
-  const notes = readString(item.notes)
+  const overrides = normalizeMissionOverrideFields({
+    notes: readString(item.notes),
+    user_topology: readString(item.user_topology),
+    user_skill: readString(item.user_skill),
+  })
   return {
     id,
     status,
@@ -48,7 +57,7 @@ function parseMissionEntry(item: Record<string, unknown>): MissionEntry | undefi
     must_not: formatListItems(item.must_not),
     ...(readString(item.priority) && { priority: readString(item.priority) }),
     ...(readString(item.objective) && { objective: readString(item.objective) }),
-    ...(notes && { notes }),
+    ...overrides,
     ...(readString(item.started_at) && { started_at: readString(item.started_at) }),
     ...(readString(item.completed_at) && { completed_at: readString(item.completed_at) }),
   }

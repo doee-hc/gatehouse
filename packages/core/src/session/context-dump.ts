@@ -1,4 +1,5 @@
 import path from "node:path"
+import { existsSync } from "node:fs"
 import { mkdir } from "node:fs/promises"
 import { contextDir, contextIndexRelPath, nodeContextDir, nodeContextRelDir, treeRelDir } from "../paths.ts"
 import { aggregateSessionMetrics, mergeSessionMetrics, type SessionMetrics } from "../metrics/aggregate.ts"
@@ -215,20 +216,24 @@ export function formatTimelineMarkdown(input: {
   return lines.join("\n").trimEnd() + "\n"
 }
 
-export async function dumpNodeContext(input: {
+export async function dumpSessionContext(input: {
   client: GatehouseClient
   projectDirectory: string
   missionId: string
   nodeId: string
-  node: TreeNode
+  sessionId: string
+  parent?: string | null
+  profile?: string
+  relDir?: string
+  absDir?: string
 }) {
   const [messages, detail] = await Promise.all([
-    sessionMessages(input.client, input.projectDirectory, input.node.session_id),
-    sessionDetail(input.client, input.projectDirectory, input.node.session_id),
+    sessionMessages(input.client, input.projectDirectory, input.sessionId),
+    sessionDetail(input.client, input.projectDirectory, input.sessionId),
   ])
 
-  const relDir = nodeContextRelDir(input.missionId, input.nodeId)
-  const absDir = nodeContextDir(input.projectDirectory, input.missionId, input.nodeId)
+  const relDir = input.relDir ?? nodeContextRelDir(input.missionId, input.nodeId)
+  const absDir = input.absDir ?? nodeContextDir(input.projectDirectory, input.missionId, input.nodeId)
   await mkdir(absDir, { recursive: true })
   await Bun.write(
     path.join(absDir, "messages.json"),
@@ -236,8 +241,9 @@ export async function dumpNodeContext(input: {
       {
         mission_id: input.missionId,
         node_id: input.nodeId,
-        session_id: input.node.session_id,
-        parent: input.node.parent,
+        session_id: input.sessionId,
+        ...(input.parent !== undefined && { parent: input.parent }),
+        ...(input.profile && { profile: input.profile }),
         dumped_at: new Date().toISOString(),
         duration_ms: sessionDurationMs(detail),
         message_count: messages.length,
@@ -252,7 +258,7 @@ export async function dumpNodeContext(input: {
     formatTimelineMarkdown({
       missionId: input.missionId,
       nodeId: input.nodeId,
-      sessionId: input.node.session_id,
+      sessionId: input.sessionId,
       messages,
     }),
   )
@@ -260,7 +266,7 @@ export async function dumpNodeContext(input: {
   const duration_ms = sessionDurationMs(detail)
   const metrics = aggregateSessionMetrics({
     node_id: input.nodeId,
-    session_id: input.node.session_id,
+    session_id: input.sessionId,
     messages,
     duration_ms,
   })
@@ -281,13 +287,51 @@ export async function dumpNodeContext(input: {
   return {
     mission_id: input.missionId,
     node_id: input.nodeId,
-    session_id: input.node.session_id,
+    session_id: input.sessionId,
     rel_dir: relDir,
     messages_path: path.join(relDir, "messages.json"),
     timeline_path: path.join(relDir, "timeline.md"),
     metrics_path: metricsPath,
     metrics,
   }
+}
+
+export async function dumpNodeContext(input: {
+  client: GatehouseClient
+  projectDirectory: string
+  missionId: string
+  nodeId: string
+  node: TreeNode
+}) {
+  return dumpSessionContext({
+    client: input.client,
+    projectDirectory: input.projectDirectory,
+    missionId: input.missionId,
+    nodeId: input.nodeId,
+    sessionId: input.node.session_id,
+    parent: input.node.parent,
+    profile: input.node.profile,
+  })
+}
+
+export function missionContextAlreadyDumped(projectDirectory: string, missionId: string) {
+  return existsSync(path.join(contextDir(projectDirectory, missionId), "index.json"))
+}
+
+export async function ensureMissionContextDumped(input: {
+  client: GatehouseClient
+  projectDirectory: string
+  manifest: TreeManifest
+}) {
+  if (missionContextAlreadyDumped(input.projectDirectory, input.manifest.mission_id)) {
+    return {
+      skipped: true as const,
+      mission_id: input.manifest.mission_id,
+      reason: "already_dumped" as const,
+    }
+  }
+  const dumped = await dumpMissionContext(input)
+  return { skipped: false as const, ...dumped }
 }
 
 export async function dumpMissionContext(input: {

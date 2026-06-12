@@ -75,6 +75,16 @@ export function collectDeliverableAssistantMessages(
   return collected
 }
 
+export function latestDeliverableAssistantMessageId(rows: Record<string, unknown>[]) {
+  let latest: string | undefined
+  for (const row of rows) {
+    if (!isDeliverableAssistantMessage(row)) continue
+    const id = assistantMessageId(row)
+    if (id) latest = id
+  }
+  return latest
+}
+
 export async function listNewDeliverableAssistantMessages(
   client: OpencodeClient,
   config: ChannelBridgeConfig,

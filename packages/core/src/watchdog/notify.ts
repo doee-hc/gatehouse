@@ -21,3 +21,24 @@ export function registerWatchdogSendHandler(
 export function notifyWatchdogSendMessage(directory: string, event: WatchdogSendMessageEvent) {
   handlers.get(directory)?.(event)
 }
+
+export type WatchdogDeliveryEvent = {
+  missionId: string
+  kind: "submitted" | "revision_requested"
+}
+
+const deliveryHandlers = new Map<string, (event: WatchdogDeliveryEvent) => void>()
+
+export function registerWatchdogDeliveryHandler(
+  directory: string,
+  handler: (event: WatchdogDeliveryEvent) => void,
+) {
+  deliveryHandlers.set(directory, handler)
+  return () => {
+    deliveryHandlers.delete(directory)
+  }
+}
+
+export function notifyWatchdogDeliveryEvent(directory: string, event: WatchdogDeliveryEvent) {
+  deliveryHandlers.get(directory)?.(event)
+}

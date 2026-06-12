@@ -16,7 +16,7 @@
 
 ```bash
 bunx @gatehouse/core channels init [-C project]
-bunx @gatehouse/core channels login <weixin|feishu|qq>
+bunx @gatehouse/core channels login <weixin|feishu|qq|qq-onebot>
 bunx @gatehouse/core channels serve [-C project]
 bunx @gatehouse/core channels status [--probe]
 bunx @gatehouse/core channels stop [-C project]
@@ -50,7 +50,8 @@ Portal 通道管理（可选）：`http://127.0.0.1:18472/admin` — 使用 `.ga
 | --- | --- |
 | 微信 | [packages/weixin-bridge/README.md](../../packages/weixin-bridge/README.md) |
 | 飞书 | [packages/feishu-bridge/README.md](../../packages/feishu-bridge/README.md) |
-| QQ | [packages/qq-bridge/README.md](../../packages/qq-bridge/README.md) |
+| QQ 私聊（官方 Bot） | [packages/qq-bridge/README.md](../../packages/qq-bridge/README.md) |
+| QQ 群聊（NapCat / OneBot） | [packages/qq-onebot-bridge/README.md](../../packages/qq-onebot-bridge/README.md) |
 
 ## Agent 与 IM 互通
 

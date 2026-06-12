@@ -2,10 +2,11 @@ import { connectPortalEvents } from "../bridge/events.ts"
 import { truncateLabel } from "../bridge/map-sidebar.ts"
 import { getOfficeScene, handleAgentChatEvent } from "../office/game.ts"
 import { logEvent } from "../shell/event-log.ts"
-import { agentStatusLabel, t } from "../shell/i18n.ts"
+import { t } from "../shell/i18n.ts"
 import { refreshPortalActivityUi } from "../shell/render-portal.ts"
 import { getPortalSnapshot } from "./state.ts"
 import { trackAgentStatus } from "./session-activity.ts"
+import { logBlogPublishedEvent, logBlogUnpublishedEvent } from "./snapshot-events.ts"
 import { notePortalEventStreamReady } from "./snapshot-sync.ts"
 import { shouldLogAgentStatus } from "./status-log.ts"
 
@@ -51,17 +52,32 @@ export function startPortalLiveSync() {
         logEvent(() => t("event.sessionIdle", { name }), "evt-msg")
         return
       }
-      if (event.type !== "agent.chat") return
-      handleAgentChatEvent(event.fromSpawnId, event.toSpawnId, event.text)
-      logEvent(
-        () =>
-          t("event.agentChat", {
-            from: agentDisplayName(event.fromSpawnId),
-            to: agentDisplayName(event.toSpawnId),
-            text: truncateLabel(event.text, 40),
-          }),
-        "event-chat",
-      )
+      if (event.type === "agent.chat") {
+        handleAgentChatEvent(event.fromSpawnId, event.toSpawnId, event.text)
+        logEvent(
+          () =>
+            t("event.agentChat", {
+              from: agentDisplayName(event.fromSpawnId),
+              to: agentDisplayName(event.toSpawnId),
+              text: truncateLabel(event.text, 40),
+            }),
+          "event-chat",
+        )
+        return
+      }
+      if (event.type === "blog.publish") {
+        logBlogPublishedEvent(event.postId, event.title?.trim() || event.postId)
+        return
+      }
+      if (event.type === "blog.unpublish") {
+        logBlogUnpublishedEvent(event.postId, event.title?.trim() || event.postId)
+      }
+    },
+    onStreamDisconnect: () => {
+      logEvent(() => t("event.portalStreamDisconnected"), "evt-warn")
+    },
+    onStreamReconnect: () => {
+      logEvent(() => t("event.portalStreamReconnected"), "evt-live")
     },
   })
 

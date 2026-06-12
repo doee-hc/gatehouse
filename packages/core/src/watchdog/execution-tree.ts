@@ -4,19 +4,22 @@ import type { RegistryAgent } from "../registry/types.ts"
 import { innerAgentId } from "../registry/types.ts"
 import { gatehouseLog } from "../log.ts"
 import { sessionRuntimeStatus, sessionStatusById, type SessionRuntimeStatus } from "../session/status.ts"
+import { orchestrationProblemNodeIds, readOrchestrationState } from "../orchestration/state.ts"
+import type { OrchestrationState } from "../orchestration/types.ts"
 import { readManifest, readRetroManifest } from "../tree/store.ts"
 import type { TreeManifest } from "../tree/types.ts"
-import { registerWatchdogSendHandler } from "./notify.ts"
+import { registerWatchdogDeliveryHandler, registerWatchdogSendHandler } from "./notify.ts"
 import {
-  EXECUTION_TREE_IDLE_THRESHOLD_MS,
-  EXECUTION_TREE_WATCHDOG_POLL_MS,
-  EXECUTION_TREE_WATCHDOG_WAKE_COOLDOWN_MS,
+  loadWatchdogNodeWakePrompt,
   listRunningMissionIds,
-  loadWatchdogRootWakePrompt,
+  WATCHDOG_IDLE_THRESHOLD_MS,
+  WATCHDOG_POLL_MS,
 } from "./prompt.ts"
 import {
   mergeWatchdogTickState,
   type MissionWatchState,
+  type NodeWatchState,
+  watchdogDeliveryEventState,
   watchdogSendMessageState,
   watchdogStateMissionId,
 } from "./signals.ts"
@@ -26,6 +29,7 @@ import {
   pruneWatchdogStates,
   setMissionWatchState,
 } from "./state-store.ts"
+import { watchdogNodeIdleTickDecision } from "./tick.ts"
 
 function logWatchdogTickError(directory: string, label: string, error: unknown) {
   gatehouseLog(
@@ -35,51 +39,108 @@ function logWatchdogTickError(directory: string, label: string, error: unknown) 
   )
 }
 
-export function manifestSessionIds(manifest: TreeManifest) {
-  return Object.values(manifest.nodes).map((node) => node.session_id)
-}
-
 export function allSessionsIdle(statusMap: Map<string, SessionRuntimeStatus>, sessionIds: string[]) {
   if (sessionIds.length === 0) return false
   return sessionIds.every((sessionId) => sessionRuntimeStatus(statusMap, sessionId) === "idle")
 }
 
-export function watchdogTickDecision(input: {
+function mergeNodeWatchState(
+  prev: MissionWatchState,
+  nodeUpdates: Record<string, NodeWatchState | null>,
+): MissionWatchState {
+  if (prev.paused) return { paused: true }
+  const nodes = { ...prev.nodes }
+  for (const [nodeId, state] of Object.entries(nodeUpdates)) {
+    if (state === null || Object.keys(state).length === 0) delete nodes[nodeId]
+    else nodes[nodeId] = state
+  }
+  if (Object.keys(nodes).length === 0) return {}
+  return { nodes }
+}
+
+export async function checkExecutionWatchdogMission(input: {
+  pluginInput: PluginInput
+  registry: RegistryStore
+  missionId: string
+  manifest: TreeManifest
+  orchState: OrchestrationState
+  statusMap: Map<string, SessionRuntimeStatus>
   now: number
-  allIdle: boolean
-  state: MissionWatchState
-  idleThresholdMs?: number
-  wakeCooldownMs?: number
+  loadWakePrompt?: (
+    projectDirectory: string,
+    params: { missionId: string; nodeId: string; idleSeconds: number; rootNodeId: string },
+  ) => Promise<string>
 }) {
-  const idleThresholdMs = input.idleThresholdMs ?? EXECUTION_TREE_IDLE_THRESHOLD_MS
-  const wakeCooldownMs = input.wakeCooldownMs ?? EXECUTION_TREE_WATCHDOG_WAKE_COOLDOWN_MS
-  if (!input.allIdle) {
-    return {
-      action: "reset" as const,
-      nextState: mergeWatchdogTickState(input.state, {}),
+  const {
+    pluginInput,
+    registry,
+    missionId,
+    manifest,
+    orchState,
+    statusMap,
+    now,
+    loadWakePrompt = loadWatchdogNodeWakePrompt,
+  } = input
+  const { directory } = pluginInput
+
+  const missionState = getMissionWatchState(directory, missionId) ?? {}
+  if (missionState.paused) return { action: "paused" as const }
+
+  const problemIds = orchestrationProblemNodeIds(orchState)
+  if (problemIds.length === 0) {
+    if (missionState.nodes && Object.keys(missionState.nodes).length > 0) {
+      setMissionWatchState(directory, missionId, mergeWatchdogTickState(missionState, {}))
     }
+    return { action: "idle" as const }
   }
-  const allIdleSince = input.state.allIdleSince ?? input.now
-  const idleDurationMs = input.now - allIdleSince
-  if (idleDurationMs < idleThresholdMs) {
-    return {
-      action: "wait" as const,
-      nextState: mergeWatchdogTickState(input.state, { ...input.state, allIdleSince }),
-      idleDurationMs,
+
+  const nodeUpdates: Record<string, NodeWatchState | null> = {}
+  const wakes: string[] = []
+  let notified = 0
+
+  for (const trackedId of Object.keys(missionState.nodes ?? {})) {
+    if (!problemIds.includes(trackedId)) nodeUpdates[trackedId] = null
+  }
+
+  for (const nodeId of problemIds) {
+    const sessionId = manifest.nodes[nodeId]?.session_id
+    if (!sessionId) continue
+    const sessionIdle = sessionRuntimeStatus(statusMap, sessionId) === "idle"
+    const prevNode = missionState.nodes?.[nodeId]
+    const decision = watchdogNodeIdleTickDecision({ now, sessionIdle, nodeState: prevNode })
+
+    if (decision.action === "wake") {
+      if (getMissionWatchState(directory, missionId)?.paused) return { action: "paused" as const }
+      const agent = registry.byAgentId(innerAgentId(missionId, nodeId))
+      if (!agent) {
+        nodeUpdates[nodeId] = decision.nextNodeState
+        continue
+      }
+      const idleSeconds = Math.round((decision.idleDurationMs ?? WATCHDOG_IDLE_THRESHOLD_MS) / 1000)
+      const content = await loadWakePrompt(directory, {
+        missionId,
+        nodeId,
+        idleSeconds,
+        rootNodeId: manifest.root_node,
+      })
+      if (getMissionWatchState(directory, missionId)?.paused) return { action: "paused" as const }
+      const delivered = await registry.deliverSystemMessage(agent, content, agent.profile)
+      if (delivered.status === "failed") continue
+      nodeUpdates[nodeId] = decision.nextNodeState
+      wakes.push(nodeId)
+      notified += 1
+      continue
     }
+
+    nodeUpdates[nodeId] = decision.nextNodeState
   }
-  if (input.state.lastWakeAt && input.now - input.state.lastWakeAt < wakeCooldownMs) {
-    return {
-      action: "cooldown" as const,
-      nextState: mergeWatchdogTickState(input.state, { ...input.state, allIdleSince }),
-      idleDurationMs,
-    }
+
+  if (Object.keys(nodeUpdates).length > 0) {
+    setMissionWatchState(directory, missionId, mergeNodeWatchState(missionState, nodeUpdates))
   }
-  return {
-    action: "wake" as const,
-    nextState: mergeWatchdogTickState(input.state, { lastWakeAt: input.now }),
-    idleDurationMs,
-  }
+
+  if (wakes.length > 0) return { action: "wake" as const, notified, wakes }
+  return { action: "wait" as const }
 }
 
 const stopByDirectory = new Map<string, () => void>()
@@ -92,9 +153,12 @@ export class ExecutionTreeWatchdog {
     private registry: RegistryStore,
   ) {}
 
-  start(pollMs = EXECUTION_TREE_WATCHDOG_POLL_MS) {
+  start(pollMs = WATCHDOG_POLL_MS) {
     const unregisterSend = registerWatchdogSendHandler(this.input.directory, (event) => {
       this.recordSendMessage(event)
+    })
+    const unregisterDelivery = registerWatchdogDeliveryHandler(this.input.directory, (event) => {
+      this.recordDeliveryEvent(event)
     })
     const interval = setInterval(() => {
       void this.tick()
@@ -103,7 +167,17 @@ export class ExecutionTreeWatchdog {
     return () => {
       clearInterval(interval)
       unregisterSend()
+      unregisterDelivery()
     }
+  }
+
+  recordDeliveryEvent(event: { missionId: string; kind: "submitted" | "revision_requested" }) {
+    const state = getMissionWatchState(this.input.directory, event.missionId) ?? {}
+    setMissionWatchState(
+      this.input.directory,
+      event.missionId,
+      watchdogDeliveryEventState(state, event.kind),
+    )
   }
 
   recordSendMessage(event: { missionId?: string; sender: RegistryAgent; recipient: RegistryAgent }) {
@@ -117,7 +191,7 @@ export class ExecutionTreeWatchdog {
     const run = this.tickTail.then(() => this.tickOnce())
     this.tickTail = run.then(
       () => undefined,
-      (error) => logWatchdogTickError(this.input.directory, "execution tree watchdog", error),
+      (error) => logWatchdogTickError(this.input.directory, "execution watchdog", error),
     )
     return run
   }
@@ -149,34 +223,21 @@ export class ExecutionTreeWatchdog {
       return
     }
 
-    const state = getMissionWatchState(this.input.directory, missionId) ?? {}
-    if (state.paused) return
-
-    const sessionIds = manifestSessionIds(manifest)
-    const allIdle = allSessionsIdle(statusMap, sessionIds)
-    const decision = watchdogTickDecision({ now, allIdle, state })
-    if (getMissionWatchState(this.input.directory, missionId)?.paused) return
-    if (decision.action !== "wake") {
-      setMissionWatchState(this.input.directory, missionId, decision.nextState)
+    const orchState = readOrchestrationState(this.input.directory, missionId)
+    if (!orchState) {
+      deleteMissionWatchState(this.input.directory, missionId)
       return
     }
-    if (getMissionWatchState(this.input.directory, missionId)?.paused) return
 
-    const root = this.registry.byAgentId(innerAgentId(manifest.mission_id, manifest.root_node))
-    if (!root) return
-
-    const idleSeconds = Math.round((decision.idleDurationMs ?? EXECUTION_TREE_IDLE_THRESHOLD_MS) / 1000)
-    const content = await loadWatchdogRootWakePrompt(
-      this.input.directory,
-      manifest.mission_id,
-      idleSeconds,
+    await checkExecutionWatchdogMission({
+      pluginInput: this.input,
+      registry: this.registry,
+      missionId,
       manifest,
-    )
-    if (getMissionWatchState(this.input.directory, missionId)?.paused) return
-    const delivered = await this.registry.deliverSystemMessage(root, content, root.profile)
-    if (delivered.status === "failed") return
-
-    setMissionWatchState(this.input.directory, missionId, decision.nextState)
+      orchState,
+      statusMap,
+      now,
+    })
   }
 }
 

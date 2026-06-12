@@ -1,8 +1,10 @@
 import { tool, type PluginInput } from "@opencode-ai/plugin"
 import type { ToolContext } from "@opencode-ai/plugin/tool"
 import { getRegistryStore } from "../registry/context.ts"
-import { resolveProjectPath, teamSpecPath } from "../paths.ts"
-import { readTeamSpecFromPath, readManifest } from "../tree/store.ts"
+import { missionScriptRelPath, resolveProjectPath } from "../paths.ts"
+import { readManifest } from "../tree/store.ts"
+import { resolveTeamSource } from "../orchestration/resolve-team.ts"
+import { dryRunMissionScriptSource } from "../orchestration/script-validate.ts"
 import { validateTeamSpec } from "../tree/parse.ts"
 import { runBootstrapTree } from "../tree/bootstrap-run.ts"
 import { ARCHITECT_OPENCODE, CURATOR_OPENCODE } from "../registry/types.ts"
@@ -15,24 +17,41 @@ import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
 export function bootstrapTreeTool(input: PluginInput) {
   return tool({
     description:
-      "profile architect only: validate TeamSpec and wake curator for skill_domain assignment (no execution sessions yet). Execution-tree bootstrap runs inside gatehouse_apply_skill_domains — do not call this tool from profile curator. Defaults to the active mission teamspec when teamspec_path is omitted.",
+      "profile architect only: submit mission.script.ts for the active Mission. Next step is curator skill_domain assignment via gatehouse_apply_skill_domains. Do not call from profile curator. Defaults to the active mission script when mission_script_path is omitted.",
     args: {
-      teamspec_path: tool.schema
+      mission_script_path: tool.schema
         .string()
         .optional()
-        .describe("Path to teamspec.yaml; default .gatehouse/trees/<active_mission>/teamspec.yaml"),
+        .describe("Path to mission.script.ts; default .gatehouse/trees/<active_mission>/mission.script.ts"),
       objective: tool.schema.string().optional().describe("Optional one-line objective stored in trees-index when tree is created"),
     },
     async execute(args, context) {
       const toolName = "gatehouse_bootstrap_tree"
       try {
         const registry = await getRegistryStore(input)
-        const spec = args.teamspec_path
-          ? await readTeamSpecFromPath(resolveProjectPath(input.directory, args.teamspec_path))
-          : await readTeamSpecFromPath(teamSpecPath(input.directory, requireActiveMissionId(registry)))
+        const missionId = requireActiveMissionId(registry)
+        let spec
+        if (args.mission_script_path) {
+          const source = await Bun.file(resolveProjectPath(input.directory, args.mission_script_path)).text()
+          const dryRun = dryRunMissionScriptSource(source, missionId)
+          if (!dryRun.ok) {
+            return {
+              output: toolFail(toolName, dryRun.code, dryRun.message),
+              ...toolMetadata(toolName),
+            }
+          }
+          spec = dryRun.parsed.team
+        } else {
+          const resolved = await resolveTeamSource(input.directory, missionId)
+          spec = resolved?.spec
+        }
         if (!spec) {
           return {
-            output: toolFail(toolName, "TEAMSPEC_NOT_FOUND", "Active mission teamspec not found; write teamspec.yaml first"),
+            output: toolFail(
+              toolName,
+              "MISSION_SCRIPT_NOT_FOUND",
+              "Active mission has no mission.script.ts",
+            ),
             ...toolMetadata(toolName),
           }
         }
@@ -73,7 +92,7 @@ export function bootstrapTreeTool(input: PluginInput) {
             output: toolOk(toolName, {
               phase: "awaiting_skill_domains",
               mission_id: spec.mission_id,
-              teamspec_path: teamSpecPath(input.directory, spec.mission_id),
+              mission_script_path: missionScriptRelPath(spec.mission_id),
               note: "Execution tree not created yet; curator apply_skill_domains will bootstrap and dispatch the structural root",
               curator_skill_assign_kickoff: curatorKickoff,
             }),

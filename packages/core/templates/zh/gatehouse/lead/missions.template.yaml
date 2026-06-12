@@ -6,11 +6,13 @@
   objective: "一句话目标"
   done_when:
     - "可验证验收条件"
+    # - path: src/feature.ts          # 纯开发交付，不 publish
+    # - publish: content/article.md   # 文章类交付物，submit 后上 Portal
   must_not:
     - "边界约束"
-  # notes 可选。默认只写用户背景/上下文；勿写拓扑或 skill hint。
-  # 仅当用户明确指定时：
-  #   [用户指定·拓扑] …
-  #   [用户指定·skill] …
+  # notes 可选：仅用户背景/动机/风格等不可验收上下文
   notes: |
     可选：用户背景与上下文。
+  # user_topology / user_skill：仅当用户明确指定时填写；未指定则省略
+  # user_topology: "用户明确指定的拓扑要求"
+  # user_skill: "用户明确指定的 skill 要求"

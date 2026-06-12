@@ -4,13 +4,14 @@ import type { RegistryAgent } from "../registry/types.ts"
 import { innerAgentId, retroAgentId } from "../registry/types.ts"
 import { gatehouseLog } from "../log.ts"
 import { sessionStatusById, type SessionRuntimeStatus } from "../session/status.ts"
-import { allSessionsIdle, watchdogTickDecision } from "./execution-tree.ts"
+import { allSessionsIdle } from "./execution-tree.ts"
 import {
-  EXECUTION_TREE_IDLE_THRESHOLD_MS,
-  EXECUTION_TREE_WATCHDOG_POLL_MS,
   loadWatchdogRetroRecordWakePrompt,
   loadWatchdogSkillRecordWakePrompt,
+  WATCHDOG_IDLE_THRESHOLD_MS,
+  WATCHDOG_POLL_MS,
 } from "./prompt.ts"
+import { watchdogIdleTickDecision } from "./tick.ts"
 import {
   deleteMissionWatchState,
   getMissionWatchState,
@@ -83,13 +84,22 @@ export async function checkRecordWatchdogMission(input: {
 
   const allIdle = allSessionsIdle(statusMap, sessionIds)
   const state = getMissionWatchState(directory, missionId, kind) ?? {}
-  const decision = watchdogTickDecision({ now, allIdle, state })
+  const decision = watchdogIdleTickDecision({
+    now,
+    allIdle,
+    idleSince: state.allIdleSince,
+    lastWakeAt: state.lastWakeAt,
+  })
+  const nextMissionState = {
+    ...(decision.nextIdleSince !== undefined ? { allIdleSince: decision.nextIdleSince } : {}),
+    ...(decision.nextLastWakeAt !== undefined ? { lastWakeAt: decision.nextLastWakeAt } : {}),
+  }
   if (decision.action !== "wake") {
-    setMissionWatchState(directory, missionId, decision.nextState, kind)
+    setMissionWatchState(directory, missionId, nextMissionState, kind)
     return { action: decision.action }
   }
 
-  const idleSeconds = Math.round((decision.idleDurationMs ?? EXECUTION_TREE_IDLE_THRESHOLD_MS) / 1000)
+  const idleSeconds = Math.round((decision.idleDurationMs ?? WATCHDOG_IDLE_THRESHOLD_MS) / 1000)
   let deliveredCount = 0
   let anyFailed = false
   for (const nodeId of run.pendingNodeIds) {
@@ -105,7 +115,7 @@ export async function checkRecordWatchdogMission(input: {
     return { action: "wake" as const, notified: deliveredCount }
   }
 
-  setMissionWatchState(directory, missionId, decision.nextState, kind)
+  setMissionWatchState(directory, missionId, nextMissionState, kind)
   return { action: "wake" as const, notified: deliveredCount }
 }
 
@@ -132,7 +142,7 @@ class RecordWatchdog {
     ) => Promise<string>,
   ) {}
 
-  start(pollMs = EXECUTION_TREE_WATCHDOG_POLL_MS) {
+  start(pollMs = WATCHDOG_POLL_MS) {
     const interval = setInterval(() => {
       void this.tick()
     }, pollMs)

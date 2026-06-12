@@ -1,16 +1,12 @@
 import { gatehouseMessage } from "../i18n.ts"
 import type { GatehouseLocale } from "../locale.ts"
 import { readLocaleSync } from "../locale.ts"
-import type { RegistryStore } from "../registry/store.ts"
 import {
-  buildListTeamData,
   type ListTeamExecutionMember,
   type ListTeamOuterMember,
 } from "../tools/list-views.ts"
 import { childNodeIds, childNodeIdsFromSpec, manifestMembers, topologicalNodeOrder } from "../tree/parse.ts"
 import type { TeamSpec, TreeManifest } from "../tree/types.ts"
-
-const CONSTRAINT_PREVIEW_CHARS = 240
 
 function collectSpecSubtreeNodeIds(spec: TeamSpec, rootNodeId: string, includeRoot: boolean) {
   const ids: string[] = []
@@ -22,12 +18,6 @@ function collectSpecSubtreeNodeIds(spec: TeamSpec, rootNodeId: string, includeRo
   if (includeRoot) walk(rootNodeId)
   else for (const childId of childNodeIdsFromSpec(spec, rootNodeId)) walk(childId)
   return ids
-}
-
-function previewConstraints(constraints: string) {
-  const trimmed = constraints.trim()
-  if (trimmed.length <= CONSTRAINT_PREVIEW_CHARS) return trimmed
-  return `${trimmed.slice(0, CONSTRAINT_PREVIEW_CHARS)}…`
 }
 
 function manifestNodeOrder(manifest: TreeManifest) {
@@ -129,7 +119,6 @@ export function formatTeamSpecAssignmentSummary(spec: TeamSpec, locale: Gatehous
         ? ` · ${gatehouseMessage("dispatch.teamSnapshot.children", locale, { list: children.join(", ") })}`
         : ""
     lines.push(`- **${nodeId}** · ${parent} — ${node.description.trim()}${childSuffix}`)
-    lines.push(`  \`\`\`\n${previewConstraints(node.constraints)}\n  \`\`\``)
   }
   return lines.join("\n")
 }
@@ -183,29 +172,4 @@ export function formatSubtreeSnapshotFromManifest(
     })),
     { youNodeId: coordinatorNodeId, locale, manifest },
   )
-}
-
-export async function buildDispatchRootTeamSnapshot(input: {
-  store: RegistryStore
-  directory: string
-  manifest: TreeManifest
-  rootSessionId: string
-  rootProfile: string
-}) {
-  const locale = readLocaleSync(input.directory)
-  const result = await buildListTeamData({
-    store: input.store,
-    directory: input.directory,
-    callerProfile: input.rootProfile,
-    sessionId: input.rootSessionId,
-  })
-  if ("error" in result || !result.execution?.length) {
-    return formatExecutionTeamSnapshotFromManifest(input.manifest, locale)
-  }
-  return formatExecutionTeamSnapshot(result.execution, {
-    youNodeId: result.you.node_id ?? input.manifest.root_node,
-    outer: result.outer,
-    locale,
-    manifest: input.manifest,
-  })
 }

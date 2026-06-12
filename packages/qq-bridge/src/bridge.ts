@@ -105,7 +105,7 @@ export class QqLeadBridge {
       const text = message.text
       const agentCommand = text ? parseAgentCommand(text) : undefined
       if (agentCommand) {
-        const reply = await handleAgentCommand(client, this.config, message.userId, agentCommand)
+        const { text: reply } = await handleAgentCommand(client, this.config, message.userId, agentCommand)
         for (const chunk of chunkText(reply, 3000)) {
           await bot.messageService.sendPrivateMessage(message.userId, [segment.text(chunk)])
         }

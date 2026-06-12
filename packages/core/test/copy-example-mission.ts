@@ -14,11 +14,11 @@ function exampleMissionEntry(): MissionEntry {
     id: missionId,
     status: "running",
     priority: "P1",
-    objective: "完善 packages/core 示例说明，验证 scaffold 与 TeamSpec 可解析",
+    objective: "完善 packages/core 示例说明，验证 scaffold 与 mission.script.ts 可解析",
     done_when: [
       "packages/core/README.md 含「示例 Mission」章节",
       "文件存在: packages/core/README.md",
-      "teamspec.yaml 与 registry 任务快照可被 @gatehouse/core 解析",
+      "mission.script.ts 与 registry 任务快照可被 @gatehouse/core 解析",
     ],
     must_not: ["不新增 plugin tool", "不修改无关包"],
     notes: "轻装 smoke 示例；验证 scaffold 与 mission 管道。",
@@ -52,7 +52,7 @@ export async function seedExampleMissionRegistry(projectDirectory: string) {
 export async function copyExampleMission(projectDir: string) {
   const destRoot = treeDir(projectDir, missionId)
   await Bun.$`mkdir -p ${destRoot}`.quiet()
-  await Bun.write(path.join(destRoot, "teamspec.yaml"), Bun.file(path.join(fixtureRoot, "teamspec.yaml")))
+  await Bun.write(path.join(destRoot, "mission.script.ts"), Bun.file(path.join(fixtureRoot, "mission.script.ts")))
 
   const missionsPath = path.join(leadDir(projectDir), "missions.yaml")
   const entry = exampleMissionEntry()
@@ -72,7 +72,7 @@ export async function copyExampleMission(projectDir: string) {
 export async function copyExampleMissionQueued(projectDir: string) {
   const destRoot = treeDir(projectDir, missionId)
   await Bun.$`mkdir -p ${destRoot}`.quiet()
-  await Bun.write(path.join(destRoot, "teamspec.yaml"), Bun.file(path.join(fixtureRoot, "teamspec.yaml")))
+  await Bun.write(path.join(destRoot, "mission.script.ts"), Bun.file(path.join(fixtureRoot, "mission.script.ts")))
 
   const entry = exampleMissionEntry()
   entry.status = "queued"
