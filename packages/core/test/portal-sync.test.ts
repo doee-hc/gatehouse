@@ -165,11 +165,20 @@ describe("portal events", () => {
   })
 
   test("emitPortalEvent posts to internal portal api across processes", async () => {
-    const port = String(18000 + Math.floor(Math.random() * 1000))
     const token = "test-internal-token"
+    const expected = {
+      type: "agent.chat" as const,
+      fromSpawnId: "lead",
+      toSpawnId: "architect",
+      text: "hello",
+    }
     let posted: unknown
+    let resolvePosted!: () => void
+    const postedPromise = new Promise<void>((resolve) => {
+      resolvePosted = resolve
+    })
     const server = Bun.serve({
-      port: Number(port),
+      port: 0,
       hostname: "127.0.0.1",
       fetch: async (request) => {
         if (request.method !== "POST" || new URL(request.url).pathname !== "/portal/api/internal/event") {
@@ -179,28 +188,31 @@ describe("portal events", () => {
           return new Response("unauthorized", { status: 401 })
         }
         posted = await request.json()
+        resolvePosted()
         return Response.json(posted)
       },
     })
 
-    process.env.GATEHOUSE_PORTAL_PORT = port
+    const prevPort = process.env.GATEHOUSE_PORTAL_PORT
+    const prevToken = process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN
+    process.env.GATEHOUSE_PORTAL_PORT = String(server.port)
     process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN = token
     setPortalInProcessDelivery(false)
-    emitPortalEvent({
-      type: "agent.chat",
-      fromSpawnId: "lead",
-      toSpawnId: "architect",
-      text: "hello",
-    })
-    await Bun.sleep(50)
-    server.stop()
-    delete process.env.GATEHOUSE_PORTAL_PORT
-    delete process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN
-    expect(posted).toEqual({
-      type: "agent.chat",
-      fromSpawnId: "lead",
-      toSpawnId: "architect",
-      text: "hello",
-    })
+    try {
+      emitPortalEvent(expected)
+      await Promise.race([
+        postedPromise,
+        Bun.sleep(5000).then(() => {
+          throw new Error("timed out waiting for portal internal event POST")
+        }),
+      ])
+      expect(posted).toEqual(expected)
+    } finally {
+      server.stop()
+      if (prevPort === undefined) delete process.env.GATEHOUSE_PORTAL_PORT
+      else process.env.GATEHOUSE_PORTAL_PORT = prevPort
+      if (prevToken === undefined) delete process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN
+      else process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN = prevToken
+    }
   })
 })
