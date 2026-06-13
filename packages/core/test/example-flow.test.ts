@@ -137,7 +137,7 @@ describe("example flow", () => {
   test("bootstrap_tree emits architect to curator portal chat", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-bootstrap-portal-chat-"))
     const token = "bootstrap-portal-chat-token"
-    const capture = startPortalInternalEventCapture(token)
+    const capture = await startPortalInternalEventCapture(token)
     try {
       await withPortalEnv(capture.port, token, async () => {
         await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()

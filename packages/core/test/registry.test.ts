@@ -204,7 +204,7 @@ describe("registry harness", () => {
   test("send_message emits agent.chat to portal api when delivered", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-registry-portal-chat-"))
     const token = "registry-test-token"
-    const capture = startPortalInternalEventCapture(token)
+    const capture = await startPortalInternalEventCapture(token)
     try {
       await withPortalEnv(capture.port, token, async () => {
         let sessionCounter = 0
@@ -467,7 +467,7 @@ describe("registry harness", () => {
   test("inner structural root send_message emits agent.chat with node spawn id", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-registry-inner-portal-chat-"))
     const token = "registry-test-token"
-    const capture = startPortalInternalEventCapture(token)
+    const capture = await startPortalInternalEventCapture(token)
     try {
       await withPortalEnv(capture.port, token, async () => {
         const pluginInput = { directory: dir, client: mockClientMinimal() } as unknown as PluginInput

@@ -21,7 +21,7 @@ import { validateReworkRequest } from "../src/orchestration/rework.ts"
 import { notifyOrchestrationWaiters } from "../src/orchestration/wait.ts"
 import type { TeamSpec } from "../src/tree/types.ts"
 import { loadMissionScript } from "../src/orchestration/script-load.ts"
-import { startPortalInternalEventCapture, withPortalEnv } from "./portal-test-server.ts"
+import { startEphemeralServer, startPortalInternalEventCapture, withPortalEnv } from "./portal-test-server.ts"
 
 const sampleTeam: TeamSpec = {
   mission_id: "orch-m1",
@@ -137,7 +137,7 @@ describe("orchestration prompt portal", () => {
   test("reply:true emits agent.chat from architect to inner node", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-orch-portal-chat-"))
     const token = "orch-test-token"
-    const capture = startPortalInternalEventCapture(token)
+    const capture = await startPortalInternalEventCapture(token)
     try {
       await withPortalEnv(capture.port, token, async () => {
         const mockClient: GatehouseClient = {
@@ -204,20 +204,16 @@ describe("orchestration prompt portal", () => {
     const postedPromise = new Promise<void>((resolve) => {
       resolvePosted = resolve
     })
-    const server = Bun.serve({
-      port: 0,
-      hostname: "127.0.0.1",
-      fetch: async (request) => {
-        if (request.method !== "POST" || new URL(request.url).pathname !== "/portal/api/internal/event") {
-          return new Response("not found", { status: 404 })
-        }
-        posted = true
-        resolvePosted()
-        return Response.json({})
-      },
+    const { server, port } = await startEphemeralServer(async (request) => {
+      if (request.method !== "POST" || new URL(request.url).pathname !== "/portal/api/internal/event") {
+        return new Response("not found", { status: 404 })
+      }
+      posted = true
+      resolvePosted()
+      return Response.json({})
     })
     try {
-      await withPortalEnv(server.port!, token, async () => {
+      await withPortalEnv(port, token, async () => {
         const mockClient: GatehouseClient = {
           session: {
             async create() {

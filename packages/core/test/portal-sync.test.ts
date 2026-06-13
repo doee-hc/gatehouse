@@ -173,7 +173,7 @@ describe("portal events", () => {
       toSpawnId: "architect",
       text: "hello",
     }
-    const capture = startPortalInternalEventCapture(token)
+    const capture = await startPortalInternalEventCapture(token)
     setPortalInProcessDelivery(false)
     try {
       await withPortalEnv(capture.port, token, async () => {

@@ -1,21 +1,33 @@
+import { isPortListening } from "../src/portal/ports.ts"
+
 type PortalInternalHandler = (request: Request) => Promise<Response> | Response
 
-export function startEphemeralServer(handler: PortalInternalHandler) {
+async function waitForServerPort(server: ReturnType<typeof Bun.serve>) {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const port = server.port
+    if (port && (await isPortListening(port))) return port
+    await Bun.sleep(10)
+  }
+  throw new Error("ephemeral server port not ready")
+}
+
+export async function startEphemeralServer(handler: PortalInternalHandler) {
   const server = Bun.serve({
     port: 0,
     hostname: "127.0.0.1",
     fetch: handler,
   })
-  return server
+  const port = await waitForServerPort(server)
+  return { server, port }
 }
 
-export function startPortalInternalEventCapture(token: string) {
+export async function startPortalInternalEventCapture(token: string) {
   let posted: unknown
   let resolvePosted!: () => void
   const postedPromise = new Promise<void>((resolve) => {
     resolvePosted = resolve
   })
-  const server = startEphemeralServer(async (request) => {
+  const { server, port } = await startEphemeralServer(async (request) => {
     if (request.method !== "POST" || new URL(request.url).pathname !== "/portal/api/internal/event") {
       return new Response("not found", { status: 404 })
     }
@@ -28,7 +40,7 @@ export function startPortalInternalEventCapture(token: string) {
   })
   return {
     server,
-    port: server.port!,
+    port,
     get posted() {
       return posted
     },
@@ -48,15 +60,20 @@ export async function withPortalEnv<T>(
   token: string,
   fn: () => Promise<T> | T,
 ): Promise<T> {
+  const api = `http://127.0.0.1:${port}`
   const prevPort = process.env.GATEHOUSE_PORTAL_PORT
+  const prevApi = process.env.GATEHOUSE_PORTAL_API
   const prevToken = process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN
   process.env.GATEHOUSE_PORTAL_PORT = String(port)
+  process.env.GATEHOUSE_PORTAL_API = api
   process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN = token
   try {
     return await fn()
   } finally {
     if (prevPort === undefined) delete process.env.GATEHOUSE_PORTAL_PORT
     else process.env.GATEHOUSE_PORTAL_PORT = prevPort
+    if (prevApi === undefined) delete process.env.GATEHOUSE_PORTAL_API
+    else process.env.GATEHOUSE_PORTAL_API = prevApi
     if (prevToken === undefined) delete process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN
     else process.env.GATEHOUSE_PORTAL_INTERNAL_TOKEN = prevToken
   }

@@ -257,7 +257,7 @@ test("requestPortalBlogCacheRefresh hits portal internal endpoint", async () => 
     resolveInvalidated = resolve
   })
 
-  const server = startEphemeralServer(async (request) => {
+  const { server, port } = await startEphemeralServer(async (request) => {
     if (new URL(request.url).pathname !== "/portal/api/internal/blog-invalidate") {
       return new Response("not found", { status: 404 })
     }
@@ -270,7 +270,7 @@ test("requestPortalBlogCacheRefresh hits portal internal endpoint", async () => 
   })
 
   try {
-    await withPortalEnv(server.port!, token, async () => {
+    await withPortalEnv(port, token, async () => {
       expect(await requestPortalBlogCacheRefresh(dir)).toBe(true)
       await invalidatedPromise
     })

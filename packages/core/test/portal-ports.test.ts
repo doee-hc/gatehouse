@@ -34,23 +34,24 @@ describe("portal ports", () => {
     const project = await mkdtemp(path.join(tmpdir(), "gh-portal-ports-"))
     resetPortalProjectSlugCacheForTests()
     const projectSlug = resolvePortalProjectSlug(project)
-    const displayServer = startEphemeralServer(() =>
-      Response.json({
+    const { server: displayServer, port: displayPort } = await startEphemeralServer((request) => {
+      if (new URL(request.url).pathname !== "/portal/api/health") {
+        return new Response("not found", { status: 404 })
+      }
+      return Response.json({
         ok: true,
         project: projectSlug,
         opencode_reachable: false,
         bridge_running: false,
         sse_active: 0,
-      }),
-    )
-    const displayPort = displayServer.port!
-    const adminServer = startEphemeralServer((request) => {
+      })
+    })
+    const { server: adminServer, port: adminPort } = await startEphemeralServer((request) => {
       if (new URL(request.url).pathname === "/portal/api/admin/status") {
         return Response.json({ configured: true })
       }
       return new Response("not found", { status: 404 })
     })
-    const adminPort = adminServer.port!
 
     const endpoints = await probePortalEndpoints(project, {
       displayPreferred: displayPort,
@@ -71,8 +72,7 @@ describe("portal ports", () => {
   })
 
   test("assertPortalPortAvailable fails when configured port is listening", async () => {
-    const server = startEphemeralServer(() => new Response("ok"))
-    const port = server.port!
+    const { server, port } = await startEphemeralServer(() => new Response("ok"))
 
     let thrown: unknown
     try {
