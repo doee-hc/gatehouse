@@ -13,6 +13,7 @@ import { applySnapshotUpdate } from "./portal/snapshot-sync.ts"
 import { BLOG_POLL_MS } from "./portal/poll-intervals.ts"
 import { applyPortalDisplayConfig, resolveSnapshotPollMs } from "./portal/runtime-poll.ts"
 import { mergeOfflineBundle, readOfflineBundle, type OfflineBundle } from "./portal/offline-cache.ts"
+import { mergeOfflineContentFromBundle, warmClientSkillCache } from "./portal/offline-content.ts"
 import { logBlogSnapshotDiff } from "./portal/snapshot-events.ts"
 import { getBlogSnapshot, setBlogSnapshot, setPortalSnapshot } from "./portal/state.ts"
 import { startPortalLiveSync } from "./portal/live-sync.ts"
@@ -59,9 +60,8 @@ async function boot() {
     setBackendConnected(true)
     mergeOfflineBundle(project, { snapshot })
   } else {
-    const diskBundle =
-      prefetchedDisk ?? (await loadOfflineDiskBundle(project).catch(() => undefined))
-    mergeDiskBundle(project, diskBundle)
+    const diskBundle = await loadOfflineDiskBundle(project).catch(() => undefined)
+    mergeDiskBundle(project, diskBundle ?? prefetchedDisk)
     const fallback = readOfflineBundle(project)
     if (fallback?.snapshot) {
       snapshot = fallback.snapshot
@@ -126,6 +126,12 @@ async function boot() {
   }
 
   if (blog) setBlogSnapshot(blog)
+
+  if (!offline) {
+    void loadOfflineDiskBundle(project)
+      .then((disk) => mergeOfflineContentFromBundle(project, disk))
+      .finally(() => warmClientSkillCache(project, snapshot.skills))
+  }
 
   startBlogPolling((next) => {
     logBlogSnapshotDiff(getBlogSnapshot(), next)

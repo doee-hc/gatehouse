@@ -30,11 +30,12 @@ import { resolvePortalProjectSlug } from "./portal-project.ts"
 import { portalSnapshotCacheAgeMs } from "./snapshot.ts"
 import { getPortalDisplaySettings, toBrowserDisplayConfig } from "./portal-display-settings.ts"
 import {
+  ensurePortalOfflineDiskContent,
   mergePortalOfflineDiskCache,
   portalOfflineSkillCacheKey,
   readPortalOfflineDiskBundle,
   readPortalOfflineDiskSkillDetail,
-  refreshPortalOfflineSkillsCache,
+  schedulePortalOfflineContentRefresh,
 } from "./offline-disk-cache.ts"
 import { acquirePortalSseConnection, portalSseActiveCount } from "./sse-registry.ts"
 
@@ -234,10 +235,12 @@ export function createPortalFetchHandler(options: PortalFetchOptions) {
     }
 
     if (url.pathname === "/portal/api/offline-cache") {
-      const bundle = await readPortalOfflineDiskBundle(projectDirectory)
+      let bundle = await readPortalOfflineDiskBundle(projectDirectory)
       if (!bundle?.snapshot) {
         return withCors(json({ error: "offline_cache_unavailable" }, 503), request)
       }
+      bundle =
+        (await ensurePortalOfflineDiskContent(projectDirectory, bundle.snapshot)) ?? bundle
       return withCors(json(bundle), request)
     }
 
@@ -253,7 +256,7 @@ export function createPortalFetchHandler(options: PortalFetchOptions) {
       if (snapshot) {
         const browserSnapshot = toBrowserSnapshot(projectDirectory, snapshot)
         void mergePortalOfflineDiskCache(projectDirectory, { snapshot: browserSnapshot })
-        void refreshPortalOfflineSkillsCache(projectDirectory, snapshot.skills)
+        schedulePortalOfflineContentRefresh(projectDirectory, snapshot.skills)
         return withCors(json(browserSnapshot), request)
       }
       const cached = (await readPortalOfflineDiskBundle(projectDirectory))?.snapshot

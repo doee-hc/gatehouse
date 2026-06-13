@@ -22,6 +22,14 @@ function skillDetailCacheKey(projectDirectory: string, domain: string, name: str
   return `${projectDirectory}\0${domain}\0${name}`
 }
 
+export async function skillSourceMtimeMs(projectDirectory: string, domain: string, name: string) {
+  const filePath = skillFilePath(projectDirectory, domain, name)
+  if (!filePath) return undefined
+  const file = Bun.file(filePath)
+  if (!(await file.exists())) return undefined
+  return (await file.stat()).mtimeMs
+}
+
 export async function readSkillDetail(projectDirectory: string, domain: string, name: string) {
   const filePath = skillFilePath(projectDirectory, domain, name)
   if (!filePath) return undefined

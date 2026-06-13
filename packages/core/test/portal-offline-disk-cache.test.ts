@@ -1,11 +1,19 @@
 import { expect, test } from "bun:test"
 import path from "node:path"
+import { buildBlogSnapshot, clearBlogCacheForTests } from "../src/portal/blog.ts"
+import { publishBlogPost } from "../src/portal/blog-publish.ts"
 import {
+  clearPortalOfflineRefreshStateForTests,
+  ensurePortalOfflineDiskContent,
   mergePortalOfflineDiskCache,
+  portalOfflineContentTtlMs,
   portalOfflineSkillCacheKey,
   readPortalOfflineDiskBundle,
+  readPortalOfflineDiskManifest,
   readPortalOfflineDiskSkillDetail,
+  refreshPortalOfflineContentCache,
 } from "../src/portal/offline-disk-cache.ts"
+import { clearSkillDetailCacheForTests } from "../src/portal/skill.ts"
 import { portalOfflineCacheDir } from "../src/paths.ts"
 
 const dir = path.join(import.meta.dir, ".tmp-offline-disk-cache")
@@ -81,4 +89,107 @@ test("mergePortalOfflineDiskCache merges skill patches without dropping snapshot
   const bundle = await readPortalOfflineDiskBundle(dir)
   expect(bundle?.snapshot?.project).toBe("demo")
   expect(bundle?.skills?.[portalOfflineSkillCacheKey("docs", "write")]?.markdown).toBe("# Write\n")
+})
+
+test("refreshPortalOfflineContentCache writes blog markdown and skill bodies", async () => {
+  clearBlogCacheForTests()
+  await Bun.$`rm -rf ${dir} && mkdir -p ${dir}/.gatehouse/portal/cache ${dir}/.gatehouse/skills/by-domain/docs/write ${dir}/.gatehouse/lead`.quiet()
+
+  await Bun.write(
+    path.join(dir, ".gatehouse/skills/by-domain/docs/write/SKILL.md"),
+    "# Write Skill\n\nBody",
+  )
+  await Bun.write(path.join(dir, ".gatehouse/lead/missions.yaml"), "schema_version: 2\nmissions: []\n")
+  await Bun.write(path.join(dir, "posts/hello.md"), "# Hello\n\nBlog body")
+  await publishBlogPost(dir, { postId: "team:hello", reportPath: "posts/hello.md" })
+
+  await mergePortalOfflineDiskCache(dir, {
+    snapshot: {
+      project: "demo",
+      updated_at: "2026-06-14T00:00:00.000Z",
+      missions: [],
+      agents: [],
+      skills: [{ name: "write", domain: "docs", path: ".gatehouse/skills/by-domain/docs/write/SKILL.md" }],
+    },
+  })
+
+  await refreshPortalOfflineContentCache(
+    dir,
+    [{ name: "write", domain: "docs", path: ".gatehouse/skills/by-domain/docs/write/SKILL.md" }],
+    { force: true },
+  )
+
+  const bundle = await readPortalOfflineDiskBundle(dir)
+  expect(bundle?.skills?.[portalOfflineSkillCacheKey("docs", "write")]?.markdown).toContain("# Write Skill")
+  expect(bundle?.blog?.groups.some((group) => group.posts.some((post) => post.markdown.includes("Blog body")))).toBe(
+    true,
+  )
+
+  const ensured = await ensurePortalOfflineDiskContent(dir, bundle!.snapshot!)
+  expect(ensured?.blog?.groups.some((group) => group.posts.some((post) => post.markdown.includes("Blog body")))).toBe(
+    true,
+  )
+  expect((await buildBlogSnapshot(dir)).groups.length > 0).toBe(true)
+})
+
+test("refreshPortalOfflineContentCache skips work within TTL when content is complete", async () => {
+  clearBlogCacheForTests()
+  clearSkillDetailCacheForTests()
+  clearPortalOfflineRefreshStateForTests()
+
+  const previousTtl = process.env.GATEHOUSE_PORTAL_OFFLINE_CONTENT_TTL_MS
+  process.env.GATEHOUSE_PORTAL_OFFLINE_CONTENT_TTL_MS = String(60_000)
+
+  try {
+    await Bun.$`rm -rf ${dir} && mkdir -p ${dir}/.gatehouse/portal/cache ${dir}/.gatehouse/skills/by-domain/docs/write ${dir}/.gatehouse/lead`.quiet()
+    await Bun.write(
+      path.join(dir, ".gatehouse/skills/by-domain/docs/write/SKILL.md"),
+      "# Write Skill\n\nBody",
+    )
+    await Bun.write(path.join(dir, ".gatehouse/lead/missions.yaml"), "schema_version: 2\nmissions: []\n")
+
+    const skills = [{ name: "write", domain: "docs", path: ".gatehouse/skills/by-domain/docs/write/SKILL.md" }]
+    await mergePortalOfflineDiskCache(dir, {
+      snapshot: {
+        project: "demo",
+        updated_at: "2026-06-14T00:00:00.000Z",
+        missions: [],
+        agents: [],
+        skills,
+      },
+    })
+    await refreshPortalOfflineContentCache(dir, skills, { force: true })
+
+    const before = await readPortalOfflineDiskManifest(dir)
+    await refreshPortalOfflineContentCache(dir, skills)
+    const after = await readPortalOfflineDiskManifest(dir)
+
+    expect(before?.content?.refreshedAt).toBe(after?.content?.refreshedAt)
+    expect(portalOfflineContentTtlMs()).toBe(60_000)
+  } finally {
+    if (previousTtl === undefined) delete process.env.GATEHOUSE_PORTAL_OFFLINE_CONTENT_TTL_MS
+    else process.env.GATEHOUSE_PORTAL_OFFLINE_CONTENT_TTL_MS = previousTtl
+    clearPortalOfflineRefreshStateForTests()
+  }
+})
+
+test("refreshPortalOfflineContentCache incrementally updates changed skill files", async () => {
+  clearSkillDetailCacheForTests()
+  clearPortalOfflineRefreshStateForTests()
+
+  await Bun.$`rm -rf ${dir} && mkdir -p ${dir}/.gatehouse/portal/cache ${dir}/.gatehouse/skills/by-domain/docs/write ${dir}/.gatehouse/lead`.quiet()
+  const skillPath = path.join(dir, ".gatehouse/skills/by-domain/docs/write/SKILL.md")
+  await Bun.write(skillPath, "# Version 1\n")
+  await Bun.write(path.join(dir, ".gatehouse/lead/missions.yaml"), "schema_version: 2\nmissions: []\n")
+
+  const skills = [{ name: "write", domain: "docs", path: ".gatehouse/skills/by-domain/docs/write/SKILL.md" }]
+  await refreshPortalOfflineContentCache(dir, skills, { force: true })
+
+  await Bun.write(skillPath, "# Version 2\n")
+  clearSkillDetailCacheForTests()
+  await Bun.sleep(1100)
+  await refreshPortalOfflineContentCache(dir, skills, { force: true })
+
+  const bundle = await readPortalOfflineDiskBundle(dir)
+  expect(bundle?.skills?.[portalOfflineSkillCacheKey("docs", "write")]?.markdown).toBe("# Version 2\n")
 })
