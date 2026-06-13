@@ -1,8 +1,21 @@
 import type { TeamSpec } from "../tree/types.ts"
 
-export const ORCHESTRATION_STATE_SCHEMA_VERSION = 1
+export const ORCHESTRATION_STATE_SCHEMA_VERSION = 2
 
 export type OrchestrationNodeStatus = "pending" | "running" | "done" | "blocked" | "rework"
+
+export type NodeArtifact = {
+  path: string
+  description: string
+}
+
+export type NodeCompletion = {
+  summary: string
+  artifacts?: NodeArtifact[]
+  risks?: string[]
+  completed_at: string
+  round?: number
+}
 
 export type OrchestrationNodeState = {
   status: OrchestrationNodeStatus
@@ -11,6 +24,7 @@ export type OrchestrationNodeState = {
   rework_reason?: string
   activated_at?: string
   completed_at?: string
+  completion?: NodeCompletion
 }
 
 export type OrchestrationState = {
@@ -44,6 +58,8 @@ export type PromptInput = {
   text?: string
   system?: string
   reply?: boolean
+  /** Node ids whose structured completion (from gatehouse_execution_complete) is injected into the work order. */
+  rollupFrom?: string[]
 }
 
 export type MissionContext = {

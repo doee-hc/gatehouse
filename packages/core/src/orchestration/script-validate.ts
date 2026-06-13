@@ -12,6 +12,7 @@ export function dryRunMissionScriptSource(source: string, expectedMissionId?: st
     validateTeamSpec(parsed.team)
     validateOrchestrateStaticNodes(parsed.team, parsed.orchestrateSource)
     validatePromptNodesHaveBrief(parsed.orchestrateSource)
+    validateNoPortalPublishReferences(parsed.orchestrateSource)
     if (parsed.meta?.phases) {
       for (const phase of parsed.meta.phases) {
         if (typeof phase !== "string" || !phase.trim()) {
@@ -65,6 +66,16 @@ function extractSetBriefNodes(orchestrateSource: string) {
   return nodes
 }
 
+function validateNoPortalPublishReferences(orchestrateSource?: string) {
+  if (!orchestrateSource) return
+  if (/gatehouse_publish_blog|\bpublish_blog\b/i.test(orchestrateSource)) {
+    throw new MissionScriptParseError(
+      "SCRIPT_FORBIDDEN_PUBLISH",
+      "orchestrate must not reference gatehouse_publish_blog; Portal publish is system-managed on gatehouse_mission_complete(done)",
+    )
+  }
+}
+
 function validatePromptNodesHaveBrief(orchestrateSource?: string) {
   if (!orchestrateSource) return
   const briefNodes = extractSetBriefNodes(orchestrateSource)
@@ -76,6 +87,18 @@ function validatePromptNodesHaveBrief(orchestrateSource?: string) {
       )
     }
   }
+}
+
+function extractRollupFromNodes(orchestrateSource: string) {
+  const nodes = new Set<string>()
+  const pattern = /rollupFrom\s*:\s*\[([^\]]*)\]/g
+  for (const match of orchestrateSource.matchAll(pattern)) {
+    const body = match[1] ?? ""
+    for (const idMatch of body.matchAll(/["'`]([^"'`]+)["'`]/g)) {
+      if (idMatch[1]) nodes.add(idMatch[1])
+    }
+  }
+  return nodes
 }
 
 function validateOrchestrateStaticNodes(team: TeamSpec, orchestrateSource?: string) {
@@ -98,6 +121,14 @@ function validateOrchestrateStaticNodes(team: TeamSpec, orchestrateSource?: stri
           `orchestrate references unknown node_id: ${nodeId}`,
         )
       }
+    }
+  }
+  for (const nodeId of extractRollupFromNodes(orchestrateSource)) {
+    if (!nodeIds.has(nodeId)) {
+      throw new MissionScriptParseError(
+        "SCRIPT_UNKNOWN_NODE",
+        `orchestrate rollupFrom references unknown node_id: ${nodeId}`,
+      )
     }
   }
 }

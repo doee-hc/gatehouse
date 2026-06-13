@@ -21,9 +21,7 @@ const innerExecutionGatehousePermissions = {
   gatehouse_skill_extract_record: "allow",
   gatehouse_execution_complete: "allow",
   gatehouse_execution_rework: "allow",
-  gatehouse_mission_context: "allow",
-  gatehouse_node_brief: "allow",
-  gatehouse_mission_contract: "allow",
+  gatehouse_mission_info: "allow",
 } as const
 
 /** Retro fork sessions (managerRetroOrder nodes → build-root / build-coordinator). */
@@ -34,7 +32,6 @@ const innerRetroGatehousePermissions = {
 /** Mission lifecycle — outer core team only; hidden from execution profiles (root / coordinators). */
 const innerMissionLifecycleDenials = {
   gatehouse_mission_start: "deny",
-  gatehouse_mission_current: "deny",
   gatehouse_mission_retro: "deny",
   gatehouse_mission_complete: "deny",
   gatehouse_delivery_review: "deny",
@@ -57,24 +54,19 @@ export const leadPermissions = {
   gatehouse_bootstrap_tree: "deny",
   gatehouse_send_message: "allow",
   gatehouse_mission_start: "allow",
-  gatehouse_mission_current: "allow",
+  gatehouse_mission_info: "allow",
   gatehouse_mission_retro: "allow",
   gatehouse_mission_complete: "allow",
   gatehouse_list_team: "allow",
   gatehouse_session_snapshot: "allow",
   gatehouse_apply_skill_domains: "deny",
   gatehouse_skill_extract_record: "deny",
-  gatehouse_publish_blog: "deny",
   gatehouse_unpublish_blog: "allow",
-  gatehouse_delivery_submit: "deny",
   gatehouse_delivery_review: "allow",
   gatehouse_delivery_status: "allow",
   gatehouse_execution_complete: "deny",
   gatehouse_execution_rework: "deny",
   gatehouse_execution_status: "allow",
-  gatehouse_mission_context: "allow",
-  gatehouse_mission_contract: "allow",
-  gatehouse_node_brief: "allow",
   ...outerRetroRecordDenials,
   ...nonArbiterInspectorDenials,
 } as const
@@ -87,23 +79,18 @@ export const architectSessionPermissions = {
   gatehouse_send_message: "allow",
   gatehouse_list_team: "allow",
   gatehouse_mission_start: "deny",
-  gatehouse_mission_current: "allow",
+  gatehouse_mission_info: "allow",
   gatehouse_mission_retro: "deny",
   gatehouse_mission_complete: "deny",
   gatehouse_session_snapshot: "allow",
   gatehouse_apply_skill_domains: "deny",
   gatehouse_skill_extract_record: "deny",
-  gatehouse_publish_blog: "deny",
   gatehouse_unpublish_blog: "deny",
-  gatehouse_delivery_submit: "deny",
   gatehouse_delivery_review: "deny",
   gatehouse_delivery_status: "allow",
   gatehouse_execution_complete: "deny",
   gatehouse_execution_rework: "deny",
   gatehouse_execution_status: "allow",
-  gatehouse_mission_context: "allow",
-  gatehouse_mission_contract: "allow",
-  gatehouse_node_brief: "allow",
   ...outerRetroRecordDenials,
   ...nonArbiterInspectorDenials,
 } as const
@@ -117,33 +104,30 @@ export const curatorSessionPermissions = {
   gatehouse_list_team: "allow",
   gatehouse_apply_skill_domains: "allow",
   gatehouse_mission_start: "deny",
-  gatehouse_mission_current: "allow",
+  gatehouse_mission_info: "allow",
   gatehouse_mission_retro: "deny",
   gatehouse_mission_complete: "deny",
   gatehouse_session_snapshot: "allow",
   gatehouse_skill_extract_record: "deny",
-  gatehouse_publish_blog: "deny",
   gatehouse_unpublish_blog: "deny",
-  gatehouse_delivery_submit: "deny",
   gatehouse_delivery_review: "deny",
   gatehouse_delivery_status: "deny",
   gatehouse_execution_complete: "deny",
   gatehouse_execution_rework: "deny",
   gatehouse_execution_status: "deny",
-  gatehouse_mission_context: "deny",
-  gatehouse_node_brief: "deny",
-  gatehouse_mission_contract: "deny",
   ...outerRetroRecordDenials,
   ...nonArbiterInspectorDenials,
 } as const
 
 /** Leaf execution (OpenCode build) — mission lifecycle hidden; coordination tools unchanged. */
 export const buildExecutionPermissions = {
+  question: "allow",
+  plan_enter: "allow",
+  task: "allow",
   gatehouse_execution_complete: "allow",
   gatehouse_execution_rework: "allow",
-  gatehouse_mission_context: "allow",
-  gatehouse_node_brief: "allow",
-  gatehouse_mission_contract: "deny",
+  gatehouse_mission_info: "allow",
+  gatehouse_unpublish_blog: "deny",
   ...innerMissionLifecycleDenials,
   ...nonArbiterInspectorDenials,
 } as const
@@ -153,6 +137,7 @@ const innerCoordinatorPermissions = {
   question: "allow",
   plan_enter: "allow",
   task: "deny",
+  gatehouse_unpublish_blog: "deny",
   ...innerExecutionGatehousePermissions,
   ...innerRetroGatehousePermissions,
   ...innerMissionLifecycleDenials,
@@ -160,7 +145,6 @@ const innerCoordinatorPermissions = {
 } as const
 
 const structuralRootDeliveryPermissions = {
-  gatehouse_delivery_submit: "allow",
   gatehouse_delivery_status: "allow",
   gatehouse_execution_status: "allow",
 } as const
@@ -196,7 +180,7 @@ export const arbiterSessionPermissions = {
   gatehouse_bootstrap_tree: "deny",
   gatehouse_send_message: "deny",
   gatehouse_mission_start: "deny",
-  gatehouse_mission_current: "deny",
+  gatehouse_mission_info: "deny",
   gatehouse_mission_retro: "deny",
   gatehouse_mission_complete: "deny",
   ...outerRetroRecordDenials,
@@ -209,17 +193,12 @@ export const arbiterSessionPermissions = {
   gatehouse_session_snapshot: "allow",
   gatehouse_inspector_queue: "allow",
   gatehouse_inspector_decide: "allow",
-  gatehouse_publish_blog: "deny",
   gatehouse_unpublish_blog: "deny",
-  gatehouse_delivery_submit: "deny",
   gatehouse_delivery_review: "deny",
   gatehouse_delivery_status: "deny",
   gatehouse_execution_complete: "deny",
   gatehouse_execution_rework: "deny",
   gatehouse_execution_status: "deny",
-  gatehouse_mission_context: "deny",
-  gatehouse_node_brief: "deny",
-  gatehouse_mission_contract: "deny",
 } as const
 
 export const agentPermissionByAgentFile: Record<string, AgentPermissionMap> = {
@@ -230,6 +209,7 @@ export const agentPermissionByAgentFile: Record<string, AgentPermissionMap> = {
   "build-root.md": buildRootPermissions,
   "build-root-solo.md": buildRootSoloPermissions,
   "build-coordinator.md": buildCoordinatorPermissions,
+  "build.md": buildExecutionPermissions,
 }
 
 /** Map permission `deny` entries to legacy OpenCode `tools: false` (hide from LLM tool schema). */

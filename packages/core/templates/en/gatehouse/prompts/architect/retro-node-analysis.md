@@ -72,7 +72,7 @@ Suggested structure:
 
 ## Task assignment & prompt constraints
 - Was assignment clear (who / what / done_when):
-- Node `gatehouse_node_brief` effective, too loose/tight:
+- Node `gatehouse_mission_info` effective, too loose/tight:
 - Child prompts causing duplicate work or overlap:
 
 ## Coordination & topology (for {{architect_name}} architect-meta)
@@ -94,7 +94,7 @@ Suggested structure:
 
 ```
 gatehouse_retro_record()
-# do not gatehouse_publish_blog retro reports
+# retro reports are internal — do not publish manually
 ```
 
 **Do not** `gatehouse_send_message` {{architect_name}} — Gatehouse auto-notifies {{architect_name}} after all nodes record (with retro reports and retro-toolkit curation tasks).

@@ -34,6 +34,22 @@ export function blogMissionIdFromDeliverablePostId(postId: string) {
   return postId.slice(0, at) || undefined
 }
 
+/** Project deliverable paths from path_exists checks (excludes .gatehouse/ coordination files). */
+export function deliverablePathsFromCriteria(criteria: DoneWhenCriterion[]) {
+  const paths: string[] = []
+  const seen = new Set<string>()
+  for (const criterion of criteria) {
+    if (criterion.check.kind !== "path_exists") continue
+    const normalized = normalizeProjectRelPath(criterion.check.path)
+    if (normalized.startsWith(".gatehouse/")) continue
+    if (seen.has(normalized)) continue
+    seen.add(normalized)
+    paths.push(normalized)
+  }
+  return paths
+}
+
+/** @deprecated Legacy publish: metadata on criteria; prefer deliverablePathsFromCriteria. */
 export function publishPathsFromCriteria(criteria: DoneWhenCriterion[]) {
   const paths: string[] = []
   const seen = new Set<string>()
@@ -47,16 +63,25 @@ export function publishPathsFromCriteria(criteria: DoneWhenCriterion[]) {
   return paths
 }
 
-export function criterionIdForPublishPath(criteria: DoneWhenCriterion[], relPath: string) {
+export function criterionIdForDeliverablePath(criteria: DoneWhenCriterion[], relPath: string) {
   const normalized = normalizeProjectRelPath(relPath)
-  return criteria.find((item) => item.publishPath && normalizeProjectRelPath(item.publishPath) === normalized)?.id
+  return criteria.find(
+    (item) =>
+      item.check.kind === "path_exists" && normalizeProjectRelPath(item.check.path) === normalized,
+  )?.id
+}
+
+export function criterionIdForPublishPath(criteria: DoneWhenCriterion[], relPath: string) {
+  return criterionIdForDeliverablePath(criteria, relPath)
+}
+
+export function isDeliverablePathAllowed(criteria: DoneWhenCriterion[], relPath: string) {
+  const normalized = normalizeProjectRelPath(relPath)
+  return deliverablePathsFromCriteria(criteria).some((item) => item === normalized)
 }
 
 export function isPublishPathAllowed(criteria: DoneWhenCriterion[], relPath: string) {
-  const normalized = normalizeProjectRelPath(relPath)
-  return criteria.some(
-    (item) => item.publishPath && normalizeProjectRelPath(item.publishPath) === normalized,
-  )
+  return isDeliverablePathAllowed(criteria, relPath)
 }
 
 export function resolveSkillBlogPostId(relPath: string) {
@@ -81,7 +106,7 @@ export function resolvePublishTarget(input: {
     return {
       kind: "blocked",
       path: pathNorm,
-      reason: "Gatehouse coordination reports are not publishable; use project deliverable paths with done_when publish:",
+      reason: "Gatehouse coordination reports are not publishable; use project deliverable paths from done_when",
     }
   }
   const skillId = resolveSkillBlogPostId(pathNorm)
@@ -92,7 +117,7 @@ export function resolvePublishTarget(input: {
     return {
       kind: "blocked",
       path: pathNorm,
-      reason: "Only done_when publish: paths (project deliverables) or domain SKILL.md may be published",
+      reason: "Only mission deliverable paths (done_when path_exists) or domain SKILL.md may be published",
     }
   }
   if (!isPublishPathAllowed(input.criteria, pathNorm)) {
@@ -100,10 +125,8 @@ export function resolvePublishTarget(input: {
       kind: "blocked",
       path: pathNorm,
       reason:
-        `Path is not listed in done_when publish: for mission ${input.missionId}. ` +
-        `The publish allowlist is frozen at gatehouse_mission_start (registry.db); ` +
-        `editing missions.yaml after start cannot grant publish permission. ` +
-        `Add publish: to done_when before start, or run a separate publish mission.`,
+        `Path is not a mission deliverable (done_when path_exists) for mission ${input.missionId}. ` +
+        `Lead may publish accepted deliverables via gatehouse_mission_complete(publish_deliverables=true).`,
     }
   }
   return {
@@ -114,7 +137,7 @@ export function resolvePublishTarget(input: {
   }
 }
 
-/** Paths marked publish: whose precheck is met (or force submit). */
+/** Deliverable paths whose path_exists precheck is met (or force submit). */
 export function deliverablesReadyToPublish(
   criteria: DoneWhenCriterion[],
   precheck: { criterion_id: number; status: string }[],
@@ -123,8 +146,8 @@ export function deliverablesReadyToPublish(
   const metIds = new Set(
     precheck.filter((item) => item.status === "met" || item.status === "partial").map((item) => item.criterion_id),
   )
-  return publishPathsFromCriteria(criteria).filter((publishPath) => {
-    const criterionId = criterionIdForPublishPath(criteria, publishPath)
+  return deliverablePathsFromCriteria(criteria).filter((publishPath) => {
+    const criterionId = criterionIdForDeliverablePath(criteria, publishPath)
     if (criterionId === undefined) return false
     if (forceSubmit) return true
     return metIds.has(criterionId)

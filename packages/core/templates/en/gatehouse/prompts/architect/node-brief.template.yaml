@@ -1,9 +1,11 @@
 # Copy to .gatehouse/trees/<mission_id>/node-briefs/<node_id>.yaml
 node_id: <node_id>
-role: Execution member
+role: Executor
 your_work:
-  - Concrete deliverable for this node (primary guide)
+  - Concrete deliverable for this node
 not_your_job:
-  - Out of scope for this node
+  - Out of scope (list sibling scopes here to prevent overlap)
 acceptance_slice:
-  - Node-level acceptance slice (not full-mission done_when)
+  - path: reports/<node_id>.md
+  - Hard word band example: 1500–1800 words markdown, one-shot within ±10% (no edit/count loops)
+  - Deliver only this node's path; do not read sibling node artifacts

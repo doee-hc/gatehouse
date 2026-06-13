@@ -101,6 +101,8 @@ function assertNodeInTeam(team: TeamSpec, nodeId: string) {
 function assertPromptAllowed(team: TeamSpec, nodeIds: string[], input: PromptInput, replyCount: number) {
   if (nodeIds.length === 0) throw new Error("prompt requires at least one nodeId")
   for (const nodeId of nodeIds) assertNodeInTeam(team, nodeId)
+  const rollupFrom = input.rollupFrom?.filter((id) => id.trim()) ?? []
+  for (const nodeId of rollupFrom) assertNodeInTeam(team, nodeId)
   const text = input.text ?? ""
   if (text.length > PROMPT_TEXT_MAX) {
     throw new Error(`prompt text exceeds ${PROMPT_TEXT_MAX} bytes`)
@@ -144,6 +146,7 @@ export function createMissionContext(input: {
           missionId,
           nodeId,
           prompt: promptInput,
+          team,
         })
       }
       writeOrchestrationState(plugin.directory, state)

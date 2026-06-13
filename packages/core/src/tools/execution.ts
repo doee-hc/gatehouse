@@ -1,19 +1,56 @@
 import { tool, type PluginInput } from "@opencode-ai/plugin"
 import { getRegistryStore } from "../registry/context.ts"
+import { isInnerStructuralRoot } from "../registry/types.ts"
 import { orchestrationComplete, orchestrationRework } from "../orchestration/events.ts"
+import { parseArtifactsInput, parseRisksInput } from "../orchestration/completion.ts"
 import { hasOrchestrationRuntime, readOrchestrationState } from "../orchestration/state.ts"
+import type { NodeCompletion } from "../orchestration/types.ts"
+import {
+  formatPrecheckSummary,
+  precheckHasUnmet,
+  runDeliveryPrecheck,
+} from "../delivery/criteria.ts"
+import { parseEvidenceInput } from "../delivery/evidence.ts"
+import { pendingMissionPublishPaths } from "../delivery/publish-artifacts.ts"
+import { submitDeliveryOnRootComplete } from "../delivery/root-complete.ts"
+import { buildCriteriaForMission } from "../delivery/store.ts"
+import { readMissionsDocument } from "../missions/store.ts"
+import { RegistryDatabase } from "../registry/db.ts"
 import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
+
+function allOtherNodesDone(
+  state: NonNullable<ReturnType<typeof readOrchestrationState>>,
+  nodeId: string,
+) {
+  return Object.entries(state.nodes).every(([id, entry]) => id === nodeId || entry.status === "done")
+}
 
 export function executionCompleteTool(input: PluginInput) {
   return tool({
     description:
-      "Signal that this execution node finished its Node Brief work. Advances orchestration (unblocks nodes waiting on you). Use after writing node delivery report when applicable.",
+      "Signal that this execution node finished its Node Brief work. Advances orchestration (unblocks nodes waiting on you). Structural root: when all nodes are done, runs done_when precheck, records delivery, and notifies lead automatically. Put deliverables in the project tree; pass artifact paths with descriptions in artifacts.",
     args: {
-      summary: tool.schema.string().optional().describe("Short completion summary"),
-      delivery_path: tool.schema
+      summary: tool.schema.string().min(1).describe("Short completion summary (required)"),
+      artifacts: tool.schema
         .string()
         .optional()
-        .describe("Path to reports/nodes/<node_id>-delivery.md if written"),
+        .describe(
+          'Project deliverable paths with descriptions as JSON array: [{"path":"docs/foo.md","description":"..."}]',
+        ),
+      risks: tool.schema
+        .string()
+        .optional()
+        .describe('Open risks or unfinished items as JSON array of strings, or omit if none'),
+      force_reason: tool.schema
+        .string()
+        .optional()
+        .describe("Structural root only, final delivery: required when done_when precheck has unmet items"),
+      evidence: tool.schema
+        .string()
+        .optional()
+        .describe(
+          'Structural root only, final delivery: evidence array as JSON string or array: [{"criterion_id":0,"status":"met","proof":"..."}]',
+        ),
     },
     async execute(args, context) {
       const toolName = "gatehouse_execution_complete"
@@ -29,7 +66,20 @@ export function executionCompleteTool(input: PluginInput) {
 
         const missionId = sender.missionId
         const nodeId = sender.nodeId
-        const deliveryPath = args.delivery_path
+        const summary = args.summary.trim()
+        const isRoot = isInnerStructuralRoot(sender)
+
+        let artifacts: ReturnType<typeof parseArtifactsInput>
+        let risks: ReturnType<typeof parseRisksInput>
+        let evidence: ReturnType<typeof parseEvidenceInput>
+        try {
+          artifacts = parseArtifactsInput(args.artifacts)
+          risks = parseRisksInput(args.risks)
+          evidence = parseEvidenceInput(args.evidence)
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error)
+          return { output: toolFail(toolName, "INVALID_COMPLETION", message), ...toolMetadata(toolName) }
+        }
 
         if (!hasOrchestrationRuntime(input.directory, missionId)) {
           return {
@@ -42,12 +92,63 @@ export function executionCompleteTool(input: PluginInput) {
           }
         }
 
+        const state = readOrchestrationState(input.directory, missionId)
+        const node = state?.nodes[nodeId]
+        const finalRootDelivery = Boolean(isRoot && state && allOtherNodesDone(state, nodeId))
+
+        if (finalRootDelivery) {
+          const missionsDoc = await readMissionsDocument(input.directory)
+          const mission = missionsDoc.missions.find((entry) => entry.id === missionId)
+          if (!mission) {
+            return {
+              output: toolFail(toolName, "MISSION_NOT_FOUND", `Mission not found in missions.yaml: ${missionId}`),
+              ...toolMetadata(toolName),
+            }
+          }
+          if (mission.status !== "running") {
+            return {
+              output: toolFail(
+                toolName,
+                "MISSION_NOT_RUNNING",
+                `Mission ${missionId} must be running to deliver (current: ${mission.status})`,
+              ),
+              ...toolMetadata(toolName),
+            }
+          }
+          const criteria = await buildCriteriaForMission(input.directory, missionId, mission)
+          const precheck = await runDeliveryPrecheck(input.directory, criteria)
+          if (precheckHasUnmet(precheck) && !args.force_reason?.trim()) {
+            const failed = precheck.filter((item) => item.status === "unmet")
+            return {
+              output: toolFail(
+                toolName,
+                "DONE_WHEN_PRECHECK_FAILED",
+                `done_when precheck failed for ${failed.length} criterion(s); fix issues or pass force_reason`,
+                { precheck: formatPrecheckSummary(precheck, criteria) },
+              ),
+              ...toolMetadata(toolName),
+            }
+          }
+        }
+
+        const completion: NodeCompletion = {
+          summary,
+          completed_at: new Date().toISOString(),
+          ...(artifacts?.length && { artifacts }),
+          ...(risks?.length && { risks }),
+          ...(node?.round !== undefined && { round: node.round }),
+        }
+
+        const scriptRecord = new RegistryDatabase(input.directory, { readonly: true }).getMissionScript(missionId)
+        const isStructuralRoot = scriptRecord?.team.root === nodeId
+
         const result = await orchestrationComplete({
           plugin: input,
           store,
           missionId,
           nodeId,
-          ...(deliveryPath && { deliveryPath }),
+          completion,
+          skipAcceptanceSlice: Boolean(isStructuralRoot && state && allOtherNodesDone(state, nodeId)),
         })
 
         if (result.status === "no_orchestration") {
@@ -71,6 +172,39 @@ export function executionCompleteTool(input: PluginInput) {
             ...toolMetadata(toolName),
           }
         }
+        if (result.status === "acceptance_precheck_failed") {
+          return {
+            output: toolFail(toolName, "ACCEPTANCE_PRECHECK_FAILED", result.message, {
+              node_id: result.node_id,
+              precheck: result.precheck,
+            }),
+            ...toolMetadata(toolName),
+          }
+        }
+
+        let delivery:
+          | Awaited<ReturnType<typeof submitDeliveryOnRootComplete>>
+          | undefined
+        if (isRoot && result.all_done) {
+          try {
+            delivery = await submitDeliveryOnRootComplete({
+              plugin: input,
+              store,
+              missionId,
+              nodeId,
+              summary,
+              senderSessionId: context.sessionID,
+              senderProfile: context.agent,
+              senderAgentId: sender.agentId,
+              forceReason: args.force_reason,
+              evidence,
+            })
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error)
+            const code = message.includes("Precheck failed") ? "PRECHECK_FAILED" : "DELIVERY_FAILED"
+            return { output: toolFail(toolName, code, message), ...toolMetadata(toolName) }
+          }
+        }
 
         await store.flushPendingDeliveries()
 
@@ -79,7 +213,15 @@ export function executionCompleteTool(input: PluginInput) {
             node_id: result.node_id,
             activated: "activated" in result ? result.activated : result.unblocked,
             all_nodes_done: result.all_done,
-            ...(args.summary && { summary: args.summary }),
+            summary,
+            ...(artifacts?.length && { artifacts }),
+            ...(risks?.length && { risks }),
+            ...(delivery && {
+              delivery_version: delivery.record.version,
+              delivery_status: delivery.record.status,
+              lead_delivery: delivery.lead_delivery,
+              pending_publish_paths: pendingMissionPublishPaths(delivery.record.criteria),
+            }),
           }),
           ...toolMetadata(toolName),
         }
@@ -103,7 +245,7 @@ export function executionReworkTool(input: PluginInput) {
         .describe(
           "Minimal correction scope (good: 'Fix README.md Install section only: pin bun version'; bad: 'Output wrong, redo everything')",
         ),
-      evidence_path: tool.schema.string().optional().describe("Optional path to delivery or log evidence"),
+      evidence_path: tool.schema.string().optional().describe("Optional path to project artifact or log evidence"),
     },
     async execute(args, context) {
       const toolName = "gatehouse_execution_rework"
@@ -197,7 +339,7 @@ export function executionReworkTool(input: PluginInput) {
 export function executionStatusTool(input: PluginInput) {
   return tool({
     description:
-      "Read orchestration runtime state (node statuses, phase, running/done/blocked/rework). For root, coordinators, lead, architect during running missions.",
+      "Read orchestration runtime state (node statuses, phase, completions, running/done/blocked/rework). For root, coordinators, lead, architect during running missions.",
     args: {
       mission_id: tool.schema.string().optional().describe("Mission id; default active mission"),
     },

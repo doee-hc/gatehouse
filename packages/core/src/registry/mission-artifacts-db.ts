@@ -1,4 +1,5 @@
 import type { Database } from "bun:sqlite"
+import { DELIVERY_TABLE_SQL } from "../delivery/db.ts"
 import type { NodeBrief } from "../execution/types.ts"
 import { isRecord, parseYaml } from "../yaml.ts"
 
@@ -23,6 +24,7 @@ function tableColumns(db: Database, table: string) {
 
 export function migrateMissionArtifactsTables(db: Database) {
   db.exec(MISSION_ARTIFACTS_TABLE_SQL)
+  db.exec(DELIVERY_TABLE_SQL)
   const missionCols = tableColumns(db, "registry_mission")
   if (missionCols.size > 0 && !missionCols.has("contract_raw_json")) {
     db.exec("ALTER TABLE registry_mission ADD COLUMN contract_raw_json TEXT")

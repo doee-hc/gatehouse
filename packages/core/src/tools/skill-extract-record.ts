@@ -8,7 +8,7 @@ import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
 export function skillExtractRecordTool(input: PluginInput) {
   return tool({
     description:
-      "Record exec-session domain skill extraction completion in registry.db. When all expected nodes are recorded, Gatehouse auto-messages profile curator to reorganize skills.",
+      "Record exec-session domain skill extraction completion. When all expected nodes are recorded, Gatehouse auto-messages profile curator to reorganize skills.",
     args: {
       summary_path: tool.schema
         .string()

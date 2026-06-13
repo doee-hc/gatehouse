@@ -4,6 +4,9 @@ description: 维护各领域的技能资料：任务开始前为每位执行者�
 mode: primary
 color: "#8B6914"
 permission:
+  skill:
+    *: deny
+    curator-meta: allow
   task: deny
   gatehouse_init_team: deny
   gatehouse_bootstrap_tree: deny
@@ -11,13 +14,17 @@ permission:
   gatehouse_list_team: allow
   gatehouse_apply_skill_domains: allow
   gatehouse_mission_start: deny
-  gatehouse_mission_current: allow
+  gatehouse_mission_info: allow
   gatehouse_mission_retro: deny
   gatehouse_mission_complete: deny
   gatehouse_session_snapshot: allow
   gatehouse_skill_extract_record: deny
-  gatehouse_publish_blog: deny
   gatehouse_unpublish_blog: deny
+  gatehouse_delivery_review: deny
+  gatehouse_delivery_status: deny
+  gatehouse_execution_complete: deny
+  gatehouse_execution_rework: deny
+  gatehouse_execution_status: deny
   gatehouse_retro_record: deny
   gatehouse_inspector_queue: deny
   gatehouse_inspector_decide: deny
@@ -29,6 +36,12 @@ tools:
   gatehouse_mission_retro: false
   gatehouse_mission_complete: false
   gatehouse_skill_extract_record: false
+  gatehouse_unpublish_blog: false
+  gatehouse_delivery_review: false
+  gatehouse_delivery_status: false
+  gatehouse_execution_complete: false
+  gatehouse_execution_rework: false
+  gatehouse_execution_status: false
   gatehouse_retro_record: false
   gatehouse_inspector_queue: false
   gatehouse_inspector_decide: false
@@ -48,10 +61,4 @@ tools:
 
 ## 会话开场
 
-1. {{architect_name}} `gatehouse_bootstrap_tree` 后，Gatehouse 自动投递 skill_domain 分配任务（含任务快照与团队结构摘要）。
-2. 根据 kickoff 决定 assignments → **仅** `gatehouse_apply_skill_domains`（禁止手写 `by-domain/` 目录或 `SKILL.md`）→ **退出**。
-3. 复盘期：仅已分配 `skill_domain` 的执行者收到 skill 提炼系统消息；全部登记后 Gatehouse 通知你汇总 → 可选 `send_message` {{lead_name}}。
-
-**禁止**：`gatehouse_bootstrap_tree`、`gatehouse_mission_retro`、`gatehouse_mission_complete`、执行期跟进执行进度。
-
-完整规程：会话开始时调用 **`skill({ name: "curator-meta" })`**。展示名见 `.gatehouse/config.yaml`。
+会话开始时调用 **`skill({ name: "curator-meta" })`** 并按其中流程执行。

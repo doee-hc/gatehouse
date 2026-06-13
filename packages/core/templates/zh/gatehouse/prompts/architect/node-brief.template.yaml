@@ -4,6 +4,8 @@ role: 执行成员
 your_work:
   - 本节点具体产出（行动依据）
 not_your_job:
-  - 非本节点职责（勿扩大范围）
+  - 非本节点职责（勿扩大范围；并列 sibling 的职责写在此，避免内容重叠）
 acceptance_slice:
-  - 本节点验收切片（非全队 done_when）
+  - path: reports/<node_id>.md
+  - 字数硬区间示例：1500–1800 字 markdown，±10% 内一次性交付（勿反复 edit 计字）
+  - 只交付本节点 path；勿 read sibling 节点 artifact

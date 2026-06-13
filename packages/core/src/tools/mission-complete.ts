@@ -8,6 +8,7 @@ import {
   findMission,
   notifyMissionEndedToOuter,
   requireLeadCaller,
+  assertRetroReadyForComplete,
   type MissionTerminalStatus,
 } from "../missions/lifecycle.ts"
 import { ensureMissionContextDumped } from "../session/context-dump.ts"
@@ -22,7 +23,7 @@ const COMPLETABLE_MISSION_STATUSES = new Set(["queued", "running", "retro"])
 export function missionCompleteTool(input: PluginInput) {
   return tool({
     description:
-      "profile lead only: end a mission (done or cancelled). On done, finalizes submitted delivery (records acceptance + publishes done_when publish: deliverables to Portal). Dumps execution context if not yet exported, aborts and deletes all execution-tree and retro OpenCode sessions (set GATEHOUSE_RETAIN_INNER_SESSIONS=1 to keep sessions), archives manifest, deactivates inner/retro registry agents, updates missions.yaml, and auto-notifies outer architect and curator (not arbiter). Use instead of hand-editing cancelled/done or send_message to stop the team.",
+      "profile lead only: end a mission (done or cancelled). On done, finalizes submitted delivery (records acceptance). Pass publish_deliverables=true when the user confirmed Portal publish in chat — publishes done_when path_exists deliverables whose files exist at finalize time. When status is retro, waits until architect and curator (if any skill_domain nodes) both send_message to lead before completing. Check delivery_finalize.published_artifacts and publish_warnings in the response; do not tell the user deliverables are on Portal when published_artifacts is empty. Skill posts still auto-publish on done. Use instead of hand-editing cancelled/done.",
     args: {
       mission_id: tool.schema.string().min(1),
       status: tool.schema
@@ -33,6 +34,12 @@ export function missionCompleteTool(input: PluginInput) {
         .string()
         .optional()
         .describe("Optional user acceptance comment stored in delivery.yaml when finalizing on done"),
+      publish_deliverables: tool.schema
+        .boolean()
+        .optional()
+        .describe(
+          "When status=done and user confirmed Portal publish: true publishes accepted path_exists deliverables; omit or false to skip deliverable publish",
+        ),
     },
     async execute(args, context) {
       const toolName = "gatehouse_mission_complete"
@@ -75,6 +82,21 @@ export function missionCompleteTool(input: PluginInput) {
           }
         }
 
+        if (terminal === "done" && mission.status === "retro") {
+          try {
+            assertRetroReadyForComplete(lead.registry, args.mission_id)
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error)
+            const readiness = lead.registry.retroCompleteReadiness(args.mission_id)
+            return {
+              output: toolFail(toolName, "RETRO_ROLLUP_PENDING", message, {
+                pending: readiness.pending,
+              }),
+              ...toolMetadata(toolName),
+            }
+          }
+        }
+
         let delivery_finalize:
           | Awaited<ReturnType<typeof finalizeDeliveryOnMissionComplete>>
           | undefined
@@ -84,6 +106,7 @@ export function missionCompleteTool(input: PluginInput) {
             missionId: args.mission_id,
             missionEntry: mission,
             userFeedback: args.user_feedback,
+            publishDeliverables: terminal === "done" && args.publish_deliverables === true,
           })
         }
 

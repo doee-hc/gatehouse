@@ -23,9 +23,9 @@ disable-model-invocation: true
 
 | profile | 允许的典型 mutate |
 |---------|-------------------|
-| lead | init_team、send_message、mission_start、mission_retro、mission_complete、mission_current、delivery_review、delivery_status |
-| architect | bootstrap_tree、send_message、mission_current、session_snapshot |
-| curator | apply_skill_domains、send_message、mission_current |
+| lead | init_team、send_message、mission_start、mission_retro、mission_complete、mission_info、delivery_review、delivery_status |
+| architect | bootstrap_tree、send_message、mission_info、session_snapshot |
+| curator | apply_skill_domains、send_message、mission_info |
 | 任务执行成员 | 读写业务文件、执行团队内 send_message；**无** bootstrap / apply_skill_domains |
 | arbiter | 仅 inspector_* |
 

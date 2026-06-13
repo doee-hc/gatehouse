@@ -2,8 +2,6 @@
 
 {{architect_name}} submitted the collaboration script. Pick `skill_domain` for nodes that should accumulate skills, then **only** call `gatehouse_apply_skill_domains`.
 
-## Mission snapshot
-
 {{mission_contract}}
 
 ## Execution team summary
@@ -25,4 +23,4 @@
 2. For new domain ids not in the registry: optionally update `domains.yaml` (metadata only).
 3. `gatehouse_apply_skill_domains(assignments='{"node-id":"domain-id"}')` → **end this round**.
 
-Intermediate coordinators and generic exec nodes with little reuse value are usually **omitted**. No skill extraction during execution. Call `gatehouse_mission_current` to refresh the snapshot if needed.
+Intermediate coordinators and generic exec nodes with little reuse value are usually **omitted**. No skill extraction during execution. Call `gatehouse_mission_info` to refresh the snapshot if needed.

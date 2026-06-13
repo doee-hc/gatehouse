@@ -6,8 +6,10 @@
   objective: "一句话目标"
   done_when:
     - "可验证验收条件"
-    # - path: src/feature.ts          # 纯开发交付，不 publish
-    # - publish: content/article.md   # 文章类交付物，submit 后上 Portal
+    # 主交付物（任选一种写法）：
+    # - path: reports/article.html
+    # - "path: reports/article.html"
+    # - "文件存在: reports/article.html"
   must_not:
     - "边界约束"
   # notes 可选：仅用户背景/动机/风格等不可验收上下文

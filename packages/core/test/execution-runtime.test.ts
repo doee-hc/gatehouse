@@ -28,7 +28,7 @@ acceptance_slice:
     const block = formatNodeBriefBlock(brief)
     expect(block).toContain("mem-a")
     expect(block).toContain("chat with peers")
-    expect(block).toContain("gatehouse_mission_context")
+    expect(block).toContain("gatehouse_mission_info")
   })
 
   test("freezeMissionContract preserves structured done_when in registry.db", async () => {

@@ -15,22 +15,22 @@ const messages = {
 
 {mission_contract}
 
-下一步：在 \`.gatehouse/trees/{mission_id}/\` 编写 **mission.script.ts**，完成后 **gatehouse_bootstrap_tree**。若需刷新任务快照，可调用 **gatehouse_mission_current**。`,
+下一步：在 \`.gatehouse/trees/{mission_id}/\` 编写 **mission.script.ts**，完成后 **gatehouse_bootstrap_tree**。若需刷新任务快照，可调用 **gatehouse_mission_info**。`,
     en: `[Gatehouse · Mission started · {mission_id}]
 
 {lead_name} started this Mission via gatehouse_mission_start.
 
 {mission_contract}
 
-Next: write **mission.script.ts** under \`.gatehouse/trees/{mission_id}/\`, then **gatehouse_bootstrap_tree**. Call **gatehouse_mission_current** to refresh the snapshot if needed.`,
+Next: write **mission.script.ts** under \`.gatehouse/trees/{mission_id}/\`, then **gatehouse_bootstrap_tree**. Call **gatehouse_mission_info** to refresh the snapshot if needed.`,
   },
   "mission.started.fallback": {
     zh: `[Gatehouse · Mission 已启动 · {mission_id}]
 
-{lead_name} 已通过 gatehouse_mission_start 启动本 Mission；registry 快照暂不可用，请调用 **gatehouse_mission_current**。`,
+{lead_name} 已通过 gatehouse_mission_start 启动本 Mission；registry 快照暂不可用，请调用 **gatehouse_mission_info**。`,
     en: `[Gatehouse · Mission started · {mission_id}]
 
-{lead_name} started this Mission via gatehouse_mission_start; registry snapshot unavailable — call **gatehouse_mission_current**.`,
+{lead_name} started this Mission via gatehouse_mission_start; registry snapshot unavailable — call **gatehouse_mission_info**.`,
   },
   "mission.ended": {
     zh: `[Gatehouse · Mission {mission_id} {status_label}]
@@ -49,7 +49,7 @@ Next: write **mission.script.ts** under \`.gatehouse/trees/{mission_id}/\`, then
 
 {lines}
 
-retro coord 数据源为 \`context/\`（messages、timeline、metrics、subtree-metrics）；语义特征提取靠 retro-toolkit 自制脚本，非 Gatehouse 预分析插件。`,
+按 retro-toolkit skill 流程使用 \`context/\` 落盘与自制脚本。`,
     en: `[Gatehouse · Retro ready · Mission {mission_id}]
 
 All manager retro nodes are complete and recorded. Read the reports below and write \`.gatehouse/trees/{mission_id}/reports/architect-summary.md\`.
@@ -58,7 +58,7 @@ All manager retro nodes are complete and recorded. Read the reports below and wr
 
 {lines}
 
-Retro coord data comes from \`context/\` (messages, timeline, metrics, subtree-metrics); semantic extraction uses retro-toolkit scripts, not a Gatehouse pre-analysis plugin.`,
+Use \`context/\` dumps and retro-toolkit scripts per the skill workflow.`,
   },
   "curator.skillExtractBatchReady": {
     zh: `[Gatehouse 领域 skill 提炼就绪 · Mission {mission_id}]
@@ -121,13 +121,13 @@ All exec nodes with skill_domain finished retro skill extraction and registratio
   "dispatch.teamSnapshot.parent": { zh: "`parent: {parent}`", en: "`parent: {parent}`" },
   "dispatch.teamSnapshot.children": { zh: "下属: {list}", en: "children: {list}" },
   "dispatch.teamSnapshot.outerHint": {
-    zh: "核心团队（建队已完成）；执行期勿联系；结构化交付用 `gatehouse_delivery_submit`",
-    en: "Core team (team build complete); do not contact during execution; structured delivery via `gatehouse_delivery_submit`",
+    zh: "核心团队（建队已完成）；执行期勿联系；structural root 全树完成时 `gatehouse_execution_complete` 自动通知 lead",
+    en: "Core team (team build complete); do not contact during execution; structural root auto-notifies lead on final gatehouse_execution_complete",
   },
   "dispatch.teamSnapshot.teamspecHeader": { zh: "### 执行团队节点", en: "### Execution team nodes" },
   "dispatch.teamSnapshot.subtreeHeader": {
-    zh: "### 所辖执行分支（启动快照）\n\n你是**中间协调层**（`build-coordinator`）：仅管理此分支；**禁止**联系 lead。按协作脚本工单执行；完成后 `gatehouse_execution_complete`；汇总时写索引（引用路径，勿复述下属正文）。",
-    en: "### Your execution subtree (kickoff snapshot)\n\nYou are an **intermediate coordinator** (`build-coordinator`): manage this branch only; **do not** contact lead. Follow collaboration-script work orders; call `gatehouse_execution_complete` when done; roll up with an index (paths only — do not copy child bodies).",
+    zh: "### 所辖执行分支（启动快照）\n\n你是**中间协调层**（`build-coordinator`）：仅管理此分支；**禁止**联系 lead。按协作脚本工单执行；完成后 `gatehouse_execution_complete`。工单可能附带「下属节点交付」— 只引用路径，勿复述正文。",
+    en: "### Your execution subtree (kickoff snapshot)\n\nYou are an **intermediate coordinator** (`build-coordinator`): manage this branch only; **do not** contact lead. Follow collaboration-script work orders; call `gatehouse_execution_complete` when done. Work orders may include referenced child completions — paths only, do not copy bodies.",
   },
   "dispatch.teamSnapshot.noNonRootNodes": { zh: "（无下属节点）", en: "(no delegate nodes)" },
   "execution.nodeRole.header": {
@@ -139,8 +139,8 @@ All exec nodes with skill_domain finished retro skill extraction and registratio
     en: "**Role:** {description}",
   },
   "execution.nodeRole.briefHint": {
-    zh: "**行动依据：** `gatehouse_node_brief`（编排器通过 `setBrief` 写入）；**边界：** `gatehouse_mission_context`。",
-    en: "**Action guide:** `gatehouse_node_brief` (written via orchestrator `setBrief`); **boundaries:** `gatehouse_mission_context`.",
+    zh: "**任务与边界：** `gatehouse_mission_info`（编排器通过 `setBrief` 写入本节点任务书）。",
+    en: "**Mission scope:** `gatehouse_mission_info` (orchestrator writes your node brief via `setBrief`).",
   },
   "execution.workOrder.activateHeader": {
     zh: "[Gatehouse · 执行激活 · {node_id}]",
@@ -159,25 +159,21 @@ All exec nodes with skill_domain finished retro skill extraction and registratio
     en: "**Requested by:** {requester}",
   },
   "execution.workOrder.evidence": { zh: "**证据路径：** {path}", en: "**Evidence path:** {path}" },
-  "execution.workOrder.briefRef": {
-    zh: "**任务书：** `gatehouse_node_brief`（行动依据）",
-    en: "**Node brief:** `gatehouse_node_brief` (primary action guide)",
+  "execution.workOrder.missionInfoRef": {
+    zh: "**任务与边界：** `gatehouse_mission_info`",
+    en: "**Mission scope:** `gatehouse_mission_info`",
   },
   "execution.workOrder.missingBriefWarning": {
-    zh: "**⚠ 任务书缺失：** 编排器未对本节点调用 `ctx.setBrief`。请用 `gatehouse_mission_contract`（协调者）或激活消息中的上下文行动；并通知 {lead_name} 修正 mission.script.ts。",
-    en: "**⚠ Missing node brief:** orchestrator did not call `ctx.setBrief` for this node. Use `gatehouse_mission_contract` (coordinators) or activation context; notify {lead_name} to fix mission.script.ts.",
-  },
-  "execution.workOrder.contractRef": {
-    zh: "**边界只读：** `gatehouse_mission_context` · **任务书：** `gatehouse_node_brief`",
-    en: "**Boundaries:** `gatehouse_mission_context` · **Node brief:** `gatehouse_node_brief`",
+    zh: "**⚠ 任务书缺失：** 编排器未对本节点调用 `ctx.setBrief`。请用 `gatehouse_mission_info`（协调者可见 contract）或激活消息中的上下文行动；并通知 {lead_name} 修正 mission.script.ts。",
+    en: "**⚠ Missing node brief:** orchestrator did not call `ctx.setBrief` for this node. Use `gatehouse_mission_info` (coordinators see contract) or activation context; notify {lead_name} to fix mission.script.ts.",
   },
   "execution.workOrder.planRef": {
     zh: "**执行进度：** `gatehouse_execution_status`",
     en: "**Execution progress:** `gatehouse_execution_status`",
   },
   "execution.workOrder.completeHint": {
-    zh: "完成后调用 `gatehouse_execution_complete(summary=..., delivery_path=...)`。",
-    en: "When done, call `gatehouse_execution_complete(summary=..., delivery_path=...)`.",
+    zh: "完成后调用 `gatehouse_execution_complete(summary=..., artifacts=[{path,description}], risks=?)` — 真实产出在项目目录，artifacts 只列路径与描述。",
+    en: "When done, call `gatehouse_execution_complete(summary=..., artifacts=[{path,description}], risks=?)` — deliverables live in the project; list paths and descriptions only.",
   },
   "execution.workOrder.reworkHint": {
     zh: "依赖产出不合格（含小范围修正）且你仍在 running：`gatehouse_execution_rework(blocked_by=..., reason=..., evidence_path=...)` — reason 只写最小修改面，不要求整单重做。",
@@ -195,7 +191,30 @@ All exec nodes with skill_domain finished retro skill extraction and registratio
     zh: "仅按上述修正要求改动；无需重做无关部分。完成后 `gatehouse_execution_complete`。",
     en: "Change only what the correction scope requires; do not redo unrelated work. Then call `gatehouse_execution_complete`.",
   },
-  "mission.contract.header": { zh: "## 任务快照（registry 冻结）", en: "## Mission snapshot (registry freeze)" },
+  "completion.rollup.header": {
+    zh: "## 下属节点交付",
+    en: "## Referenced node completions",
+  },
+  "completion.rollup.hint": {
+    zh: "以下为下属节点汇报摘要；**勿**展开 artifact 正文，只引用路径与描述。",
+    en: "Child completion summaries below; **do not** paste artifact bodies — reference paths and descriptions only.",
+  },
+  "completion.rollup.nodeHeader": { zh: "节点 {node_id}", en: "Node {node_id}" },
+  "completion.rollup.artifactsHeader": { zh: "**变更 / 证据**", en: "**Changes / evidence**" },
+  "completion.rollup.risksHeader": { zh: "**未完成 / 风险**", en: "**Open items / risks**" },
+  "completion.rollup.missing": {
+    zh: "（无汇报摘要）",
+    en: "(no completion summary)",
+  },
+  "completion.rootDelivery.title": { zh: "任务交付索引 · {mission_id}", en: "Mission delivery index · {mission_id}" },
+  "completion.rootDelivery.generated": {
+    zh: "> 协调索引：列路径与摘要，供验收对照；交付正文在项目目录。",
+    en: "> Coordination index: paths and summaries for acceptance review; deliverable bodies live in the project tree.",
+  },
+  "completion.rootDelivery.rootSummary": { zh: "本节点摘要", en: "This node summary" },
+  "completion.rootDelivery.rootArtifacts": { zh: "**本节点产出**", en: "**This node artifacts**" },
+  "completion.rootDelivery.childRollup": { zh: "下属节点汇报", en: "Direct-report summaries" },
+  "mission.contract.header": { zh: "## 任务快照（冻结）", en: "## Mission snapshot (frozen)" },
   "mission.contract.missionId": { zh: "**任务 ID：** {mission_id}", en: "**Mission ID:** {mission_id}" },
   "mission.contract.objectiveHeader": { zh: "**目标：**", en: "**Objective:**" },
   "mission.contract.doneWhenHeader": { zh: "**验收条件（done_when）：**", en: "**Acceptance criteria (done_when):**" },
@@ -216,8 +235,8 @@ All exec nodes with skill_domain finished retro skill extraction and registratio
     en: "## Acceptance criteria (done_when) for review",
   },
   "delivery.lead.refreshHint": {
-    zh: "（registry 快照；可用 `gatehouse_mission_current` 刷新）",
-    en: "(registry snapshot; call `gatehouse_mission_current` to refresh)",
+    zh: "（任务快照；可用 `gatehouse_mission_info` 刷新）",
+    en: "(mission snapshot; call `gatehouse_mission_info` to refresh)",
   },
   "delivery.submit.leadHeader": {
     zh: "## 任务交付已提交 · {mission_id}",
@@ -230,18 +249,27 @@ All exec nodes with skill_domain finished retro skill extraction and registratio
     en: "**Structured record:** {record_path}",
   },
   "delivery.submit.summaryHeader": { zh: "**交付摘要：**", en: "**Summary:**" },
+  "delivery.submit.rollupHeader": { zh: "**节点汇报汇总：**", en: "**Node completion rollup:**" },
   "delivery.submit.precheckHeader": { zh: "**自动预检（precheck）：**", en: "**Automated precheck:**" },
+  "delivery.submit.pendingPublishHeader": {
+    zh: "**待发布交付物（结案时 `publish_deliverables=true` 会上 Portal）：**",
+    en: "**Deliverables pending Portal publish (use `publish_deliverables=true` on mission_complete):**",
+  },
+  "delivery.submit.pendingPublishEmptyWarning": {
+    zh: "**注意：** `done_when` 中未识别到可发布的项目交付路径（`path_exists`）。请用 YAML `- path: reports/foo.html` 或字符串 `path: reports/foo.html` / `文件存在: reports/foo.html`，否则结案时无法发布到 Portal。",
+    en: "**Warning:** no publishable project deliverable paths (`path_exists`) were recognized in done_when. Use YAML `- path: reports/foo.html` or strings `path: reports/foo.html` / `file exists: reports/foo.html`, or Portal publish on complete will publish nothing.",
+  },
   "delivery.submit.forceReasonHeader": {
     zh: "**强制提交说明（precheck 未全通过）：**",
     en: "**Force submit reason (precheck not fully met):**",
   },
   "delivery.submit.portalHint": {
-    zh: "**协调报告**（`root-delivery`）仅作内部上传下达，不上 Portal。`done_when` 中 `publish:` 的项目交付物会在你 `gatehouse_mission_complete(done)` 时由系统自动发布。",
-    en: "**Coordination report** (`root-delivery`) is internal only — not on Portal. Project paths marked `publish:` in done_when are auto-published when you call `gatehouse_mission_complete(done)`.",
+    zh: "以上汇总与 precheck 供验收对照；**不是** Portal 交付正文。用户确认接受后，调用 `gatehouse_mission_complete(done, publish_deliverables=true)` 发布 `done_when` 中的项目路径。",
+    en: "The rollup and precheck above are for review — **not** Portal deliverable bodies. After the user confirms acceptance, call `gatehouse_mission_complete(done, publish_deliverables=true)` to publish project paths from done_when.",
   },
   "delivery.submit.reviewHint": {
-    zh: "对照 `root-delivery.md` 与 precheck 后，在对话中请用户确认；可选 `gatehouse_mission_retro`，再调用 `gatehouse_mission_complete(done)`。返工或拒绝时调用 `gatehouse_delivery_review(revision_requested | rejected)`。",
-    en: "After checking `root-delivery.md` and precheck, confirm with the user in chat; optionally call `gatehouse_mission_retro`, then `gatehouse_mission_complete(done)`. For rework or rejection use `gatehouse_delivery_review(revision_requested | rejected)`.",
+    zh: "对照 precheck 与项目内交付路径后，在对话中请用户确认；若需上 Portal，结案时传 `publish_deliverables=true`。可选 `gatehouse_mission_retro`，再 `gatehouse_mission_complete(done)`。返工或拒绝时调用 `gatehouse_delivery_review(revision_requested | rejected)`。",
+    en: "After checking precheck and project deliverable paths, confirm with the user in chat; pass `publish_deliverables=true` on complete when they want Portal publish. Optionally call `gatehouse_mission_retro`, then `gatehouse_mission_complete(done)`. For rework or rejection use `gatehouse_delivery_review(revision_requested | rejected)`.",
   },
   "delivery.revision.header": {
     zh: "# 交付返工 · 任务 {mission_id} · v{from_version} → v{to_version}",
@@ -251,9 +279,9 @@ All exec nodes with skill_domain finished retro skill extraction and registratio
   "delivery.revision.briefHeader": { zh: "## 返工目标", en: "## Revision goals" },
   "delivery.revision.userFeedbackHeader": { zh: "## 用户原话", en: "## User feedback" },
   "delivery.revision.mustNotHeader": { zh: "## 边界（must_not）", en: "## Boundaries (must_not)" },
-  "delivery.revision.submitHint": {
-    zh: "完成后更新 root-delivery 报告并调用 `gatehouse_delivery_submit(mission_id=\"{mission_id}\")`。",
-    en: "Update root-delivery report, then call `gatehouse_delivery_submit(mission_id=\"{mission_id}\")`.",
+  "delivery.revision.completeHint": {
+    zh: "返工完成后再次调用 `gatehouse_execution_complete(summary=..., artifacts=...)`；全树节点均 done 时系统自动通知 lead 验收。",
+    en: "When rework is done, call `gatehouse_execution_complete(summary=..., artifacts=...)` again; the system notifies lead automatically once all nodes are done.",
   },
   "retro.kickoff.contextHeader": { zh: "## 所辖分支（启动快照）", en: "## Your subtree (kickoff snapshot)" },
   "retro.kickoff.scopeNodes": { zh: "**node_ids：** {list}", en: "**node_ids:** {list}" },

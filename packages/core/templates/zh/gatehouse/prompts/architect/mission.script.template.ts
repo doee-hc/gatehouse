@@ -9,6 +9,10 @@ export const team = {
       parent: null,
       description: "任务协调者",
     },
+    "<leaf-id>": {
+      parent: "<root-node-id>",
+      description: "负责 <具体产出> 的执行成员",
+    },
   },
 }
 
@@ -23,5 +27,18 @@ export const meta = {
 }
 
 export default async function orchestrate(ctx) {
-  // setBrief → prompt(reply:true) → waitFor
+  // 推荐：setBrief（含 path + 字数硬区间 + not_your_job）→ prompt(reply:true) → waitFor / waitForAll
+  await ctx.setBrief("<leaf-id>", {
+    your_work: ["…"],
+    not_your_job: ["非本节点职责（避免与 sibling 重叠）"],
+    acceptance_slice: [
+      "path: reports/<leaf-id>.md",
+      "1500–1800 字 markdown，±10% 内一次性交付",
+    ],
+  })
+  await ctx.prompt("<leaf-id>", {
+    text: ctx.template.workOrder("<leaf-id>"),
+    reply: true,
+  })
+  await ctx.waitFor("<leaf-id>", "complete")
 }

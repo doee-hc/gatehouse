@@ -1,10 +1,10 @@
 import { formatPrecheckSummary } from "./criteria.ts"
 import type { DeliveryRecord } from "./types.ts"
+import { pendingMissionPublishPaths } from "./publish-artifacts.ts"
 import { gatehouseMessage } from "../i18n.ts"
 import { readLocaleSync, type GatehouseLocale } from "../locale.ts"
 import { bulletList } from "../missions/parse.ts"
 import type { MissionContract } from "../missions/contract.ts"
-import { deliveryDocumentRelPath } from "../paths.ts"
 
 export function formatLeadDeliveryNotification(
   projectDirectory: string,
@@ -13,6 +13,7 @@ export function formatLeadDeliveryNotification(
     record: DeliveryRecord
     contract?: MissionContract
     summary?: string
+    rollupText?: string
   },
 ) {
   const locale = readLocaleSync(projectDirectory)
@@ -22,15 +23,12 @@ export function formatLeadDeliveryNotification(
     gatehouseMessage("delivery.submit.version", locale, {
       version: String(input.record.version),
     }),
-    gatehouseMessage("delivery.submit.reportPath", locale, {
-      report_path: input.record.report_path,
-    }),
-    gatehouseMessage("delivery.submit.recordPath", locale, {
-      record_path: deliveryDocumentRelPath(input.missionId),
-    }),
   ]
   if (input.summary?.trim()) {
     lines.push("", gatehouseMessage("delivery.submit.summaryHeader", locale), input.summary.trim())
+  }
+  if (input.rollupText?.trim()) {
+    lines.push("", gatehouseMessage("delivery.submit.rollupHeader", locale), input.rollupText.trim())
   }
   if (input.record.precheck.length > 0) {
     lines.push(
@@ -38,6 +36,16 @@ export function formatLeadDeliveryNotification(
       gatehouseMessage("delivery.submit.precheckHeader", locale),
       formatPrecheckSummary(input.record.precheck, input.record.criteria).join("\n"),
     )
+  }
+  const pendingPublishPaths = pendingMissionPublishPaths(input.record.criteria)
+  if (pendingPublishPaths.length > 0) {
+    lines.push(
+      "",
+      gatehouseMessage("delivery.submit.pendingPublishHeader", locale),
+      pendingPublishPaths.map((item) => `- ${item}`).join("\n"),
+    )
+  } else if (input.record.criteria.some((item) => item.check.kind === "manual" && /^path:/i.test(item.text))) {
+    lines.push("", gatehouseMessage("delivery.submit.pendingPublishEmptyWarning", locale))
   }
   if (input.record.force_reason) {
     lines.push(
@@ -104,7 +112,7 @@ export function formatRevisionBriefMessage(
   }
   lines.push(
     "",
-    gatehouseMessage("delivery.revision.submitHint", locale, { mission_id: input.missionId }),
+    gatehouseMessage("delivery.revision.completeHint", locale),
   )
   return lines.join("\n")
 }

@@ -7,7 +7,10 @@ import { readAgentNamesSync } from "../names.ts"
 import { innerAgentId } from "../registry/types.ts"
 import type { RegistryStore } from "../registry/store.ts"
 import { promptSession } from "../session/client.ts"
+import { assertRollupFromReady, formatRollupInjectionBlock } from "./completion.ts"
+import { readOrchestrationState } from "./state.ts"
 import type { PromptInput } from "./types.ts"
+import type { TeamSpec } from "../tree/types.ts"
 
 export async function deliverOrchestrationPrompt(input: {
   plugin: PluginInput
@@ -15,6 +18,7 @@ export async function deliverOrchestrationPrompt(input: {
   missionId: string
   nodeId: string
   prompt: PromptInput
+  team?: TeamSpec
 }) {
   const recipient = input.store.byAgentId(innerAgentId(input.missionId, input.nodeId))
   if (!recipient) return { status: "failed" as const, error: `node not in registry: ${input.nodeId}` }
@@ -38,6 +42,17 @@ export async function deliverOrchestrationPrompt(input: {
 
   if (input.prompt.reply) {
     let activationText = input.prompt.text.trim()
+    const rollupFrom = input.prompt.rollupFrom?.filter((id) => id.trim())
+    if (rollupFrom?.length) {
+      const state = readOrchestrationState(input.plugin.directory, input.missionId)
+      if (!state) throw new Error(`orchestration state missing for ${input.missionId}`)
+      if (!input.team) throw new Error("rollupFrom requires team spec for validation")
+      assertRollupFromReady(input.team, state, rollupFrom)
+      const rollupBlock = formatRollupInjectionBlock(locale, state, rollupFrom)
+      if (rollupBlock.trim()) {
+        activationText = [activationText, "", rollupBlock].join("\n")
+      }
+    }
     const brief = await readNodeBriefRegistry(input.plugin.directory, input.missionId, input.nodeId)
     if (!brief) {
       gatehouseLog(

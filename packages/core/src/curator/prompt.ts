@@ -40,7 +40,11 @@ export function curatorSkillExtractBatchReadyMessage(
     .map((item) => `- ${item.nodeId}${item.summaryPath ? `: ${item.summaryPath}` : ""}`)
     .join("\n")
   return renderGatehouseTemplate(
-    gatehouseMessage("curator.skillExtractBatchReady", locale, { mission_id: missionId, lines }),
+    gatehouseMessage("curator.skillExtractBatchReady", locale, {
+      mission_id: missionId,
+      lines,
+      lead_name: names.lead,
+    }),
     names,
   )
 }

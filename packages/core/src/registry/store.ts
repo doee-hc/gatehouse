@@ -683,6 +683,7 @@ export class RegistryStore {
       sender: resolvedSender,
       recipient,
     })
+    this.maybeRecordRetroOuterLeadNotification(resolvedSender, recipient, missionId)
     return {
       status: delivery.status,
       recipient,
@@ -744,6 +745,98 @@ export class RegistryStore {
       completions,
       allDone: pending.length === 0 && run.expectedNodeIds.length > 0,
       architectNotified: Boolean(run.architectNotifiedAt),
+      architectLeadNotified: Boolean(run.architectLeadNotifiedAt),
+    }
+  }
+
+  retroCompleteReadiness(missionId: string) {
+    const pending: string[] = []
+    const retro = this.retroStatus(missionId)
+    if (retro.status === "no_run") {
+      return { ready: true, pending, retro, skill: this.skillExtractStatus(missionId) }
+    }
+    if (!retro.allDone) pending.push("manager_retro_nodes")
+    else if (!retro.architectNotified) pending.push("architect_retro_kickoff")
+    else if (!retro.architectLeadNotified) pending.push("architect_summary_to_lead")
+
+    const skill = this.skillExtractStatus(missionId)
+    if (skill.status === "ok" && skill.run.expectedNodeIds.length > 0) {
+      if (!skill.allDone) pending.push("skill_extract_nodes")
+      else if (!skill.curatorNotified) pending.push("curator_skill_kickoff")
+      else if (!skill.curatorLeadNotified) pending.push("curator_skill_summary_to_lead")
+    }
+
+    return { ready: pending.length === 0, pending, retro, skill }
+  }
+
+  private resolveRetroRollupMissionId(sender: RegistryAgent, recipient: RegistryAgent) {
+    const candidates = [
+      sender.missionId,
+      recipient.missionId,
+      this.getActiveMission()?.missionId,
+    ].filter((value): value is string => Boolean(value))
+    for (const missionId of candidates) {
+      const retro = this.retroStatus(missionId)
+      if (retro.status === "ok" && retro.architectNotified && !retro.architectLeadNotified) return missionId
+      const skill = this.skillExtractStatus(missionId)
+      if (
+        skill.status === "ok" &&
+        skill.run.expectedNodeIds.length > 0 &&
+        skill.curatorNotified &&
+        !skill.curatorLeadNotified
+      ) {
+        return missionId
+      }
+    }
+    const retroPending = [...this.retroRuns.keys()].filter((missionId) => {
+      const retro = this.retroStatus(missionId)
+      return retro.status === "ok" && retro.architectNotified && !retro.architectLeadNotified
+    })
+    if (retroPending.length === 1) return retroPending[0]!
+    const skillPending = [...this.skillExtractRuns.keys()].filter((missionId) => {
+      const skill = this.skillExtractStatus(missionId)
+      return (
+        skill.status === "ok" &&
+        skill.run.expectedNodeIds.length > 0 &&
+        skill.curatorNotified &&
+        !skill.curatorLeadNotified
+      )
+    })
+    if (skillPending.length === 1) return skillPending[0]!
+    return undefined
+  }
+
+  private maybeRecordRetroOuterLeadNotification(sender: RegistryAgent, recipient: RegistryAgent, missionId?: string) {
+    if (recipient.scope !== "outer" || recipient.profile !== "lead") return
+    const resolvedMissionId = missionId ?? this.resolveRetroRollupMissionId(sender, recipient)
+    if (!resolvedMissionId) return
+
+    if (sender.scope === "outer" && sender.profile === "architect") {
+      const retro = this.retroStatus(resolvedMissionId)
+      if (retro.status !== "ok" || !retro.architectNotified || retro.architectLeadNotified) return
+      this.mutate(() => {
+        const run = this.retroRuns.get(resolvedMissionId)
+        if (!run) return
+        this.retroRuns.set(resolvedMissionId, { ...run, architectLeadNotifiedAt: now() })
+      })
+      return
+    }
+
+    if (sender.scope === "outer" && sender.profile === "curator") {
+      const skill = this.skillExtractStatus(resolvedMissionId)
+      if (
+        skill.status !== "ok" ||
+        skill.run.expectedNodeIds.length === 0 ||
+        !skill.curatorNotified ||
+        skill.curatorLeadNotified
+      ) {
+        return
+      }
+      this.mutate(() => {
+        const run = this.skillExtractRuns.get(resolvedMissionId)
+        if (!run) return
+        this.skillExtractRuns.set(resolvedMissionId, { ...run, curatorLeadNotifiedAt: now() })
+      })
     }
   }
 
@@ -958,6 +1051,7 @@ export class RegistryStore {
       completions,
       allDone: pending.length === 0 && run.expectedNodeIds.length > 0,
       curatorNotified: Boolean(run.curatorNotifiedAt),
+      curatorLeadNotified: Boolean(run.curatorLeadNotifiedAt),
     }
   }
 

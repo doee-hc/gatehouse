@@ -18,8 +18,7 @@ export function formatWorkOrderTextWithLocale(
   if (input.context) lines.push("", "**上下文：**", input.context.trim())
   lines.push(
     "",
-    gatehouseMessage("execution.workOrder.briefRef", locale),
-    gatehouseMessage("execution.workOrder.contractRef", locale),
+    gatehouseMessage("execution.workOrder.missionInfoRef", locale),
     gatehouseMessage("execution.workOrder.completeHint", locale),
     "",
     gatehouseMessage("execution.workOrder.peerMessageHint", locale),
@@ -60,7 +59,7 @@ export function formatReworkTextWithLocale(
   }
   lines.push(
     "",
-    gatehouseMessage("execution.workOrder.briefRef", locale),
+    gatehouseMessage("execution.workOrder.missionInfoRef", locale),
     gatehouseMessage("execution.workOrder.completeHint", locale),
     "",
     gatehouseMessage("execution.workOrder.reworkScopeHint", locale),

@@ -938,7 +938,17 @@ body {
 }
 
 .blog-layout,
-.knowledge-layout,
+.knowledge-layout {
+  width: 100%;
+  max-width: none;
+  margin: 0 auto;
+  padding:
+    2rem
+    clamp(1.5rem, 4vw, 3rem)
+    calc(1.5rem + var(--footer-h));
+  box-sizing: border-box;
+}
+
 .stats-layout,
 .about-layout {
   max-width: 900px;
@@ -1489,6 +1499,102 @@ body {
   display: block;
 }
 
+.blog-layout.blog-reading {
+  padding-top: 0.75rem;
+}
+
+.blog-layout.blog-reading-html {
+  padding:
+    0.75rem
+    clamp(1.5rem, 4vw, 3rem)
+    calc(1rem + var(--footer-h));
+}
+
+#view-blog.blog-html-reading.active {
+  height: var(--viewport-h);
+  min-height: 0;
+  overflow: hidden;
+  padding-bottom: var(--footer-safe);
+}
+
+#view-blog.blog-html-reading .blog-layout.blog-reading-html {
+  height: 100%;
+  padding:
+    0.75rem
+    clamp(1.5rem, 4vw, 3rem)
+    0.75rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#view-blog.blog-html-reading .post-detail.html-article.visible {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.post-detail.html-article {
+  padding: 0;
+  margin-top: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.post-detail.html-article #detail-title,
+.post-detail.html-article .meta {
+  display: none;
+}
+
+.post-detail.html-article .back-link {
+  flex-shrink: 0;
+  display: block;
+  margin: 0 0 0.75rem;
+  padding: 0.45rem 0;
+}
+
+.post-detail.html-article .body.blog-html-body {
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  line-height: normal;
+  background: rgba(0, 0, 0, 0.25);
+  border: 3px solid var(--esc-wall-dark);
+  box-shadow:
+    var(--pixel-inset),
+    var(--pixel-shadow);
+  overflow: hidden;
+}
+
+#view-blog.blog-html-reading .blog-html-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border: none;
+  background: transparent;
+}
+
+.post-detail.visible:not(.html-article) {
+  padding: 1rem 1.25rem;
+  margin-top: 0;
+}
+
+.post-detail.visible:not(.html-article) .back-link {
+  margin-bottom: 0.65rem;
+}
+
+.post-detail.visible:not(.html-article) h2 {
+  font-size: 1.15rem;
+  margin-bottom: 0.25rem;
+}
+
+.post-detail.visible:not(.html-article) .meta {
+  margin-bottom: 1rem;
+}
+
 .post-detail h2 {
   font-size: 1.35rem;
   margin-bottom: 0.5rem;
@@ -1584,6 +1690,20 @@ body {
 .post-detail .body ul {
   margin-left: 1.25rem;
   margin-bottom: 0.75rem;
+}
+
+.post-detail .body.blog-html-body {
+  padding: 0;
+  line-height: normal;
+}
+
+.post-detail .body .blog-html-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  border: none;
+  background: transparent;
 }
 
 .back-link {
@@ -2124,7 +2244,7 @@ body.portal-boot-failed .view {
     padding: 0 0.75rem 0.85rem 1.5rem;
   }
 
-  .post-detail {
+  .post-detail:not(.html-article) {
     padding: 1rem;
   }
 

@@ -22,23 +22,29 @@ disable-model-invocation: true
 ## 流程
 
 0. **团队就绪** — 首次对话：`gatehouse_list_team()` 查看 `outer` 中 `architect|curator|arbiter` 的 `ready`；任一 `ready: false` 则 `gatehouse_init_team`（登记{{architect_name}}、{{curator_name}}、{{arbiter_name}} session）。
-1. **定方向** — 读队列与历史评价，提议任务（objective / done_when 草案）。
+1. **定方向** — 读队列与历史评价，提议任务（objective / done_when 草案）。**专有名词或多义术语**（如 Loop Engineering 可能指 AI 范式或工业闭环）须先与用户确认语义域，再写 mission；勿仅凭 web 搜索自行扩 scope。**规划期只做轻量调研**（热点摘要、参考链接列表），深度资料搜集交给任务执行团队。
 2. **启动** — 在 `missions.yaml` 为该任务写全字段（`status: queued`）→ `gatehouse_mission_start(mission_id=...)`（写入 registry 快照、`running`、自动通知{{architect_name}}）。start 成功后无需再向{{architect_name}} `send_message` 复述 objective。**running/retro 期间勿改正文**；改状态用 `gatehouse_mission_complete` / `gatehouse_mission_retro`。
-3. **验收** — 任务协调者 `gatehouse_delivery_submit` 后（`delivery.yaml` 含 precheck 与 `pending_publish_paths`；**尚未**上 Portal）→ `gatehouse_delivery_status` + 读 `root-delivery.md` 与项目内 `publish:` 交付物 → **在对话中请用户对照确认**（可选简短本地验收记录）。
-   - **接受**：用户确认后可选 `gatehouse_mission_retro` → 复盘收齐后 `gatehouse_mission_complete(status=done, user_feedback=...)`（`user_feedback` 可选，记用户原话；系统自动将 `publish:` 交付物发布到 Portal 并收尾）→ 修订本 skill。
+3. **验收** — structural root 全树 `gatehouse_execution_complete` 后（交付已记录 + precheck；**尚未**上 Portal）→ `gatehouse_delivery_status` + 读 Lead 通知中的汇总与项目内 `done_when` 交付路径 → **在对话中请用户对照确认**（可选简短本地验收记录）。
+   - **接受且发布**：用户确认接受并要上 Portal → `gatehouse_mission_complete(status=done, publish_deliverables=true, user_feedback=...)`（Skill 仍自动发布；交付物仅此一步上 Portal）。
+   - **接受不发布**：`gatehouse_mission_complete(status=done)` — 仅结案，不上 Portal。
+   - **接受 + 复盘**：`gatehouse_mission_retro` → **两条 rollup 通知均到达后再** `mission_complete(done, publish_deliverables=...)`：
+     1. **{{architect_name}}** 复盘摘要（`gatehouse_send_message(recipient="lead", ...)`，含 `architect-summary` 要点）
+     2. **{{curator_name}}** skill 摘要（仅当本任务有 `skill_domain` 分配时；无分配则跳过）
+     收到 Curator 通知后**勿立即** `mission_complete` — 须等 Architect 摘要也送达。工具若返回 `RETRO_ROLLUP_PENDING`，说明仍有 outer rollup 未完成。
    - **直接完成（不复盘）**：`gatehouse_mission_complete(status=done)` — 向用户说明：**将跳过 skill 提炼**（{{curator_name}} 已登记的 domain 不会生成 `by-domain/*/SKILL.md`）。
+   - **拒绝**：`gatehouse_delivery_review(decision=rejected, user_feedback=...)` — 与用户确认后续（`mission_complete(cancelled)` 取消，或改走返工）。
    - **取消 / 中途停止**：`gatehouse_mission_complete`（`status=cancelled` 或 `done`）；**勿**手改 `missions.yaml` 的 `cancelled`/`done`。
    - **返工**：`gatehouse_delivery_review(decision=revision_requested, failed_criteria=..., revision_brief=..., user_feedback=...)`（`revision_brief` 必填；`user_feedback` 可选原话；系统通知 root）→ 保持 `running`。
 4. **下一项任务** — 读 `.gatehouse/trees/<id>/reports/architect-summary.md`（及{{curator_name}}摘要若有），结合用户评价规划。
 
-复盘后{{architect_name}} / {{curator_name}}会 **自动** 通知你，无需催办。
+复盘后 {{architect_name}} / {{curator_name}} 会 **自动** 通知你（两条轨道并行，互不阻塞）；**须两条均到（或有 skill 分配时 Curator 那条）再 `mission_complete`**，无需催办。
 
 ## 串行任务（同时仅一条 active）
 
 - **同时最多一条**任务处于 `running` 或 `retro`；下一条须等当前任务复盘结束、`status: done` 后再启动。
 - 启动前自检：若已有 `running` 或 `retro`，**不得**再写新条目为 `running`；请用户确认排队或先完成当前任务。
 - 需要并行执行的工作项，应作为**同一任务内**的子任务，由{{architect_name}}在协作脚本 / 任务执行团队中调度，而非再开第二条任务。
-- {{architect_name}}/{{curator_name}} 执行期用 **`gatehouse_mission_current`** 读任务全文；历史队列直接 read `missions.yaml`。
+- {{architect_name}}/{{curator_name}} 执行期用 **`gatehouse_mission_info`** 读任务全文；历史队列直接 read `missions.yaml`。
 - 用户反馈、汇报路径始终带 `<mission_id>`。
 
 ## missions.yaml 正文约束
@@ -59,7 +65,7 @@ disable-model-invocation: true
 - ❌ `done_when` 写入用户未要求的细节（如你读文章后总结的「五模块框架」「记忆机制」等）— 这类背景放 `notes`，由 {{architect_name}} 在 `setBrief` 展开
 - ✅ `objective: "完善 README 示例章节"` + `user_topology: "用户要求仅 root 单节点 solo 执行"`
 
-**结构化 done_when（推荐）**：主交付物尽量写 `text` + `path` + `publish:`，便于 precheck 自动校验文件存在；纯描述性条目保持简短，**条数与用户确认的范围一致**，勿自行扩写验收表。
+**结构化 done_when（推荐）**：主交付物用 YAML 字段（`- path: reports/foo.html`），或字符串前缀（`path: reports/foo.html` / `文件存在: reports/foo.html`）。**禁止**把 `- "path: reports/foo.html"` 当成纯验收文案而不带路径语义；**禁止**在 `done_when` 写 `publish:` 或「发布到 Portal」。用户若希望最终上 Portal，写在 `notes` 里，验收时再确认并传 `publish_deliverables=true`。
 
 **需求对齐**：用户意图已明确（如已确认「产出报告 + 发布 + 对标范围」）时，**一轮确认即可** `mission_start`；勿为已敲定的范围重复追问。
 
@@ -68,8 +74,8 @@ disable-model-invocation: true
 | 用途 | 路径 |
 |------|------|
 | 队列与任务正文 | `.gatehouse/lead/missions.yaml` |
-| 协调报告（执行团队） | `.gatehouse/trees/<id>/reports/root-delivery.md`（内部索引，不 publish） |
-| 交付物（项目内） | `done_when` 里 `publish:` 的路径；`mission_complete(done)` 后系统自动上 Portal |
+| 协调索引 | `.gatehouse/trees/<id>/reports/root-delivery.md`（列路径与摘要，非 Portal 交付正文） |
+| 交付物（项目内） | `done_when` 中 `path` / `文件存在:` 的路径；Lead 在 `mission_complete(publish_deliverables=true)` 时发布到 Portal |
 | 可选验收记录 | `.gatehouse/lead/reports/<id>/report.md`（简短勾选 + 引用路径；用户反馈经 `mission_complete(user_feedback=...)` 写入 delivery.yaml） |
 | 执行档案 | `.gatehouse/trees/<id>/`（`mission.script.ts`、reports） |
 
@@ -89,7 +95,6 @@ missions:
       - path: src/foo.ts
       - text: "文章 A 完成"
         path: content/post-a.md
-        publish: content/post-a.md
     must_not: ["边界约束"]
     notes: |
       可选：用户背景与上下文（不可验收；勿写拓扑/skill）
@@ -103,9 +108,9 @@ P0 通常需用户显式确认启动。
 
 ## 验收原则
 
-- **交付物以项目路径为准**：用户验收时对照 `done_when` 中的 `publish:` 文件（Portal 可见）及 `root-delivery` 索引；你**禁止**把协调报告抄成「交付正文」。
+- **交付物以项目路径为准**：用户验收时对照 `done_when` 中的 `path` / `文件存在:` 路径及 `root-delivery` 索引；你**禁止**把协调报告抄成「交付正文」。
 - **你只补充验收视角**：**严格按冻结 contract 的 `done_when` 条数对照**（勿自行扩表或添加 contract 外条目）；对照 precheck 勾选、一句引导用户确认；有疑点时引用 root 路径或段落，不另写长篇。
-- **Portal 由系统发布**：交付物仅在 `mission_complete(done)` 时由系统自动上 Portal；`delivery_submit` 后**尚未**发布。勿在结案前对用户说「已上 Portal」——以 `delivery_status` 的 `pending_publish_paths` / `published_artifacts` 为准。
+- **Portal 由 Lead 结案时 opt-in**：交付物在 `gatehouse_mission_complete(done)` 之前**不会**上 Portal。用户口头确认接受且要上 Portal 时，传 `mission_complete(done, publish_deliverables=true)`；不上 Portal 则 `mission_complete(done)` 即可。Skill 仍由系统在 `mission_complete(done)` 时自动发布。**禁止**在 `done_when` 写 `publish:` 或「发布到 Portal」验收条。勿在结案前对用户说「已上 Portal」——以 `delivery_status` 的 `pending_publish_paths` / `published_artifacts` 为准；若 `mission_complete` 返回 `publish_warnings` 或 `published_artifacts: []`，**不得**声称已发布。
 - **勿捏造 `user_topology`**：用户未明确指定团队拓扑时，**省略**该字段，由 {{architect_name}} 决定结构。
 
 ## 可选验收记录模板（本地、宜短）
@@ -113,7 +118,7 @@ P0 通常需用户显式确认启动。
 ```markdown
 # 验收记录：<mission_id>
 
-**协调索引：** `.gatehouse/trees/<mission_id>/reports/root-delivery.md`（内部；Portal 在 `mission_complete(done)` 后才有 `publish:` 交付物）
+**协调索引：** `.gatehouse/trees/<mission_id>/reports/root-delivery.md`（路径与摘要；Portal 交付物在 `mission_complete(publish_deliverables=true)` 后发布）
 
 ## 验收对照（Lead）
 - [ ] / [x] <done_when 条目，对照 precheck>

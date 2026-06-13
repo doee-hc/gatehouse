@@ -47,6 +47,28 @@ export default async function orchestrate(ctx) {
     expect(result.message).toContain("coord")
   })
 
+  test("dryRun rejects gatehouse_publish_blog references", () => {
+    const source = `
+export const team = {
+  mission_id: "m1",
+  root: "maker",
+  nodes: { maker: { parent: null, description: "make report" } },
+}
+export default async function orchestrate(ctx) {
+  await ctx.setBrief("maker", {
+    your_work: ["publish via gatehouse_publish_blog"],
+    acceptance_slice: ["done"],
+  })
+  await ctx.prompt("maker", { text: "go", reply: true })
+  await ctx.waitFor("maker", "complete")
+}
+`
+    const result = dryRunMissionScriptSource(source, "m1")
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.code).toBe("SCRIPT_FORBIDDEN_PUBLISH")
+  })
+
   test("dryRun rejects import declarations", async () => {
     const source = await Bun.file(importFsFixture).text()
     const result = dryRunMissionScriptSource(source, "evil-m1")

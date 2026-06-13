@@ -1,11 +1,12 @@
 import { expect, test } from "bun:test"
 import {
   deliverableBlogPostId,
+  deliverablePathsFromCriteria,
   isCoordinationReportPath,
   isPublishPathAllowed,
-  publishPathsFromCriteria,
   resolvePublishTarget,
 } from "../src/delivery/publish-policy.ts"
+import { explainPublishSkipped } from "../src/delivery/publish-artifacts.ts"
 import type { DoneWhenCriterion } from "../src/delivery/types.ts"
 
 const criteria: DoneWhenCriterion[] = [
@@ -14,7 +15,6 @@ const criteria: DoneWhenCriterion[] = [
     id: 1,
     text: "article",
     check: { kind: "path_exists", path: "content/post.md" },
-    publishPath: "content/post.md",
   },
 ]
 
@@ -24,8 +24,8 @@ test("isCoordinationReportPath detects gatehouse reports", () => {
   expect(isCoordinationReportPath("content/post.md")).toBe(false)
 })
 
-test("publishPathsFromCriteria collects publish paths", () => {
-  expect(publishPathsFromCriteria(criteria)).toEqual(["content/post.md"])
+test("deliverablePathsFromCriteria collects path_exists deliverables", () => {
+  expect(deliverablePathsFromCriteria(criteria)).toEqual(["src/api.ts", "content/post.md"])
 })
 
 test("resolvePublishTarget blocks coordination reports", () => {
@@ -37,7 +37,7 @@ test("resolvePublishTarget blocks coordination reports", () => {
   expect(blocked.kind).toBe("blocked")
 })
 
-test("resolvePublishTarget allows done_when publish paths", () => {
+test("resolvePublishTarget allows done_when deliverable paths", () => {
   const ok = resolvePublishTarget({
     missionId: "m1",
     relPath: "content/post.md",
@@ -49,25 +49,35 @@ test("resolvePublishTarget allows done_when publish paths", () => {
   }
 })
 
-test("resolvePublishTarget rejects paths not in publish list", () => {
+test("resolvePublishTarget rejects paths not in deliverable list", () => {
   const blocked = resolvePublishTarget({
     missionId: "m1",
-    relPath: "src/api.ts",
+    relPath: "other/post.md",
     criteria,
   })
   expect(blocked.kind).toBe("blocked")
   if (blocked.kind === "blocked") {
-    expect(blocked.reason).toContain("gatehouse_mission_start")
-    expect(blocked.reason).toContain("frozen")
+    expect(blocked.reason).toContain("publish_deliverables=true")
   }
 })
 
-test("parse publish shorthand from done_when", async () => {
+test("legacy publish shorthand in done_when becomes path_exists only", async () => {
   const { parseDoneWhenCriteriaFromRaw } = await import("../src/delivery/criteria.ts")
   const parsed = parseDoneWhenCriteriaFromRaw({
     done_when: [{ publish: "content/a.md" }],
   })
-  expect(parsed[0]?.publishPath).toBe("content/a.md")
+  expect(parsed[0]?.publishPath).toBeUndefined()
   expect(parsed[0]?.check).toEqual({ kind: "path_exists", path: "content/a.md" })
   expect(isPublishPathAllowed(parsed, "content/a.md")).toBe(true)
+})
+
+test("explainPublishSkipped reports missing deliverable paths", () => {
+  const warnings = explainPublishSkipped({
+    criteria: [{ id: 0, text: "path: reports/a.html", check: { kind: "manual" } }],
+    precheck: [{ criterion_id: 0, status: "skipped", detail: "manual" }],
+    forceSubmit: false,
+    requestedPaths: [],
+    published: [],
+  })
+  expect(warnings[0]).toContain("NO_DELIVERABLE_PATHS")
 })

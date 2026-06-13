@@ -2,7 +2,7 @@ import type { Config } from "@opencode-ai/plugin"
 import { loadArchitectPrompt } from "../prompt/architect.ts"
 import { loadArbiterPrompt } from "../prompt/arbiter.ts"
 import { loadCuratorPrompt } from "../prompt/curator.ts"
-import { loadAgentDescription } from "../prompt/agent-template.ts"
+import { loadAgentDescription, loadBundledAgentDescription } from "../prompt/agent-template.ts"
 import { loadLeadPrompt } from "../prompt/lead.ts"
 import {
   LEAD_OPENCODE,
@@ -29,6 +29,17 @@ import {
 } from "./permissions.ts"
 
 const gatehouseSkillsPath = ".gatehouse"
+
+const AGENT_FILES = {
+  lead: "lead.md",
+  architect: "architect.md",
+  curator: "curator.md",
+  arbiter: "arbiter.md",
+  buildRoot: "build-root.md",
+  buildRootSolo: "build-root-solo.md",
+  buildCoordinator: "build-coordinator.md",
+  build: "build.md",
+} as const
 
 function mergeAgent(
   agents: Record<string, Record<string, unknown>>,
@@ -64,6 +75,33 @@ function mergeAgent(
   }
 }
 
+async function loadAgentDescriptions(projectDirectory?: string) {
+  if (!projectDirectory) {
+    const bundledLoad = (file: string) => loadBundledAgentDescription(file)
+    return {
+      lead: await bundledLoad(AGENT_FILES.lead),
+      architect: await bundledLoad(AGENT_FILES.architect),
+      curator: await bundledLoad(AGENT_FILES.curator),
+      arbiter: await bundledLoad(AGENT_FILES.arbiter),
+      buildRoot: await bundledLoad(AGENT_FILES.buildRoot),
+      buildRootSolo: await bundledLoad(AGENT_FILES.buildRootSolo),
+      buildCoordinator: await bundledLoad(AGENT_FILES.buildCoordinator),
+      build: await bundledLoad(AGENT_FILES.build),
+    }
+  }
+  const load = (file: string) => loadAgentDescription(projectDirectory, file)
+  return {
+    lead: await load(AGENT_FILES.lead),
+    architect: await load(AGENT_FILES.architect),
+    curator: await load(AGENT_FILES.curator),
+    arbiter: await load(AGENT_FILES.arbiter),
+    buildRoot: await load(AGENT_FILES.buildRoot),
+    buildRootSolo: await load(AGENT_FILES.buildRootSolo),
+    buildCoordinator: await load(AGENT_FILES.buildCoordinator),
+    build: await load(AGENT_FILES.build),
+  }
+}
+
 export async function applyGatehouseConfig(cfg: Config, projectDirectory?: string) {
   const record = cfg as Record<string, unknown>
 
@@ -79,14 +117,16 @@ export async function applyGatehouseConfig(cfg: Config, projectDirectory?: strin
   }
 
   const agents = (record.agent ??= {}) as Record<string, Record<string, unknown>>
+  const descriptions = await loadAgentDescriptions(projectDirectory)
 
   mergeAgent(
     agents,
     LEAD_OPENCODE,
     {
       mode: "primary",
-      description: "统筹任务从规划到交付、收尾：结合长期方向选定当前要做的任务，与你一起敲定目标、细节和约束；启动任务后跟进交付，与你确认达到标准后正式结束任务。",
+      ...(descriptions.lead ? { description: descriptions.lead } : {}),
       color: "#C9A227",
+      ...(projectDirectory ? { prompt: await loadLeadPrompt(projectDirectory) } : {}),
     },
     leadPermissions,
     hiddenToolsFromPermissions(leadPermissions),
@@ -97,8 +137,9 @@ export async function applyGatehouseConfig(cfg: Config, projectDirectory?: strin
     ARCHITECT_OPENCODE,
     {
       mode: "primary",
-      description: "管理团队的组织方式：按任务特点搭一支能高效协作的执行队伍，任务结束后队伍解散；通过复盘看执行效率与成本，持续改进更适合该类任务的团队结构。",
+      ...(descriptions.architect ? { description: descriptions.architect } : {}),
       color: "#6B5B95",
+      ...(projectDirectory ? { prompt: await loadArchitectPrompt(projectDirectory) } : {}),
     },
     architectSessionPermissions,
     hiddenToolsFromPermissions(architectSessionPermissions),
@@ -109,8 +150,9 @@ export async function applyGatehouseConfig(cfg: Config, projectDirectory?: strin
     CURATOR_OPENCODE,
     {
       mode: "primary",
-      description: "维护各领域的技能资料：任务开始前为每位执行者分配合适的领域技能；任务复盘时把执行者更新过的技能整理归档，供后续任务复用。",
+      ...(descriptions.curator ? { description: descriptions.curator } : {}),
       color: "#8B6914",
+      ...(projectDirectory ? { prompt: await loadCuratorPrompt(projectDirectory) } : {}),
     },
     curatorSessionPermissions,
     hiddenToolsFromPermissions(curatorSessionPermissions),
@@ -121,7 +163,7 @@ export async function applyGatehouseConfig(cfg: Config, projectDirectory?: strin
     INNER_ROOT_AGENT,
     {
       mode: "primary",
-      description: "任务执行团队根协调者（structural root）— 统筹执行树、汇总交付并通知 lead；禁止 task",
+      ...(descriptions.buildRoot ? { description: descriptions.buildRoot } : {}),
       color: "#2E6F8F",
     },
     buildRootPermissions,
@@ -133,7 +175,7 @@ export async function applyGatehouseConfig(cfg: Config, projectDirectory?: strin
     INNER_ROOT_SOLO_AGENT,
     {
       mode: "primary",
-      description: "任务执行团队 solo 根节点 — 兼执行与交付，可 task；通知 lead",
+      ...(descriptions.buildRootSolo ? { description: descriptions.buildRootSolo } : {}),
       color: "#3A8F7A",
     },
     buildRootSoloPermissions,
@@ -145,7 +187,7 @@ export async function applyGatehouseConfig(cfg: Config, projectDirectory?: strin
     INNER_COORDINATOR_AGENT,
     {
       mode: "primary",
-      description: "任务执行团队中间协调层 — 分派所辖子树、向上汇报父节点；禁止 task",
+      ...(descriptions.buildCoordinator ? { description: descriptions.buildCoordinator } : {}),
       color: "#4A90A4",
     },
     buildCoordinatorPermissions,
@@ -155,7 +197,11 @@ export async function applyGatehouseConfig(cfg: Config, projectDirectory?: strin
   mergeAgent(
     agents,
     INNER_EXECUTION_AGENT,
-    {},
+    {
+      mode: "primary",
+      ...(descriptions.build ? { description: descriptions.build } : {}),
+      color: "#5A7A5E",
+    },
     buildExecutionPermissions,
     hiddenToolsFromPermissions(buildExecutionPermissions),
   )
@@ -165,103 +211,9 @@ export async function applyGatehouseConfig(cfg: Config, projectDirectory?: strin
     ARBITER_OPENCODE,
     {
       mode: "primary",
-      description: "独立的权限审批人：按规则处理团队成员的权限申请，自动给出放行或拒绝，并完整记录每一次决定。",
+      ...(descriptions.arbiter ? { description: descriptions.arbiter } : {}),
       color: "#B84A4A",
-    },
-    arbiterSessionPermissions,
-    hiddenToolsFromPermissions(arbiterSessionPermissions),
-  )
-
-  if (!projectDirectory) return
-
-  const [
-    leadDescription,
-    architectDescription,
-    curatorDescription,
-    arbiterDescription,
-    rootDescription,
-    rootSoloDescription,
-    coordinatorDescription,
-  ] = await Promise.all([
-      loadAgentDescription(projectDirectory, "lead.md"),
-      loadAgentDescription(projectDirectory, "architect.md"),
-      loadAgentDescription(projectDirectory, "curator.md"),
-      loadAgentDescription(projectDirectory, "arbiter.md"),
-      loadAgentDescription(projectDirectory, "build-root.md"),
-      loadAgentDescription(projectDirectory, "build-root-solo.md"),
-      loadAgentDescription(projectDirectory, "build-coordinator.md"),
-    ])
-
-  mergeAgent(
-    agents,
-    LEAD_OPENCODE,
-    {
-      ...(leadDescription ? { description: leadDescription } : {}),
-      prompt: await loadLeadPrompt(projectDirectory),
-    },
-    leadPermissions,
-    hiddenToolsFromPermissions(leadPermissions),
-  )
-  mergeAgent(
-    agents,
-    ARCHITECT_OPENCODE,
-    {
-      ...(architectDescription ? { description: architectDescription } : {}),
-      prompt: await loadArchitectPrompt(projectDirectory),
-    },
-    architectSessionPermissions,
-    hiddenToolsFromPermissions(architectSessionPermissions),
-  )
-  mergeAgent(
-    agents,
-    CURATOR_OPENCODE,
-    {
-      ...(curatorDescription ? { description: curatorDescription } : {}),
-      prompt: await loadCuratorPrompt(projectDirectory),
-    },
-    curatorSessionPermissions,
-    hiddenToolsFromPermissions(curatorSessionPermissions),
-  )
-  mergeAgent(
-    agents,
-    INNER_ROOT_AGENT,
-    {
-      ...(rootDescription ? { description: rootDescription } : {}),
-    },
-    buildRootPermissions,
-    hiddenToolsFromPermissions(buildRootPermissions),
-  )
-  mergeAgent(
-    agents,
-    INNER_ROOT_SOLO_AGENT,
-    {
-      ...(rootSoloDescription ? { description: rootSoloDescription } : {}),
-    },
-    buildRootSoloPermissions,
-    hiddenToolsFromPermissions(buildRootSoloPermissions),
-  )
-  mergeAgent(
-    agents,
-    INNER_COORDINATOR_AGENT,
-    {
-      ...(coordinatorDescription ? { description: coordinatorDescription } : {}),
-    },
-    buildCoordinatorPermissions,
-    hiddenToolsFromPermissions(buildCoordinatorPermissions),
-  )
-  mergeAgent(
-    agents,
-    INNER_EXECUTION_AGENT,
-    {},
-    buildExecutionPermissions,
-    hiddenToolsFromPermissions(buildExecutionPermissions),
-  )
-  mergeAgent(
-    agents,
-    ARBITER_OPENCODE,
-    {
-      ...(arbiterDescription ? { description: arbiterDescription } : {}),
-      prompt: await loadArbiterPrompt(projectDirectory),
+      ...(projectDirectory ? { prompt: await loadArbiterPrompt(projectDirectory) } : {}),
     },
     arbiterSessionPermissions,
     hiddenToolsFromPermissions(arbiterSessionPermissions),

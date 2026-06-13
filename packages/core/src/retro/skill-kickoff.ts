@@ -96,6 +96,7 @@ export function skillDomainContextNote(
       skill_domain: skillDomain,
       skill_domain_path: skillDomainDir(skillDomain),
       skill_catalog,
+      lead_name: names.lead,
     }),
     names,
   )

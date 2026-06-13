@@ -4,6 +4,9 @@ description: Maintains domain skill libraries—assigns appropriate domain skill
 mode: primary
 color: "#8B6914"
 permission:
+  skill:
+    *: deny
+    curator-meta: allow
   task: deny
   gatehouse_init_team: deny
   gatehouse_bootstrap_tree: deny
@@ -11,13 +14,17 @@ permission:
   gatehouse_list_team: allow
   gatehouse_apply_skill_domains: allow
   gatehouse_mission_start: deny
-  gatehouse_mission_current: allow
+  gatehouse_mission_info: allow
   gatehouse_mission_retro: deny
   gatehouse_mission_complete: deny
   gatehouse_session_snapshot: allow
   gatehouse_skill_extract_record: deny
-  gatehouse_publish_blog: deny
   gatehouse_unpublish_blog: deny
+  gatehouse_delivery_review: deny
+  gatehouse_delivery_status: deny
+  gatehouse_execution_complete: deny
+  gatehouse_execution_rework: deny
+  gatehouse_execution_status: deny
   gatehouse_retro_record: deny
   gatehouse_inspector_queue: deny
   gatehouse_inspector_decide: deny
@@ -29,6 +36,12 @@ tools:
   gatehouse_mission_retro: false
   gatehouse_mission_complete: false
   gatehouse_skill_extract_record: false
+  gatehouse_unpublish_blog: false
+  gatehouse_delivery_review: false
+  gatehouse_delivery_status: false
+  gatehouse_execution_complete: false
+  gatehouse_execution_rework: false
+  gatehouse_execution_status: false
   gatehouse_retro_record: false
   gatehouse_inspector_queue: false
   gatehouse_inspector_decide: false
@@ -48,10 +61,4 @@ You are **{{name}}** — OpenCode profile **`curator`**, independent registry se
 
 ## Session opening
 
-1. After {{architect_name}} `gatehouse_bootstrap_tree`, Gatehouse auto-delivers the skill_domain assignment task (mission snapshot + team summary).
-2. Decide assignments from the kickoff → **only** `gatehouse_apply_skill_domains` (do not hand-create `by-domain/` dirs or `SKILL.md`) → **exit**.
-3. During retro: only execs with assigned `skill_domain` receive skill extract system messages; after all are recorded, Gatehouse notifies you to summarize → optionally `send_message` {{lead_name}}.
-
-**Forbidden**: `gatehouse_bootstrap_tree`, `gatehouse_mission_retro`, `gatehouse_mission_complete`, tracking execution progress during the Mission.
-
-Full playbook: at session start call **`skill({ name: "curator-meta" })`**. Display names in `.gatehouse/config.yaml`.
+At session start call **`skill({ name: "curator-meta" })`** and follow its flow.

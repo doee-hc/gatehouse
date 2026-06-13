@@ -4,6 +4,12 @@ import { readManifest } from "../tree/store.ts"
 import type { TreeManifest } from "../tree/types.ts"
 import { isRecord, parseYaml, readString } from "../yaml.ts"
 import {
+  blogPostFormatFromPath,
+  excerptFromBlogPost,
+  extractBlogPostTitle,
+  type BlogPostFormat,
+} from "./blog-content.ts"
+import {
   blogMissionIdFromPostId,
   readBlogPublishedDocument,
   readBlogPublishedRevision,
@@ -16,6 +22,7 @@ export type BlogPost = {
   id: string
   title: string
   excerpt: string
+  format: BlogPostFormat
   markdown: string
   path: string
   updated_at: string
@@ -68,40 +75,24 @@ async function readMissionEntries(projectDirectory: string) {
   })
 }
 
-async function readMarkdownPost(projectDirectory: string, relPath: string, postId: string) {
+async function readPublishedPost(projectDirectory: string, relPath: string, postId: string) {
   const abs = path.join(projectDirectory, relPath)
   const file = Bun.file(abs)
   if (!(await file.exists())) return undefined
   const markdown = await file.text()
   if (!markdown.trim()) return undefined
   const stat = await file.stat()
+  const format = blogPostFormatFromPath(relPath)
+  const fallback = path.basename(relPath)
   return {
     id: postId,
-    title: extractTitle(markdown, path.basename(relPath)),
-    excerpt: excerptFromMarkdown(markdown),
+    title: extractBlogPostTitle(markdown, format, fallback),
+    excerpt: excerptFromBlogPost(markdown, format),
+    format,
     markdown,
     path: relPath,
     updated_at: stat.mtime.toISOString(),
   } satisfies BlogPost
-}
-
-function extractTitle(markdown: string, fallback: string) {
-  const match = markdown.match(/^#\s+(.+)$/m)
-  if (match?.[1]) return match[1].trim()
-  return fallback.replace(/\.md$/i, "")
-}
-
-function excerptFromMarkdown(markdown: string, maxLen = 180) {
-  const plain = markdown
-    .replace(/^#+\s.+$/gm, "")
-    .replace(/```[\s\S]*?```/g, "")
-    .replace(/`[^`]+`/g, "")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/[*_~>#|-]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-  if (plain.length <= maxLen) return plain
-  return `${plain.slice(0, maxLen).trim()}…`
 }
 
 function treeNodeOrder(manifest: TreeManifest) {
@@ -153,7 +144,7 @@ async function readPublishedPosts(projectDirectory: string, published: Set<strin
   const posts: BlogPost[] = []
   for (const entry of doc.posts) {
     if (!published.has(entry.id)) continue
-    const post = await readMarkdownPost(projectDirectory, entry.path, entry.id)
+    const post = await readPublishedPost(projectDirectory, entry.path, entry.id)
     if (post) posts.push(post)
   }
   return posts

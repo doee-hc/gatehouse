@@ -47,7 +47,7 @@ describe("prompt snapshot injections", () => {
       })
       expect(message).toContain("packages/core")
       expect(message).toContain("done_when")
-      expect(message).not.toContain("gatehouse_mission_current** 获取任务全文")
+      expect(message).not.toContain("gatehouse_mission_info** 获取任务全文")
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
@@ -64,10 +64,12 @@ describe("prompt snapshot injections", () => {
         spec,
       })
       expect(prompt).toContain("任务快照")
+      expect(prompt).toContain("冻结")
+      expect(prompt).not.toMatch(/## 任务快照\n\n## 任务快照/)
       expect(prompt).toContain("node-doc")
       expect(prompt).toContain("user_skill")
       expect(prompt).not.toContain("{{mission_contract}}")
-      expect(prompt).not.toContain("gatehouse_mission_current` — 任务全文")
+      expect(prompt).not.toContain("gatehouse_mission_info` — 任务全文")
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
@@ -85,7 +87,7 @@ describe("prompt snapshot injections", () => {
       })
       expect(prompt).toContain("node-doc")
       expect(prompt).toContain("m1")
-      expect(prompt).toContain("node-doc-delivery.md")
+      expect(prompt).toContain("gatehouse_execution_complete")
       expect(prompt).not.toContain("{{delivery_path}}")
     } finally {
       await rm(dir, { recursive: true, force: true })

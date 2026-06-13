@@ -29,11 +29,11 @@ disable-model-invocation: true
 
 ## 推荐工作流
 
-1. 调用 `skill({ name: "retro-toolkit" })`；读 `.gatehouse/trees/<mission_id>/context/index.json` 与 `subtree-metrics.json`（`retro_nodes[<node_id>]`），列出所辖分支全部 `node_id`。
+1. 读 `.gatehouse/trees/<mission_id>/context/index.json` 与 `subtree-metrics.json`（`retro_nodes[<node_id>]`），列出所辖分支全部 `node_id`。
 2. 读 `.gatehouse/skills/retro-toolkit/tools/*/SKILL.md`，复用已有脚本。
 3. 对 1–2 个可疑节点：grep timeline → 写/跑脚本 → 记录发现。
 4. 若新工具有复用价值：落盘 `.gatehouse/skills/retro-toolkit/tools/<name>/` 并写 SKILL。
-5. 写 `.gatehouse/trees/<mission_id>/reports/nodes/<node_id>-retro.md`（含「工具贡献」章节）→ `gatehouse_retro_record` 登记（复盘报告为内部协调文档，**勿** `publish_blog`）。
+5. 写 `.gatehouse/trees/<mission_id>/reports/nodes/<node_id>-retro.md`（含「工具贡献」章节）→ `gatehouse_retro_record` 登记（复盘报告为内部协调文档，**勿**手动发布）。
 
 ## 新工具目录约定
 

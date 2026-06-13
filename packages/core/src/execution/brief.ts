@@ -41,7 +41,7 @@ export function formatNodeBriefBlock(brief: NodeBrief) {
   }
   lines.push(
     "",
-    "**优先级：** 以本 Brief 为行动依据；核对边界用 `gatehouse_mission_context`。协调者（build-root / build-coordinator）可读 `gatehouse_mission_contract`。",
+    "**优先级：** 以本 Brief 为行动依据；核对边界与任务快照用 `gatehouse_mission_info`。",
   )
   return lines.join("\n")
 }

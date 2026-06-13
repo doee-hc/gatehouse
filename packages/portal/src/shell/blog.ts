@@ -1,6 +1,6 @@
 import type { BlogPost, BlogSnapshot } from "../api/types.ts"
 import { localeTag, t } from "./i18n.ts"
-import { renderMarkdown } from "./markdown.ts"
+import { renderBlogPostBody } from "./render-blog-post.ts"
 
 let postsById = new Map<string, BlogPost>()
 let blogBound = false
@@ -18,7 +18,11 @@ export function initBlog() {
   if (!back || !list || !detail) return
 
   back.addEventListener("click", () => {
-    detail.classList.remove("visible")
+    detail.classList.remove("visible", "html-article")
+    const layout = document.querySelector(".blog-layout")
+    if (layout instanceof HTMLElement) layout.classList.remove("blog-reading", "blog-reading-html")
+    const view = document.getElementById("view-blog")
+    if (view instanceof HTMLElement) view.classList.remove("blog-html-reading")
     list.style.display = "block"
     if (header instanceof HTMLElement) header.style.display = "block"
   })
@@ -126,13 +130,22 @@ function openBlogPost(postId: string) {
   list.style.display = "none"
   if (header instanceof HTMLElement) header.style.display = "none"
   detail.classList.add("visible")
+  detail.classList.toggle("html-article", post.format === "html")
+
+  const layout = document.querySelector(".blog-layout")
+  if (layout instanceof HTMLElement) {
+    layout.classList.add("blog-reading")
+    layout.classList.toggle("blog-reading-html", post.format === "html")
+  }
+  const view = document.getElementById("view-blog")
+  if (view instanceof HTMLElement) view.classList.toggle("blog-html-reading", post.format === "html")
 
   const title = document.getElementById("detail-title")
   const meta = document.getElementById("detail-meta")
   const body = document.getElementById("detail-body")
   if (title) title.textContent = post.title
   if (meta) meta.textContent = `${formatDate(post.updated_at)} · ${post.path}`
-  if (body) body.innerHTML = renderMarkdown(post.markdown)
+  if (body) renderBlogPostBody(body, post)
 }
 
 function formatDate(value: string) {

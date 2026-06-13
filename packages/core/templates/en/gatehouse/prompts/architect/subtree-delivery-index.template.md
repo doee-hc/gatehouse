@@ -1,13 +1,15 @@
-# Subtree delivery index · <node_id>
+# Subtree rollup · <node_id>
 
-> Coordinator / structural root: **do not** copy child `*-delivery.md` bodies. List paths and one-line status only; optional short section for work you did yourself.
+> Coordinator: when rolling up direct reports, list **paths and one-line status only**; optional short section for work you did yourself. **Do not** paste child artifact bodies.
 
 ## Direct reports
 
-| node_id | report path | status |
-|---------|-------------|--------|
-| `<child>` | `.gatehouse/trees/<mission_id>/reports/nodes/<child>-delivery.md` | received / needs rework |
+| node_id | status |
+|---------|--------|
+| `<child>` | received / needs rework |
 
-## Own work (this node)
+## Own work on this node
 
-(What you executed directly; write "none" if N/A)
+(none if N/A)
+
+When this wave is done: `gatehouse_execution_complete(summary=..., artifacts=?)`.

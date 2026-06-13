@@ -8,7 +8,7 @@ describe("node session bootstrap", () => {
     const block = formatNodeRoleBlock("node-a", "文档执行成员", "zh")
     expect(block).toContain("node-a")
     expect(block).toContain("文档执行成员")
-    expect(block).toContain("gatehouse_node_brief")
+    expect(block).toContain("gatehouse_mission_info")
   })
 
   test("buildInnerBootstrapSystem composes role, context, and brief", () => {

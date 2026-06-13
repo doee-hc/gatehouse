@@ -5,12 +5,10 @@ import { tmpdir } from "node:os"
 import type { PluginInput } from "@opencode-ai/plugin"
 import type { ToolContext } from "@opencode-ai/plugin/tool"
 import { readBlogPublishedDocument } from "../src/portal/blog-publish.ts"
-import { publishBlogTool } from "../src/tools/publish-blog.ts"
 import { unpublishBlogTool } from "../src/tools/unpublish-blog.ts"
-import { deliverySubmitTool } from "../src/tools/delivery.ts"
+import { submitDeliveryRecord } from "../src/delivery/store.ts"
+import { parseMissionsFile } from "../src/missions/parse.ts"
 import { missionCompleteTool } from "../src/tools/mission-complete.ts"
-import { rootDeliveryRelPath } from "../src/paths.ts"
-import { mkdir } from "node:fs/promises"
 
 let dir: string
 
@@ -29,7 +27,7 @@ function mockToolContext(directory: string, sessionID: string, agent = "build-ro
   }
 }
 
-function toolOutput(result: Awaited<ReturnType<ReturnType<typeof publishBlogTool>["execute"]>>) {
+function toolOutput(result: Awaited<ReturnType<ReturnType<typeof unpublishBlogTool>["execute"]>>) {
   return typeof result === "string" ? result : result.output
 }
 
@@ -56,21 +54,11 @@ afterEach(async () => {
   await rm(dir, { recursive: true, force: true })
 })
 
-test("publish_blog is retired", async () => {
-  const pluginInput = { directory: dir, client: {} } as unknown as PluginInput
-  const publish = publishBlogTool(pluginInput)
-  const blocked = toolOutput(await publish.execute({ report_path: "content/post.md" }, mockToolContext(dir, "ses")))
-  expect(blocked).toContain("TOOL_RETIRED")
-})
-
 test("mission_complete done publishes deliverables; lead may unpublish", async () => {
   const missionId = "m1"
   const rel = "content/post.md"
   await writeMissions(missionId, [{ publish: rel }])
   await Bun.write(path.join(dir, rel), "# Post\n\nBody.")
-  const reportRel = rootDeliveryRelPath(missionId)
-  await mkdir(path.dirname(path.join(dir, reportRel)), { recursive: true })
-  await Bun.write(path.join(dir, reportRel), "# delivery\n\ndone")
 
   const pluginInput = {
     directory: dir,
@@ -113,16 +101,27 @@ test("mission_complete done publishes deliverables; lead may unpublish", async (
     updatedAt: new Date().toISOString(),
   })
 
-  const submit = deliverySubmitTool(pluginInput)
   const complete = missionCompleteTool(pluginInput)
   const unpublish = unpublishBlogTool(pluginInput)
-  const rootCtx = mockToolContext(dir, "ses_root")
   const leadCtx = mockToolContext(dir, "ses_lead", "lead")
 
-  expect(toolOutput(await submit.execute({ mission_id: missionId, summary: "done" }, rootCtx))).toContain("ok")
+  const mission = parseMissionsFile(await Bun.file(path.join(dir, ".gatehouse", "lead", "missions.yaml")).text())
+    .missions[0]!
+  await submitDeliveryRecord({
+    projectDirectory: dir,
+    missionId,
+    submittedByNode: "root",
+    summary: "done",
+    missionEntry: mission,
+  })
   expect((await readBlogPublishedDocument(dir)).posts).toHaveLength(0)
   expect(
-    toolOutput(await complete.execute({ mission_id: missionId, status: "done" }, leadCtx)),
+    toolOutput(
+      await complete.execute(
+        { mission_id: missionId, status: "done", publish_deliverables: true },
+        leadCtx,
+      ),
+    ),
   ).toContain("ok")
   expect((await readBlogPublishedDocument(dir)).posts).toHaveLength(1)
 

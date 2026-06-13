@@ -78,6 +78,8 @@ export type RegistryRetroRun = {
   expectedNodeIds: string[]
   startedAt: string
   architectNotifiedAt?: string
+  /** Set when profile architect send_message(recipient=lead) after retro batch kickoff. */
+  architectLeadNotifiedAt?: string
 }
 
 export type RegistryRetroCompletion = {
@@ -93,6 +95,8 @@ export type RegistrySkillExtractRun = {
   expectedNodeIds: string[]
   startedAt: string
   curatorNotifiedAt?: string
+  /** Set when profile curator send_message(recipient=lead) after skill-extract batch kickoff. */
+  curatorLeadNotifiedAt?: string
 }
 
 export type RegistrySkillExtractCompletion = {

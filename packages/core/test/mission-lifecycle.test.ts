@@ -130,6 +130,78 @@ describe("mission lifecycle tools", () => {
     }
   })
 
+  test("mission_complete rejects retro done when architect rollup pending", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-mission-complete-retro-"))
+    try {
+      await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
+      const missionId = "m-retro-pending"
+      const reportRel = `.gatehouse/trees/${missionId}/reports/nodes/root-retro.md`
+      await mkdir(path.dirname(path.join(dir, reportRel)), { recursive: true })
+      await Bun.write(path.join(dir, reportRel), "# retro\n")
+      await Bun.write(
+        path.join(dir, ".gatehouse/lead/missions.yaml"),
+        stringifyYaml({
+          schema_version: 3,
+          missions: [{ id: missionId, status: "retro", done_when: [], must_not: [] }],
+        }),
+      )
+
+      const pluginInput = {
+        directory: dir,
+        serverUrl: new URL("http://127.0.0.1:5099"),
+        client: {
+          session: {
+            async status() {
+              return { data: {} }
+            },
+            async promptAsync() {},
+            async messages() {
+              return { data: [] }
+            },
+            async get() {
+              return { data: { time: { created: 0, updated: 1000 } } }
+            },
+            async delete() {},
+          },
+        },
+      } as unknown as PluginInput
+
+      await registerOuterTeam(pluginInput)
+      const registry = await getRegistryStore(pluginInput)
+      registry.registerRetroNode({
+        missionId,
+        nodeId: "root",
+        profile: "build-root",
+        sessionId: "ses_retro_root",
+      })
+      registry.beginRetroRun(missionId, ["root"])
+      await registry.recordRetroCompletion({
+        missionId,
+        nodeId: "root",
+        sessionId: "ses_retro_root",
+        reportPath: reportRel,
+      })
+      expect(registry.retroStatus(missionId).architectNotified).toBe(true)
+      expect(registry.retroStatus(missionId).architectLeadNotified).toBe(false)
+
+      const output = toolOutput(
+        await missionCompleteTool(pluginInput).execute(
+          { mission_id: missionId, status: "done" },
+          mockToolContext(dir, "ses_lead", "lead"),
+        ),
+      )
+      const parsed = JSON.parse(output) as {
+        ok: boolean
+        error?: { code: string; details?: { pending?: string[] } }
+      }
+      expect(parsed.ok).toBe(false)
+      expect(parsed.error?.code).toBe("RETRO_ROLLUP_PENDING")
+      expect(parsed.error?.details?.pending).toContain("architect_summary_to_lead")
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
   test("mission_complete sets cancelled and records abort attempts", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-mission-complete-"))
     try {

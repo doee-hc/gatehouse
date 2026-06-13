@@ -42,7 +42,7 @@ export default async function orchestrate(ctx: {
   ): Promise<void>
   prompt(
     nodeId: string,
-    input: { text?: string; reply?: boolean },
+    input: { text?: string; reply?: boolean; rollupFrom?: string[] },
   ): Promise<void>
   waitFor(nodeId: string, event: "complete"): Promise<void>
   template: {
@@ -70,15 +70,14 @@ export default async function orchestrate(ctx: {
     not_your_job: ["不新增 plugin tool", "不修改 packages/gatehouse-plugin"],
     your_work: [
       "按协作脚本工单执行",
-      "汇总后写 reports/root-delivery.md → gatehouse_delivery_submit → gatehouse_execution_complete",
+      "核对 node-doc completion 后 gatehouse_execution_complete（全树 done 时自动通知 lead）",
     ],
-    acceptance_slice: ["root-delivery 已提交且 lead 可验收"],
+    acceptance_slice: ["delivery 已提交且 lead 可验收"],
   })
   await ctx.prompt("node-root", {
-    text: ctx.template.workOrder("node-root", {
-      context: "node-doc 已完成；请汇总交付并通知 lead。",
-    }),
+    text: ctx.template.workOrder("node-root"),
     reply: true,
+    rollupFrom: ["node-doc"],
   })
   await ctx.waitFor("node-root", "complete")
 }

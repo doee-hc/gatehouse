@@ -55,6 +55,11 @@ import {
 } from "../watchdog/state-db.ts"
 import type { WatchdogKind } from "../watchdog/state-db.ts"
 import type { MissionWatchState } from "../watchdog/signals.ts"
+import {
+  readDeliveryDocumentFromDb,
+  writeDeliveryDocumentToDb,
+} from "../delivery/db.ts"
+import type { DeliveryDocument } from "../delivery/types.ts"
 
 type AgentRow = {
   agent_id: string
@@ -136,6 +141,17 @@ function tableColumns(db: Database, table: string) {
   return new Set(columns.map((column) => column.name))
 }
 
+export function migrateRetroRollupLeadNotifiedColumns(db: Database) {
+  const retroCols = tableColumns(db, "registry_retro_run")
+  if (retroCols.size > 0 && !retroCols.has("architect_lead_notified_at")) {
+    db.exec("ALTER TABLE registry_retro_run ADD COLUMN architect_lead_notified_at TEXT")
+  }
+  const skillCols = tableColumns(db, "registry_skill_extract_run")
+  if (skillCols.size > 0 && !skillCols.has("curator_lead_notified_at")) {
+    db.exec("ALTER TABLE registry_skill_extract_run ADD COLUMN curator_lead_notified_at TEXT")
+  }
+}
+
 export function migrateRegistryProfileOnly(db: Database) {
   const version = (db.query("PRAGMA user_version").get() as { user_version: number } | undefined)?.user_version ?? 0
   if (version >= REGISTRY_SCHEMA_VERSION) return
@@ -163,6 +179,7 @@ function applySchema(db: Database) {
   migrateTreeManifestProfileColumn(db)
   migrateTreeManifestDescriptionColumn(db)
   migrateRegistryProfileOnly(db)
+  migrateRetroRollupLeadNotifiedColumns(db)
   migrateWatchdogStateTable(db)
   migrateMissionArtifactsTables(db)
   migrateOrchestrationTables(db)
@@ -207,7 +224,8 @@ function applySchema(db: Database) {
       mission_id TEXT PRIMARY KEY,
       expected_node_ids TEXT NOT NULL,
       started_at TEXT NOT NULL,
-      architect_notified_at TEXT
+      architect_notified_at TEXT,
+      architect_lead_notified_at TEXT
     );
 
     CREATE TABLE IF NOT EXISTS registry_retro_completion (
@@ -223,7 +241,8 @@ function applySchema(db: Database) {
       mission_id TEXT PRIMARY KEY,
       expected_node_ids TEXT NOT NULL,
       started_at TEXT NOT NULL,
-      curator_notified_at TEXT
+      curator_notified_at TEXT,
+      curator_lead_notified_at TEXT
     );
 
     CREATE TABLE IF NOT EXISTS registry_skill_extract_completion (
@@ -330,6 +349,7 @@ export class RegistryDatabase {
           expected_node_ids: string
           started_at: string
           architect_notified_at: string | null
+          architect_lead_notified_at: string | null
         }
         const expectedNodeIds = JSON.parse(record.expected_node_ids) as string[]
         return {
@@ -337,6 +357,7 @@ export class RegistryDatabase {
           expectedNodeIds,
           startedAt: record.started_at,
           ...(record.architect_notified_at && { architectNotifiedAt: record.architect_notified_at }),
+          ...(record.architect_lead_notified_at && { architectLeadNotifiedAt: record.architect_lead_notified_at }),
         } satisfies RegistryRetroRun
       })
     const retroCompletions = this.db
@@ -367,12 +388,14 @@ export class RegistryDatabase {
           expected_node_ids: string
           started_at: string
           curator_notified_at: string | null
+          curator_lead_notified_at: string | null
         }
         return {
           missionId: record.mission_id,
           expectedNodeIds: JSON.parse(record.expected_node_ids) as string[],
           startedAt: record.started_at,
           ...(record.curator_notified_at && { curatorNotifiedAt: record.curator_notified_at }),
+          ...(record.curator_lead_notified_at && { curatorLeadNotifiedAt: record.curator_lead_notified_at }),
         } satisfies RegistrySkillExtractRun
       })
     const skillExtractCompletions = this.db
@@ -467,8 +490,9 @@ export class RegistryDatabase {
         })
       }
       const insertRetroRun = this.db.prepare(`
-        INSERT INTO registry_retro_run (mission_id, expected_node_ids, started_at, architect_notified_at)
-        VALUES ($mission_id, $expected_node_ids, $started_at, $architect_notified_at)
+        INSERT INTO registry_retro_run (
+          mission_id, expected_node_ids, started_at, architect_notified_at, architect_lead_notified_at
+        ) VALUES ($mission_id, $expected_node_ids, $started_at, $architect_notified_at, $architect_lead_notified_at)
       `)
       for (const run of snapshot.retroRuns) {
         insertRetroRun.run({
@@ -476,6 +500,7 @@ export class RegistryDatabase {
           $expected_node_ids: JSON.stringify(run.expectedNodeIds),
           $started_at: run.startedAt,
           $architect_notified_at: run.architectNotifiedAt ?? null,
+          $architect_lead_notified_at: run.architectLeadNotifiedAt ?? null,
         })
       }
       const insertRetroCompletion = this.db.prepare(`
@@ -493,8 +518,9 @@ export class RegistryDatabase {
         })
       }
       const insertSkillExtractRun = this.db.prepare(`
-        INSERT INTO registry_skill_extract_run (mission_id, expected_node_ids, started_at, curator_notified_at)
-        VALUES ($mission_id, $expected_node_ids, $started_at, $curator_notified_at)
+        INSERT INTO registry_skill_extract_run (
+          mission_id, expected_node_ids, started_at, curator_notified_at, curator_lead_notified_at
+        ) VALUES ($mission_id, $expected_node_ids, $started_at, $curator_notified_at, $curator_lead_notified_at)
       `)
       for (const run of snapshot.skillExtractRuns) {
         insertSkillExtractRun.run({
@@ -502,6 +528,7 @@ export class RegistryDatabase {
           $expected_node_ids: JSON.stringify(run.expectedNodeIds),
           $started_at: run.startedAt,
           $curator_notified_at: run.curatorNotifiedAt ?? null,
+          $curator_lead_notified_at: run.curatorLeadNotifiedAt ?? null,
         })
       }
       const insertSkillExtractCompletion = this.db.prepare(`
@@ -699,5 +726,13 @@ export class RegistryDatabase {
 
   getOrchestrationState(missionId: string) {
     return readOrchestrationState(this.db, missionId)
+  }
+
+  getDeliveryDocument(missionId: string) {
+    return readDeliveryDocumentFromDb(this.db, missionId)
+  }
+
+  saveDeliveryDocument(doc: DeliveryDocument) {
+    writeDeliveryDocumentToDb(this.db, doc)
   }
 }

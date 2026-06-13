@@ -15,7 +15,7 @@ import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
 export function missionRetroTool(input: PluginInput) {
   return tool({
     description:
-      "profile lead only: start mission retro after user confirms delivery in chat. Requires delivery submitted (not yet finalized), active mission running in missions.yaml, manifest present, and all inner exec sessions idle. Forks retro sessions, dumps context/, kickoffs retro analysis + domain skill-extract (only exec nodes with manifest skill_domain receive skill-extract), sets missions.yaml to retro. Portal publish happens on gatehouse_mission_complete(done).",
+      "profile lead only: start mission retro after user confirms delivery in chat. Requires delivery recorded (structural root finished all nodes), active mission running in missions.yaml, manifest present, and all inner exec sessions idle. Starts retro phase for manager nodes and domain skill-extract (only exec nodes with manifest skill_domain receive skill-extract). Sets missions.yaml to retro. Portal publish happens on gatehouse_mission_complete(done).",
     args: {},
     async execute(_args, context) {
       const toolName = "gatehouse_mission_retro"
@@ -68,7 +68,7 @@ export function missionRetroTool(input: PluginInput) {
             output: toolFail(
               toolName,
               "DELIVERY_NOT_SUBMITTED",
-              `Mission ${missionId} delivery must be submitted via gatehouse_delivery_submit before retro`,
+              `Mission ${missionId} delivery must be recorded via structural root gatehouse_execution_complete before retro`,
               deliveryDoc?.active
                 ? { delivery_version: deliveryDoc.active.version, status: deliveryDoc.active.status }
                 : undefined,
@@ -160,7 +160,7 @@ export function missionRetroTool(input: PluginInput) {
 export function retroRecordTool(input: PluginInput) {
   return tool({
     description:
-      "Record retro analysis completion in registry.db (retro session only). When all expected nodes are recorded, Gatehouse auto-messages profile architect to read reports.",
+      "Record retro analysis completion (retro session only). When all expected nodes are recorded, Gatehouse auto-messages profile architect to read reports.",
     args: {
       report_path: tool.schema
         .string()

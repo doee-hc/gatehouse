@@ -1,5 +1,6 @@
 import path from "node:path"
 import { blogMissionIdFromDeliverablePostId } from "../delivery/publish-policy.ts"
+import { blogPostFormatFromPath, extractBlogPostTitle } from "./blog-content.ts"
 
 export const BLOG_PUBLISHER_SYSTEM = "system"
 export const BLOG_PUBLISHER_LEAD = "lead"
@@ -33,8 +34,8 @@ export function blogPublishedPath(projectDirectory: string) {
 async function readBlogPostTitle(projectDirectory: string, reportPath: string) {
   const file = Bun.file(path.join(projectDirectory, reportPath))
   if (!(await file.exists())) return undefined
-  const match = (await file.text()).match(/^#\s+(.+)$/m)
-  return match?.[1]?.trim()
+  const content = await file.text()
+  return extractBlogPostTitle(content, blogPostFormatFromPath(reportPath), path.basename(reportPath))
 }
 
 export function leadBlogReportRel(missionId: string) {

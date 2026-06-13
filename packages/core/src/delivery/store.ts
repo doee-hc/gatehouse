@@ -1,7 +1,7 @@
-import { mkdir } from "node:fs/promises"
 import path from "node:path"
 import { deliveryDocumentPath, deliveryDocumentRelPath } from "../paths.ts"
-import { isRecord, parseYaml, readString, stringifyYaml } from "../yaml.ts"
+import { RegistryDatabase } from "../registry/db.ts"
+import { isRecord, parseYaml, readString } from "../yaml.ts"
 import type { MissionEntry } from "../missions/parse.ts"
 import {
   criteriaFromMissionEntry,
@@ -9,8 +9,7 @@ import {
   readMissionRawDoneWhen,
   runDeliveryPrecheck,
 } from "./criteria.ts"
-import { pendingMissionPublishPaths, publishMissionDeliverables } from "./publish-artifacts.ts"
-import { publishPathsFromCriteria } from "./publish-policy.ts"
+import { publishMissionDeliverables, explainPublishSkipped, resolveDeliverablesToPublishAtFinalize } from "./publish-artifacts.ts"
 import type {
   DeliveryDocument,
   DeliveryEvidence,
@@ -97,14 +96,13 @@ function parseReview(raw: unknown): DeliveryReview | undefined {
   }
 }
 
-function parseDeliveryRecord(raw: unknown): DeliveryRecord | undefined {
+export function parseDeliveryRecord(raw: unknown): DeliveryRecord | undefined {
   if (!isRecord(raw)) return undefined
   const version = typeof raw.version === "number" ? raw.version : undefined
   const status = readString(raw.status)
   const submitted_at = readString(raw.submitted_at)
   const submitted_by_node = readString(raw.submitted_by_node)
-  const report_path = readString(raw.report_path)
-  if (!version || !status || !submitted_at || !submitted_by_node || !report_path) return undefined
+  if (!version || !status || !submitted_at || !submitted_by_node) return undefined
   const criteria = Array.isArray(raw.criteria)
     ? raw.criteria.flatMap((item) => {
         const parsed = parseCriterion(item)
@@ -128,10 +126,10 @@ function parseDeliveryRecord(raw: unknown): DeliveryRecord | undefined {
     status: status as DeliveryRecord["status"],
     submitted_at,
     submitted_by_node,
-    report_path,
     criteria,
     evidence,
     precheck,
+    ...(readString(raw.report_path) && { report_path: readString(raw.report_path) }),
     ...(readString(raw.blog_post_id) && { blog_post_id: readString(raw.blog_post_id) }),
     ...(Array.isArray(raw.pending_publish_paths) && {
       pending_publish_paths: raw.pending_publish_paths.filter((item): item is string => typeof item === "string"),
@@ -148,7 +146,7 @@ function parseDeliveryRecord(raw: unknown): DeliveryRecord | undefined {
 
 export function parseDeliveryDocument(text: string, missionId: string): DeliveryDocument {
   const raw = parseYaml(text)
-  if (!isRecord(raw)) throw new Error("delivery.yaml must be a mapping")
+  if (!isRecord(raw)) throw new Error("delivery document must be a mapping")
   const activeRaw = raw.active
   const active = activeRaw ? parseDeliveryRecord(activeRaw) : undefined
   const history = Array.isArray(raw.history)
@@ -165,16 +163,27 @@ export function parseDeliveryDocument(text: string, missionId: string): Delivery
   }
 }
 
-export async function readDeliveryDocument(projectDirectory: string, missionId: string) {
+async function readLegacyDeliveryYaml(projectDirectory: string, missionId: string) {
   const file = Bun.file(deliveryDocumentPath(projectDirectory, missionId))
   if (!(await file.exists())) return undefined
   return parseDeliveryDocument(await file.text(), missionId)
 }
 
+export async function readDeliveryDocument(projectDirectory: string, missionId: string) {
+  const registry = new RegistryDatabase(projectDirectory)
+  const fromDb = registry.getDeliveryDocument(missionId)
+  if (fromDb) return fromDb
+  const legacy = await readLegacyDeliveryYaml(projectDirectory, missionId)
+  if (legacy) {
+    registry.saveDeliveryDocument(legacy)
+    return legacy
+  }
+  return undefined
+}
+
 export async function writeDeliveryDocument(projectDirectory: string, doc: DeliveryDocument) {
-  const target = deliveryDocumentPath(projectDirectory, missionIdFromDoc(doc))
-  await mkdir(path.dirname(target), { recursive: true })
-  await Bun.write(target, stringifyYaml(doc))
+  const registry = new RegistryDatabase(projectDirectory)
+  registry.saveDeliveryDocument(doc)
   return deliveryDocumentRelPath(doc.mission_id)
 }
 
@@ -208,10 +217,7 @@ export type SubmitDeliveryInput = {
   projectDirectory: string
   missionId: string
   submittedByNode: string
-  reportPath: string
   summary?: string
-  pendingPublishPaths?: string[]
-  publishedArtifacts?: string[]
   forceReason?: string
   evidence?: DeliveryEvidence[]
   missionEntry: MissionEntry
@@ -241,10 +247,7 @@ export async function submitDeliveryRecord(input: SubmitDeliveryInput) {
     status: "submitted",
     submitted_at: new Date().toISOString(),
     submitted_by_node: input.submittedByNode,
-    report_path: input.reportPath,
     criteria,
-    ...(input.pendingPublishPaths?.length && { pending_publish_paths: input.pendingPublishPaths }),
-    ...(input.publishedArtifacts?.length && { published_artifacts: input.publishedArtifacts }),
     evidence: input.evidence ?? [],
     precheck,
     ...(input.summary && { summary: input.summary }),
@@ -339,6 +342,7 @@ export async function finalizeDeliveryOnMissionComplete(input: {
   missionId: string
   missionEntry: MissionEntry
   userFeedback?: string
+  publishDeliverables?: boolean
 }) {
   const doc = await readDeliveryDocument(input.projectDirectory, input.missionId)
   if (!doc?.active) {
@@ -370,23 +374,32 @@ export async function finalizeDeliveryOnMissionComplete(input: {
     status: "finalized",
   }
 
-  let publishPaths = active.pending_publish_paths
-  if (!publishPaths?.length) {
-    const criteria = await buildCriteriaForMission(input.projectDirectory, input.missionId, input.missionEntry)
-    publishPaths = publishPathsFromCriteria(criteria)
+  let publishedArtifacts: string[] = []
+  let publishWarnings: string[] = []
+  if (input.publishDeliverables) {
+    const forceSubmit = Boolean(active.force_reason)
+    const { paths, freshPrecheck } = await resolveDeliverablesToPublishAtFinalize({
+      projectDirectory: input.projectDirectory,
+      criteria: active.criteria,
+      forceSubmit,
+    })
+    publishedArtifacts = await publishMissionDeliverables({
+      projectDirectory: input.projectDirectory,
+      missionId: input.missionId,
+      criteria: active.criteria,
+      precheck: freshPrecheck,
+      forceSubmit,
+      paths,
+      publishedBy: "lead",
+    })
+    publishWarnings = explainPublishSkipped({
+      criteria: active.criteria,
+      precheck: freshPrecheck,
+      forceSubmit,
+      requestedPaths: paths,
+      published: publishedArtifacts,
+    })
   }
-  if (!publishPaths?.length) {
-    publishPaths = pendingMissionPublishPaths(active.criteria)
-  }
-
-  const publishedArtifacts = await publishMissionDeliverables({
-    projectDirectory: input.projectDirectory,
-    missionId: input.missionId,
-    criteria: active.criteria,
-    precheck: active.precheck,
-    forceSubmit: Boolean(active.force_reason),
-    paths: publishPaths,
-  })
   if (publishedArtifacts.length > 0) {
     active.published_artifacts = publishedArtifacts
   }
@@ -404,5 +417,6 @@ export async function finalizeDeliveryOnMissionComplete(input: {
     delivery_version: active.version,
     status: active.status,
     published_artifacts: publishedArtifacts,
+    ...(publishWarnings.length > 0 && { publish_warnings: publishWarnings }),
   }
 }

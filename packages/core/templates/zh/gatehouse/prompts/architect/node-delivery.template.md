@@ -1,15 +1,15 @@
-# 节点交付 · <node_id>
+# 节点完成 · <node_id>
 
-> 叶子执行节点：记录**本节点**工作。完成后调用 `gatehouse_execution_complete(summary=..., delivery_path=...)` 并附上本文件路径。
+完成本阶段时调用 `gatehouse_execution_complete`：
 
-## 产出摘要
+## 产出摘要（summary）
 
 （简明说明本节点完成了什么）
 
-## 变更 / 证据
+## 变更 / 证据（artifacts）
 
-- 文件路径、命令输出或可验证结果
+- 项目目录中的文件路径 + 一句话描述
 
-## 未完成 / 风险
+## 未完成 / 风险（risks）
 
-（无则写「无」）
+（无则省略）

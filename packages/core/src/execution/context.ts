@@ -12,9 +12,9 @@ export function formatMissionContextBlock(contract: MissionContract, locale: Gat
     "**边界（must_not）：**",
     bulletList(contract.must_not, locale),
     "",
-    "**边界只读：** `gatehouse_mission_context`",
+    "**边界只读：** `gatehouse_mission_info`",
     "",
-    "行动依据：`gatehouse_node_brief`。验收以 Brief 的 acceptance_slice 为准，勿自行扩大范围。",
+    "行动依据：Brief 的 `your_work`；验收以 Brief 的 `acceptance_slice` 为准，勿自行扩大范围。",
   ]
   return lines.join("\n")
 }

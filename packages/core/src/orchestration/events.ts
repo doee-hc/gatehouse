@@ -4,7 +4,10 @@ import type { RegistryStore } from "../registry/store.ts"
 import { readLocaleSync } from "../locale.ts"
 import { readActiveMissionContract, registryMissionToContract } from "../missions/contract.ts"
 import { formatMissionContextBlock } from "../execution/context.ts"
+import { runAcceptanceSlicePrecheck } from "../execution/acceptance-precheck.ts"
+import { sanitizeInnerBriefStrings } from "../missions/done-when-filter.ts"
 import type { NodeBrief } from "../execution/types.ts"
+import type { NodeCompletion } from "./types.ts"
 import { deliverOrchestrationPrompt } from "./prompt.ts"
 import { readOrchestrationState, writeOrchestrationState } from "./state.ts"
 import { validateReworkRequest } from "./rework.ts"
@@ -12,11 +15,15 @@ import { formatReworkResumeText, formatReworkText } from "./templates.ts"
 import { notifyOrchestrationWaiters } from "./wait.ts"
 
 function mergeBrief(existing: NodeBrief | undefined, nodeId: string, partial: Partial<NodeBrief>): NodeBrief {
+  const your_work = sanitizeInnerBriefStrings(partial.your_work ?? existing?.your_work ?? [])
+  const acceptance_slice = sanitizeInnerBriefStrings(
+    partial.acceptance_slice ?? existing?.acceptance_slice ?? [],
+  )
   return {
     node_id: nodeId,
-    your_work: partial.your_work ?? existing?.your_work ?? [],
+    your_work,
     not_your_job: partial.not_your_job ?? existing?.not_your_job ?? [],
-    acceptance_slice: partial.acceptance_slice ?? existing?.acceptance_slice ?? [],
+    acceptance_slice,
     ...(partial.role ?? existing?.role ? { role: partial.role ?? existing?.role } : {}),
   }
 }
@@ -26,7 +33,8 @@ export async function orchestrationComplete(input: {
   store: RegistryStore
   missionId: string
   nodeId: string
-  deliveryPath?: string
+  completion?: NodeCompletion
+  skipAcceptanceSlice?: boolean
 }) {
   const scriptRecord = new RegistryDatabase(input.plugin.directory, { readonly: true }).getMissionScript(
     input.missionId,
@@ -42,6 +50,23 @@ export async function orchestrationComplete(input: {
     return { status: "not_active" as const, current: node.status }
   }
 
+  const registry = new RegistryDatabase(input.plugin.directory, { readonly: true })
+  const brief = registry.getNodeBrief(input.missionId, input.nodeId)
+  if (brief?.acceptance_slice.length && !input.skipAcceptanceSlice) {
+    const acceptanceCheck = await runAcceptanceSlicePrecheck(
+      input.plugin.directory,
+      brief.acceptance_slice,
+    )
+    if (!acceptanceCheck.ok) {
+      return {
+        status: "acceptance_precheck_failed" as const,
+        node_id: input.nodeId,
+        message: acceptanceCheck.message,
+        precheck: acceptanceCheck.precheck,
+      }
+    }
+  }
+
   const now = new Date().toISOString()
   state.nodes[input.nodeId] = {
     ...node,
@@ -49,6 +74,7 @@ export async function orchestrationComplete(input: {
     completed_at: now,
     blocked_by: undefined,
     rework_reason: undefined,
+    ...(input.completion && { completion: input.completion }),
   }
 
   const unblocked: string[] = []
@@ -88,7 +114,7 @@ export async function orchestrationComplete(input: {
     node_id: input.nodeId,
     unblocked,
     all_done: Object.values(state.nodes).every((n) => n.status === "done"),
-    ...(input.deliveryPath && { delivery_path: input.deliveryPath }),
+    ...(input.completion && { completion: input.completion }),
   }
 }
 

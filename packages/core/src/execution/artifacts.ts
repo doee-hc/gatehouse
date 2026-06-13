@@ -51,7 +51,7 @@ async function exportMissionContractYaml(projectDirectory: string, missionId: st
       schema_version: 3,
       frozen_at: new Date().toISOString(),
       mission: rawEntry,
-      note: "Human/debug export only — agents must use gatehouse_mission_contract / gatehouse_mission_context",
+      note: "Human/debug export only — agents must use gatehouse_mission_info",
     }),
   )
 }

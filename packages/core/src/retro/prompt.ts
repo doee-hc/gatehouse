@@ -38,7 +38,7 @@ export function architectRetroBatchReadyMessage(
 ) {
   const lines = completions.map((item) => `- ${item.nodeId}: ${item.reportPath}`).join("\n")
   return renderGatehouseTemplate(
-    gatehouseMessage("retro.batchReady", locale, { mission_id: missionId, lines }),
+    gatehouseMessage("retro.batchReady", locale, { mission_id: missionId, lines, lead_name: names.lead }),
     names,
   )
 }

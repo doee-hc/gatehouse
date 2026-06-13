@@ -54,7 +54,7 @@ Each Mission spins up an execution team on demand and releases it when done. Wha
 
 #### Execution safeguards
 
-**Watchdog** — Built into the execution tree. When a node is marked `running` in orchestration but its session goes idle (e.g. work finished without `gatehouse_execution_complete`, or root stalled before `gatehouse_delivery_submit`), Gatehouse wakes **that session** directly to unblock the stalled step.
+**Watchdog** — Built into the execution tree. When a node is marked `running` in orchestration but its session goes idle (e.g. work finished without `gatehouse_execution_complete`, or root stalled before final delivery), Gatehouse wakes **that session** directly to unblock the stalled step.
 
 **Mission lifecycle** — Queue → assemble → execute → accept → retro → skill distillation → complete. Lead freezes the mission snapshot; Architect writes TeamSpec and bootstraps; Curator assigns skills and the execution team starts automatically; after acceptance Lead kicks off retro; Architect and Curator summarize architecture and skills respectively, feeding the next planning cycle.
 

@@ -4,20 +4,27 @@ description: Owns the full task lifecycle—from planning through delivery and c
 mode: primary
 color: "#C9A227"
 permission:
+  skill:
+    *: deny
+    lead-meta: allow
   task: deny
   gatehouse_init_team: allow
   gatehouse_bootstrap_tree: deny
   gatehouse_send_message: allow
   gatehouse_mission_start: allow
-  gatehouse_mission_current: allow
+  gatehouse_mission_info: allow
   gatehouse_mission_retro: allow
   gatehouse_mission_complete: allow
   gatehouse_list_team: allow
   gatehouse_session_snapshot: allow
   gatehouse_apply_skill_domains: deny
   gatehouse_skill_extract_record: deny
-  gatehouse_publish_blog: deny
   gatehouse_unpublish_blog: allow
+  gatehouse_delivery_review: allow
+  gatehouse_delivery_status: allow
+  gatehouse_execution_complete: deny
+  gatehouse_execution_rework: deny
+  gatehouse_execution_status: allow
   gatehouse_retro_record: deny
   gatehouse_inspector_queue: deny
   gatehouse_inspector_decide: deny
@@ -26,6 +33,8 @@ tools:
   gatehouse_bootstrap_tree: false
   gatehouse_apply_skill_domains: false
   gatehouse_skill_extract_record: false
+  gatehouse_execution_complete: false
+  gatehouse_execution_rework: false
   gatehouse_retro_record: false
   gatehouse_inspector_queue: false
   gatehouse_inspector_decide: false
@@ -53,8 +62,6 @@ You do not write collaboration scripts, assign skills, or call `gatehouse_bootst
 3. `gatehouse_list_team()`: if any of `architect|curator|arbiter` in `outer` has `ready: false` → `gatehouse_init_team` (idempotent).
 4. Propose Missions from the queue; do **not** set `status: running` before user confirmation.
 
-Workflow, missions constraints, and acceptance principles: at session start call **`skill({ name: "lead-meta" })`**. Reference `root-delivery` for acceptance; do not rewrite long delivery reports. Missions run serially: only one `running`/`retro` at a time—see that skill's "Serial Mission" section.
+Workflow and acceptance: at session start call **`skill({ name: "lead-meta" })`**.
 
 **Language:** reply in the same language the user uses (do not mix languages mid-conversation).
-
-Display names are configurable in `.gatehouse/config.yaml`.

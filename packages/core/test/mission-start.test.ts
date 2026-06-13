@@ -5,9 +5,8 @@ import { tmpdir } from "node:os"
 import type { PluginInput } from "@opencode-ai/plugin"
 import type { ToolContext } from "@opencode-ai/plugin/tool"
 import { missionStartTool } from "../src/tools/mission-start.ts"
-import { missionCurrentTool } from "../src/tools/mission-current.ts"
+import { missionInfoTool } from "../src/tools/mission-info.ts"
 import { parseDoneWhenCriteriaFromRaw } from "../src/delivery/criteria.ts"
-import { publishPathsFromCriteria } from "../src/delivery/publish-policy.ts"
 import { readMissionContractRawRegistry } from "../src/execution/artifacts.ts"
 import { startMissionFromYaml } from "../src/missions/start.ts"
 import { parseMissionsFile } from "../src/missions/parse.ts"
@@ -40,7 +39,7 @@ function toolOutput(result: Awaited<ReturnType<ReturnType<typeof missionStartToo
 }
 
 describe("gatehouse_mission_start", () => {
-  test("starts queued mission, registers snapshot, mission_current returns full contract", async () => {
+  test("starts queued mission, registers snapshot, mission_info returns contract for architect", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-mission-start-"))
     try {
       await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
@@ -89,16 +88,21 @@ describe("gatehouse_mission_start", () => {
       const entry = missions.missions.find((item) => item.id === "core-example-smoke-v1")
       expect(entry?.status).toBe("running")
 
-      const currentOut = JSON.parse(
-        toolOutput(await missionCurrentTool(pluginInput).execute({}, mockToolContext(dir, "ses_architect", "architect"))),
+      const infoOut = JSON.parse(
+        toolOutput(await missionInfoTool(pluginInput).execute({}, mockToolContext(dir, "ses_architect", "architect"))),
       ) as {
         ok: boolean
-        data?: { mission_id: string; objective?: string; done_when: string[]; must_not: string[] }
+        data?: {
+          mission_id: string
+          role_view: string
+          contract?: { objective?: string; done_when: string[]; must_not: string[] }
+        }
       }
-      expect(currentOut.ok).toBe(true)
-      expect(currentOut.data?.mission_id).toBe("core-example-smoke-v1")
-      expect((currentOut.data?.done_when.length ?? 0) > 0).toBe(true)
-      expect((currentOut.data?.must_not.length ?? 0) > 0).toBe(true)
+      expect(infoOut.ok).toBe(true)
+      expect(infoOut.data?.mission_id).toBe("core-example-smoke-v1")
+      expect(infoOut.data?.role_view).toBe("architect")
+      expect((infoOut.data?.contract?.done_when.length ?? 0) > 0).toBe(true)
+      expect((infoOut.data?.contract?.must_not.length ?? 0) > 0).toBe(true)
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
@@ -152,7 +156,7 @@ describe("gatehouse_mission_start", () => {
       const raw = await readMissionContractRawRegistry(dir, "m-publish-freeze")
       expect(raw != null).toBe(true)
       const criteria = parseDoneWhenCriteriaFromRaw({ done_when: (raw as { done_when: unknown[] }).done_when })
-      expect(criteria[0]?.publishPath).toBe(deliverable)
+      expect(criteria[0]?.check).toEqual({ kind: "path_exists", path: deliverable })
       expect(criteria[0]?.text).toContain("Structured report")
     } finally {
       await rm(dir, { recursive: true, force: true })

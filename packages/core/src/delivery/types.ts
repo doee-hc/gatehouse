@@ -12,7 +12,7 @@ export type DoneWhenCriterion = {
   id: number
   text: string
   check: DoneWhenCheck
-  /** Project-relative path allowed for Portal publish when listed in done_when. */
+  /** @deprecated Legacy publish: metadata; criteria no longer set this on parse. */
   publishPath?: string
 }
 
@@ -58,9 +58,10 @@ export type DeliveryRecord = {
   status: DeliveryStatus
   submitted_at: string
   submitted_by_node: string
-  report_path: string
+  /** @deprecated Legacy deliveries only; new records omit this field. */
+  report_path?: string
   blog_post_id?: string
-  /** Project paths that publish to Portal on gatehouse_mission_complete(done). */
+  /** @deprecated Computed at read time from criteria; not persisted on new records. */
   pending_publish_paths?: string[]
   published_artifacts?: string[]
   summary?: string

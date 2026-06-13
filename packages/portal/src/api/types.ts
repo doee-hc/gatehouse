@@ -76,10 +76,13 @@ export type PortalSnapshot = {
   }
 }
 
+export type BlogPostFormat = "markdown" | "html"
+
 export type BlogPost = {
   id: string
   title: string
   excerpt: string
+  format?: BlogPostFormat
   markdown: string
   path: string
   updated_at: string

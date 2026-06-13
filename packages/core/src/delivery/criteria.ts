@@ -7,6 +7,22 @@ import type { DoneWhenCheck, DoneWhenCriterion, DeliveryPrecheck } from "./types
 
 export { readMissionRawDoneWhenFromRegistry as readMissionRawDoneWhen }
 
+const PATH_STRING_PREFIXES = [
+  /^path:\s*(.+)$/i,
+  /^file exists:\s*(.+)$/i,
+  /^文件存在:\s*(.+)$/,
+] as const
+
+/** Recognize documented string shorthands like `path: reports/foo.html`. */
+export function parsePathPrefixFromString(text: string) {
+  const trimmed = text.trim()
+  for (const pattern of PATH_STRING_PREFIXES) {
+    const match = trimmed.match(pattern)
+    if (match?.[1]?.trim()) return match[1].trim()
+  }
+  return undefined
+}
+
 function parseCheck(value: unknown, fallbackPath?: string): DoneWhenCheck {
   if (isRecord(value)) {
     const kind = readString(value.kind)
@@ -27,30 +43,27 @@ function parseCheck(value: unknown, fallbackPath?: string): DoneWhenCheck {
   return { kind: "manual" }
 }
 
-function parsePublishPath(item: Record<string, unknown>, pathValue?: string) {
-  const publishRaw = item.publish
-  if (typeof publishRaw === "string" && publishRaw.trim() && publishRaw !== "true" && publishRaw !== "false") {
-    return publishRaw.trim()
-  }
-  if (publishRaw === true && pathValue) return pathValue
-  if (publishRaw === true) return undefined
-  return undefined
-}
-
 function parseCriterionItem(item: unknown, id: number): DoneWhenCriterion | undefined {
   if (typeof item === "string" && item.trim()) {
+    const deliverablePath = parsePathPrefixFromString(item)
+    if (deliverablePath) {
+      return {
+        id,
+        text: item.trim(),
+        check: { kind: "path_exists", path: deliverablePath },
+      }
+    }
     return { id, text: item.trim(), check: { kind: "manual" } }
   }
   if (!isRecord(item)) return undefined
   const pathValue = readString(item.path)
   const publishOnly = readString(item.publish)
   if (!pathValue && !readString(item.text) && publishOnly && publishOnly !== "true" && publishOnly !== "false") {
-    const publishPath = publishOnly.trim()
+    const deliverablePath = publishOnly.trim()
     return {
       id,
-      text: `交付物: ${publishPath}`,
-      check: { kind: "path_exists", path: publishPath },
-      publishPath,
+      text: `文件存在: ${deliverablePath}`,
+      check: { kind: "path_exists", path: deliverablePath },
     }
   }
   const text =
@@ -58,12 +71,10 @@ function parseCriterionItem(item: unknown, id: number): DoneWhenCriterion | unde
     (pathValue ? `文件存在: ${pathValue}` : readString(item.id) ?? undefined)
   if (!text?.trim()) return undefined
   const check = parseCheck(item.check, pathValue)
-  const publishPath = parsePublishPath(item, pathValue)
   return {
     id,
     text: text.trim(),
     check,
-    ...(publishPath && { publishPath }),
   }
 }
 
@@ -73,6 +84,14 @@ export function parseDoneWhenCriteriaFromRaw(item: Record<string, unknown>): Don
   if (!Array.isArray(raw)) return []
   return raw.flatMap((entry, index) => {
     const criterion = parseCriterionItem(entry, index)
+    return criterion ? [criterion] : []
+  })
+}
+
+/** Parse acceptance_slice / plain string lists into checkable criteria. */
+export function criteriaFromStringList(items: string[]): DoneWhenCriterion[] {
+  return items.flatMap((item, index) => {
+    const criterion = parseCriterionItem(item, index)
     return criterion ? [criterion] : []
   })
 }
@@ -90,12 +109,12 @@ export function criteriaFromMissionEntry(
     if (parsed.length > 0) return parsed
   }
   return entry.done_when.map((text, id) => {
-    const pathMatch = text.match(/^文件存在:\s*(.+)$/)
-    if (pathMatch?.[1]) {
+    const deliverablePath = parsePathPrefixFromString(text)
+    if (deliverablePath) {
       return {
         id,
         text,
-        check: { kind: "path_exists", path: pathMatch[1].trim() },
+        check: { kind: "path_exists", path: deliverablePath },
       }
     }
     return { id, text, check: { kind: "manual" } }

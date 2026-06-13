@@ -16,7 +16,7 @@ disable-model-invocation: true
 | Tool                         | 用途                                                                |
 | ---------------------------- | ----------------------------------------------------------------- |
 | `gatehouse_bootstrap_tree`   | 提交 `mission.script.ts` — 下一步由 {{curator_name}} 分配 skill 领域       |
-| `gatehouse_mission_current`  | 只读刷新任务快照（objective / done_when / must_not / notes / user_topology） |
+| `gatehouse_mission_info`  | 只读刷新任务快照（objective / done_when / must_not / notes / user_topology） |
 | `gatehouse_send_message`     | 通知 {{lead_name}}（复盘摘要）                                              |
 | `gatehouse_list_team`        | 无参数：外层 contacts + 当前任务执行树（及 retro 节点若存在）                          |
 | `gatehouse_session_snapshot` | **单次诊断**（异常排查），禁止循环轮询                                             |
@@ -30,7 +30,7 @@ disable-model-invocation: true
 
 收到 {{lead_name}} `gatehouse_mission_start` 的自动通知后：
 
-1. 使用通知中的任务快照（objective / done_when / must_not / notes / user_topology）；必要时 `gatehouse_mission_current` 刷新。
+1. 使用通知中的任务快照（objective / done_when / must_not / notes / user_topology）；必要时 `gatehouse_mission_info` 刷新。
 2. 读 `.gatehouse/<locale>/prompts/architect/` 模板（`<locale>` 见 `.gatehouse/config.yaml`；**先读 locale 对应目录**，勿默认读 `en/`）。
 
 任务正文含 objective / done_when / must_not / notes / user_topology / user_skill。**拓扑与协作时序全权归你** — 除非 `user_topology` 有值（用户经 {{lead_name}} 明确指定），否则忽略任何软性拓扑暗示，自行设计 `export const team`。`team` **不写** skill_domain（归 {{curator_name}} 分配；`user_skill` 仅给 {{curator_name}} 参考）。
@@ -53,6 +53,27 @@ disable-model-invocation: true
 
 
 每个 inner 节点必填 `description`：一句话职责（UI / `gatehouse_list_team` / bootstrap 角色摘要）。详细任务与边界写在 `ctx.setBrief`。
+
+**`setBrief` 约束（调研/文字产出节点推荐）：**
+
+| 字段 | 要求 |
+|------|------|
+| `your_work` | 具体行动项；并列节点写清 **scope 边界**（`not_your_job` 或正文内「勿涵盖…」）避免 sibling 重叠 |
+| `acceptance_slice` | **必须**含 `path: reports/<node_id>.md`（或明确的项目相对路径）；**禁止**仅写「约 N 字」而无 path |
+| 字数 | 用 **硬区间**（如 `1500–1800 字，±10% 内一次性交付，勿反复 edit 计字`），勿用模糊「约 1500-2000 字」 |
+| 参考 URL | mission `notes` 中的链接写入 brief；注明「URL 失败时用 notes 摘要，同一 URL 勿 retry 超过 2 次」 |
+| 隔离 | 加「只交付本节点 path，**勿 read sibling 节点 artifact**」 |
+
+```typescript
+await ctx.setBrief("researcher-a", {
+  your_work: ["…"],
+  not_your_job: ["…（sibling 节点职责，勿重复）"],
+  acceptance_slice: [
+    "path: reports/researcher-a.md",
+    "1500–1800 字 markdown，一次性交付",
+  ],
+})
+```
 
 **勿写 `profile`** — bootstrap 按拓扑自动分配：solo root → `build-root-solo`；有下属的 root → `build-root`；中间协调层 → `build-coordinator`；叶子 → `build`。
 
@@ -100,14 +121,14 @@ export default async function orchestrate(ctx) {
 }
 ```
 
-**多级团队**（root → 中间协调层 → 叶子）：`team.nodes` 里用 `parent` 表达汇报树；`orchestrate` 里用 `waitForRollup` 或 `waitForAll` 等子树完成。协调层在 `setBrief` 写清所辖子树边界；bootstrap 会自动注入子树快照。交付索引见 `subtree-delivery-index.template.md`。中间协调节点通常**不**由 {{curator_name}} 分配 `skill_domain`（见 curator-meta）。
+**多级团队**（root → 中间协调层 → 叶子）：`team.nodes` 里用 `parent` 表达汇报树；`orchestrate` 里用 `waitForRollup` 或 `waitForAll` 等子树完成。协调层在 `setBrief` 写清所辖子树边界；bootstrap 会注入子树快照。协调层汇总格式见 `subtree-delivery-index.template.md`。中间协调节点通常**不**由 {{curator_name}} 分配 `skill_domain`（见 curator-meta）。
 
 **编排原语（只能用 `ctx.*`）：**
 
 
 | API                                                  | 用途                                     |
 | ---------------------------------------------------- | -------------------------------------- |
-| `ctx.prompt(nodeId, { text?, system?, reply? })`     | 向节点发系统消息；`reply: true` 会触发该节点开始一轮对话    |
+| `ctx.prompt(nodeId, { text?, system?, reply?, rollupFrom? })` | 向节点发工单；`reply: true` 开工；`rollupFrom` 列出要附带的下属 node_id |
 | `ctx.setBrief(nodeId, partial)`                      | 写入节点任务书（在 `prompt` 前调用）                |
 | `ctx.waitFor(nodeId, "complete")`                    | 等待该节点调用 `gatehouse_execution_complete` |
 | `ctx.waitForAll` / `ctx.waitForRollup`               | 等待多个节点或子树完成                            |
@@ -128,7 +149,11 @@ await ctx.prompt("node-a", { text: ctx.template.workOrder("node-a"), reply: true
 await ctx.prompt("node-b", { text: ctx.template.workOrder("node-b"), reply: true })
 await ctx.waitForAll(["node-a", "node-b"], "complete")
 ctx.phase("汇总")
-await ctx.prompt("<root-node-id>", { text: ctx.template.workOrder("<root-node-id>"), reply: true })
+await ctx.prompt("<root-node-id>", {
+  text: ctx.template.workOrder("<root-node-id>"),
+  reply: true,
+  rollupFrom: ["node-a", "node-b"],
+})
 await ctx.waitFor("<root-node-id>", "complete")
 ```
 
@@ -138,13 +163,13 @@ await ctx.waitFor("<root-node-id>", "complete")
 2. **只能**通过 `ctx.`* 驱动 Mission；不要在文件顶层写会立即执行的代码。
 3. `team` / `meta` 必须是字面量对象。
 4. `nodeId` 优先用字符串字面量，避免写错节点名。
-5. 不要把合同全文塞进脚本 — 边界写进 `setBrief` 或 `prompt.text`；执行者用 `gatehouse_mission_context` / `gatehouse_node_brief` 自行读取。
+5. 不要把合同全文塞进脚本 — 边界写进 `setBrief` 或 `prompt.text`；执行者用 `gatehouse_mission_info` 刷新本节点任务与边界。
 6. 推荐顺序：`setBrief` → `prompt(reply:true)` → `waitFor`；复杂任务用 `meta.phases` + `ctx.phase` 分段（**每个 `meta.phases` 条目至少调用一次 `ctx.phase`**）。
 7. `ctx.objective` 可用；勿用未文档化的 `ctx.*` 属性。
 
-执行者读 `gatehouse_mission_context`、`gatehouse_node_brief`；协调者（build-root / build-coordinator）可读 `gatehouse_mission_contract`。structural root 可读 `gatehouse_execution_status`。
+执行者与协调者使用 `gatehouse_mission_info`（按角色裁剪）。structural root 可读 `gatehouse_execution_status`。
 
-编排脚本负责向节点下发工单；root 负责汇总 `root-delivery`、`gatehouse_delivery_submit`。节点完成时调用 `gatehouse_execution_complete`。
+编排脚本负责时序与工单。唤醒父/协调节点时，用 `prompt(..., { rollupFrom: [...] })` **列出**本次工单要附带的下属 node_id。节点完成时 `gatehouse_execution_complete(summary, artifacts?)`；structural root 在全树 done 时同一调用自动通知 {{lead_name}}（含 `done_when` 预检与交付记录）。**Portal 发布由 Lead `mission_complete(done)` 完成** — `setBrief` / 工单中**禁止**写「发布到 Portal」或任何 publish 工具名。
 
 1. `gatehouse_bootstrap_tree(objective=...)` → 随后 {{curator_name}} `gatehouse_apply_skill_domains` → 自动启动执行。
 2. **退出执行环** — 勿向用户提供 `gatehouse_execution_status` 跟踪、勿轮询进度。
@@ -170,8 +195,10 @@ await ctx.waitFor("<root-node-id>", "complete")
 | 用途             | 路径                                                                                                        |
 | -------------- | --------------------------------------------------------------------------------------------------------- |
 | 协作脚本 / reports | `.gatehouse/trees/<id>/mission.script.ts` |
-| 汇报             | `.gatehouse/trees/<id>/reports/`（叶子 `nodes/<id>-delivery.md`；协调层索引同路径；root `root-delivery.md` 仅引用下属）      |
-| 交付模板           | `prompts/architect/node-delivery.template.md`、`subtree-delivery-index.template.md`                        |
+| 节点汇报 | 各节点 `gatehouse_execution_complete(summary, artifacts?)` |
+| 汇总工单 | 父节点 `prompt` 的 `rollupFrom: [node_id, ...]` |
+| 通知 lead / 记录交付 | structural root 全树完成后 `gatehouse_execution_complete` |
+| 完成参考 | `prompts/architect/node-delivery.template.md`（叶子）、`subtree-delivery-index.template.md`（协调层） |
 | Prompt 模板      | `.gatehouse/<locale>/prompts/architect/`（`<locale>` 见 `config.yaml`）                                      |
 | retro 方法论      | `.gatehouse/<locale>/skills/retro-toolkit/SKILL.md`                                                       |
 | retro 工具脚本     | `.gatehouse/skills/retro-toolkit/tools/`                                                                  |

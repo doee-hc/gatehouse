@@ -9,7 +9,7 @@ import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
 export function missionStartTool(input: PluginInput) {
   return tool({
     description:
-      "profile lead only: start a queued mission from .gatehouse/lead/missions.yaml. Validates fields, asserts serial policy, writes frozen snapshot to registry.db (gatehouse_mission_current), sets status running, and auto-notifies architect. Do not hand-edit running status or duplicate the kickoff via send_message.",
+      "profile lead only: start a queued mission from .gatehouse/lead/missions.yaml. Validates fields, asserts serial policy, freezes mission snapshot (gatehouse_mission_info), sets status running, and auto-notifies architect. Do not hand-edit running status or duplicate the kickoff via send_message.",
     args: {
       mission_id: tool.schema.string().min(1),
     },
@@ -65,7 +65,6 @@ export function missionStartTool(input: PluginInput) {
             started_at: started.started_at,
             locked_at: started.record.lockedAt,
             architect_delivery: delivery.status,
-            ...(started.warnings.length > 0 && { warnings: started.warnings }),
             ...(delivery.status === "failed" && "error" in delivery && { error: delivery.error }),
           }),
           ...toolMetadata(toolName),

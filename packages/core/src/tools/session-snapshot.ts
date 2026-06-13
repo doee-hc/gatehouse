@@ -87,7 +87,7 @@ function waitGuidance(hint: ReturnType<typeof activityHint>) {
 export function sessionSnapshotTool(input: PluginInput) {
   return tool({
     description:
-      "Read-only diagnostic tail of another registry agent's OpenCode session (last N lines, max 50) plus session_status. recipient: outer profile, node_id, session_id, or agent_id. One-off use only — do not poll while waiting for send_message replies.",
+      "Read-only diagnostic tail of another registry agent's OpenCode session plus session_status. recipient: outer profile, node_id, session_id, or agent_id. One-off use only — do not poll while waiting for send_message replies.",
     args: {
       recipient: tool.schema
         .string()

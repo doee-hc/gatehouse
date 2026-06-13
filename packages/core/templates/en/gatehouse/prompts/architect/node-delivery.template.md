@@ -1,15 +1,15 @@
-# Node delivery · <node_id>
+# Node completion · <node_id>
 
-> Leaf executor: document **this node's** work only. When done, call `gatehouse_execution_complete(summary=..., delivery_path=...)` with this file path.
+When this phase is done, call `gatehouse_execution_complete`:
 
-## Output summary
+## Summary
 
-(What this node delivered)
+(What this node finished)
 
-## Changes / evidence
+## Changes / evidence (artifacts)
 
-- Paths, command output, or verifiable results
+- Project file paths + one-line descriptions
 
-## Open issues / risks
+## Open items / risks
 
-(Write "none" if empty)
+(Omit if none)

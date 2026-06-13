@@ -1,5 +1,6 @@
 import { gatehouseMessage } from "../i18n.ts"
 import type { GatehouseLocale } from "../locale.ts"
+import { filterDoneWhenForExecutionTeam } from "./done-when-filter.ts"
 import { bulletList } from "./parse.ts"
 import type { MissionContract } from "./contract.ts"
 
@@ -16,6 +17,11 @@ function formatMissionContractCore(
   locale: GatehouseLocale,
   audience: MissionContractAudience,
 ) {
+  const doneWhen =
+    audience === "full"
+      ? contract.done_when
+      : filterDoneWhenForExecutionTeam(contract.done_when)
+
   const lines = [
     gatehouseMessage("mission.contract.header", locale),
     "",
@@ -25,7 +31,7 @@ function formatMissionContractCore(
     contract.objective ?? gatehouseMessage("mission.objectiveMissing", locale),
     "",
     gatehouseMessage("mission.contract.doneWhenHeader", locale),
-    bulletList(contract.done_when, locale),
+    bulletList(doneWhen, locale),
     "",
     gatehouseMessage("mission.contract.mustNotHeader", locale),
     bulletList(contract.must_not, locale),
@@ -64,7 +70,7 @@ export function formatMissionContractForRole(
   return formatMissionContractCore(contract, locale, audience)
 }
 
-/** Full mission snapshot (lead tools, mission_current, tests). */
+/** Full mission snapshot (lead info tool, tests). */
 export function formatMissionContractBlock(contract: MissionContract, locale: GatehouseLocale) {
   return formatMissionContractForRole(contract, locale, "full")
 }

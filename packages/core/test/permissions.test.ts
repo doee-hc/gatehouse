@@ -17,7 +17,7 @@ const GATEHOUSE_TOOLS = [
   "gatehouse_send_message",
   "gatehouse_session_snapshot",
   "gatehouse_mission_start",
-  "gatehouse_mission_current",
+  "gatehouse_mission_info",
   "gatehouse_mission_retro",
   "gatehouse_mission_complete",
   "gatehouse_retro_record",
@@ -25,17 +25,12 @@ const GATEHOUSE_TOOLS = [
   "gatehouse_skill_extract_record",
   "gatehouse_inspector_queue",
   "gatehouse_inspector_decide",
-  "gatehouse_publish_blog",
   "gatehouse_unpublish_blog",
-  "gatehouse_delivery_submit",
   "gatehouse_delivery_review",
   "gatehouse_delivery_status",
   "gatehouse_execution_complete",
   "gatehouse_execution_rework",
   "gatehouse_execution_status",
-  "gatehouse_mission_context",
-  "gatehouse_node_brief",
-  "gatehouse_mission_contract",
 ] as const
 
 const OUTER_PERMISSIONS = {
@@ -79,35 +74,36 @@ describe("inner execution permission matrix", () => {
     expect(buildRootSoloPermissions.task).toBe("allow")
   })
 
-  test("inner coordinators omit blog publish tools", () => {
+  test("inner coordinators deny unpublish_blog and hide it from tool schema", () => {
     const coordinator = buildCoordinatorPermissions as Record<string, unknown>
-    expect(coordinator.gatehouse_publish_blog).toBeUndefined()
-    expect(coordinator.gatehouse_unpublish_blog).toBeUndefined()
+    expect(coordinator.gatehouse_unpublish_blog).toBe("deny")
+
+    const tools = hiddenToolsFromPermissions(buildCoordinatorPermissions)
+    expect(tools.gatehouse_unpublish_blog).toBe(false)
   })
 
-  test("lead denies publish_blog but allows unpublish_blog", () => {
-    expect(leadPermissions.gatehouse_publish_blog).toBe("deny")
+  test("lead allows unpublish_blog only (publish is system-managed on mission_complete)", () => {
     expect(leadPermissions.gatehouse_unpublish_blog).toBe("allow")
   })
 
   test("build-coordinator denies mission lifecycle tools and hides them from tool schema", () => {
-    expect(buildCoordinatorPermissions.gatehouse_mission_current).toBe("deny")
     expect(buildCoordinatorPermissions.gatehouse_mission_start).toBe("deny")
     expect(buildCoordinatorPermissions.gatehouse_mission_retro).toBe("deny")
     expect(buildCoordinatorPermissions.gatehouse_mission_complete).toBe("deny")
+    expect(buildCoordinatorPermissions.gatehouse_mission_info).toBe("allow")
 
     const tools = hiddenToolsFromPermissions(buildCoordinatorPermissions)
-    expect(tools.gatehouse_mission_current).toBe(false)
     expect(tools.gatehouse_mission_start).toBe(false)
     expect(tools.gatehouse_mission_retro).toBe(false)
     expect(tools.gatehouse_mission_complete).toBe(false)
     expect(tools.gatehouse_send_message).toBeUndefined()
   })
 
-  test("build profile denies mission lifecycle tools and hides them from tool schema", () => {
-    expect(buildExecutionPermissions.gatehouse_mission_current).toBe("deny")
+  test("build profile denies mission lifecycle tools and allows mission_info", () => {
+    expect(buildExecutionPermissions.gatehouse_mission_start).toBe("deny")
+    expect(buildExecutionPermissions.gatehouse_mission_info).toBe("allow")
     const tools = hiddenToolsFromPermissions(buildExecutionPermissions)
-    expect(tools.gatehouse_mission_current).toBe(false)
+    expect(tools.gatehouse_mission_start).toBe(false)
   })
 })
 
@@ -127,6 +123,7 @@ describe("hiddenToolsFromPermissions", () => {
     expect(tools.gatehouse_send_message).toBe(false)
     expect(tools.gatehouse_inspector_queue).toBeUndefined()
     expect(tools.gatehouse_inspector_decide).toBeUndefined()
+    expect(tools.gatehouse_mission_info).toBe(false)
   })
 })
 
@@ -155,8 +152,9 @@ body
     const result = injectAgentPermissionYaml(template, "build-coordinator.md")
     expect(result).toContain("architect-meta: deny")
     expect(result).toContain("*: allow")
-    expect(result).toContain("gatehouse_mission_current: deny")
-    expect(result).toContain("gatehouse_mission_current: false")
+    expect(result).toContain("gatehouse_mission_start: deny")
+    expect(result).toContain("gatehouse_mission_start: false")
+    expect(result).toContain("gatehouse_mission_info: allow")
   })
 
   test("injects hidden tools derived from deny permissions for lead", () => {

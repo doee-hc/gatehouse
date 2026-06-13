@@ -72,7 +72,7 @@ skill({ name: "retro-toolkit" })     # 方法论（或读 .gatehouse/<locale>/sk
 
 ## 任务分配与 prompt 约束
 - 任务分配是否清晰（who / what / done_when）：
-- 各节点 `gatehouse_node_brief` 是否有效、过松/过紧：
+- 各节点 `gatehouse_mission_info` 是否有效、过松/过紧：
 - 子节点 prompt 是否导致重复劳动或职责重叠：
 
 ## 协调与拓扑（给 {{architect_name}} architect-meta）
@@ -94,7 +94,7 @@ skill({ name: "retro-toolkit" })     # 方法论（或读 .gatehouse/<locale>/sk
 
 ```
 gatehouse_retro_record()
-# 勿 gatehouse_publish_blog 复盘报告
+# 复盘报告为内部文档，勿手动发布
 ```
 
 **不要** `gatehouse_send_message` 联系{{architect_name}} — 全部节点登记后 Gatehouse 会自动通知{{architect_name}}汇总（含各 retro 报告与 retro-toolkit 整理任务）。

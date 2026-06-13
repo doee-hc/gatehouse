@@ -92,6 +92,15 @@ export async function assertAllMissionAgentsIdle(input: {
   )
 }
 
+/** When missions.yaml is retro and Lead calls mission_complete(done), both retro rollup tracks must finish. */
+export function assertRetroReadyForComplete(registry: RegistryStore, missionId: string) {
+  const readiness = registry.retroCompleteReadiness(missionId)
+  if (readiness.ready) return readiness
+  throw new Error(
+    `Mission ${missionId} retro rollup incomplete; wait for outer notifications before mission_complete(done): ${readiness.pending.join(", ")}`,
+  )
+}
+
 export async function abortMissionSessions(plugin: PluginInput, sessionIds: string[]) {
   const unique = [...new Set(sessionIds)]
   if (unique.length === 0) return []
@@ -170,6 +179,7 @@ export function missionEndedOuterMessage(
       mission_id: missionId,
       status_label: statusLabel,
       status,
+      lead_name: names.lead,
     }),
     names,
   )

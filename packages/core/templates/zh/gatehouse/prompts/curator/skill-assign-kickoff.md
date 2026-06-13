@@ -2,8 +2,6 @@
 
 {{architect_name}} 已提交协作脚本。为需沉淀的执行节点选定 `skill_domain` 后，**仅**调用 `gatehouse_apply_skill_domains`。
 
-## 任务快照
-
 {{mission_contract}}
 
 ## 执行团队结构摘要
@@ -25,4 +23,4 @@
 2. 若使用仓库中尚未登记的 domain-id：可先更新 `domains.yaml`（仅元数据）。
 3. `gatehouse_apply_skill_domains(assignments='{"node-id":"domain-id"}')` → **结束本轮**。
 
-中间协调节点、无沉淀价值的通用执行节点通常**不**列入 `assignments`。执行期不提炼 skill。若任务快照有变，可调用 `gatehouse_mission_current` 刷新。
+中间协调节点、无沉淀价值的通用执行节点通常**不**列入 `assignments`。执行期不提炼 skill。若任务快照有变，可调用 `gatehouse_mission_info` 刷新。

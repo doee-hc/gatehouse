@@ -1,7 +1,9 @@
 import { tool, type PluginInput } from "@opencode-ai/plugin"
 import { buildCriteriaForMission, readDeliveryDocument } from "../delivery/store.ts"
+import type { DoneWhenCriterion } from "../delivery/types.ts"
 import {
   deliverableBlogPostId,
+  deliverablePathsFromCriteria,
   isUnderProjectRoot,
   normalizeProjectRelPath,
   resolveSkillBlogPostId,
@@ -21,7 +23,7 @@ async function resolveUnpublishPostId(input: {
   projectDirectory: string
   missionId?: string
   relPath: string
-  criteria: { publishPath?: string }[]
+  criteria: DoneWhenCriterion[]
 }) {
   const skillId = resolveSkillBlogPostId(input.relPath)
   if (skillId) return skillId
@@ -31,8 +33,8 @@ async function resolveUnpublishPostId(input: {
   if (publishedEntry) return publishedEntry.id
 
   if (!input.missionId) return undefined
-  const allowedByCriteria = input.criteria.some(
-    (item) => item.publishPath && normalizeProjectRelPath(item.publishPath) === normalized,
+  const allowedByCriteria = deliverablePathsFromCriteria(input.criteria).some(
+    (item) => item === normalized,
   )
   if (allowedByCriteria) return deliverableBlogPostId(input.missionId, normalized)
 
@@ -80,7 +82,7 @@ export function unpublishBlogTool(input: PluginInput) {
           }
         }
         const missionId = args.mission_id ?? sender?.missionId
-        let criteria: { publishPath?: string }[] = []
+        let criteria: DoneWhenCriterion[] = []
         if (missionId) {
           const missionsDoc = await readMissionsDocument(input.directory)
           const mission = requireMission(missionsDoc, missionId)
@@ -97,7 +99,7 @@ export function unpublishBlogTool(input: PluginInput) {
             output: toolFail(
               toolName,
               "INVALID_BLOG_POST",
-              "report_path must be a published deliverable (done_when publish:) or domain SKILL.md",
+              "report_path must be a published deliverable or domain SKILL.md",
               { report_path: reportRel },
             ),
             ...toolMetadata(toolName),

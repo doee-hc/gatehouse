@@ -220,6 +220,46 @@ missions:
   expect(blog.groups).toHaveLength(0)
 })
 
+test("buildBlogSnapshot loads published html posts", async () => {
+  await write(
+    ".gatehouse/lead/missions.yaml",
+    `schema_version: 1
+missions:
+  - id: m-html
+    status: done
+    completed_at: "2026-05-01T00:00:00Z"
+`,
+  )
+  await write(
+    "content/demo.html",
+    `<!DOCTYPE html>
+<html>
+<head><title>互动演示</title></head>
+<body>
+  <p>点击按钮计数。</p>
+  <button id="btn">0</button>
+  <script>
+    const btn = document.getElementById("btn");
+    let n = 0;
+    btn.addEventListener("click", () => btn.textContent = String(++n));
+  </script>
+</body>
+</html>`,
+  )
+  await publishBlogPost(dir, {
+    postId: "m-html:deliverable:content-demo.html",
+    reportPath: "content/demo.html",
+  })
+
+  const blog = await buildBlogSnapshot(dir)
+  expect(blog.groups).toHaveLength(1)
+  const post = blog.groups[0]?.posts[0]
+  expect(post?.title).toBe("互动演示")
+  expect(post?.format).toBe("html")
+  expect(post?.excerpt).toContain("点击按钮")
+  expect(post?.markdown).toContain("<script>")
+})
+
 test("buildBlogSnapshot reloads when blog-published revision changes", async () => {
   await write(
     ".gatehouse/lead/missions.yaml",

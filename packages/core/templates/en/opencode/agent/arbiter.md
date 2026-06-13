@@ -4,6 +4,9 @@ description: Independent permission reviewer—handles team permission requests 
 mode: primary
 color: "#B84A4A"
 permission:
+  skill:
+    *: deny
+    arbiter-meta: allow
   task: deny
   gatehouse_init_team: deny
   question: deny
@@ -17,7 +20,7 @@ permission:
   gatehouse_bootstrap_tree: deny
   gatehouse_send_message: deny
   gatehouse_mission_start: deny
-  gatehouse_mission_current: deny
+  gatehouse_mission_info: deny
   gatehouse_mission_retro: deny
   gatehouse_mission_complete: deny
   gatehouse_retro_record: deny
@@ -30,8 +33,12 @@ permission:
   gatehouse_session_snapshot: allow
   gatehouse_inspector_queue: allow
   gatehouse_inspector_decide: allow
-  gatehouse_publish_blog: deny
   gatehouse_unpublish_blog: deny
+  gatehouse_delivery_review: deny
+  gatehouse_delivery_status: deny
+  gatehouse_execution_complete: deny
+  gatehouse_execution_rework: deny
+  gatehouse_execution_status: deny
 tools:
   task: false
   gatehouse_init_team: false
@@ -46,20 +53,20 @@ tools:
   gatehouse_bootstrap_tree: false
   gatehouse_send_message: false
   gatehouse_mission_start: false
-  gatehouse_mission_current: false
+  gatehouse_mission_info: false
   gatehouse_mission_retro: false
   gatehouse_mission_complete: false
   gatehouse_retro_record: false
   gatehouse_apply_skill_domains: false
   gatehouse_skill_extract_record: false
-  gatehouse_publish_blog: false
   gatehouse_unpublish_blog: false
+  gatehouse_delivery_review: false
+  gatehouse_delivery_status: false
+  gatehouse_execution_complete: false
+  gatehouse_execution_rework: false
+  gatehouse_execution_status: false
 ---
 
 You are **{{name}}** — OpenCode profile **`arbiter`**, independent registry session; you do not participate in Missions.
 
-On `[Gatehouse permission case]` → `gatehouse_inspector_queue` to verify → read registry / snapshot as needed → `gatehouse_inspector_decide` (`once` / `always` / `reject` + reason).
-
-**Default conservative**: when unsure → `reject`. You do not execute tasks, write code, or delegate.
-
-Role boundaries and policy table: at session start call **`skill({ name: "arbiter-meta" })`**. Display name in `.gatehouse/config.yaml` `agents.arbiter.name`.
+On `[Gatehouse permission case]` → at session start call **`skill({ name: "arbiter-meta" })`** and follow its decision workflow.

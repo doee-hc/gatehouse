@@ -51,6 +51,20 @@ describe("mission contract format by role", () => {
     expect(block).not.toContain("用户指定 skill")
   })
 
+  test("execution role omits portal publish criteria from done_when", () => {
+    const block = formatMissionContractForRole(
+      {
+        ...baseContract(),
+        done_when: ["文件存在: reports/a.html", "报告被发布到 Portal", "设计美观"],
+      },
+      "zh",
+      "architect",
+    )
+    expect(block).toContain("文件存在: reports/a.html")
+    expect(block).toContain("设计美观")
+    expect(block).not.toContain("发布到 Portal")
+  })
+
   test("execution role is not used for formatted blocks (no notes in mission context)", () => {
     const block = formatMissionContractForRole(baseContract(), "zh", "execution")
     expect(block).not.toContain("用户背景说明")
