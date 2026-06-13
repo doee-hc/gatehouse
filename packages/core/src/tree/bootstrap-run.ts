@@ -109,6 +109,9 @@ export async function runBootstrapTree(
 
   await prepareOrchestrationRuntime(input.directory, manifest, script)
   const orchestrationRuntime = await startOrchestrationRuntime(input, registry, manifest, script)
+  if (orchestrationRuntime.status === "error") {
+    throw new Error(`Orchestration failed for ${spec.mission_id}: ${orchestrationRuntime.message}`)
+  }
   await registry.flushPendingDeliveries()
   scheduleOfficeLayoutSync(input.directory)
 

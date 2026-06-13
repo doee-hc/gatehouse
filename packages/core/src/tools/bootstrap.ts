@@ -5,7 +5,10 @@ import { missionScriptRelPath, resolveProjectPath } from "../paths.ts"
 import { readManifest } from "../tree/store.ts"
 import { resolveTeamSource } from "../orchestration/resolve-team.ts"
 import { dryRunMissionScriptSource } from "../orchestration/script-validate.ts"
+import { MissionScriptParseError } from "../orchestration/script-parse.ts"
+import { notifyArchitectOrchestrationFailure } from "../orchestration/notify.ts"
 import { validateTeamSpec } from "../tree/parse.ts"
+import { retryOrchestrationForActiveMission } from "../orchestration/retry.ts"
 import { runBootstrapTree } from "../tree/bootstrap-run.ts"
 import { ARCHITECT_OPENCODE, CURATOR_OPENCODE } from "../registry/types.ts"
 import { readActiveMissionContract } from "../missions/contract.ts"
@@ -67,8 +70,29 @@ export function bootstrapTreeTool(input: PluginInput) {
           return { output: toolFail(toolName, code, message), ...toolMetadata(toolName) }
         }
 
+        const caller = await resolveBootstrapCaller(input, context)
         const existing = await readManifest(input.directory, spec.mission_id)
         if (existing) {
+          if (caller === "architect") {
+            const retried = await retryOrchestrationForActiveMission(input, registry, spec.mission_id)
+            if (retried.status === "retried") {
+              return {
+                output: toolOk(toolName, {
+                  phase: "orchestration_restarted",
+                  mission_id: spec.mission_id,
+                  mission_script_path: missionScriptRelPath(spec.mission_id),
+                  orchestration_runtime: retried.orchestration_runtime,
+                }),
+                ...toolMetadata(toolName),
+              }
+            }
+            if (retried.status === "error") {
+              return {
+                output: toolFail(toolName, "ORCHESTRATION_FAILED", retried.message),
+                ...toolMetadata(toolName),
+              }
+            }
+          }
           return {
             output: toolFail(
               toolName,
@@ -79,7 +103,6 @@ export function bootstrapTreeTool(input: PluginInput) {
           }
         }
 
-        const caller = await resolveBootstrapCaller(input, context)
         if (caller === "architect") {
           const contract = readActiveMissionContract(input.directory, spec.mission_id)
           const curatorKickoff = await registry.kickoffCuratorSkillAssignment({
@@ -117,6 +140,15 @@ export function bootstrapTreeTool(input: PluginInput) {
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
+        if (error instanceof MissionScriptParseError || message.startsWith("Orchestration failed for ")) {
+          try {
+            const registry = await getRegistryStore(input)
+            const missionId = requireActiveMissionId(registry)
+            await notifyArchitectOrchestrationFailure(registry, input.directory, { missionId, error: message })
+          } catch {
+            // best-effort notify
+          }
+        }
         const code = message.includes("gatehouse_mission_start") ? "NO_ACTIVE_MISSION" : "BOOTSTRAP_FAILED"
         return { output: toolFail(toolName, code, message), ...toolMetadata(toolName) }
       }

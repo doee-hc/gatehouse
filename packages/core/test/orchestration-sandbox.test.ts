@@ -69,6 +69,31 @@ export default async function orchestrate(ctx) {
     expect(result.code).toBe("SCRIPT_FORBIDDEN_PUBLISH")
   })
 
+  test("dryRun rejects invalid orchestrate JavaScript syntax", () => {
+    const source = `
+export const team = {
+  mission_id: "m1",
+  root: "leaf",
+  nodes: { leaf: { parent: null, description: "leaf" } },
+}
+export default async function orchestrate(ctx) {
+  await ctx.setBrief("leaf", { your_work: ["work"], not_your_job: [], acceptance_slice: ["done"] })
+  await ctx.prompt("leaf", {
+    text: ctx.template.workOrder("leaf", {
+      note: "call gatehouse_send_message(recipient="ai-writer", message="done")",
+    }),
+    reply: true,
+  })
+  await ctx.waitFor("leaf", "complete")
+}
+`
+    const result = dryRunMissionScriptSource(source, "m1")
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.code).toBe("SCRIPT_INVALID_ORCHESTRATE_SYNTAX")
+    expect(result.message).toContain("Unexpected identifier")
+  })
+
   test("dryRun rejects import declarations", async () => {
     const source = await Bun.file(importFsFixture).text()
     const result = dryRunMissionScriptSource(source, "evil-m1")

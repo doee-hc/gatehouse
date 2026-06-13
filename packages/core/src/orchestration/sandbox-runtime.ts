@@ -98,11 +98,20 @@ export async function startSandboxOrchestration(input: {
   })
 
   worker.postMessage(initMessage)
-  await Promise.race([
-    firstPromptPromise,
-    new Promise((resolve) => setTimeout(resolve, 2000)),
+  const startupResult = await Promise.race([
+    firstPromptPromise.then(() => ({ status: "first_prompt" as const })),
+    workerDone,
+    new Promise<{ status: "timeout" }>((resolve) => setTimeout(() => resolve({ status: "timeout" }), 2000)),
   ])
   await input.store.flushPendingDeliveries()
+
+  if (startupResult.status === "error") {
+    return {
+      status: "error" as const,
+      mission_id: missionId,
+      message: startupResult.message,
+    }
+  }
 
   void workerDone.then((result) => {
     if (result.status === "error") {

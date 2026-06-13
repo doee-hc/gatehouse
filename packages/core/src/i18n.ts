@@ -40,6 +40,30 @@ Next: write **mission.script.ts** under \`.gatehouse/trees/{mission_id}/\`, then
 
 {lead_name} closed this Mission via gatehouse_mission_complete (missions.yaml → {status}). OpenCode sessions for the execution team have been stopped; do not assign work, deliver, or wait for this round.`,
   },
+  "orchestration.failed": {
+    zh: `[Gatehouse · 编排脚本执行失败 · {mission_id}]
+
+\`{script_path}\` 的 \`orchestrate()\` 函数体无法执行。
+
+**错误：** {error}
+
+**下一步：**
+1. 修复 \`{script_path}\`（常见原因：双引号字符串内嵌未转义的 \`"\`；skill 文档里的 \`gatehouse_send_message(recipient="...", ...)\` 示例不能直接放进 JS 双引号字符串）
+2. 保存后再次调用 **gatehouse_bootstrap_tree** 重启编排
+
+执行树 session 已保留；仅编排未启动或已中断。`,
+    en: `[Gatehouse · Orchestration script failed · {mission_id}]
+
+The \`orchestrate()\` body in \`{script_path}\` could not run.
+
+**Error:** {error}
+
+**Next:**
+1. Fix \`{script_path}\` (common cause: unescaped \`"\` inside double-quoted strings; do not paste \`gatehouse_send_message(recipient="...", ...)\` examples from skill docs verbatim into JS double-quoted strings)
+2. Save, then call **gatehouse_bootstrap_tree** again to restart orchestration
+
+Execution-tree sessions are kept; only orchestration failed to start or stalled.`,
+  },
   "retro.batchReady": {
     zh: `[Gatehouse 复盘就绪 · Mission {mission_id}]
 

@@ -8,6 +8,7 @@ import {
   readOrchestrationState,
   writeOrchestrationState,
 } from "./state.ts"
+import { notifyArchitectOrchestrationFailure } from "./notify.ts"
 import { startSandboxOrchestration } from "./sandbox-runtime.ts"
 
 export async function prepareOrchestrationRuntime(
@@ -41,6 +42,12 @@ export async function startOrchestrationRuntime(
 ) {
   const prepared = await prepareOrchestrationRuntime(input.directory, manifest, script)
   const started = await startSandboxOrchestration({ plugin: input, store, script })
+  if (started.status === "error") {
+    await notifyArchitectOrchestrationFailure(store, input.directory, {
+      missionId: manifest.mission_id,
+      error: started.message,
+    })
+  }
   return {
     ...started,
     phase: prepared.state.phase,

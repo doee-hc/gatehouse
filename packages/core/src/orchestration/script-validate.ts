@@ -1,5 +1,6 @@
 import { validateTeamSpec } from "../tree/parse.ts"
 import { MissionScriptParseError, parseMissionScriptSource, type ParsedMissionScript } from "./script-parse.ts"
+import { validateOrchestrateSyntax } from "./syntax.ts"
 import type { TeamSpec } from "../tree/types.ts"
 
 export type DryRunMissionScriptResult =
@@ -13,6 +14,7 @@ export function dryRunMissionScriptSource(source: string, expectedMissionId?: st
     validateOrchestrateStaticNodes(parsed.team, parsed.orchestrateSource)
     validatePromptNodesHaveBrief(parsed.orchestrateSource)
     validateNoPortalPublishReferences(parsed.orchestrateSource)
+    validateOrchestrateSyntaxOrThrow(parsed.orchestrateSource)
     if (parsed.meta?.phases) {
       for (const phase of parsed.meta.phases) {
         if (typeof phase !== "string" || !phase.trim()) {
@@ -64,6 +66,17 @@ function extractSetBriefNodes(orchestrateSource: string) {
     if (match[1]) nodes.add(match[1])
   }
   return nodes
+}
+
+function validateOrchestrateSyntaxOrThrow(orchestrateSource?: string) {
+  if (!orchestrateSource) return
+  const checked = validateOrchestrateSyntax(orchestrateSource)
+  if (!checked.ok) {
+    throw new MissionScriptParseError(
+      "SCRIPT_INVALID_ORCHESTRATE_SYNTAX",
+      `orchestrate body is not valid JavaScript: ${checked.message}`,
+    )
+  }
 }
 
 function validateNoPortalPublishReferences(orchestrateSource?: string) {
