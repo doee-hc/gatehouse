@@ -4,6 +4,7 @@ import { isInnerStructuralRoot, LEAD_OPENCODE } from "../registry/types.ts"
 import { readActiveMissionContract } from "../missions/contract.ts"
 import { requireLeadCaller } from "../missions/lifecycle.ts"
 import {
+  deliveryAcceptanceHints,
   deliveryIsFinalized,
   deliveryIsSubmitted,
   readDeliveryDocument,
@@ -13,12 +14,14 @@ import { pendingMissionPublishPaths } from "../delivery/publish-artifacts.ts"
 import { formatRevisionBriefMessage } from "../delivery/notify.ts"
 import type { DeliveryRecord } from "../delivery/types.ts"
 import { notifyWatchdogDeliveryEvent } from "../watchdog/notify.ts"
+import { clearLeadAwaitUserState } from "../watchdog/lead-user-await.ts"
 import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
 
 function enrichActiveRecord(active: DeliveryRecord) {
   return {
     ...active,
     pending_publish_paths: pendingMissionPublishPaths(active.criteria),
+    ...deliveryAcceptanceHints(active),
   }
 }
 
@@ -97,6 +100,7 @@ export function deliveryReviewTool(input: PluginInput) {
             message: revisionBody,
           })
           notifyWatchdogDeliveryEvent(input.directory, { missionId: args.mission_id, kind: "revision_requested" })
+          await clearLeadAwaitUserState(input.directory)
           await lead.registry.flushPendingDeliveries()
           return {
             output: toolOk(toolName, {
@@ -122,6 +126,8 @@ export function deliveryReviewTool(input: PluginInput) {
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         return { output: toolFail(toolName, "DELIVERY_REVIEW_FAILED", message), ...toolMetadata(toolName) }
+      } finally {
+        await clearLeadAwaitUserState(input.directory).catch(() => undefined)
       }
     },
   })

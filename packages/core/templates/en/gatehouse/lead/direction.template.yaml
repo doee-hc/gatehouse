@@ -1,0 +1,11 @@
+schema_version: 1
+status: draft
+summary: |
+  Align long-term direction, priorities, and boundaries with the user here (1–3 paragraphs).
+  After confirmation set status: confirmed and fill confirmed_at / confirmed_by.
+constraints:
+  - "Example: do not auto-change production config"
+  - "Example: P0 missions still require explicit user OK before start"
+# confirmed_at: "2026-01-01T00:00:00.000Z"
+# confirmed_by: user
+# review_after: "2026-07-01"

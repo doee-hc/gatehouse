@@ -135,6 +135,10 @@ export function watchdogSkillRecordWakePromptPath(projectDirectory: string) {
   return resolveGatehouseContentPath(projectDirectory, "prompts/architect/watchdog-skill-record-wake.md")
 }
 
+export function watchdogLeadUserBusyWakePromptPath(projectDirectory: string) {
+  return resolveGatehouseContentPath(projectDirectory, "prompts/lead/watchdog-user-busy-wake.md")
+}
+
 export function rootDeliveryPath(projectDirectory: string, missionId: string) {
   return path.join(treeDir(projectDirectory, missionId), "reports", "root-delivery.md")
 }
@@ -243,6 +247,10 @@ export function deliveryRevisionPromptPath(projectDirectory: string) {
 
 export function portalOfficeDir(projectDirectory: string) {
   return path.join(gatehouseRoot(projectDirectory), "portal", "office")
+}
+
+export function portalOfflineCacheDir(projectDirectory: string) {
+  return path.join(gatehouseRoot(projectDirectory), "portal", "cache")
 }
 
 export function officeLayoutSpecPath(projectDirectory: string) {

@@ -5,6 +5,7 @@ import { startMissionFromYaml } from "../missions/start.ts"
 import { formatMissionStartedMessage } from "../messaging/delivery-notify.ts"
 import { readAgentNamesSync, renderGatehouseTemplate } from "../names.ts"
 import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
+import { clearLeadAwaitUserState } from "../watchdog/lead-user-await.ts"
 
 export function missionStartTool(input: PluginInput) {
   return tool({
@@ -57,6 +58,7 @@ export function missionStartTool(input: PluginInput) {
           message,
         })
         await lead.registry.flushPendingDeliveries()
+        await clearLeadAwaitUserState(input.directory)
 
         return {
           output: toolOk(toolName, {

@@ -5,6 +5,7 @@ import {
   retroNodeReportRelPath,
   treeRelDir,
   watchdogNodeWakePromptPath,
+  watchdogLeadUserBusyWakePromptPath,
   watchdogRetroRecordWakePromptPath,
   watchdogSkillRecordWakePromptPath,
 } from "../paths.ts"
@@ -69,4 +70,24 @@ export async function loadWatchdogSkillRecordWakePrompt(
 
 export function listRunningMissionIds(projectDirectory: string) {
   return new RegistryDatabase(projectDirectory, { readonly: true }).listTreeMissionIds("running")
+}
+
+export async function loadWatchdogLeadUserBusyWakePrompt(
+  projectDirectory: string,
+  input: {
+    phase: string
+    missionId: string
+    idleMinutes: number
+    directionConfirmed: boolean
+  },
+) {
+  const template = renderGatehouseTemplate(
+    await Bun.file(watchdogLeadUserBusyWakePromptPath(projectDirectory)).text(),
+    readAgentNamesSync(projectDirectory),
+  )
+  return template
+    .replaceAll("{{phase}}", input.phase)
+    .replaceAll("{{mission_id}}", input.missionId)
+    .replaceAll("{{idle_minutes}}", String(input.idleMinutes))
+    .replaceAll("{{direction_confirmed}}", input.directionConfirmed ? "yes" : "no")
 }

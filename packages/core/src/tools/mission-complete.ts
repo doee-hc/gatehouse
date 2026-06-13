@@ -17,6 +17,7 @@ import { readManifest, readRetroManifest } from "../tree/store.ts"
 import { finalizeDeliveryOnMissionComplete } from "../delivery/store.ts"
 import { publishAllSkillBlogPosts } from "../delivery/publish-artifacts.ts"
 import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
+import { clearLeadAwaitUserState } from "../watchdog/lead-user-await.ts"
 
 const COMPLETABLE_MISSION_STATUSES = new Set(["queued", "running", "retro"])
 
@@ -140,6 +141,8 @@ export function missionCompleteTool(input: PluginInput) {
           status: terminal,
           projectDirectory: input.directory,
         })
+
+        await clearLeadAwaitUserState(input.directory)
 
         return {
           output: toolOk(toolName, {

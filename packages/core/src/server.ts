@@ -11,6 +11,7 @@ import { GATEHOUSE_OUTER_AGENTS } from "./registry/types.ts"
 import { createGatehouseCoreTools } from "./tools/index.ts"
 import { getPermissionArbiter, permissionEventProperties } from "./arbiter/arbiter.ts"
 import { startExecutionTreeWatchdog } from "./watchdog/execution-tree.ts"
+import { startLeadUserAwaitWatchdog, onLeadSessionUserMessage } from "./watchdog/lead-user-await.ts"
 import { startRecordWatchdogs } from "./watchdog/record-watchdog.ts"
 import { notifyPortalPortInUse, PortalPortInUseError } from "./portal/ports.ts"
 import { ensurePortalServer } from "./portal/server.ts"
@@ -65,6 +66,7 @@ export default {
     flushInterval.unref?.()
     startExecutionTreeWatchdog(input, registry)
     startRecordWatchdogs(input, registry)
+    startLeadUserAwaitWatchdog(input, registry)
     if (process.env.GATEHOUSE_PORTAL !== "0") {
       queueMicrotask(() => {
         void ensurePortalServer(input.directory, packageRoot).catch((error: unknown) => {
@@ -103,6 +105,10 @@ export default {
       },
       "chat.message": async (messageInput) => {
         await handleOuterChatMessage(registry, messageInput)
+        const registeredLead = registry.byProfile(LEAD_OPENCODE, "outer")
+        if (registeredLead && messageInput.sessionID === registeredLead.sessionId) {
+          await onLeadSessionUserMessage(input.directory)
+        }
       },
       "tool.execute.before": async (hookInput, output) => {
         if (hookInput.tool !== "task") return

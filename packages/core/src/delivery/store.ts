@@ -337,6 +337,27 @@ export function deliveryIsSubmitted(doc: DeliveryDocument | undefined) {
   return status === "submitted" || status === "under_review"
 }
 
+export function deliveryAcceptanceHints(active: DeliveryRecord | undefined) {
+  if (!active) {
+    return {
+      manual_criteria_count: 0,
+      auto_accept_eligible: false,
+      blocking_reasons: ["no_active_delivery"] as string[],
+    }
+  }
+  const manual_criteria_count = active.criteria.filter((item) => item.check.kind === "manual").length
+  const unmet = active.precheck.filter((item) => item.status === "unmet")
+  const blocking_reasons: string[] = []
+  if (unmet.length > 0) {
+    blocking_reasons.push(`${unmet.length} precheck criterion(s) unmet`)
+  }
+  return {
+    manual_criteria_count,
+    auto_accept_eligible: !precheckHasUnmet(active.precheck),
+    ...(blocking_reasons.length > 0 && { blocking_reasons }),
+  }
+}
+
 export async function finalizeDeliveryOnMissionComplete(input: {
   projectDirectory: string
   missionId: string

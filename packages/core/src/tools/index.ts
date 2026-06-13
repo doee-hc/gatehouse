@@ -18,6 +18,8 @@ import {
   executionReworkTool,
   executionStatusTool,
 } from "./execution.ts"
+import { leadAwaitUserTool } from "./lead-await-user.ts"
+import { directionStatusTool } from "./direction-status.ts"
 
 export function createGatehouseCoreTools(input: PluginInput) {
   return {
@@ -41,5 +43,7 @@ export function createGatehouseCoreTools(input: PluginInput) {
     gatehouse_execution_complete: executionCompleteTool(input),
     gatehouse_execution_rework: executionReworkTool(input),
     gatehouse_execution_status: executionStatusTool(input),
+    gatehouse_lead_await_user: leadAwaitUserTool(input),
+    gatehouse_direction_status: directionStatusTool(input),
   }
 }

@@ -28,6 +28,8 @@ Architecture & workflow: project `.gatehouse/**/SKILL.md` prompts (scaffolded on
 | `gatehouse_inspector_decide` | **profile arbiter** — approve (`once` / `always`) or reject a permission request |
 | `gatehouse_execution_rework` | **inner** — reopen a dependency node (in-flight rework) |
 | `gatehouse_execution_status` | **lead / architect / root / coordinators** — read orchestration runtime state |
+| `gatehouse_lead_await_user` | **profile lead** — arm user-await watchdog after asking user to confirm (pre_start / acceptance / post_retro) |
+| `gatehouse_direction_status` | **profile lead** — read `.gatehouse/lead/direction.yaml` (autonomous decisions require `confirmed`) |
 
 Everything else (missions queue, reports, skills) uses OpenCode **read/write** + SKILL prompts under `.gatehouse/`. Portal: domain skills auto-publish on `gatehouse_mission_complete(done)`; deliverables publish only when Lead passes `publish_deliverables=true`.
 
@@ -38,6 +40,8 @@ Personnel registry (outer + inner + retro agents ↔ OpenCode `session_id`) and 
 **Watchdog:** while a mission is `running` with orchestration state (no retro fork), the plugin polls every 2s; for each node marked `running` or `rework` in orchestration whose session stays `idle` for 10s, it wakes **that node** with `prompts/architect/watchdog-node-wake.md` (30s per-node cooldown). Watchdog **pauses** after structural root delivery notification to lead (awaiting reply) and **resumes** on any `send_message` to a tree member (`recipient=<node_id>` or inner session).
 
 **Retro / skill record watchdogs:** two independent pollers (same 2s / 10s idle / 30s cooldown). While `gatehouse_retro_record` or `gatehouse_skill_extract_record` completions are still pending, if **all** expected retro or exec sessions are idle for 10s, Gatehouse notifies each **pending** agent with `watchdog-retro-record-wake.md` or `watchdog-skill-record-wake.md` to finish and call the record tool.
+
+**Lead user-await watchdog:** polls every 30s. Only when the project is in a **user-confirmation gate** (queued mission start after `gatehouse_lead_await_user`, submitted delivery awaiting acceptance, or retro rollup ready for `mission_complete`) **and** the lead session’s last message is from the assistant: if the user does not reply for 10 minutes, Gatehouse wakes **lead** with `prompts/lead/watchdog-user-busy-wake.md`. Does **not** run during normal mission execution (running without submitted delivery). User chat on the lead session clears the timer. Autonomous actions require `direction.yaml` `status: confirmed`.
 
 ## Enable (global plugin — no per-project install)
 

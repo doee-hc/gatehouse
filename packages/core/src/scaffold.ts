@@ -101,5 +101,23 @@ export async function scaffoldGatehouse(projectRoot: string) {
     )
   }
 
+  const directionPath = path.join(root, ".gatehouse/lead/direction.yaml")
+  if (!(await Bun.file(directionPath).exists())) {
+    const directionTemplate = path.join(bundledGatehouseTemplateRoot("zh"), "lead/direction.template.yaml")
+    if (await Bun.file(directionTemplate).exists()) {
+      await Bun.write(directionPath, await Bun.file(directionTemplate).text())
+    } else {
+      await Bun.write(
+        directionPath,
+        Bun.YAML.stringify({
+          schema_version: 1,
+          status: "draft",
+          summary: "",
+          constraints: [],
+        }),
+      )
+    }
+  }
+
   ensurePortalAdminKey(root)
 }

@@ -13,6 +13,7 @@ const REQUIRED_EN_RELATIVES = [
   "prompts/architect/watchdog-node-wake.md",
   "prompts/architect/watchdog-retro-record-wake.md",
   "prompts/architect/watchdog-skill-record-wake.md",
+  "prompts/lead/watchdog-user-busy-wake.md",
   "prompts/architect/retro-node-analysis.md",
   "prompts/architect/architect-summary.template.md",
   "prompts/architect/domain-skill-extract.md",
