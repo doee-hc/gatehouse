@@ -153,4 +153,17 @@ describe("gatehouseLog", () => {
     expect(second.notifications).toHaveLength(1)
     expect(second.notifications[0]?.message).toBe("second")
   })
+
+  test("file mode does not throw when project directory was removed", async () => {
+    delete process.env.GATEHOUSE_LOG
+    projectDir = await mkdtemp(path.join(tmpdir(), "gh-log-"))
+    await rm(projectDir, { recursive: true, force: true })
+
+    expect(() =>
+      gatehouseLog("warn", "[gatehouse/portal] blog cache refresh failed: timeout", {
+        projectDirectory: projectDir,
+        title: "Portal",
+      }),
+    ).not.toThrow()
+  })
 })

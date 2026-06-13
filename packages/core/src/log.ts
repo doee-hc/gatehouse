@@ -36,10 +36,14 @@ function gatehouseLogFile(projectDirectory: string) {
 }
 
 function appendLogFile(projectDirectory: string, level: GatehouseLogLevel, message: string) {
-  const file = gatehouseLogFile(projectDirectory)
-  const dir = path.dirname(file)
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
-  appendFileSync(file, `${new Date().toISOString()} [${level}] ${message}\n`, "utf8")
+  try {
+    const file = gatehouseLogFile(projectDirectory)
+    const dir = path.dirname(file)
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+    appendFileSync(file, `${new Date().toISOString()} [${level}] ${message}\n`, "utf8")
+  } catch {
+    // Best-effort logging: never throw when the project dir was removed or disk is unavailable.
+  }
 }
 
 function shouldNotify(level: GatehouseLogLevel, message: string) {

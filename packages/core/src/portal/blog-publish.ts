@@ -169,7 +169,7 @@ export async function publishBlogPost(
   await Bun.write(target, stringifyYaml(doc))
   const title = await readBlogPostTitle(projectDirectory, input.reportPath)
   emitPortalEvent({ type: "blog.publish", postId: input.postId, ...(title && { title }) })
-  void requestPortalBlogCacheRefresh(projectDirectory)
+  void requestPortalBlogCacheRefresh(projectDirectory).catch(() => {})
   return { post_id: input.postId, path: input.reportPath, published_at, republished: Boolean(existing) }
 }
 
@@ -194,7 +194,7 @@ export async function unpublishBlogPost(
   await Bun.write(blogPublishedPath(projectDirectory), stringifyYaml(doc))
   const title = await readBlogPostTitle(projectDirectory, entry.path)
   emitPortalEvent({ type: "blog.unpublish", postId: input.postId, ...(title && { title }) })
-  void requestPortalBlogCacheRefresh(projectDirectory)
+  void requestPortalBlogCacheRefresh(projectDirectory).catch(() => {})
   return {
     ok: true,
     post_id: input.postId,
