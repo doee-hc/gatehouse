@@ -5,7 +5,7 @@ import { tmpdir } from "node:os"
 import { buildBlogSnapshot, clearBlogCacheForTests } from "../src/portal/blog.ts"
 import { publishBlogPost, readBlogPublishedRevision, unpublishBlogPost } from "../src/portal/blog-publish.ts"
 import { requestPortalBlogCacheRefresh } from "../src/portal/blog-cache-sync.ts"
-import { startEphemeralServer, withPortalEnv } from "./portal-test-server.ts"
+import { withPortalEnv } from "./portal-test-server.ts"
 
 let dir: string
 
@@ -251,31 +251,23 @@ posts:
 
 test("requestPortalBlogCacheRefresh hits portal internal endpoint", async () => {
   const token = "blog-cache-refresh-token"
-  let invalidated = false
-  let resolveInvalidated!: () => void
-  const invalidatedPromise = new Promise<void>((resolve) => {
-    resolveInvalidated = resolve
-  })
-
-  const { server, port } = await startEphemeralServer(async (request) => {
-    if (new URL(request.url).pathname !== "/portal/api/internal/blog-invalidate") {
-      return new Response("not found", { status: 404 })
-    }
-    if (request.headers.get("X-Gatehouse-Portal-Internal-Token") !== token) {
-      return new Response("unauthorized", { status: 401 })
-    }
-    invalidated = true
-    resolveInvalidated()
-    return Response.json({ ok: true })
-  })
+  const port = 48821
+  let requestedUrl = ""
+  let requestedToken = ""
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = async (input, init) => {
+    requestedUrl = String(input)
+    requestedToken = new Headers(init?.headers).get("X-Gatehouse-Portal-Internal-Token") ?? ""
+    return Response.json({ ok: true }, { headers: { "Content-Type": "application/json" } })
+  }
 
   try {
     await withPortalEnv(port, token, async () => {
       expect(await requestPortalBlogCacheRefresh(dir)).toBe(true)
-      await invalidatedPromise
     })
-    expect(invalidated).toBe(true)
+    expect(requestedUrl).toBe(`http://127.0.0.1:${port}/portal/api/internal/blog-invalidate`)
+    expect(requestedToken).toBe(token)
   } finally {
-    server.stop()
+    globalThis.fetch = originalFetch
   }
 })
