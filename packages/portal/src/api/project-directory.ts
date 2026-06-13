@@ -1,4 +1,9 @@
-import { readLastCachedProjectSlug } from "../portal/offline-cache.ts"
+import {
+  mergeOfflineBundle,
+  readLastCachedProjectSlug,
+  type OfflineBundle,
+} from "../portal/offline-cache.ts"
+import { fetchOfflineDiskBundle } from "../portal/disk-cache-fetch.ts"
 
 let activeProject: string | undefined
 
@@ -23,18 +28,39 @@ export function setPortalProjectDirectory(project: string) {
   setPortalProjectSlug(project)
 }
 
-export async function resolvePortalProjectSlug() {
+export async function resolvePortalBootContext(): Promise<{
+  project?: string
+  diskBundle?: OfflineBundle
+}> {
   const explicit = portalProjectSlug()
-  if (explicit) return explicit
+  if (explicit) return { project: explicit }
 
   const response = await fetch("/portal/api/health", { signal: AbortSignal.timeout(5000) }).catch(() => undefined)
   if (response?.ok) {
     const health = (await response.json()) as { project?: string }
-    if (health.project) setPortalProjectSlug(health.project)
-    return health.project
+    if (health.project) {
+      setPortalProjectSlug(health.project)
+      return { project: health.project }
+    }
   }
 
-  return readLastCachedProjectSlug()
+  const fromLocal = readLastCachedProjectSlug()
+  if (fromLocal) return { project: fromLocal }
+
+  const diskBundle = await fetchOfflineDiskBundle()
+  const project = diskBundle?.snapshot?.project
+  if (project) {
+    setPortalProjectSlug(project)
+    mergeOfflineBundle(project, diskBundle)
+    return { project, diskBundle }
+  }
+
+  return {}
+}
+
+export async function resolvePortalProjectSlug() {
+  const context = await resolvePortalBootContext()
+  return context.project
 }
 
 /** @deprecated Use resolvePortalProjectSlug */

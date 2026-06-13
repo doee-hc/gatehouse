@@ -226,7 +226,10 @@ const messages = {
     zh: "无法加载 snapshot（{status}）：{url}",
     en: "Failed to load snapshot ({status}): {url}",
   },
-  "error.snapshotUnavailable": { zh: "无法获取 snapshot", en: "Snapshot unavailable" },
+  "error.snapshotUnavailable": {
+    zh: "无法获取 Portal 数据，且没有可用的离线缓存。请确认 Portal 服务已启动，或先在线访问一次以生成本地缓存。",
+    en: "Portal data unavailable and no offline cache found. Ensure the Portal server is running, or visit online once to seed the cache.",
+  },
   "error.loadBlog": { zh: "无法加载 blog（{status}）", en: "Failed to load blog ({status})" },
   "error.loadTeamStatsApi": {
     zh: "无法加载团队数据（{status}）",

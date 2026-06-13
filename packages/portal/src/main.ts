@@ -2,7 +2,11 @@ import { loadPortalBranding } from "./api/branding.ts"
 import { loadBlogSnapshot, startBlogPolling } from "./api/blog.ts"
 import { loadPortalDisplayConfig } from "./api/display-config.ts"
 import { loadOfflineDiskBundle } from "./api/offline-cache.ts"
-import { portalProjectSlug, resolvePortalProjectSlug, setPortalProjectSlug } from "./api/project-directory.ts"
+import {
+  portalProjectSlug,
+  resolvePortalBootContext,
+  setPortalProjectSlug,
+} from "./api/project-directory.ts"
 import { loadPortalSnapshotWithRetry, startSnapshotPolling } from "./api/snapshot.ts"
 import { isBackendConnected, setBackendConnected } from "./portal/connection.ts"
 import { applySnapshotUpdate } from "./portal/snapshot-sync.ts"
@@ -31,14 +35,16 @@ function mergeDiskBundle(project: string, disk?: OfflineBundle) {
 }
 
 async function boot() {
-  const project = portalProjectSlug() ?? (await resolvePortalProjectSlug())
-  const cached = project ? readOfflineBundle(project) : undefined
+  const bootContext = await resolvePortalBootContext()
+  let project = bootContext.project ?? portalProjectSlug()
+  let prefetchedDisk = bootContext.diskBundle
 
   if (!project) {
-    throw new Error(t("error.noProjectDir"))
+    throw new Error(t("error.snapshotUnavailable"))
   }
 
   setPortalProjectSlug(project)
+  const cached = readOfflineBundle(project)
   setLoadingStatus(t("nav.connecting"))
 
   const maxAttempts = cached?.snapshot ? 3 : 30
@@ -53,7 +59,8 @@ async function boot() {
     setBackendConnected(true)
     mergeOfflineBundle(project, { snapshot })
   } else {
-    const diskBundle = await loadOfflineDiskBundle(project).catch(() => undefined)
+    const diskBundle =
+      prefetchedDisk ?? (await loadOfflineDiskBundle(project).catch(() => undefined))
     mergeDiskBundle(project, diskBundle)
     const fallback = readOfflineBundle(project)
     if (fallback?.snapshot) {
