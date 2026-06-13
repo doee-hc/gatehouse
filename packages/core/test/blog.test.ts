@@ -255,11 +255,14 @@ test("requestPortalBlogCacheRefresh hits portal internal endpoint", async () => 
   let requestedUrl = ""
   let requestedToken = ""
   const originalFetch = globalThis.fetch
-  globalThis.fetch = async (input, init) => {
-    requestedUrl = String(input)
-    requestedToken = new Headers(init?.headers).get("X-Gatehouse-Portal-Internal-Token") ?? ""
-    return Response.json({ ok: true }, { headers: { "Content-Type": "application/json" } })
-  }
+  globalThis.fetch = Object.assign(
+    async (input: RequestInfo | URL, init?: RequestInit) => {
+      requestedUrl = String(input)
+      requestedToken = new Headers(init?.headers).get("X-Gatehouse-Portal-Internal-Token") ?? ""
+      return Response.json({ ok: true }, { headers: { "Content-Type": "application/json" } })
+    },
+    originalFetch,
+  )
 
   try {
     await withPortalEnv(port, token, async () => {

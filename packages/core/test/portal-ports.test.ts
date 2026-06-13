@@ -36,26 +36,29 @@ describe("portal ports", () => {
     const displayPort = 48787
     const adminPort = 48788
     const originalFetch = globalThis.fetch
-    globalThis.fetch = async (input) => {
-      const url = new URL(String(input))
-      if (url.hostname === "127.0.0.1" && Number(url.port) === displayPort && url.pathname === "/portal/api/health") {
-        return Response.json({
-          ok: true,
-          project: projectSlug,
-          opencode_reachable: false,
-          bridge_running: false,
-          sse_active: 0,
-        })
-      }
-      if (
-        url.hostname === "127.0.0.1" &&
-        Number(url.port) === adminPort &&
-        url.pathname === "/portal/api/admin/status"
-      ) {
-        return Response.json({ configured: true }, { headers: { "Content-Type": "application/json" } })
-      }
-      return originalFetch(input)
-    }
+    globalThis.fetch = Object.assign(
+      async (input: RequestInfo | URL) => {
+        const url = new URL(String(input))
+        if (url.hostname === "127.0.0.1" && Number(url.port) === displayPort && url.pathname === "/portal/api/health") {
+          return Response.json({
+            ok: true,
+            project: projectSlug,
+            opencode_reachable: false,
+            bridge_running: false,
+            sse_active: 0,
+          })
+        }
+        if (
+          url.hostname === "127.0.0.1" &&
+          Number(url.port) === adminPort &&
+          url.pathname === "/portal/api/admin/status"
+        ) {
+          return Response.json({ configured: true }, { headers: { "Content-Type": "application/json" } })
+        }
+        return originalFetch(input)
+      },
+      originalFetch,
+    )
 
     try {
       const endpoints = await probePortalEndpoints(project, {
