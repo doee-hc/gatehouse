@@ -93,25 +93,7 @@ git push origin v0.1.0
 
 ## User setup (recommended)
 
-**One-time** — register the plugin globally:
-
-```bash
-opencode plug @gatehouse/core --global
-```
-
-Or edit `~/.config/opencode/opencode.jsonc`:
-
-```jsonc
-{ "plugin": ["@gatehouse/core"] }
-```
-
-And `~/.config/opencode/tui.json`:
-
-```jsonc
-{ "plugin": ["@gatehouse/core"] }
-```
-
-Optional CLI (registers plugin + can write global config.yaml):
+**One-time** — register the plugin globally and sync agent definitions:
 
 ```bash
 bunx @gatehouse/core install
@@ -119,6 +101,28 @@ bunx @gatehouse/core install --no-tui --locale=zh
 bunx @gatehouse/core doctor --global-only
 ```
 
+Do **not** rely on `opencode plug @gatehouse/core --global` alone — it registers the npm plugin only and does not write `~/.config/gatehouse/config.yaml` or sync agent `.md` files. Use `bunx @gatehouse/core install` instead.
+
+Manual alternative — edit `~/.config/opencode/opencode.jsonc`:
+
+```jsonc
+{ "plugin": [["@gatehouse/core", {}]] }
+```
+
+And `~/.config/opencode/tui.json`:
+
+```jsonc
+{ "plugin": [["@gatehouse/core", {}]] }
+```
+
 Full guide: `docs/guide/installation.md`
 
-**Every project** — `cd` into the repo and start OpenCode. Gatehouse creates `.gatehouse/` and agent files on first load. No `install /path/to/project` step.
+**Every project** — run scaffold or start OpenCode in the project directory:
+
+```bash
+bunx @gatehouse/core scaffold -C /path/to/project
+# or
+cd /path/to/project && opencode
+```
+
+Gatehouse creates `.gatehouse/` and project `opencode.jsonc` on first load.

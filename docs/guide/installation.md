@@ -103,7 +103,7 @@ fi
 Required:
 
 - **Bun** installed (`install` hard dependency)
-- **OpenCode >= 1.14.40 and < 1.17.0** (matches `@gatehouse/core` `engines.opencode`)
+- **OpenCode >= 1.14.40 and < 1.18.0** (matches `@gatehouse/core` `engines.opencode`)
 
 ### Step 1: Collect Install Options
 
@@ -136,7 +136,7 @@ bunx @gatehouse/core install --no-tui --locale=en
 |------|--------|
 | Global OpenCode | `~/.config/opencode/opencode.jsonc` → `["@gatehouse/core", {}]` |
 | Global TUI | `~/.config/opencode/tui.json` → `["@gatehouse/core", {}]` |
-| Agent definitions | `~/.config/opencode/agent/{lead,architect,curator,arbiter}.md` |
+| Agent definitions | `~/.config/opencode/agent/{lead,architect,curator,arbiter,build-root,build-coordinator,build,build-root-solo}.md` |
 | Gatehouse config | `~/.config/gatehouse/config.yaml` (locale, if specified) |
 
 ### Step 3: Run Doctor (global layer)
@@ -151,7 +151,7 @@ Install runs global-layer doctor automatically. Full doctor categories:
 |----------|--------|
 | **System** | OpenCode CLI version, Bun |
 | **Config** | Global server/TUI plugins, `~/.config/gatehouse/config.yaml` |
-| **Agents** | Four outer agent `.md` files synced |
+| **Agents** | Outer + inner agent `.md` files synced |
 | **Project** | `.gatehouse/`, project `opencode.jsonc` (skipped with `--global-only`) |
 | **Portal** | Portal ports when `--probe` |
 | **Models** | `config.yaml` model format |
@@ -229,7 +229,7 @@ bunx @gatehouse/core install ./gatehouse-core-0.1.0.tgz --no-tui --locale=en
 | `.gatehouse/` missing | `scaffold -C <project>` or start `opencode` |
 | Portal won't open | Confirm plugin loaded; `doctor --probe` |
 | Invalid model | Check `config.yaml` uses `provider/model-id` format |
-| Incompatible OpenCode version | Upgrade to >= 1.14.40 and < 1.17.0 |
+| Incompatible OpenCode version | Upgrade to >= 1.14.40 and < 1.18.0 |
 
 ---
 

@@ -337,6 +337,15 @@ describe("project setup", () => {
     }
   })
 
+  test("gatehouseArchiveTuiPluginSpec points at src/tui/index.ts", async () => {
+    const { gatehouseArchiveTuiPluginSpec } = await import("../src/setup/package.ts")
+    const packageRoot = path.join(import.meta.dir, "..")
+    const serverSpec = pathToFileURL(packageRoot).href
+    const tuiSpec = gatehouseArchiveTuiPluginSpec(serverSpec)
+    expect(tuiSpec).toContain("/src/tui/index.ts")
+    expect(tuiSpec.startsWith("file:")).toBe(true)
+  })
+
   test("gatehouseArchivePluginSpec uses file: protocol for tgz", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-archive-"))
     const archive = path.join(dir, "gatehouse-core-0.1.0.tgz")

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "name": "@gatehouse/core",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Gatehouse multi-agent harness for OpenCode — registry tools, missions, and Portal office UI",
   "type": "module",
   "license": "MIT",
@@ -41,7 +41,7 @@
     "templates"
   ],
   "engines": {
-    "opencode": ">=1.14.40 <1.17.0",
+    "opencode": ">=1.14.40 <1.18.0",
     "bun": ">=1.1.0"
   },
   "publishConfig": {

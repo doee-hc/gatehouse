@@ -5,13 +5,23 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0] - 2026-06-13
 
 ### Changed
 
+- **Mission execution: TeamSpec → orchestration script** — the biggest change in this release. Architect no longer describes the execution team as a standalone TeamSpec and relies on agents to assign work through `gatehouse_send_message`. Instead, each Mission is driven by `.gatehouse/trees/<mission_id>/mission.script.ts`: `export const team` defines the execution tree, and `export default async function orchestrate(ctx)` defines phase order. After `gatehouse_bootstrap_tree`, a sandbox orchestrator runs the script and **injects node briefs and work-order prompts** via `ctx.setBrief`, `ctx.prompt`, and `ctx.waitFor` / `waitForAll`. The platform owns timing and activation; inner agents start from orchestration-delivered prompts and read scope through `gatehouse_mission_info`. `gatehouse_send_message` is now for peer alignment and small in-flight corrections only — not the primary task-dispatch path.
 - **IM channels merged into `@gatehouse/core`** — channel bridge logic now lives at `@gatehouse/core/channels` (`packages/core/src/channels/`).
 - **OpenCode channels plugin** — `@gatehouse/core/channels/plugin` in project `opencode.jsonc`.
-- **Docs** — unified IM guide: [docs/guide/channels.md](./docs/guide/channels.md) / [docs/guide/channels.zh.md](./docs/guide/channels.zh.md); user-facing docs no longer describe IM channels as optional or document the package merge.
+- **Docs** — unified IM guide: [docs/guide/channels.md](./docs/guide/channels.md) / [docs/guide/channels.zh.md](./docs/guide/channels.zh.md); installation docs list all synced agent files; [PUBLISH.md](./packages/core/docs/PUBLISH.md) recommends `bunx install` over `opencode plug`.
+
+### Added
+
+- **OpenCode 1.17.x support** — install and doctor accept OpenCode `>= 1.14.40` and `< 1.18.0`.
+
+### Fixed
+
+- **Local `.tgz` install** — `install ./gatehouse-core-*.tgz` now writes the TUI plugin as `file://…/src/tui/index.ts` instead of reusing the server package root; doctor recognizes archive-based TUI registrations.
+- **`uninstall`** — removes all Gatehouse-synced agent definitions (`build-root`, `build-coordinator`, `build`, `build-root-solo`), not only the four outer agents.
 
 ## [0.1.1] - 2026-06-06
 
@@ -51,5 +61,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Portal UI has no dedicated test suite.** Core integration tests cover Portal API snapshots and static serving; the Phaser frontend is not separately tested in CI.
 - **npm scope setup required.** Publishers must create the `@gatehouse` npm organization before the first release (see [PUBLISH.md](./packages/core/docs/PUBLISH.md)).
 
+[0.2.0]: https://github.com/doee-hc/gatehouse/releases/tag/v0.2.0
 [0.1.1]: https://github.com/doee-hc/gatehouse/releases/tag/v0.1.1
 [0.1.0]: https://github.com/doee-hc/gatehouse/releases/tag/v0.1.0

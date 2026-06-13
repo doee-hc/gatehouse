@@ -16,13 +16,15 @@ describe("opencode version", () => {
     expect(parseSemver("1.16.2")).toEqual({ major: 1, minor: 16, patch: 2 })
     expect(compareSemver("1.14.40", "1.16.0")).toBe(-1)
     expect(compareSemver("1.16.0", "1.17.0")).toBe(-1)
+    expect(compareSemver("1.17.4", "1.18.0")).toBe(-1)
   })
 
   test("satisfiesOpencodeVersion accepts supported range", () => {
     expect(satisfiesOpencodeVersion("1.16.0").ok).toBe(true)
     expect(satisfiesOpencodeVersion("1.14.40").ok).toBe(true)
+    expect(satisfiesOpencodeVersion("1.17.4").ok).toBe(true)
     expect(satisfiesOpencodeVersion("1.13.0").ok).toBe(false)
-    expect(satisfiesOpencodeVersion("1.17.0").ok).toBe(false)
+    expect(satisfiesOpencodeVersion("1.18.0").ok).toBe(false)
   })
 })
 

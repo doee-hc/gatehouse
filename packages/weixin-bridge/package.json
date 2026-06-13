@@ -10,7 +10,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@gatehouse/core": "0.1.1",
+    "@gatehouse/core": "0.2.0",
     "@opencode-ai/sdk": "^1.15.13"
   },
   "devDependencies": {

@@ -6,7 +6,7 @@ import {
   detectGlobalOpencodeConfigPath,
   globalOpencodeAgentDir,
   globalOpencodeConfigDir,
-  MANAGED_GLOBAL_AGENT_FILES,
+  SYNCED_GLOBAL_AGENT_FILES,
 } from "../setup/global-opencode.ts"
 import { parseJsoncConfig } from "../setup/jsonc.ts"
 import { hasFlag, parseCliArgs } from "./parse-args.ts"
@@ -71,7 +71,7 @@ export async function uninstallGatehouseGlobal(rawArgs: string[] = []) {
 
   if (!keepAgents) {
     const agentDir = globalOpencodeAgentDir()
-    for (const filename of MANAGED_GLOBAL_AGENT_FILES) {
+    for (const filename of SYNCED_GLOBAL_AGENT_FILES) {
       const agentPath = path.join(agentDir, filename)
       if (existsSync(agentPath)) {
         rmSync(agentPath, { force: true })
@@ -103,7 +103,7 @@ export function printUninstallHelp() {
   bunx @gatehouse/core uninstall
 
 Options:
-  --keep-agents   Keep ~/.config/opencode/agent/{lead,architect,curator,arbiter}.md
+  --keep-agents   Keep ~/.config/opencode/agent/*.md synced by Gatehouse
   --keep-config   Keep ~/.config/gatehouse/config.yaml
   --keep-cache    Keep ~/.cache/gatehouse/
 

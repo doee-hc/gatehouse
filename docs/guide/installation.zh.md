@@ -103,7 +103,7 @@ fi
 要求：
 
 - **Bun** 已安装（`install` 硬依赖）
-- **OpenCode >= 1.14.40 且 < 1.17.0**（与 `@gatehouse/core` 的 `engines.opencode` 一致）
+- **OpenCode >= 1.14.40 且 < 1.18.0**（与 `@gatehouse/core` 的 `engines.opencode` 一致）
 
 ### Step 1：收集安装选项
 
@@ -136,7 +136,7 @@ bunx @gatehouse/core install --no-tui --locale=zh
 |------|------|
 | 全局 OpenCode | `~/.config/opencode/opencode.jsonc` → `["@gatehouse/core", {}]` |
 | 全局 TUI | `~/.config/opencode/tui.json` → `["@gatehouse/core", {}]` |
-| Agent 定义 | `~/.config/opencode/agent/{lead,architect,curator,arbiter}.md` |
+| Agent 定义 | `~/.config/opencode/agent/{lead,architect,curator,arbiter,build-root,build-coordinator,build,build-root-solo}.md` |
 | Gatehouse 配置 | `~/.config/gatehouse/config.yaml`（locale，若指定） |
 
 ### Step 3：运行 doctor（全局层）
@@ -151,7 +151,7 @@ bunx @gatehouse/core doctor --global-only
 |------|--------|
 | **System** | OpenCode CLI 版本、Bun |
 | **Config** | 全局 server/TUI 插件、`~/.config/gatehouse/config.yaml` |
-| **Agents** | 四个外层 agent md 是否同步 |
+| **Agents** | 外层与内层 agent md 是否同步 |
 | **Project** | `.gatehouse/`、`opencode.jsonc`（`--global-only` 时跳过） |
 | **Portal** | `--probe` 时探测 Portal 端口 |
 | **Models** | `config.yaml` 中 models 格式 |
@@ -232,7 +232,7 @@ bunx @gatehouse/core install ./gatehouse-core-0.1.0.tgz --no-tui --locale=zh
 | `.gatehouse/` 不存在 | `scaffold -C <项目>` 或启动 `opencode` |
 | Portal 打不开 | 确认 OpenCode 已加载插件；`doctor --probe` |
 | 模型无效 | 检查 `config.yaml` 格式为 `provider/model-id` |
-| OpenCode 版本不兼容 | 升级到 >= 1.14.40 且 < 1.17.0 |
+| OpenCode 版本不兼容 | 升级到 >= 1.14.40 且 < 1.18.0 |
 
 ---
 

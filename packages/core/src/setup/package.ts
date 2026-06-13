@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, rmSync } from "node:fs"
 import { homedir } from "node:os"
 import path from "node:path"
-import { pathToFileURL } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
 
 export const GATEHOUSE_NPM_PACKAGE = "@gatehouse/core"
 export const GATEHOUSE_SERVER_PLUGIN = GATEHOUSE_NPM_PACKAGE
@@ -84,6 +84,15 @@ function gatehouseInstallRoot(version: string) {
 /** OpenCode plugin spec for a materialized install directory. */
 export function gatehouseDirectoryPluginSpec(installDir: string) {
   return pathToFileURL(path.resolve(installDir)).href
+}
+
+/** TUI plugin spec for a materialized archive install (file:// src/tui/index.ts). */
+export function gatehouseArchiveTuiPluginSpec(serverSpec: string) {
+  if (!serverSpec.startsWith("file:")) return GATEHOUSE_TUI_CONFIG_PLUGIN
+  const installDir = fileURLToPath(serverSpec)
+  const source = path.join(installDir, "src", "tui", "index.ts")
+  if (existsSync(source)) return pathToFileURL(source).href
+  return serverSpec
 }
 
 /** OpenCode npm resolver spec for a local .tgz archive (not a bare filesystem path). */

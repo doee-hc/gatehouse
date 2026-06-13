@@ -88,7 +88,8 @@ export function isGatehouseTuiPluginSpec(spec: string) {
     spec === GATEHOUSE_NPM_PACKAGE ||
     spec.includes("@gatehouse/core/tui") ||
     spec.includes("gatehouse.tui") ||
-    /[/\\]tui[/\\]index\.(ts|tsx|js|mjs|cjs)(?:[?#].*)?$/.test(spec)
+    /[/\\]tui[/\\]index\.(ts|tsx|js|mjs|cjs)(?:[?#].*)?$/.test(spec) ||
+    (spec.startsWith("file:") && spec.includes("gatehouse"))
   )
 }
 

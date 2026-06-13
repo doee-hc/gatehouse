@@ -22,6 +22,7 @@ import {
 } from "./global-opencode.ts"
 import { parseJsoncConfig } from "./jsonc.ts"
 import {
+  gatehouseArchiveTuiPluginSpec,
   gatehouseCorePluginSpec,
   materializeGatehouseArchive,
   gatehousePackageRoot,
@@ -155,7 +156,7 @@ export async function registerGatehouseArchiveInGlobalOpencodeConfig(
     ? parseJsoncConfig(readFileSync(tuiPath, "utf8"), tuiPath)
     : { $schema: "https://opencode.ai/tui.json" }
   const tuiPlugins = Array.isArray(tuiConfig.plugin) ? tuiConfig.plugin : []
-  tuiConfig.plugin = upsertGatehousePluginList(tuiPlugins, spec)
+  tuiConfig.plugin = upsertGatehousePluginList(tuiPlugins, gatehouseArchiveTuiPluginSpec(spec))
   await Bun.write(tuiPath, `${JSON.stringify(tuiConfig, null, 2)}\n`)
 
   return { configPath, spec }

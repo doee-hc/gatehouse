@@ -1,5 +1,5 @@
 export const MIN_OPENCODE_VERSION = "1.14.40"
-export const MAX_OPENCODE_VERSION_EXCLUSIVE = "1.17.0"
+export const MAX_OPENCODE_VERSION_EXCLUSIVE = "1.18.0"
 
 export type ParsedSemver = {
   major: number
