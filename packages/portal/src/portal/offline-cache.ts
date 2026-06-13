@@ -1,21 +1,30 @@
+import type { PortalSkillDetail } from "../api/skill.ts"
 import type { PortalBranding } from "../api/branding.ts"
-import type { BlogSnapshot, PortalSnapshot } from "../api/types.ts"
+import type { BlogSnapshot, PortalSnapshot, TeamStatsSnapshot } from "../api/types.ts"
 import type { PortalDisplayConfig } from "../portal/poll-intervals.ts"
 
 const LAST_PROJECT_KEY = "gatehouse/portal-offline/last-project"
-const CACHE_VERSION = 1
+const CACHE_VERSION = 2
 
-type OfflineBundle = {
+export type OfflineSkillsCache = Record<string, PortalSkillDetail>
+
+export type OfflineBundle = {
   v: typeof CACHE_VERSION
   savedAt: string
   snapshot?: PortalSnapshot
   blog?: BlogSnapshot
   branding?: PortalBranding
   displayConfig?: PortalDisplayConfig
+  teamStats?: TeamStatsSnapshot
+  skills?: OfflineSkillsCache
 }
 
 function cacheKey(project: string) {
   return `gatehouse/portal-offline/${project}`
+}
+
+export function offlineSkillCacheKey(domain: string, name: string) {
+  return `${domain}/${name}`
 }
 
 function readRaw(key: string): OfflineBundle | undefined {
@@ -69,7 +78,12 @@ export function readOfflineBundle(project: string) {
 
 export function mergeOfflineBundle(
   project: string,
-  patch: Partial<Pick<OfflineBundle, "snapshot" | "blog" | "branding" | "displayConfig">>,
+  patch: Partial<
+    Pick<
+      OfflineBundle,
+      "snapshot" | "blog" | "branding" | "displayConfig" | "teamStats" | "skills"
+    >
+  >,
 ) {
   const prev = readOfflineBundle(project)
   const next: OfflineBundle = {
@@ -79,7 +93,13 @@ export function mergeOfflineBundle(
     blog: patch.blog ?? prev?.blog,
     branding: patch.branding ?? prev?.branding,
     displayConfig: patch.displayConfig ?? prev?.displayConfig,
+    teamStats: patch.teamStats ?? prev?.teamStats,
+    skills: patch.skills ? { ...prev?.skills, ...patch.skills } : prev?.skills,
   }
   writeRaw(cacheKey(project), next)
   rememberCachedProjectSlug(project)
+}
+
+export function readOfflineSkillDetail(project: string, domain: string, name: string) {
+  return readOfflineBundle(project)?.skills?.[offlineSkillCacheKey(domain, name)]
 }

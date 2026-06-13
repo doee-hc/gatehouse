@@ -1,5 +1,6 @@
 import { loadTeamStatsSnapshot } from "../api/team-stats.ts"
 import type { TeamStatsMission, TeamStatsOuterRole, TeamStatsSnapshot } from "../api/types.ts"
+import { isBackendConnected } from "../portal/connection.ts"
 import { TEAM_STATS_POLL_HIDDEN_MS } from "../portal/poll-intervals.ts"
 import { resolveTeamStatsPollMs } from "../portal/runtime-poll.ts"
 import { startAdaptivePolling } from "../portal/poll-scheduler.ts"
@@ -43,7 +44,7 @@ export function renderTeamStats(snapshot?: TeamStatsSnapshot) {
     return
   }
 
-  if (!currentSnapshot.opencode_reachable) {
+  if (!currentSnapshot.opencode_reachable && isBackendConnected()) {
     host.innerHTML = `<p class="empty-state">${escapeHtml(t("empty.opencodeOffline"))}</p>`
     return
   }
@@ -79,7 +80,13 @@ export function renderOfficeStatsTicker(snapshot?: TeamStatsSnapshot) {
   const host = document.getElementById("esc-stats-ticker")
   if (!host) return
 
-  if (!snapshot?.opencode_reachable) {
+  if (!snapshot?.opencode_reachable && isBackendConnected()) {
+    host.hidden = true
+    host.textContent = ""
+    return
+  }
+
+  if (!snapshot) {
     host.hidden = true
     host.textContent = ""
     return

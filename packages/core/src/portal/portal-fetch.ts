@@ -29,6 +29,13 @@ import { isOpencodeBridgeRunning } from "./opencode-bridge.ts"
 import { resolvePortalProjectSlug } from "./portal-project.ts"
 import { portalSnapshotCacheAgeMs } from "./snapshot.ts"
 import { getPortalDisplaySettings, toBrowserDisplayConfig } from "./portal-display-settings.ts"
+import {
+  mergePortalOfflineDiskCache,
+  portalOfflineSkillCacheKey,
+  readPortalOfflineDiskBundle,
+  readPortalOfflineDiskSkillDetail,
+  refreshPortalOfflineSkillsCache,
+} from "./offline-disk-cache.ts"
 import { acquirePortalSseConnection, portalSseActiveCount } from "./sse-registry.ts"
 
 export type PortalFetchOptions = {
@@ -194,11 +201,15 @@ export function createPortalFetchHandler(options: PortalFetchOptions) {
     }
 
     if (url.pathname === "/portal/api/display-config") {
-      return withCors(json(toBrowserDisplayConfig(getPortalDisplaySettings())), request)
+      const displayConfig = toBrowserDisplayConfig(getPortalDisplaySettings())
+      void mergePortalOfflineDiskCache(projectDirectory, { displayConfig })
+      return withCors(json(displayConfig), request)
     }
 
     if (url.pathname === "/portal/api/branding") {
-      return withCors(json(buildPortalBranding(projectDirectory, url)), request)
+      const branding = buildPortalBranding(projectDirectory, url)
+      void mergePortalOfflineDiskCache(projectDirectory, { branding })
+      return withCors(json(branding), request)
     }
 
     if (url.pathname === "/portal/api/branding/logo") {
@@ -222,6 +233,14 @@ export function createPortalFetchHandler(options: PortalFetchOptions) {
       return withCors(new Response(file, { headers: { "Content-Type": type } }), request)
     }
 
+    if (url.pathname === "/portal/api/offline-cache") {
+      const bundle = await readPortalOfflineDiskBundle(projectDirectory)
+      if (!bundle?.snapshot) {
+        return withCors(json({ error: "offline_cache_unavailable" }, 503), request)
+      }
+      return withCors(json(bundle), request)
+    }
+
     if (url.pathname === "/portal/api/snapshot") {
       const snapshot = await getCachedPortalSnapshot(projectDirectory, opencodeUrl()).catch((error) => {
         const message = error instanceof Error ? error.message : String(error)
@@ -231,15 +250,27 @@ export function createPortalFetchHandler(options: PortalFetchOptions) {
         })
         return undefined
       })
-      if (!snapshot) {
-        return withCors(json({ error: "snapshot_unavailable" }, 503), request)
+      if (snapshot) {
+        const browserSnapshot = toBrowserSnapshot(projectDirectory, snapshot)
+        void mergePortalOfflineDiskCache(projectDirectory, { snapshot: browserSnapshot })
+        void refreshPortalOfflineSkillsCache(projectDirectory, snapshot.skills)
+        return withCors(json(browserSnapshot), request)
       }
-      return withCors(json(toBrowserSnapshot(projectDirectory, snapshot)), request)
+      const cached = (await readPortalOfflineDiskBundle(projectDirectory))?.snapshot
+      if (cached) return withCors(json(cached), request)
+      return withCors(json({ error: "snapshot_unavailable" }, 503), request)
     }
 
     if (url.pathname === "/portal/api/blog") {
-      const blog = await buildBlogSnapshot(projectDirectory)
-      return withCors(json(toBrowserBlog(projectDirectory, blog)), request)
+      const blog = await buildBlogSnapshot(projectDirectory).catch(() => undefined)
+      if (blog) {
+        const browserBlog = toBrowserBlog(projectDirectory, blog)
+        void mergePortalOfflineDiskCache(projectDirectory, { blog: browserBlog })
+        return withCors(json(browserBlog), request)
+      }
+      const cached = (await readPortalOfflineDiskBundle(projectDirectory))?.blog
+      if (cached) return withCors(json(cached), request)
+      return withCors(new Response("blog unavailable", { status: 503 }), request)
     }
 
     if (url.pathname === "/portal/api/team-stats") {
@@ -251,8 +282,14 @@ export function createPortalFetchHandler(options: PortalFetchOptions) {
         })
         return undefined
       })
-      if (!stats) return withCors(json({ error: "team_stats_unavailable" }, 503), request)
-      return withCors(json(toBrowserTeamStats(projectDirectory, stats)), request)
+      if (stats) {
+        const browserStats = toBrowserTeamStats(projectDirectory, stats)
+        void mergePortalOfflineDiskCache(projectDirectory, { teamStats: browserStats })
+        return withCors(json(browserStats), request)
+      }
+      const cached = (await readPortalOfflineDiskBundle(projectDirectory))?.teamStats
+      if (cached) return withCors(json(cached), request)
+      return withCors(json({ error: "team_stats_unavailable" }, 503), request)
     }
 
     if (url.pathname === "/portal/api/skill") {
@@ -260,8 +297,16 @@ export function createPortalFetchHandler(options: PortalFetchOptions) {
       const name = url.searchParams.get("name")?.trim() ?? ""
       if (!domain || !name) return withCors(new Response("domain and name required", { status: 400 }), request)
       const detail = await readSkillDetail(projectDirectory, domain, name)
-      if (!detail) return withCors(new Response("skill not found", { status: 404 }), request)
-      return withCors(json(toBrowserSkillDetail(detail)), request)
+      if (detail) {
+        const browserDetail = toBrowserSkillDetail(detail)
+        void mergePortalOfflineDiskCache(projectDirectory, {
+          skills: { [portalOfflineSkillCacheKey(domain, name)]: browserDetail },
+        })
+        return withCors(json(browserDetail), request)
+      }
+      const cached = await readPortalOfflineDiskSkillDetail(projectDirectory, domain, name)
+      if (cached) return withCors(json(cached), request)
+      return withCors(new Response("skill not found", { status: 404 }), request)
     }
 
     if (url.pathname === "/portal/api/office/manifest.json") {

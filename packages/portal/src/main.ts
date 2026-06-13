@@ -1,13 +1,14 @@
 import { loadPortalBranding } from "./api/branding.ts"
 import { loadBlogSnapshot, startBlogPolling } from "./api/blog.ts"
 import { loadPortalDisplayConfig } from "./api/display-config.ts"
+import { loadOfflineDiskBundle } from "./api/offline-cache.ts"
 import { portalProjectSlug, resolvePortalProjectSlug, setPortalProjectSlug } from "./api/project-directory.ts"
 import { loadPortalSnapshotWithRetry, startSnapshotPolling } from "./api/snapshot.ts"
 import { isBackendConnected, setBackendConnected } from "./portal/connection.ts"
 import { applySnapshotUpdate } from "./portal/snapshot-sync.ts"
 import { BLOG_POLL_MS } from "./portal/poll-intervals.ts"
 import { applyPortalDisplayConfig, resolveSnapshotPollMs } from "./portal/runtime-poll.ts"
-import { mergeOfflineBundle, readOfflineBundle } from "./portal/offline-cache.ts"
+import { mergeOfflineBundle, readOfflineBundle, type OfflineBundle } from "./portal/offline-cache.ts"
 import { logBlogSnapshotDiff } from "./portal/snapshot-events.ts"
 import { getBlogSnapshot, setBlogSnapshot, setPortalSnapshot } from "./portal/state.ts"
 import { startPortalLiveSync } from "./portal/live-sync.ts"
@@ -22,6 +23,11 @@ import { t } from "./shell/i18n.ts"
 function setLoadingStatus(text: string) {
   const label = document.getElementById("nav-status-label")
   if (label) label.textContent = text
+}
+
+function mergeDiskBundle(project: string, disk?: OfflineBundle) {
+  if (!disk) return
+  mergeOfflineBundle(project, disk)
 }
 
 async function boot() {
@@ -46,33 +52,39 @@ async function boot() {
   if (snapshot) {
     setBackendConnected(true)
     mergeOfflineBundle(project, { snapshot })
-  } else if (cached?.snapshot) {
-    snapshot = cached.snapshot
-    offline = true
-    setBackendConnected(false)
-    setLoadingStatus(t("nav.offlineCache"))
-    console.warn("[portal] using offline snapshot cache")
   } else {
-    throw new Error(t("error.snapshotUnavailable"))
+    const diskBundle = await loadOfflineDiskBundle(project).catch(() => undefined)
+    mergeDiskBundle(project, diskBundle)
+    const fallback = readOfflineBundle(project)
+    if (fallback?.snapshot) {
+      snapshot = fallback.snapshot
+      offline = true
+      setBackendConnected(false)
+      setLoadingStatus(t("nav.offlineCache"))
+      console.warn("[portal] using offline snapshot cache")
+    } else {
+      throw new Error(t("error.snapshotUnavailable"))
+    }
   }
 
+  const offlineSources = readOfflineBundle(project)
   const [blog, branding, displayConfig] = await Promise.all([
     loadBlogSnapshot(project)
       .then((next) => {
         mergeOfflineBundle(project, { blog: next })
         return next
       })
-      .catch(() => cached?.blog),
+      .catch(() => offlineSources?.blog),
     loadPortalBranding(project).then((next) => {
       if (next) mergeOfflineBundle(project, { branding: next })
-      return next
+      return next ?? offlineSources?.branding
     }),
     loadPortalDisplayConfig(project)
       .then((next) => {
         if (next) mergeOfflineBundle(project, { displayConfig: next })
         return next
       })
-      .catch(() => cached?.displayConfig),
+      .catch(() => offlineSources?.displayConfig),
   ])
   applyPortalDisplayConfig(displayConfig)
 
