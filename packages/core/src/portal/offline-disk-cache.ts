@@ -11,7 +11,7 @@ import {
   toBrowserBlog,
   toBrowserSkillDetail,
 } from "./browser-dto.ts"
-import { portalOfflineCacheDir } from "../paths.ts"
+import { portalOfflineCacheDir, portalStaticOfflineCacheDir } from "../paths.ts"
 import { toBrowserDisplayConfig } from "./portal-display-settings.ts"
 import { readSkillDetail, skillSourceMtimeMs } from "./skill.ts"
 import type { PortalSkill } from "./snapshot.ts"
@@ -79,6 +79,8 @@ export type RefreshPortalOfflineContentOptions = {
 const scheduledContentRefresh = new Map<string, ReturnType<typeof setTimeout>>()
 const inflightContentRefresh = new Map<string, Promise<void>>()
 const latestScheduledSkills = new Map<string, PortalSkill[]>()
+const scheduledStaticExport = new Map<string, ReturnType<typeof setTimeout>>()
+const inflightStaticExport = new Map<string, Promise<void>>()
 
 function envPositiveInt(key: string) {
   const raw = process.env[key]?.trim()
@@ -104,6 +106,45 @@ function cacheFilePath(projectDirectory: string, file: OfflineCacheFileName) {
   return path.join(portalOfflineCacheDir(projectDirectory), file)
 }
 
+export function portalStaticOfflineCacheExportDirs(projectDirectory: string) {
+  const dirs = [portalStaticOfflineCacheDir(projectDirectory)]
+  const envDir = process.env.GATEHOUSE_PORTAL_STATIC_CACHE_DIR?.trim()
+  if (envDir) dirs.push(path.resolve(envDir))
+  return [...new Set(dirs.map((dir) => path.resolve(dir)))]
+}
+
+export async function exportPortalOfflineStaticCache(projectDirectory: string) {
+  const bundle = await readPortalOfflineDiskBundle(projectDirectory)
+  if (!bundle?.snapshot) return
+
+  for (const dir of portalStaticOfflineCacheExportDirs(projectDirectory)) {
+    await writeJsonFile(path.join(dir, "bundle.json"), bundle)
+  }
+}
+
+function schedulePortalOfflineStaticCacheExport(projectDirectory: string) {
+  const key = projectKey(projectDirectory)
+  const pending = scheduledStaticExport.get(key)
+  if (pending) clearTimeout(pending)
+
+  scheduledStaticExport.set(
+    key,
+    setTimeout(() => {
+      scheduledStaticExport.delete(key)
+      if (inflightStaticExport.has(key)) return
+
+      const job = exportPortalOfflineStaticCache(projectDirectory)
+        .catch((error) => {
+          console.warn("[gatehouse/portal] static offline cache export failed:", error)
+        })
+        .finally(() => {
+          inflightStaticExport.delete(key)
+        })
+      inflightStaticExport.set(key, job)
+    }, 500),
+  )
+}
+
 async function readJsonFile<T>(filePath: string): Promise<T | undefined> {
   const file = Bun.file(filePath)
   if (!(await file.exists())) return undefined
@@ -117,7 +158,7 @@ async function readJsonFile<T>(filePath: string): Promise<T | undefined> {
 async function writeJsonFile(filePath: string, data: unknown) {
   const dir = path.dirname(filePath)
   await mkdir(dir, { recursive: true })
-  const tmp = `${filePath}.${process.pid}.tmp`
+  const tmp = `${filePath}.${process.pid}.${Date.now()}.tmp`
   await Bun.write(tmp, JSON.stringify(data))
   await rename(tmp, filePath)
 }
@@ -140,6 +181,7 @@ async function mergeSkillCacheIncremental(
   skills: PortalSkill[],
   prevSkills: PortalOfflineSkillsCache | undefined,
   prevFingerprints: Record<string, number> | undefined,
+  force = false,
 ) {
   const nextSkills: PortalOfflineSkillsCache = { ...prevSkills }
   const nextFingerprints: Record<string, number> = { ...prevFingerprints }
@@ -157,7 +199,7 @@ async function mergeSkillCacheIncremental(
       }
       continue
     }
-    if (nextFingerprints[key] === mtimeMs && nextSkills[key]?.markdown) continue
+    if (!force && nextFingerprints[key] === mtimeMs && nextSkills[key]?.markdown) continue
 
     const detail = await readSkillDetail(projectDirectory, skill.domain, skill.name)
     if (!detail) {
@@ -302,6 +344,7 @@ export async function mergePortalOfflineDiskCache(
   }
 
   await writePortalOfflineManifest(projectDirectory, files, prevManifest?.content)
+  schedulePortalOfflineStaticCacheExport(projectDirectory)
 }
 
 export async function refreshPortalOfflineSkillsCache(
@@ -335,6 +378,7 @@ export async function refreshPortalOfflineContentCache(
     skills,
     bundle?.skills,
     meta?.skillFingerprints,
+    force,
   )
 
   if (
@@ -366,6 +410,7 @@ export async function refreshPortalOfflineContentCache(
     blogRevision,
     skillFingerprints: skillMerge.fingerprints,
   })
+  schedulePortalOfflineStaticCacheExport(projectDirectory)
 }
 
 export function schedulePortalOfflineContentRefresh(projectDirectory: string, skills: PortalSkill[]) {
@@ -413,6 +458,9 @@ export function clearPortalOfflineRefreshStateForTests() {
   scheduledContentRefresh.clear()
   inflightContentRefresh.clear()
   latestScheduledSkills.clear()
+  for (const timer of scheduledStaticExport.values()) clearTimeout(timer)
+  scheduledStaticExport.clear()
+  inflightStaticExport.clear()
 }
 
 export async function ensurePortalOfflineDiskContent(

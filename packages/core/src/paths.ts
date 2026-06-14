@@ -253,6 +253,11 @@ export function portalOfflineCacheDir(projectDirectory: string) {
   return path.join(gatehouseRoot(projectDirectory), "portal", "cache")
 }
 
+/** Browser-servable offline bundle (rsync to VPS static root as offline-cache/). */
+export function portalStaticOfflineCacheDir(projectDirectory: string) {
+  return path.join(gatehouseRoot(projectDirectory), "portal", "static-cache")
+}
+
 export function officeLayoutSpecPath(projectDirectory: string) {
   return path.join(gatehouseRoot(projectDirectory), "portal", "office-layout.yaml")
 }

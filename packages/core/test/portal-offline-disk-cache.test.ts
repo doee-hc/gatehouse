@@ -1,20 +1,23 @@
 import { expect, test } from "bun:test"
 import path from "node:path"
+import { utimes } from "node:fs/promises"
 import { buildBlogSnapshot, clearBlogCacheForTests } from "../src/portal/blog.ts"
 import { publishBlogPost } from "../src/portal/blog-publish.ts"
 import {
   clearPortalOfflineRefreshStateForTests,
   ensurePortalOfflineDiskContent,
+  exportPortalOfflineStaticCache,
   mergePortalOfflineDiskCache,
   portalOfflineContentTtlMs,
   portalOfflineSkillCacheKey,
+  portalStaticOfflineCacheExportDirs,
   readPortalOfflineDiskBundle,
   readPortalOfflineDiskManifest,
   readPortalOfflineDiskSkillDetail,
   refreshPortalOfflineContentCache,
 } from "../src/portal/offline-disk-cache.ts"
 import { clearSkillDetailCacheForTests } from "../src/portal/skill.ts"
-import { portalOfflineCacheDir } from "../src/paths.ts"
+import { portalOfflineCacheDir, portalStaticOfflineCacheDir } from "../src/paths.ts"
 
 const dir = path.join(import.meta.dir, ".tmp-offline-disk-cache")
 
@@ -187,9 +190,48 @@ test("refreshPortalOfflineContentCache incrementally updates changed skill files
 
   await Bun.write(skillPath, "# Version 2\n")
   clearSkillDetailCacheForTests()
-  await Bun.sleep(1100)
+  const bumped = Date.now() / 1000 + 2
+  await utimes(skillPath, bumped, bumped)
   await refreshPortalOfflineContentCache(dir, skills, { force: true })
 
   const bundle = await readPortalOfflineDiskBundle(dir)
   expect(bundle?.skills?.[portalOfflineSkillCacheKey("docs", "write")]?.markdown).toBe("# Version 2\n")
+})
+
+test("mergePortalOfflineDiskCache exports browser bundle to static-cache", async () => {
+  const exportDir = path.join(dir, ".export-static-cache")
+  const prev = process.env.GATEHOUSE_PORTAL_STATIC_CACHE_DIR
+  process.env.GATEHOUSE_PORTAL_STATIC_CACHE_DIR = exportDir
+
+  try {
+    await Bun.$`rm -rf ${dir} ${exportDir} && mkdir -p ${dir}/.gatehouse/portal/cache`.quiet()
+
+    await mergePortalOfflineDiskCache(dir, {
+      snapshot: {
+        project: "demo",
+        updated_at: "2026-06-14T00:00:00.000Z",
+        missions: [],
+        agents: [],
+        skills: [],
+      },
+    })
+    await exportPortalOfflineStaticCache(dir)
+
+    const projectStatic = path.join(portalStaticOfflineCacheDir(dir), "bundle.json")
+    const envStatic = path.join(exportDir, "bundle.json")
+    expect(await Bun.file(projectStatic).exists()).toBe(true)
+    expect(await Bun.file(envStatic).exists()).toBe(true)
+
+    const exported = (await Bun.file(projectStatic).json()) as { snapshot?: { project?: string } }
+    expect(exported.snapshot?.project).toBe("demo")
+
+    await exportPortalOfflineStaticCache(dir)
+    expect(portalStaticOfflineCacheExportDirs(dir)).toEqual([
+      path.resolve(portalStaticOfflineCacheDir(dir)),
+      path.resolve(exportDir),
+    ])
+  } finally {
+    if (prev === undefined) delete process.env.GATEHOUSE_PORTAL_STATIC_CACHE_DIR
+    else process.env.GATEHOUSE_PORTAL_STATIC_CACHE_DIR = prev
+  }
 })

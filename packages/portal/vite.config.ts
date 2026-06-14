@@ -1,8 +1,11 @@
 import path from "node:path"
+import { existsSync } from "node:fs"
+import { createReadStream } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { defineConfig, loadEnv } from "vite"
 import { DEFAULT_PORTAL_ADMIN_PORT, DEFAULT_PORTAL_DISPLAY_PORT } from "../core/src/portal/defaults.ts"
 import { portalAdminRuntimeUrl, portalRuntimeUrl } from "../core/src/portal/runtime-info.ts"
+import { portalStaticOfflineCacheDir } from "../core/src/paths.ts"
 
 const portalRoot = path.dirname(fileURLToPath(import.meta.url))
 
@@ -84,6 +87,24 @@ export default defineConfig(({ mode }) => {
               req.url = "/admin.html"
             }
             next()
+          })
+        },
+      },
+      {
+        name: "gatehouse/portal-offline-cache",
+        configureServer(server) {
+          if (!projectDir) return
+          const bundlePath = path.join(portalStaticOfflineCacheDir(projectDir), "bundle.json")
+          server.middlewares.use((req, res, next) => {
+            const url = req.url?.split("?")[0]
+            if (url !== "/offline-cache/bundle.json") return next()
+            if (!existsSync(bundlePath)) {
+              res.statusCode = 404
+              res.end()
+              return
+            }
+            res.setHeader("Content-Type", "application/json; charset=utf-8")
+            createReadStream(bundlePath).pipe(res)
           })
         },
       },

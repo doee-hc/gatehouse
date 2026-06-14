@@ -1,6 +1,8 @@
 #!/usr/bin/env bun
 import path from "node:path"
-import { cp, mkdir, rm } from "node:fs/promises"
+import { existsSync } from "node:fs"
+import { cp as cpAsync, mkdir, rm } from "node:fs/promises"
+import { portalStaticOfflineCacheDir } from "../src/paths.ts"
 
 const coreRoot = path.resolve(import.meta.dir, "..")
 const portalRoot = path.resolve(coreRoot, "../portal")
@@ -36,14 +38,25 @@ async function main() {
   )
   await rm(portalDist, { recursive: true, force: true })
   await mkdir(distRoot, { recursive: true })
-  await cp(path.join(portalRoot, "dist"), portalDist, { recursive: true })
+  await cpAsync(path.join(portalRoot, "dist"), portalDist, { recursive: true })
   console.log("[gatehouse] portal UI → dist/portal/")
+
+  const projectDir = process.env.GATEHOUSE_PROJECT_DIR?.trim()
+  if (projectDir) {
+    const bundlePath = path.join(portalStaticOfflineCacheDir(projectDir), "bundle.json")
+    if (existsSync(bundlePath)) {
+      const destDir = path.join(portalDist, "offline-cache")
+      await mkdir(destDir, { recursive: true })
+      await cpAsync(bundlePath, path.join(destDir, "bundle.json"))
+      console.log("[gatehouse] portal offline cache → dist/portal/offline-cache/bundle.json")
+    }
+  }
 
   await rm(bridgesRoot, { recursive: true, force: true })
   for (const name of BUNDLED_BRIDGE_PACKAGES) {
     const src = path.join(coreRoot, "..", name, "src")
     const dest = path.join(bridgesRoot, name, "src")
-    await cp(src, dest, { recursive: true })
+    await cpAsync(src, dest, { recursive: true })
   }
   console.log("[gatehouse] IM bridge sources → bridges/")
 
