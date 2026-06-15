@@ -81,6 +81,6 @@ Options:
 Examples:
   bunx @gatehouse/core upgrade
   bunx @gatehouse/core upgrade --locale=zh
-  bunx @gatehouse/core upgrade ./gatehouse-core-0.2.0.tgz
+  bunx @gatehouse/core upgrade ./gatehouse-core-0.2.1.tgz
 `)
 }

@@ -7,9 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1](https://github.com/doee-hc/gatehouse/releases/tag/v0.2.1) - 2026-06-15
+
 ### Changed
 
-- **Breaking:** rename `gatehouse_bootstrap_tree` → `gatehouse_submit_orchestration` (architect submits/validates `mission.script.ts`; execution tree creation remains in `gatehouse_apply_skill_domains` when skill domains need manual assignment).
+- **Breaking:** rename **`gatehouse_bootstrap_tree`** → **`gatehouse_submit_orchestration`** — architect submits/validates `mission.script.ts` and kicks off orchestration; execution tree creation remains in `gatehouse_apply_skill_domains` when skill domains need manual assignment.
+- **Autopilot replaces lead user-await** — toggle with TUI `/autopilot` or IM `/autopilot on|off`. When ON and `.gatehouse/lead/direction.yaml` is `status: confirmed`, Lead proceeds without asking after 10 minutes of user idle time. TUI sidebar shows autopilot + direction status.
+
+### Added
+
+- **Orchestration plan compile** — declarative plan compile/store with stall recovery; Portal orchestration timeline.
+- **Direction & autopilot tooling** — `.gatehouse/lead/direction.yaml`, `gatehouse_direction_status`, autopilot wake/enabled prompts.
+- **Skill verify/extract pipeline** — extract and verify agents with dedicated manifests.
+- **Portal offline cache** — persist snapshot, blog, branding, team stats, and skill details to `.gatehouse/portal/cache`; hydrate portal shell from disk when backend is unreachable; throttled warm refresh (5min TTL, 2s debounce) with full blog markdown and skill bodies.
+- **VPS static bundle** — export `bundle.json` alongside disk cache; `/offline-cache/bundle.json` fallback when Portal API is unreachable; embed in `dist` when building with `GATEHOUSE_PROJECT_DIR`.
+- **Orchestration failure handling** — validate `orchestrate()` syntax before run; notify architect on sandbox startup errors; allow **`gatehouse_submit_orchestration`** retry after failure.
+
+### Fixed
+
+- Portal first visit resolves project slug from server disk cache when health and localStorage lack it.
+- Blog cache refresh no longer crashes CI when the project directory is gone.
+
+### Docs
+
+- Refresh bilingual README and expand dev guides (Mission flow, offline cache, qq-onebot, bridge packages).
 
 ## [0.2.0](https://github.com/doee-hc/gatehouse/releases/tag/v0.2.0) - 2026-06-13
 

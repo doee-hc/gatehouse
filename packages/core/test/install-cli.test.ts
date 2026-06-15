@@ -51,7 +51,7 @@ describe("install cli helpers", () => {
   test("isGatehouseTuiPluginSpec accepts opencode plug style package root", () => {
     expect(isGatehouseTuiPluginSpec("@gatehouse/core")).toBe(true)
     expect(isGatehouseTuiPluginSpec("@gatehouse/core/tui")).toBe(true)
-    expect(isGatehouseTuiPluginSpec("file:///home/user/.cache/gatehouse/core-0.2.0")).toBe(true)
+    expect(isGatehouseTuiPluginSpec("file:///home/user/.cache/gatehouse/core-0.2.1")).toBe(true)
   })
 
   test("registerGatehouseInGlobalOpencodeConfig writes server and tui plugins", async () => {
