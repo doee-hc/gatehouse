@@ -434,9 +434,9 @@ test("mission_complete publishes done_when path string prefix deliverables", asy
         mockToolContext(dir, "ses_lead", "lead"),
       ),
     ),
-  ) as { data?: { delivery_finalize?: { published_artifacts?: string[]; publish_warnings?: string[] } } }
-  expect(finalized.data?.delivery_finalize?.published_artifacts).toEqual([articleRel])
-  expect(finalized.data?.delivery_finalize?.publish_warnings ?? []).toEqual([])
+  ) as { data?: { delivery?: { published_artifacts?: string[]; publish_warnings?: string[] } } }
+  expect(finalized.data?.delivery?.published_artifacts).toEqual([articleRel])
+  expect(finalized.data?.delivery?.publish_warnings ?? []).toEqual([])
 })
 
 test("mission_complete republishes deliverables added after delivery submit", async () => {
@@ -590,7 +590,7 @@ test("delivery_review rejects when no active delivery", async () => {
   const review = deliveryReviewTool(pluginInput)
   const result = toolOutput(
     await review.execute(
-      { mission_id: "ghost", decision: "revision_requested", failed_criteria: "0", revision_brief: "fix" },
+      { mission_id: "ghost", decision: "revision_requested", failed_criteria: [0], revision_brief: "fix" },
       mockToolContext(dir, "ses_lead", "lead"),
     ),
   )

@@ -68,7 +68,7 @@ export async function handleAgentCommand(
   setActiveAgentId(config.stateDir, userId, agent.agentId)
   await syncAgentDeliveryWatermark(client, config, userId, agent.sessionId)
   return {
-    text: `已切换到 ${agent.agentId}（${agent.displayName}）`,
+    text: `Switched to ${agent.agentId} (${agent.displayName})`,
     switchedSessionId: agent.sessionId,
   }
 }

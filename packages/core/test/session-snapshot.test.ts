@@ -41,8 +41,7 @@ function parseEnvelope(output: string) {
     data?: {
       tail: string[]
       session_status: string
-      activity_hint: string
-      lines_requested: number
+      guidance: string
     }
     error?: { code: string }
   }
@@ -132,9 +131,8 @@ describe("session snapshot", () => {
       const envelope = parseEnvelope(output)
       expect(envelope.ok).toBe(true)
       expect(envelope.data?.session_status).toBe("busy")
-      expect(envelope.data?.activity_hint).toBe("likely_working")
+      expect(Boolean(envelope.data?.guidance)).toBe(true)
       expect(envelope.data?.tail).toContain("assistant: working on delivery")
-      expect(envelope.data?.lines_requested).toBe(10)
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
@@ -373,6 +371,58 @@ describe("session snapshot", () => {
       expect(parseEnvelope(output).ok).toBe(true)
     } finally {
       resetSessionSnapshotPollGuardForTests()
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  test("forbids inner structural root snapshot of peer node", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-snapshot-inner-deny-"))
+    try {
+      const mockClient: GatehouseClient = {
+        session: {
+          async create() {
+            return { id: "unused" }
+          },
+          async promptAsync() {},
+          async messages() {
+            return { data: [] }
+          },
+          async get() {
+            return { data: {} }
+          },
+          async status() {
+            return { data: {} }
+          },
+        },
+      }
+
+      const store = await RegistryStore.create({ directory: dir, client: mockClient })
+      store.registerInnerNode({
+        missionId: "m1",
+        nodeId: "node-root",
+        profile: "build-root",
+        sessionId: "ses_root",
+      })
+      store.registerInnerNode({
+        missionId: "m1",
+        nodeId: "node-doc",
+        profile: "build",
+        sessionId: "ses_worker",
+        parentSessionId: "ses_root",
+      })
+      seedActiveMissionRegistry(dir, "m1")
+
+      const snapshot = sessionSnapshotTool({ directory: dir, client: mockClient } as unknown as PluginInput)
+      const output = toolOutput(
+        await snapshot.execute(
+          { recipient: "node-doc" },
+          mockToolContext(dir, "ses_root", "build-root"),
+        ),
+      )
+      const envelope = parseEnvelope(output)
+      expect(envelope.ok).toBe(false)
+      expect(envelope.error?.code).toBe("SNAPSHOT_FORBIDDEN")
+    } finally {
       await rm(dir, { recursive: true, force: true })
     }
   })

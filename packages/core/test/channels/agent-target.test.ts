@@ -183,11 +183,11 @@ describe("formatAgentDirectory", () => {
         descriptions: new Map([["outer:lead", "统筹任务规划与交付"]]),
       },
     )
-    expect(text).toContain("当前对话：")
+    expect(text).toContain("Current conversation:")
     expect(text).toContain("/agent outer:lead")
     expect(text).toContain("统筹任务规划与交付")
-    expect(text).toContain("当前 mission：m-run")
-    expect(text).toContain("可用 agent：")
+    expect(text).toContain("Current mission: m-run")
+    expect(text).toContain("Available agents:")
   })
 })
 

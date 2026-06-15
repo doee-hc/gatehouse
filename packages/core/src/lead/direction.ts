@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from "node:fs"
 import path from "node:path"
 import { gatehouseRoot } from "../paths.ts"
 import { isRecord, parseYaml, readString } from "../yaml.ts"
@@ -43,6 +44,14 @@ export async function readDirectionDocument(projectDirectory: string): Promise<D
     return { schema_version: 1, status: "draft", constraints: [] }
   }
   return parseDirectionDocument(parseYaml(await file.text()))
+}
+
+export function readDirectionDocumentSync(projectDirectory: string): DirectionDocument {
+  const filePath = directionPath(projectDirectory)
+  if (!existsSync(filePath)) {
+    return { schema_version: 1, status: "draft", constraints: [] }
+  }
+  return parseDirectionDocument(parseYaml(readFileSync(filePath, "utf8")))
 }
 
 export function directionIsConfirmed(doc: DirectionDocument) {

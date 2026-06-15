@@ -12,7 +12,7 @@ export async function checkInstallPrerequisites(): Promise<PrerequisiteIssue[]> 
   if (bunWhich.exitCode !== 0) {
     issues.push({
       level: "error",
-      message: "未找到 Bun — 请先安装 https://bun.sh （Gatehouse CLI 依赖 Bun）",
+      message: "Bun not found — install from https://bun.sh (Gatehouse CLI requires Bun)",
     })
   }
 
@@ -20,7 +20,7 @@ export async function checkInstallPrerequisites(): Promise<PrerequisiteIssue[]> 
   if (!opencode.installed) {
     issues.push({
       level: "error",
-      message: "未找到 OpenCode CLI — 请先安装 https://opencode.ai",
+      message: "OpenCode CLI not found — install from https://opencode.ai",
     })
     return issues
   }
@@ -28,7 +28,7 @@ export async function checkInstallPrerequisites(): Promise<PrerequisiteIssue[]> 
   if (!opencode.version) {
     issues.push({
       level: "error",
-      message: `无法解析 OpenCode 版本${opencode.raw ? ` (${opencode.raw})` : ""}`,
+      message: `Could not parse OpenCode version${opencode.raw ? ` (${opencode.raw})` : ""}`,
     })
     return issues
   }

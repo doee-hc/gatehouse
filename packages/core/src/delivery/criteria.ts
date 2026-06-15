@@ -62,13 +62,13 @@ function parseCriterionItem(item: unknown, id: number): DoneWhenCriterion | unde
     const deliverablePath = publishOnly.trim()
     return {
       id,
-      text: `文件存在: ${deliverablePath}`,
+      text: `File exists: ${deliverablePath}`,
       check: { kind: "path_exists", path: deliverablePath },
     }
   }
   const text =
     readString(item.text) ??
-    (pathValue ? `文件存在: ${pathValue}` : readString(item.id) ?? undefined)
+    (pathValue ? `File exists: ${pathValue}` : readString(item.id) ?? undefined)
   if (!text?.trim()) return undefined
   const check = parseCheck(item.check, pathValue)
   return {

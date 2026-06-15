@@ -1,32 +1,44 @@
-# Domain skill extract · {{mission_id}}
+# Domain skill extraction · {{mission_id}}
 
-{{lead_name}} confirmed delivery and started retro. Extract domain skills from **this execution**.
+{{lead_name}} confirmed delivery and started retro. Use this node's `context/` and deliverables as the sole source of truth — do not rely on execution-session memory.
 
 **Your node:** {{node_id}}
-**Skill domain for this node:** `{{skill_domain}}`
+**Skill domain:** `{{skill_domain}}`
 
-## Domain directory (read yourself — not fully injected)
+## Data sources (single source of truth)
+
+```
+.gatehouse/trees/{{mission_id}}/context/{{node_id}}/
+  messages.json
+  timeline.md
+  metrics.json
+```
+
+**grep** `timeline.md` first, then **read** relevant slices and deliverables (`reports/`, `articles/`, etc.).
+
+## Domain directory
 
 `{{skill_domain_path}}/`
 
-Before extracting, **read** existing `*/SKILL.md` under that path; **merge updates** if present, else create a new subdirectory.
+**read** existing `*/SKILL.md` before extracting; merge when possible.
 
 {{skill_domain_existing_section}}
 
 ## Constraints
 
-- Create skill dirs and `SKILL.md` **only for steps you actually executed**
-- **Do not** pre-create empty dirs for steps you did not run or other `skill_domain`s (dirs without `SKILL.md` are cleaned up)
+- Create skills only for steps evidenced in **context/ and deliverables**
 - **Do not** create skills outside `{{skill_domain}}`
-- **Do not** batch `mkdir` all slugs from a list; create a subdir only when you write `SKILL.md` for that step
+- **At most 2 new skills** per mission per domain; merge when similarity ≥ 0.85
+- Long bodies need **methodology structure** (steps, triggers); do not write pure task reports
 
-## Extract principles
+## Principles
 
-1. **Single business action + minimal knowledge loop** — one core problem per skill.
-2. **Naming** — slug must be verb+noun, e.g. `resolve-tessent-c9-drc`, `capture-waveform-glitch-time`.
-3. **Format** — OpenCode `SKILL.md`: YAML frontmatter with `name`, `description`, plus **trigger** and **anti-trigger** scenarios.
-4. **Size** — body strictly **1k–3k tokens** (Markdown body).
-5. **Dedup** — no duplicate wheels; when merging, drop one-off Mission details, keep reusable steps and paths.
+1. **One business action + minimal closed loop**
+2. **Naming** — verb-noun slug
+3. **Format** — YAML frontmatter + **trigger/forbidden** sections
+4. **Size** — 1k–3k token body
+5. **Dedupe + reuse** — drop feature-bound cases, keep generic steps
+6. **Abstraction** — core steps must not depend on product names
 
 ## Output path
 
@@ -34,7 +46,7 @@ Before extracting, **read** existing `*/SKILL.md` under that path; **merge updat
 
 ## Delivery
 
-1. Write `.gatehouse/trees/{{mission_id}}/reports/skills/{{node_id}}-extract.md` — list of new/updated skill paths + one-line summary each.
-2. Call **`gatehouse_skill_extract_record()`** when done.
+1. Write `.gatehouse/trees/{{mission_id}}/reports/skills/{{node_id}}-extract.md`
+2. **`gatehouse_skill_extract_record()`**
 
-**Do not** `gatehouse_send_message` {{curator_name}} — Gatehouse auto-notifies {{curator_name}} after all nodes record.
+If registration is rejected, read `issues` from the tool response, fix `SKILL.md`, and retry. Remove mistaken new directories.

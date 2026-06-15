@@ -35,15 +35,15 @@ async function readStreamText(stream: ReadableStream<Uint8Array> | null | undefi
 
 function normalizeSpawnError(stderr: string, exitCode: number | null) {
   const text = stderr.trim()
-  if (text.includes("没有启用的 channel")) {
-    return "没有已启用的频道。请先在下方打开至少一个频道的「启用」开关。"
+  if (text.includes("No channels enabled")) {
+    return "No channels enabled. Turn on at least one channel using the Enable toggle below."
   }
-  if (text.includes("supervisor 已在运行")) {
-    return "Supervisor 已在运行"
+  if (text.includes("Supervisor is already running")) {
+    return "Supervisor is already running"
   }
   if (text) return text.split("\n").filter(Boolean).at(-1) ?? text
-  if (exitCode !== null) return `Supervisor 启动失败 (exit ${exitCode})`
-  return "Supervisor 启动失败"
+  if (exitCode !== null) return `Supervisor failed to start (exit ${exitCode})`
+  return "Supervisor failed to start"
 }
 
 function clearStaleSupervisorState(projectDir: string) {
@@ -74,7 +74,7 @@ export async function spawnChannelSupervisor(
   if (!enabled.length) {
     return {
       ok: false,
-      reason: "没有已启用的频道。请先在下方打开至少一个频道的「启用」开关。",
+      reason: "No channels enabled. Turn on at least one channel using the Enable toggle below.",
     }
   }
 
@@ -97,7 +97,7 @@ export async function spawnChannelSupervisor(
   })
 
   if (!proc.pid) {
-    return { ok: false, reason: "无法启动 Supervisor 子进程" }
+    return { ok: false, reason: "Failed to spawn Supervisor child process" }
   }
 
   const deadline = Date.now() + 6_000
@@ -113,7 +113,7 @@ export async function spawnChannelSupervisor(
       if (late) {
         return { ok: true, pid: late.pid }
       }
-      if (stderr.includes("supervisor 已在运行")) {
+      if (stderr.includes("Supervisor is already running")) {
         const existing = readLiveSupervisorState(projectDir)
         if (existing) {
           return { ok: true, pid: existing.pid, alreadyRunning: true }
@@ -130,7 +130,7 @@ export async function spawnChannelSupervisor(
   }
 
   if (proc.pid !== undefined && isProcessAlive(proc.pid)) {
-    return { ok: false, reason: "Supervisor 仍在启动中，请稍后点击「刷新」查看状态" }
+    return { ok: false, reason: "Supervisor is still starting — click Refresh to check status" }
   }
 
   const exitCode = proc.pid !== undefined && !isProcessAlive(proc.pid) ? await proc.exited : null
@@ -139,5 +139,5 @@ export async function spawnChannelSupervisor(
     return { ok: false, reason: normalizeSpawnError(stderr, exitCode) }
   }
 
-  return { ok: false, reason: "Supervisor 启动超时，请稍后点击「刷新」查看状态" }
+  return { ok: false, reason: "Supervisor start timed out — click Refresh to check status" }
 }

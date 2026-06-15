@@ -56,7 +56,7 @@ export function resolveBridgeEntry(channelId: ChannelId, searchDirs: string[]) {
   const override = process.env[envKey]?.trim()
   if (override) {
     const resolved = path.resolve(override)
-    if (!fs.existsSync(resolved)) throw new Error(`${envKey} 指向的文件不存在: ${resolved}`)
+    if (!fs.existsSync(resolved)) throw new Error(`${envKey} points to a file that does not exist: ${resolved}`)
     return resolved
   }
 
@@ -83,6 +83,6 @@ export function resolveBridgeEntry(channelId: ChannelId, searchDirs: string[]) {
   }
 
   throw new Error(
-    `找不到 ${channelId} bridge 入口。请安装 @gatehouse/core 并在项目中完成 scaffold，或在 Gatehouse monorepo 内运行，或设置 ${envKey}`,
+    `Cannot find ${channelId} bridge entry. Install @gatehouse/core and scaffold the project, run from the Gatehouse monorepo, or set ${envKey}`,
   )
 }

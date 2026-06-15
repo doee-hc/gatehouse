@@ -1,13 +1,8 @@
 import { formatMissionContextBlock } from "../execution/context.ts"
 import { formatNodeBriefBlock } from "../execution/brief.ts"
-import type { NodeBrief } from "../execution/types.ts"
 import type { GatehouseLocale } from "../locale.ts"
 import { readLocaleSync } from "../locale.ts"
-import {
-  readMissionContractRawRegistry,
-  readMissionRawDoneWhen,
-  readNodeBriefRegistry,
-} from "../execution/artifacts.ts"
+import { readNodeBriefRegistry } from "../execution/artifacts.ts"
 import { RegistryDatabase } from "../registry/db.ts"
 import type { RegistryAgent } from "../registry/types.ts"
 import {
@@ -27,22 +22,6 @@ export type MissionInfoRoleView = "lead" | "architect" | "curator" | "coordinato
 export type MissionInfoPayload = {
   mission_id: string
   role_view: MissionInfoRoleView
-  boundaries?: {
-    objective?: string
-    must_not: string[]
-    markdown: string
-  }
-  contract?: MissionContract
-  contract_markdown?: string
-  brief?: {
-    node_id: string
-    status: "ok" | "not_found"
-    brief?: NodeBrief
-    markdown?: string
-    note?: string
-  }
-  contract_raw?: unknown
-  done_when_raw?: unknown
   markdown: string
 }
 
@@ -104,38 +83,15 @@ export async function resolveMissionInfo(input: {
 
   const locale = input.locale ?? readLocaleSync(input.projectDirectory)
   const contract = registryMissionToContract(record)
-  const payload: MissionInfoPayload = {
-    mission_id: input.missionId,
-    role_view: roleView,
-    markdown: "",
-  }
   const markdownParts: string[] = []
 
   if (includesBoundaries(roleView)) {
-    const boundariesMarkdown = formatMissionContextBlock(contract, locale)
-    payload.boundaries = {
-      objective: contract.objective,
-      must_not: [...contract.must_not],
-      markdown: boundariesMarkdown,
-    }
-    markdownParts.push(boundariesMarkdown)
+    markdownParts.push(formatMissionContextBlock(contract, locale))
   }
 
   if (includesContract(roleView)) {
     const shown = visibleContract(contract, roleView)
-    payload.contract = shown
-    const contractMarkdown = formatMissionContractForRole(shown, locale, contractAudience(roleView))
-    payload.contract_markdown = contractMarkdown
-    markdownParts.push(contractMarkdown)
-
-    if (roleView === "lead") {
-      const [rawDoneWhen, rawEntry] = await Promise.all([
-        readMissionRawDoneWhen(input.projectDirectory, input.missionId),
-        readMissionContractRawRegistry(input.projectDirectory, input.missionId),
-      ])
-      if (rawDoneWhen) payload.done_when_raw = rawDoneWhen
-      if (rawEntry) payload.contract_raw = rawEntry
-    }
+    markdownParts.push(formatMissionContractForRole(shown, locale, contractAudience(roleView)))
   }
 
   if (includesBrief(roleView)) {
@@ -143,25 +99,18 @@ export async function resolveMissionInfo(input: {
     if (nodeId) {
       const brief = await readNodeBriefRegistry(input.projectDirectory, input.missionId, nodeId)
       if (!brief) {
-        payload.brief = {
-          node_id: nodeId,
-          status: "not_found",
-          note:
-            "No node brief in registry for this node. The orchestrator must call ctx.setBrief(...) before prompt(reply:true) for this node.",
-        }
+        markdownParts.push(
+          `## Node brief · ${nodeId}\n\nNo node brief in registry for this node. The orchestrator must call ctx.setBrief(...) before prompt(reply:true) for this node.`,
+        )
       } else {
-        const briefMarkdown = formatNodeBriefBlock(brief)
-        payload.brief = {
-          node_id: nodeId,
-          status: "ok",
-          brief,
-          markdown: briefMarkdown,
-        }
-        markdownParts.push(briefMarkdown)
+        markdownParts.push(formatNodeBriefBlock(brief, locale))
       }
     }
   }
 
-  payload.markdown = markdownParts.join("\n\n")
-  return payload
+  return {
+    mission_id: input.missionId,
+    role_view: roleView,
+    markdown: markdownParts.join("\n\n"),
+  }
 }

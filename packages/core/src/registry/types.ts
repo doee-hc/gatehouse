@@ -1,4 +1,4 @@
-export const REGISTRY_SCHEMA_VERSION = 8
+export const REGISTRY_SCHEMA_VERSION = 9
 
 export const OUTER_LEAD_ID = "outer:lead"
 export const OUTER_ARCHITECT_ID = "outer:architect"
@@ -12,6 +12,10 @@ export const CURATOR_OPENCODE = "curator"
 export const ARBITER_OPENCODE = "arbiter"
 
 export const INNER_EXECUTION_AGENT = "build"
+/** Empty-context skill extraction session (post-retro). */
+export const INNER_EXTRACT_AGENT = "build-extract"
+/** Isolated skill verifier session (after extract record). */
+export const INNER_VERIFY_AGENT = "build-verify"
 /** Structural root with delegates — coordinates the tree and notifies lead; task denied. */
 export const INNER_ROOT_AGENT = "build-root"
 /** Solo structural root (no children) — executes, may use task, notifies lead. */
@@ -39,7 +43,7 @@ export const GATEHOUSE_OUTER_AGENTS = new Set([
   ARBITER_OPENCODE,
 ])
 
-export type RegistryScope = "outer" | "inner" | "retro"
+export type RegistryScope = "outer" | "inner" | "retro" | "extract" | "verify"
 export type RegistryStatus = "active" | "completed" | "error"
 
 export type RegistryAgent = {
@@ -78,8 +82,10 @@ export type RegistryRetroRun = {
   expectedNodeIds: string[]
   startedAt: string
   architectNotifiedAt?: string
-  /** Set when profile architect send_message(recipient=lead) after retro batch kickoff. */
+  /** Set when profile architect calls gatehouse_retro_summary_record. */
   architectLeadNotifiedAt?: string
+  /** Set when Gatehouse auto-notifies profile lead that retro rollup is complete. */
+  leadRollupNotifiedAt?: string
 }
 
 export type RegistryRetroCompletion = {
@@ -94,9 +100,25 @@ export type RegistrySkillExtractRun = {
   missionId: string
   expectedNodeIds: string[]
   startedAt: string
+  verifyStartedAt?: string
   curatorNotifiedAt?: string
-  /** Set when profile curator send_message(recipient=lead) after skill-extract batch kickoff. */
+  /** Set when profile curator calls gatehouse_skill_summary_record. */
   curatorLeadNotifiedAt?: string
+}
+
+export type RegistrySkillVerifyRun = {
+  missionId: string
+  expectedNodeIds: string[]
+  startedAt: string
+}
+
+export type RegistrySkillVerifyCompletion = {
+  missionId: string
+  nodeId: string
+  sessionId: string
+  completedAt: string
+  passed: boolean
+  reportPath?: string
 }
 
 export type RegistrySkillExtractCompletion = {
@@ -111,7 +133,6 @@ export type RegistrySkillExtractCompletion = {
 export type RegistryMissionRecord = {
   missionId: string
   status: string
-  priority?: string
   objective?: string
   doneWhen: string[]
   mustNot: string[]
@@ -136,6 +157,8 @@ export type RegistrySnapshot = {
   retroCompletions: RegistryRetroCompletion[]
   skillExtractRuns: RegistrySkillExtractRun[]
   skillExtractCompletions: RegistrySkillExtractCompletion[]
+  skillVerifyRuns: RegistrySkillVerifyRun[]
+  skillVerifyCompletions: RegistrySkillVerifyCompletion[]
 }
 
 export type RegisterAgentInput = {
@@ -178,4 +201,12 @@ export function isInnerStructuralRoot(agent: RegistryAgent) {
 
 export function retroAgentId(missionId: string, nodeId: string) {
   return `retro:${missionId}:${nodeId}`
+}
+
+export function extractAgentId(missionId: string, nodeId: string) {
+  return `extract:${missionId}:${nodeId}`
+}
+
+export function verifyAgentId(missionId: string, nodeId: string) {
+  return `verify:${missionId}:${nodeId}`
 }

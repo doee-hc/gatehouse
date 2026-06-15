@@ -12,11 +12,23 @@ import {
 } from "./events.ts"
 import { deliverOrchestrationPrompt } from "./prompt.ts"
 import {
-  allNodesCompleteForWait,
+  armCompoundReactivation,
+  consumeCompoundReactivation,
+  isCompoundPlanStepOp,
+  shouldSkipCompoundReplyPrompt,
+  shouldSkipCompoundSetBriefDeliver,
+} from "./compound-replay.ts"
+import { readLatestOrchestrationPlanRecord } from "./plan-store.ts"
+import type { PlanStep } from "./plan-types.ts"
+import {
+  isPlanStepCompleted,
   markNodeRunning,
+  markPlanStepCompleted,
+  mutateOrchestrationState,
+  nodeAlreadyActivated,
   nodeIsCompleteForWait,
   readOrchestrationState,
-  writeOrchestrationState,
+  shouldSkipReplyPromptStep,
 } from "./state.ts"
 import type { SandboxRpcRequest } from "./sandbox-protocol.ts"
 import type { MissionContext, MissionScriptMeta, PromptInput } from "./types.ts"
@@ -26,6 +38,8 @@ import {
   formatReworkText,
   formatWorkOrderText,
 } from "./templates.ts"
+import { orchestrationParallel, orchestrationPipeline } from "./primitives.ts"
+import { RegistryDatabase } from "../registry/db.ts"
 
 const PROMPT_TEXT_MAX = 32_768
 const MAX_REPLY_PROMPTS_PER_MISSION = 500
@@ -36,56 +50,124 @@ export function createMissionHostHandlers(input: {
   team: TeamSpec
   meta?: MissionScriptMeta
 }) {
-  const ctx = createMissionContext(input)
   const missionId = input.team.mission_id
   let replyPromptCount = 0
+  let activePlanStep: { id: string; index: number } | undefined
+  let activePlanStepMeta: PlanStep | undefined
+  let compoundReactivationLatch = new Set<string>()
+  let compoundLatchStepId: string | undefined
+
+  const ctx = createMissionContext({
+    ...input,
+    planStep: () => activePlanStep,
+    compoundReplay: () => ({
+      active: isCompoundPlanStepOp(activePlanStepMeta?.op),
+      latch: compoundReactivationLatch,
+    }),
+  })
+
+  function syncCompoundLatch(step: PlanStep | undefined) {
+    if (!step || !isCompoundPlanStepOp(step.op)) {
+      compoundLatchStepId = undefined
+      return
+    }
+    if (compoundLatchStepId !== step.id) {
+      compoundLatchStepId = step.id
+      compoundReactivationLatch = new Set()
+    }
+  }
+
+  function resolveActivePlanStepMeta(step: { id: string; index: number } | undefined) {
+    if (!step) return undefined
+    const plan = readLatestOrchestrationPlanRecord(input.plugin.directory, missionId)
+    return plan?.steps[step.index]?.id === step.id ? plan.steps[step.index] : plan?.steps.find((s) => s.id === step.id)
+  }
+
+  function finishPlanStep() {
+    if (!activePlanStep) return
+    const step = activePlanStep
+    mutateOrchestrationState(input.plugin.directory, missionId, (state) => {
+      markPlanStepCompleted(state, step.id, step.index)
+    })
+  }
+
+  function finishPlanStepIfAttached(request: SandboxRpcRequest) {
+    if (!activePlanStep || !request.markPlanStepComplete) return
+    finishPlanStep()
+  }
 
   async function handleRpc(request: SandboxRpcRequest): Promise<unknown> {
-    switch (request.op) {
-      case "prompt": {
-        const nodeIds = request.nodeIds ?? []
-        const promptInput = request.input ?? {}
-        assertPromptAllowed(input.team, nodeIds, promptInput, replyPromptCount)
-        if (promptInput.reply) replyPromptCount += 1
-        await ctx.prompt(nodeIds.length === 1 ? nodeIds[0]! : nodeIds, promptInput)
+    activePlanStep =
+      request.stepId && request.stepIndex !== undefined
+        ? { id: request.stepId, index: request.stepIndex }
+        : undefined
+    activePlanStepMeta = resolveActivePlanStepMeta(activePlanStep)
+    syncCompoundLatch(activePlanStepMeta)
+
+    try {
+      const state = readOrchestrationState(input.plugin.directory, missionId)
+      if (activePlanStep && state && isPlanStepCompleted(state, activePlanStep.id)) {
+        gatehouseLog(
+          "info",
+          `[orchestration:${missionId}] skip completed plan step ${activePlanStep.id}`,
+        )
         return undefined
       }
-      case "setBrief":
-        if (!request.nodeId) throw new Error("setBrief requires nodeId")
-        assertNodeInTeam(input.team, request.nodeId)
-        await ctx.setBrief(request.nodeId, request.partial ?? {})
-        return undefined
-      case "readMissionContext":
-        return ctx.readMissionContext()
-      case "readContract":
-        return ctx.readContract(request.view ? { view: request.view } : undefined)
-      case "waitFor": {
-        if (!request.nodeId) throw new Error("waitFor requires nodeId")
-        assertNodeInTeam(input.team, request.nodeId)
-        await ctx.waitFor(request.nodeId, "complete", request.timeout ? { timeout: request.timeout } : undefined)
-        return undefined
+
+      switch (request.op) {
+        case "prompt": {
+          const nodeIds = request.nodeIds ?? []
+          const promptInput = request.input ?? {}
+          assertPromptAllowed(input.team, nodeIds, promptInput, replyPromptCount)
+          if (promptInput.reply) replyPromptCount += 1
+          await ctx.prompt(nodeIds.length === 1 ? nodeIds[0]! : nodeIds, promptInput)
+          finishPlanStepIfAttached(request)
+          return undefined
+        }
+        case "setBrief": {
+          if (!request.nodeId) throw new Error("setBrief requires nodeId")
+          assertNodeInTeam(input.team, request.nodeId)
+          await ctx.setBrief(request.nodeId, request.partial ?? {})
+          finishPlanStepIfAttached(request)
+          return undefined
+        }
+        case "readMissionContext":
+          return ctx.readMissionContext()
+        case "readContract":
+          return ctx.readContract(request.view ? { view: request.view } : undefined)
+        case "waitFor": {
+          if (!request.nodeId) throw new Error("waitFor requires nodeId")
+          assertNodeInTeam(input.team, request.nodeId)
+          await ctx.waitFor(request.nodeId, "complete", request.timeout ? { timeout: request.timeout } : undefined)
+          finishPlanStepIfAttached(request)
+          return undefined
+        }
+        case "waitForRollup": {
+          if (!request.rootNodeId) throw new Error("waitForRollup requires rootNodeId")
+          assertNodeInTeam(input.team, request.rootNodeId)
+          await ctx.waitForRollup(request.rootNodeId)
+          finishPlanStepIfAttached(request)
+          return undefined
+        }
+        case "planStepComplete": {
+          finishPlanStepIfAttached(request)
+          return undefined
+        }
+        case "phase": {
+          if (!request.title?.trim()) throw new Error("phase requires title")
+          ctx.phase(request.title.slice(0, 128))
+          finishPlanStepIfAttached(request)
+          return undefined
+        }
+        case "log":
+          ctx.log(request.message ?? "")
+          return undefined
+        default:
+          throw new Error(`unsupported sandbox rpc op: ${(request as SandboxRpcRequest).op}`)
       }
-      case "waitForAll": {
-        const nodeIds = request.nodeIds ?? []
-        for (const nodeId of nodeIds) assertNodeInTeam(input.team, nodeId)
-        await ctx.waitForAll(nodeIds, "complete", request.timeout ? { timeout: request.timeout } : undefined)
-        return undefined
-      }
-      case "waitForRollup": {
-        if (!request.rootNodeId) throw new Error("waitForRollup requires rootNodeId")
-        assertNodeInTeam(input.team, request.rootNodeId)
-        await ctx.waitForRollup(request.rootNodeId)
-        return undefined
-      }
-      case "phase":
-        if (!request.title?.trim()) throw new Error("phase requires title")
-        ctx.phase(request.title.slice(0, 128))
-        return undefined
-      case "log":
-        ctx.log(request.message ?? "")
-        return undefined
-      default:
-        throw new Error(`unsupported sandbox rpc op: ${(request as SandboxRpcRequest).op}`)
+    } finally {
+      activePlanStep = undefined
+      activePlanStepMeta = undefined
     }
   }
 
@@ -120,6 +202,8 @@ export function createMissionContext(input: {
   store: RegistryStore
   team: TeamSpec
   meta?: MissionScriptMeta
+  planStep?: () => { id: string; index: number } | undefined
+  compoundReplay?: () => { active: boolean; latch: Set<string> }
 }): MissionContext {
   const { plugin, store, team } = input
   const missionId = team.mission_id
@@ -132,13 +216,72 @@ export function createMissionContext(input: {
       const ids = Array.isArray(nodeIds) ? nodeIds : [nodeIds]
       const state = readOrchestrationState(plugin.directory, missionId)
       if (!state) throw new Error(`orchestration state missing for ${missionId}`)
+      const planStep = input.planStep?.()
+      const compoundReplay = input.compoundReplay?.()
+
+      const toMarkRunning: string[] = []
+      const toDeliver: string[] = []
 
       for (const nodeId of ids) {
         if (promptInput.reply) {
           if (!promptInput.text?.trim()) {
             throw new Error(`prompt(reply:true) requires text for node ${nodeId}`)
           }
-          markNodeRunning(state, nodeId)
+          if (planStep) {
+            if (shouldSkipReplyPromptStep(state, planStep.id)) {
+              gatehouseLog(
+                "info",
+                `[orchestration:${missionId}] skip plan step ${planStep.id} prompt for ${nodeId}`,
+              )
+              continue
+            }
+            if (
+              compoundReplay?.active &&
+              shouldSkipCompoundReplyPrompt(state, nodeId, compoundReplay.latch)
+            ) {
+              gatehouseLog(
+                "info",
+                `[orchestration:${missionId}] skip compound replay prompt for done node ${nodeId}`,
+              )
+              continue
+            }
+          } else if (nodeAlreadyActivated(state, nodeId)) {
+            gatehouseLog(
+              "info",
+              `[orchestration:${missionId}] skip re-prompt for ${nodeId} (${state.nodes[nodeId]?.status})`,
+            )
+            continue
+          }
+          toMarkRunning.push(nodeId)
+        }
+        toDeliver.push(nodeId)
+      }
+
+      if (toMarkRunning.length > 0) {
+        mutateOrchestrationState(plugin.directory, missionId, (fresh) => {
+          for (const nodeId of toMarkRunning) {
+            if (planStep && shouldSkipReplyPromptStep(fresh, planStep.id)) continue
+            if (
+              planStep &&
+              compoundReplay?.active &&
+              shouldSkipCompoundReplyPrompt(fresh, nodeId, compoundReplay.latch)
+            ) {
+              continue
+            }
+            if (!planStep && nodeAlreadyActivated(fresh, nodeId)) continue
+            markNodeRunning(fresh, nodeId)
+          }
+        })
+      }
+
+      for (const nodeId of toDeliver) {
+        if (
+          promptInput.reply &&
+          planStep &&
+          compoundReplay?.active &&
+          shouldSkipCompoundReplyPrompt(state, nodeId, compoundReplay.latch)
+        ) {
+          continue
         }
         await deliverOrchestrationPrompt({
           plugin,
@@ -148,12 +291,44 @@ export function createMissionContext(input: {
           prompt: promptInput,
           team,
         })
+        if (promptInput.reply && compoundReplay?.active) {
+          consumeCompoundReactivation(nodeId, compoundReplay.latch)
+        }
       }
-      writeOrchestrationState(plugin.directory, state)
     },
 
     async setBrief(nodeId, partial) {
+      const existingBrief = new RegistryDatabase(plugin.directory, { readonly: true }).getNodeBrief(
+        missionId,
+        nodeId,
+      )
       const merged = await mergeAndSaveBrief(plugin.directory, missionId, nodeId, partial)
+      const briefChanged = JSON.stringify(existingBrief ?? null) !== JSON.stringify(merged)
+      const state = readOrchestrationState(plugin.directory, missionId)
+      const planStep = input.planStep?.()
+      const compoundReplay = input.compoundReplay?.()
+
+      if (compoundReplay?.active && state && briefChanged && state.nodes[nodeId]?.status === "done") {
+        armCompoundReactivation(nodeId, compoundReplay.latch)
+      }
+
+      if (compoundReplay?.active && state && shouldSkipCompoundSetBriefDeliver(state, nodeId, briefChanged)) {
+        gatehouseLog(
+          "info",
+          `[orchestration:${missionId}] skip compound replay setBrief deliver for done node ${nodeId}`,
+        )
+        return
+      }
+      if (state && !planStep && nodeAlreadyActivated(state, nodeId)) {
+        gatehouseLog(
+          "info",
+          `[orchestration:${missionId}] skip setBrief deliver for ${nodeId} (${state.nodes[nodeId]?.status})`,
+        )
+        return
+      }
+      if (state && planStep && isPlanStepCompleted(state, planStep.id)) {
+        return
+      }
       await deliverNodeBriefSystemPrompt({
         plugin,
         store,
@@ -172,28 +347,34 @@ export function createMissionContext(input: {
     },
 
     async waitFor(nodeId, _event, opts) {
-      const state = readOrchestrationState(plugin.directory, missionId)
+      const readState = () => readOrchestrationState(plugin.directory, missionId)
+      const state = readState()
       if (state && nodeIsCompleteForWait(state, nodeId)) return
-      await waitForOrchestration(missionId, [nodeId], "complete", opts)
-    },
-
-    async waitForAll(nodeIds, _event, opts) {
-      const state = readOrchestrationState(plugin.directory, missionId)
-      if (state && allNodesCompleteForWait(state, nodeIds)) return
-      await waitForOrchestration(missionId, nodeIds, "complete", opts)
+      await waitForOrchestration(missionId, nodeId, "complete", {
+        readState,
+        ...(opts?.timeout && { timeout: opts.timeout }),
+      })
     },
 
     async waitForRollup(rootNodeId) {
       const descendants = collectDescendants(team, rootNodeId).filter((id) => id !== rootNodeId)
-      if (descendants.length === 0) return
-      await ctx.waitForAll(descendants, "complete")
+      for (const nodeId of descendants) {
+        await ctx.waitFor(nodeId, "complete")
+      }
+    },
+
+    async parallel(thunks) {
+      return orchestrationParallel(thunks)
+    },
+
+    async pipeline(items, ...stages) {
+      return orchestrationPipeline(items, ...stages)
     },
 
     phase(title) {
-      const state = readOrchestrationState(plugin.directory, missionId)
-      if (!state) return
-      state.phase = title
-      writeOrchestrationState(plugin.directory, state)
+      mutateOrchestrationState(plugin.directory, missionId, (state) => {
+        state.phase = title
+      })
     },
 
     log(message) {

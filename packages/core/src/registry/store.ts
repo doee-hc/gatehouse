@@ -1,15 +1,18 @@
 import type { PluginInput } from "@opencode-ai/plugin"
 import { RegistryDatabase } from "./db.ts"
 import { enrichLeadDeliveryMessage } from "../messaging/delivery-notify.ts"
-import { architectRetroBatchReadyMessage, loadRetroKickoffPrompt } from "../retro/prompt.ts"
-import { loadDomainSkillExtractPrompt, execSkillKickoffTargets } from "../retro/skill-kickoff.ts"
+import { architectRetroBatchReadyMessage, leadRetroRollupReadyMessage, loadRetroKickoffPrompt } from "../retro/prompt.ts"
+import { loadDomainSkillExtractPrompt } from "../retro/skill-kickoff.ts"
+import { loadDomainSkillVerifyPrompt } from "../extract/prompt.ts"
+import { createVerifyManifest } from "../extract/verify-setup.ts"
 import { loadCuratorSkillAssignKickoff, curatorSkillExtractBatchReadyMessage } from "../curator/prompt.ts"
-import { loadLeadPrompt } from "../prompt/lead.ts"
-import type { TeamSpec } from "../tree/types.ts"
+import { archiveLowUtilitySkills } from "../skills/utility.ts"
+import { readExtractManifest, writeVerifyManifest } from "../tree/store.ts"
+import type { ExtractManifest, TeamSpec, VerifyManifest } from "../tree/types.ts"
 import { loadArchitectPrompt } from "../prompt/architect.ts"
 import { loadArbiterPrompt } from "../prompt/arbiter.ts"
 import { loadCuratorPrompt } from "../prompt/curator.ts"
-import { curatorSkillSummaryRelPath, nodeDisplayLabel, retroNodeReportRelPath, sessionTitle } from "../paths.ts"
+import { curatorSkillAssignKickoffPath, curatorSkillSummaryRelPath, extractSessionTitle, nodeDisplayLabel, retroNodeReportRelPath, sessionTitle, verifySessionTitle, architectSummaryRelPath, curatorSummaryRelPath } from "../paths.ts"
 import { buildDirectedNotification, gatehouseMessage, parseDirectedNotification } from "../i18n.ts"
 import { loadGatehouseConfig, modelForOuterProfile } from "../gatehouse-config.ts"
 import { readLocaleSync } from "../locale.ts"
@@ -18,6 +21,8 @@ import {
   ARCHITECT_OPENCODE,
   LEAD_OPENCODE,
   INNER_EXECUTION_AGENT,
+  INNER_EXTRACT_AGENT,
+  INNER_VERIFY_AGENT,
   innerProfileMayNotifyLead,
   ARBITER_OPENCODE,
   CURATOR_OPENCODE,
@@ -36,8 +41,12 @@ import {
   type RegistryRetroRun,
   type RegistrySkillExtractCompletion,
   type RegistrySkillExtractRun,
+  type RegistrySkillVerifyCompletion,
+  type RegistrySkillVerifyRun,
   type RegistryScope,
+  extractAgentId,
   innerAgentId,
+  verifyAgentId,
   isInnerStructuralRoot,
 } from "./types.ts"
 import type { RetroManifest, TreeManifest } from "../tree/types.ts"
@@ -110,6 +119,10 @@ function skillExtractCompletionKey(missionId: string, nodeId: string) {
   return `${missionId}:${nodeId}`
 }
 
+function skillVerifyCompletionKey(missionId: string, nodeId: string) {
+  return `${missionId}:${nodeId}`
+}
+
 export class RegistryStore {
   readonly dbPath: string
   private agents = new Map<string, RegistryAgent>()
@@ -118,6 +131,8 @@ export class RegistryStore {
   private retroCompletions = new Map<string, RegistryRetroCompletion>()
   private skillExtractRuns = new Map<string, RegistrySkillExtractRun>()
   private skillExtractCompletions = new Map<string, RegistrySkillExtractCompletion>()
+  private skillVerifyRuns = new Map<string, RegistrySkillVerifyRun>()
+  private skillVerifyCompletions = new Map<string, RegistrySkillVerifyCompletion>()
   private db: RegistryDatabase
   private flushTail: Promise<void> = Promise.resolve()
 
@@ -168,15 +183,6 @@ export class RegistryStore {
     }
   }
 
-  async ensureLeadSystemPrompt(sessionId: string) {
-    await promptSession(this.options.client, this.options.directory, sessionId, {
-      profile: LEAD_OPENCODE,
-      system: await loadLeadPrompt(this.options.directory),
-      noReply: true,
-      model: this.outerModel("lead"),
-    }, this.options.plugin)
-  }
-
   static async create(options: StoreOptions) {
     const store = new RegistryStore(options)
     store.loadSnapshot()
@@ -196,6 +202,10 @@ export class RegistryStore {
     this.skillExtractCompletions = new Map(
       snapshot.skillExtractCompletions.map((item) => [skillExtractCompletionKey(item.missionId, item.nodeId), item]),
     )
+    this.skillVerifyRuns = new Map(snapshot.skillVerifyRuns.map((item) => [item.missionId, item]))
+    this.skillVerifyCompletions = new Map(
+      snapshot.skillVerifyCompletions.map((item) => [skillVerifyCompletionKey(item.missionId, item.nodeId), item]),
+    )
   }
 
   private memorySnapshot() {
@@ -208,6 +218,8 @@ export class RegistryStore {
       retroCompletions: Array.from(this.retroCompletions.values()),
       skillExtractRuns: Array.from(this.skillExtractRuns.values()),
       skillExtractCompletions: Array.from(this.skillExtractCompletions.values()),
+      skillVerifyRuns: Array.from(this.skillVerifyRuns.values()),
+      skillVerifyCompletions: Array.from(this.skillVerifyCompletions.values()),
     }
   }
 
@@ -337,6 +349,107 @@ export class RegistryStore {
       }
       this.agents.set(agentId, record)
       return record
+    })
+  }
+
+  registerExtractNode(input: {
+    missionId: string
+    nodeId: string
+    sessionId: string
+    profile: string
+    projectRootSessionId?: string
+  }) {
+    return this.mutate(() => {
+      const agentId = extractAgentId(input.missionId, input.nodeId)
+      const existing = this.agents.get(agentId)
+      const updatedAt = now()
+      const record: RegistryAgent = {
+        agentId,
+        scope: "extract",
+        profile: input.profile,
+        sessionId: input.sessionId,
+        displayName: extractSessionTitle(input.missionId, input.nodeId),
+        missionId: input.missionId,
+        nodeId: input.nodeId,
+        status: "active",
+        createdAt: existing?.createdAt ?? updatedAt,
+        updatedAt,
+        ...((input.projectRootSessionId ?? existing?.projectRootSessionId) && {
+          projectRootSessionId: input.projectRootSessionId ?? existing?.projectRootSessionId,
+        }),
+      }
+      this.agents.set(agentId, record)
+      return record
+    })
+  }
+
+  registerVerifyNode(input: {
+    missionId: string
+    nodeId: string
+    sessionId: string
+    profile: string
+    projectRootSessionId?: string
+  }) {
+    return this.mutate(() => {
+      const agentId = verifyAgentId(input.missionId, input.nodeId)
+      const existing = this.agents.get(agentId)
+      const updatedAt = now()
+      const record: RegistryAgent = {
+        agentId,
+        scope: "verify",
+        profile: input.profile,
+        sessionId: input.sessionId,
+        displayName: verifySessionTitle(input.missionId, input.nodeId),
+        missionId: input.missionId,
+        nodeId: input.nodeId,
+        status: "active",
+        createdAt: existing?.createdAt ?? updatedAt,
+        updatedAt,
+        ...((input.projectRootSessionId ?? existing?.projectRootSessionId) && {
+          projectRootSessionId: input.projectRootSessionId ?? existing?.projectRootSessionId,
+        }),
+      }
+      this.agents.set(agentId, record)
+      return record
+    })
+  }
+
+  syncExtractFromManifest(extract: ExtractManifest, manifest: TreeManifest) {
+    return this.mutate(() => {
+      const projectRootSessionId = this.byProfile("lead", "outer")?.sessionId
+      const synced: RegistryAgent[] = []
+      for (const [nodeId, node] of Object.entries(extract.nodes)) {
+        if (!manifest.nodes[nodeId]) continue
+        synced.push(
+          this.registerExtractNode({
+            missionId: extract.mission_id,
+            nodeId,
+            sessionId: node.extract_session_id,
+            profile: INNER_EXTRACT_AGENT,
+            projectRootSessionId,
+          }),
+        )
+      }
+      return synced
+    })
+  }
+
+  syncVerifyFromManifest(verify: VerifyManifest) {
+    return this.mutate(() => {
+      const projectRootSessionId = this.byProfile("lead", "outer")?.sessionId
+      const synced: RegistryAgent[] = []
+      for (const [nodeId, node] of Object.entries(verify.nodes)) {
+        synced.push(
+          this.registerVerifyNode({
+            missionId: verify.mission_id,
+            nodeId,
+            sessionId: node.verify_session_id,
+            profile: INNER_VERIFY_AGENT,
+            projectRootSessionId,
+          }),
+        )
+      }
+      return synced
     })
   }
 
@@ -641,7 +754,7 @@ export class RegistryStore {
       ? this.byAgentId(input.senderAgentId)
       : this.bySession(input.senderSessionId)
     if (!resolvedSender) {
-      return { status: "forbidden", reason: "发送方 session 未在 registry 登记" }
+      return { status: "forbidden", reason: "Sender session is not registered in registry" }
     }
 
     const missionId = resolvedSender.missionId ?? this.getActiveMission()?.missionId
@@ -683,7 +796,6 @@ export class RegistryStore {
       sender: resolvedSender,
       recipient,
     })
-    this.maybeRecordRetroOuterLeadNotification(resolvedSender, recipient, missionId)
     return {
       status: delivery.status,
       recipient,
@@ -745,7 +857,9 @@ export class RegistryStore {
       completions,
       allDone: pending.length === 0 && run.expectedNodeIds.length > 0,
       architectNotified: Boolean(run.architectNotifiedAt),
+      architectSummarySubmitted: Boolean(run.architectLeadNotifiedAt),
       architectLeadNotified: Boolean(run.architectLeadNotifiedAt),
+      leadRollupNotified: Boolean(run.leadRollupNotifiedAt),
     }
   }
 
@@ -757,87 +871,115 @@ export class RegistryStore {
     }
     if (!retro.allDone) pending.push("manager_retro_nodes")
     else if (!retro.architectNotified) pending.push("architect_retro_kickoff")
-    else if (!retro.architectLeadNotified) pending.push("architect_summary_to_lead")
+    else if (!retro.architectSummarySubmitted) pending.push("architect_retro_summary")
 
     const skill = this.skillExtractStatus(missionId)
     if (skill.status === "ok" && skill.run.expectedNodeIds.length > 0) {
       if (!skill.allDone) pending.push("skill_extract_nodes")
-      else if (!skill.curatorNotified) pending.push("curator_skill_kickoff")
-      else if (!skill.curatorLeadNotified) pending.push("curator_skill_summary_to_lead")
+      else {
+        const verify = this.skillVerifyStatus(missionId)
+        if (verify.status === "no_run" || !verify.allDone) pending.push("skill_verify_nodes")
+        else if (!skill.curatorNotified) pending.push("curator_skill_kickoff")
+        else if (!skill.curatorSummarySubmitted) pending.push("curator_skill_summary")
+      }
     }
 
     return { ready: pending.length === 0, pending, retro, skill }
   }
 
-  private resolveRetroRollupMissionId(sender: RegistryAgent, recipient: RegistryAgent) {
-    const candidates = [
-      sender.missionId,
-      recipient.missionId,
-      this.getActiveMission()?.missionId,
-    ].filter((value): value is string => Boolean(value))
-    for (const missionId of candidates) {
-      const retro = this.retroStatus(missionId)
-      if (retro.status === "ok" && retro.architectNotified && !retro.architectLeadNotified) return missionId
-      const skill = this.skillExtractStatus(missionId)
-      if (
-        skill.status === "ok" &&
-        skill.run.expectedNodeIds.length > 0 &&
-        skill.curatorNotified &&
-        !skill.curatorLeadNotified
-      ) {
-        return missionId
-      }
+  async recordArchitectRetroSummary(input: { missionId: string; reportPath: string }) {
+    const retro = this.retroStatus(input.missionId)
+    if (retro.status !== "ok") {
+      throw new Error(`No retro run for mission ${input.missionId}`)
     }
-    const retroPending = [...this.retroRuns.keys()].filter((missionId) => {
-      const retro = this.retroStatus(missionId)
-      return retro.status === "ok" && retro.architectNotified && !retro.architectLeadNotified
-    })
-    if (retroPending.length === 1) return retroPending[0]!
-    const skillPending = [...this.skillExtractRuns.keys()].filter((missionId) => {
-      const skill = this.skillExtractStatus(missionId)
-      return (
-        skill.status === "ok" &&
-        skill.run.expectedNodeIds.length > 0 &&
-        skill.curatorNotified &&
-        !skill.curatorLeadNotified
-      )
-    })
-    if (skillPending.length === 1) return skillPending[0]!
-    return undefined
+    if (!retro.architectNotified) {
+      throw new Error(`Mission ${input.missionId} retro nodes are not all recorded yet`)
+    }
+    const alreadySubmitted = retro.architectSummarySubmitted
+    if (!alreadySubmitted) {
+      this.mutate(() => {
+        const run = this.retroRuns.get(input.missionId)
+        if (!run) return
+        this.retroRuns.set(input.missionId, { ...run, architectLeadNotifiedAt: now() })
+      })
+    }
+    const leadDelivery = await this.maybeNotifyLeadRetroRollupComplete(input.missionId)
+    return {
+      missionId: input.missionId,
+      reportPath: input.reportPath,
+      alreadySubmitted,
+      retro_status: this.retroStatus(input.missionId),
+      rollup_readiness: this.retroCompleteReadiness(input.missionId),
+      lead_notification: leadDelivery,
+    }
   }
 
-  private maybeRecordRetroOuterLeadNotification(sender: RegistryAgent, recipient: RegistryAgent, missionId?: string) {
-    if (recipient.scope !== "outer" || recipient.profile !== "lead") return
-    const resolvedMissionId = missionId ?? this.resolveRetroRollupMissionId(sender, recipient)
-    if (!resolvedMissionId) return
-
-    if (sender.scope === "outer" && sender.profile === "architect") {
-      const retro = this.retroStatus(resolvedMissionId)
-      if (retro.status !== "ok" || !retro.architectNotified || retro.architectLeadNotified) return
-      this.mutate(() => {
-        const run = this.retroRuns.get(resolvedMissionId)
-        if (!run) return
-        this.retroRuns.set(resolvedMissionId, { ...run, architectLeadNotifiedAt: now() })
-      })
-      return
+  async recordCuratorSkillSummary(input: { missionId: string; reportPath: string }) {
+    const skill = this.skillExtractStatus(input.missionId)
+    if (skill.status !== "ok" || skill.run.expectedNodeIds.length === 0) {
+      throw new Error(`Mission ${input.missionId} has no skill extract rollup for curator`)
     }
-
-    if (sender.scope === "outer" && sender.profile === "curator") {
-      const skill = this.skillExtractStatus(resolvedMissionId)
-      if (
-        skill.status !== "ok" ||
-        skill.run.expectedNodeIds.length === 0 ||
-        !skill.curatorNotified ||
-        skill.curatorLeadNotified
-      ) {
-        return
-      }
+    if (!skill.curatorNotified) {
+      throw new Error(`Mission ${input.missionId} curator skill kickoff has not completed yet`)
+    }
+    const alreadySubmitted = skill.curatorSummarySubmitted
+    if (!alreadySubmitted) {
       this.mutate(() => {
-        const run = this.skillExtractRuns.get(resolvedMissionId)
+        const run = this.skillExtractRuns.get(input.missionId)
         if (!run) return
-        this.skillExtractRuns.set(resolvedMissionId, { ...run, curatorLeadNotifiedAt: now() })
+        this.skillExtractRuns.set(input.missionId, { ...run, curatorLeadNotifiedAt: now() })
       })
     }
+    const leadDelivery = await this.maybeNotifyLeadRetroRollupComplete(input.missionId)
+    return {
+      missionId: input.missionId,
+      reportPath: input.reportPath,
+      alreadySubmitted,
+      skill_status: this.skillExtractStatus(input.missionId),
+      rollup_readiness: this.retroCompleteReadiness(input.missionId),
+      lead_notification: leadDelivery,
+    }
+  }
+
+  private async maybeNotifyLeadRetroRollupComplete(missionId: string) {
+    const readiness = this.retroCompleteReadiness(missionId)
+    if (!readiness.ready) return { status: "skipped" as const, reason: "rollup_incomplete" as const }
+
+    const run = this.retroRuns.get(missionId)
+    if (run?.leadRollupNotifiedAt) {
+      return { status: "skipped" as const, reason: "already_notified" as const }
+    }
+
+    const lead = this.byProfile("lead", "outer")
+    if (!lead?.sessionId) {
+      return { status: "failed" as const, error: "lead session not registered" }
+    }
+
+    const locale = readLocaleSync(this.options.directory)
+    const names = readAgentNamesSync(this.options.directory)
+    const skillAssigned =
+      readiness.skill.status === "ok" && readiness.skill.run.expectedNodeIds.length > 0
+    const sent = await this.deliverSystemMessage(
+      lead,
+      leadRetroRollupReadyMessage(missionId, {
+        architectSummaryPath: architectSummaryRelPath(missionId),
+        ...(skillAssigned && { curatorSummaryPath: curatorSummaryRelPath(missionId) }),
+        locale,
+        leadName: names.lead,
+      }),
+      lead.profile,
+    )
+    if (sent.status === "failed") {
+      return { status: "failed" as const, error: sent.error ?? "prompt failed" }
+    }
+
+    this.mutate(() => {
+      const current = this.retroRuns.get(missionId)
+      if (!current) return
+      this.retroRuns.set(missionId, { ...current, leadRollupNotifiedAt: now() })
+    })
+    await this.flushPendingDeliveries()
+    return { status: sent.status, session_id: lead.sessionId }
   }
 
   async recordRetroCompletion(input: {
@@ -932,33 +1074,62 @@ export class RegistryStore {
     }
   }
 
-  async kickoffExecSkillExtraction(manifest: TreeManifest, input: { spec?: TeamSpec; briefDomainIds?: string[] }) {
-    const targets = execSkillKickoffTargets(manifest, input)
-    this.beginSkillExtractRun(
-      manifest.mission_id,
-      targets.map((target) => target.nodeId),
-    )
+  async kickoffExtractSkillSessions(extract: ExtractManifest) {
+    this.beginSkillExtractRun(extract.mission_id, extract.extract_order)
     const deliveries: Array<{ nodeId: string; skillDomain: string; delivery: "sent" | "queued" | "failed"; error?: string }> = []
-    for (const target of execSkillKickoffTargets(manifest, input)) {
-      const recipient = this.byAgentId(innerAgentId(manifest.mission_id, target.nodeId))
+    for (const nodeId of extract.extract_order) {
+      const extractNode = extract.nodes[nodeId]
+      if (!extractNode) continue
+      const recipient = this.byAgentId(extractAgentId(extract.mission_id, nodeId))
       if (!recipient) {
         deliveries.push({
-          nodeId: target.nodeId,
-          skillDomain: target.skillDomain,
+          nodeId,
+          skillDomain: extractNode.skill_domain,
           delivery: "failed",
-          error: "exec agent not in registry",
+          error: "extract agent not in registry",
         })
         continue
       }
       const content = await loadDomainSkillExtractPrompt(this.options.directory, {
-        missionId: manifest.mission_id,
-        nodeId: target.nodeId,
-        skillDomain: target.skillDomain,
+        missionId: extract.mission_id,
+        nodeId,
+        skillDomain: extractNode.skill_domain,
       })
-      const result = await this.deliverSystemMessage(recipient, content)
+      const result = await this.deliverSystemMessage(recipient, content, INNER_EXTRACT_AGENT)
       deliveries.push({
-        nodeId: target.nodeId,
-        skillDomain: target.skillDomain,
+        nodeId,
+        skillDomain: extractNode.skill_domain,
+        delivery: result.status,
+        ...(result.error && { error: result.error }),
+      })
+    }
+    return deliveries
+  }
+
+  async kickoffSkillVerifySessions(verify: VerifyManifest) {
+    const deliveries: Array<{ nodeId: string; skillDomain: string; delivery: "sent" | "queued" | "failed"; error?: string }> = []
+    for (const nodeId of verify.verify_order) {
+      const verifyNode = verify.nodes[nodeId]
+      if (!verifyNode) continue
+      const recipient = this.byAgentId(verifyAgentId(verify.mission_id, nodeId))
+      if (!recipient) {
+        deliveries.push({
+          nodeId,
+          skillDomain: verifyNode.skill_domain,
+          delivery: "failed",
+          error: "verify agent not in registry",
+        })
+        continue
+      }
+      const content = await loadDomainSkillVerifyPrompt(this.options.directory, {
+        missionId: verify.mission_id,
+        nodeId,
+        skillDomain: verifyNode.skill_domain,
+      })
+      const result = await this.deliverSystemMessage(recipient, content, INNER_VERIFY_AGENT)
+      deliveries.push({
+        nodeId,
+        skillDomain: verifyNode.skill_domain,
         delivery: result.status,
         ...(result.error && { error: result.error }),
       })
@@ -1050,9 +1221,63 @@ export class RegistryStore {
       pending,
       completions,
       allDone: pending.length === 0 && run.expectedNodeIds.length > 0,
+      verifyStarted: Boolean(run.verifyStartedAt),
       curatorNotified: Boolean(run.curatorNotifiedAt),
+      curatorSummarySubmitted: Boolean(run.curatorLeadNotifiedAt),
       curatorLeadNotified: Boolean(run.curatorLeadNotifiedAt),
     }
+  }
+
+  beginSkillVerifyRun(missionId: string, expectedNodeIds: string[]) {
+    return this.mutate(() => {
+      for (const key of [...this.skillVerifyCompletions.keys()]) {
+        if (key.startsWith(`${missionId}:`)) this.skillVerifyCompletions.delete(key)
+      }
+      const run: RegistrySkillVerifyRun = { missionId, expectedNodeIds, startedAt: now() }
+      this.skillVerifyRuns.set(missionId, run)
+      return run
+    })
+  }
+
+  skillVerifyStatus(missionId: string) {
+    const run = this.skillVerifyRuns.get(missionId)
+    if (!run) return { status: "no_run" as const }
+    const completed = run.expectedNodeIds.filter((nodeId) =>
+      this.skillVerifyCompletions.has(skillVerifyCompletionKey(missionId, nodeId)),
+    )
+    const pending = run.expectedNodeIds.filter((nodeId) => !completed.includes(nodeId))
+    const completions = completed.flatMap((nodeId) => {
+      const item = this.skillVerifyCompletions.get(skillVerifyCompletionKey(missionId, nodeId))
+      if (!item) return []
+      return [{
+        node_id: nodeId,
+        passed: item.passed,
+        report_path: item.reportPath,
+        completed_at: item.completedAt,
+      }]
+    })
+    const skillRun = this.skillExtractRuns.get(missionId)
+    return {
+      status: "ok" as const,
+      run,
+      completed,
+      pending,
+      completions,
+      allDone: pending.length === 0 && run.expectedNodeIds.length > 0,
+      curatorNotified: Boolean(skillRun?.curatorNotifiedAt),
+    }
+  }
+
+  listIncompleteSkillVerifyRecordRuns() {
+    return [...this.skillVerifyRuns.keys()].flatMap((missionId) => {
+      const status = this.skillVerifyStatus(missionId)
+      if (status.status !== "ok" || status.allDone) return []
+      return [{
+        missionId,
+        expectedNodeIds: status.run.expectedNodeIds,
+        pendingNodeIds: status.pending,
+      }]
+    })
   }
 
   listIncompleteRetroRecordRuns() {
@@ -1096,19 +1321,105 @@ export class RegistryStore {
       this.skillExtractCompletions.set(skillExtractCompletionKey(input.missionId, input.nodeId), item)
       return item
     })
-    await this.maybeNotifyCuratorSkillExtractComplete(input.missionId)
+    this.deactivateExtractAgentForNode(input.missionId, input.nodeId)
+    await this.maybeKickoffSkillVerify(input.missionId)
     return recorded
   }
 
-  private async maybeNotifyCuratorSkillExtractComplete(missionId: string) {
+  async recordSkillVerifyCompletion(input: {
+    missionId: string
+    nodeId: string
+    sessionId: string
+    passed: boolean
+    reportPath?: string
+  }) {
+    const recorded = this.mutate(() => {
+      const item: RegistrySkillVerifyCompletion = {
+        missionId: input.missionId,
+        nodeId: input.nodeId,
+        sessionId: input.sessionId,
+        passed: input.passed,
+        completedAt: now(),
+        ...(input.reportPath && { reportPath: input.reportPath }),
+      }
+      this.skillVerifyCompletions.set(skillVerifyCompletionKey(input.missionId, input.nodeId), item)
+      return item
+    })
+    this.deactivateVerifyAgentForNode(input.missionId, input.nodeId)
+    await this.maybeNotifyCuratorSkillExtractComplete(input.missionId)
+    const after = this.skillVerifyStatus(input.missionId)
+    if (after.status === "ok" && after.allDone) this.deactivateVerifyAgentsForMission(input.missionId)
+    return recorded
+  }
+
+  private async maybeKickoffSkillVerify(missionId: string) {
     const status = this.skillExtractStatus(missionId)
-    if (status.status !== "ok" || !status.allDone || status.curatorNotified) return
+    if (status.status !== "ok" || !status.allDone || status.verifyStarted) return
+
+    const extractManifest = await readExtractManifest(this.options.directory, missionId)
+    if (!extractManifest || extractManifest.extract_order.length === 0) return
+
+    const verify = await createVerifyManifest({
+      client: this.options.client,
+      projectDirectory: this.options.directory,
+      extract: extractManifest,
+    })
+    await writeVerifyManifest(this.options.directory, verify)
+    this.syncVerifyFromManifest(verify)
+    this.beginSkillVerifyRun(missionId, verify.verify_order)
+    this.mutate(() => {
+      const run = this.skillExtractRuns.get(missionId)
+      if (!run) return
+      this.skillExtractRuns.set(missionId, { ...run, verifyStartedAt: now() })
+    })
+    await this.kickoffSkillVerifySessions(verify)
+  }
+
+  deactivateExtractAgentForNode(missionId: string, nodeId: string) {
+    return this.mutate(() => {
+      const agentId = extractAgentId(missionId, nodeId)
+      const agent = this.agents.get(agentId)
+      if (!agent || agent.status !== "active") return 0
+      this.agents.set(agentId, { ...agent, status: "completed", updatedAt: now() })
+      return 1
+    })
+  }
+
+  deactivateVerifyAgentForNode(missionId: string, nodeId: string) {
+    return this.mutate(() => {
+      const agentId = verifyAgentId(missionId, nodeId)
+      const agent = this.agents.get(agentId)
+      if (!agent || agent.status !== "active") return 0
+      this.agents.set(agentId, { ...agent, status: "completed", updatedAt: now() })
+      return 1
+    })
+  }
+
+  deactivateVerifyAgentsForMission(missionId: string) {
+    return this.mutate(() => {
+      const updatedAt = now()
+      for (const [agentId, agent] of this.agents.entries()) {
+        if (agent.scope !== "verify" || agent.missionId !== missionId || agent.status !== "active") continue
+        this.agents.set(agentId, { ...agent, status: "completed", updatedAt })
+      }
+    })
+  }
+
+  private async maybeNotifyCuratorSkillExtractComplete(missionId: string) {
+    const verifyStatus = this.skillVerifyStatus(missionId)
+    if (verifyStatus.status !== "ok" || !verifyStatus.allDone) return
+    const skillRun = this.skillExtractRuns.get(missionId)
+    if (!skillRun || skillRun.curatorNotifiedAt) return
     const curator = this.byProfile("curator", "outer")
     if (!curator?.sessionId) return
-    const completions = status.completed.map((nodeId) => {
-      const item = this.skillExtractCompletions.get(skillExtractCompletionKey(missionId, nodeId))
-      return { nodeId, summaryPath: item?.summaryPath ?? curatorSkillSummaryRelPath(missionId, nodeId) }
-    })
+    const extractStatus = this.skillExtractStatus(missionId)
+    const completions = extractStatus.status === "ok"
+      ? extractStatus.completed.map((nodeId) => {
+          const item = this.skillExtractCompletions.get(skillExtractCompletionKey(missionId, nodeId))
+          return { nodeId, summaryPath: item?.summaryPath ?? curatorSkillSummaryRelPath(missionId, nodeId) }
+        })
+      : []
+    await archiveLowUtilitySkills(this.options.directory)
     const sent = await this.deliverSystemMessage(
       curator,
       curatorSkillExtractBatchReadyMessage(
@@ -1157,7 +1468,7 @@ export class RegistryStore {
         promptText: input.promptText,
         promptProfile: input.promptProfile ?? input.recipient.profile,
       })
-      portalChat("（排队投递）")
+      portalChat("(queued delivery)")
       return { status: "queued" as const }
     }
     const sent = await this.sendPrompt(input.recipient, input.promptText, input.promptProfile)
@@ -1296,10 +1607,6 @@ export class RegistryStore {
 function pickNodeRecipient(matches: RegistryAgent[], sender?: RegistryAgent) {
   if (matches.length === 1) return matches[0]
   if (matches.length < 2) return undefined
-  if (sender?.scope === "outer" && sender.profile === "architect") {
-    const retro = matches.filter((agent) => agent.scope === "retro")
-    if (retro.length === 1) return retro[0]
-  }
   if (sender?.scope === "inner") {
     const inner = matches.filter((agent) => agent.scope === "inner")
     if (inner.length === 1) return inner[0]
@@ -1318,9 +1625,8 @@ function sendPolicyViolation(
     return `profile lead (${names.lead}) may only message architect (${names.architect}), curator (${names.curator}), or the structural root`
   }
   if (sender.scope === "outer" && sender.profile === "architect") {
-    if (recipient.scope === "outer" && recipient.profile !== "architect") return undefined
-    if (recipient.scope === "inner") return undefined
-    return `profile architect (${names.architect}) may only message lead (${names.lead}) or execution-tree sessions`
+    if (recipient.scope === "outer" && recipient.profile === "lead") return undefined
+    return `profile architect (${names.architect}) may only message lead (${names.lead})`
   }
   if (sender.scope === "outer" && sender.profile === "curator") {
     if (recipient.scope === "outer" && recipient.profile === "lead") return undefined
@@ -1341,6 +1647,8 @@ function sendPolicyViolation(
     if (sender.missionId !== recipient.missionId) return "execution-tree nodes may only message peers in the same mission"
     return undefined
   }
-  if (sender.scope === "retro") return "retro sessions must use gatehouse_retro_record instead of send_message"
+  if (sender.scope === "retro") return "retro sessions must use gatehouse_retro_record"
+  if (sender.scope === "extract") return "extract sessions must use gatehouse_skill_extract_record"
+  if (sender.scope === "verify") return "verify sessions must use gatehouse_skill_verify_record"
   return "sender is not allowed to use gatehouse_send_message"
 }

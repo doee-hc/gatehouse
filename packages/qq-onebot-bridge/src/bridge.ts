@@ -7,6 +7,8 @@ import {
   isMessageKeyProcessed,
   downloadUrlAttachment,
   parseAgentCommand,
+  parseAutopilotCommand,
+  handleAutopilotCommand,
   promptSession,
   rememberMessageKey,
   resolveActiveAgentTarget,
@@ -116,6 +118,21 @@ export class QqOnebotLeadBridge {
         return
       }
 
+      const autopilotCommand = text ? parseAutopilotCommand(text) : undefined
+      if (autopilotCommand) {
+        const { text: reply } = await handleAutopilotCommand({
+          projectDirectory: this.config.projectDir,
+          command: autopilotCommand,
+          enabledBy: "channel",
+          deliverLeadNotice: { client: client as never },
+        })
+        for (const chunk of chunkText(reply, 4000)) {
+          await onebot.sendGroupText(message.groupId, chunk)
+        }
+        rememberMessageKey(this.config.stateDir, message.sessionKey, message.eventId)
+        return
+      }
+
       if (message.messageType === "media") {
         await onebot.sendGroupText(message.groupId, unsupportedMediaReply())
         rememberMessageKey(this.config.stateDir, message.sessionKey, message.eventId)
@@ -140,7 +157,7 @@ export class QqOnebotLeadBridge {
 
       const target = await resolveActiveAgentTarget(client, this.config, message.sessionKey)
       const promptText =
-        text || (files.length ? "用户发送了一张图片，请查看并根据图片内容回复。" : unsupportedMediaReply())
+        text || (files.length ? "The user sent an image. Please review it and reply based on the image content." : unsupportedMediaReply())
       const reply = await promptSession(client, this.config, {
         sessionId: target.sessionId,
         opencodeAgent: target.opencodeAgent,
@@ -161,7 +178,7 @@ export class QqOnebotLeadBridge {
           onUnsupported: async (attachment) => {
             await onebot.sendGroupText(
               message.groupId,
-              `暂不支持发送该文件类型（${attachment.mime}）：${attachment.filename}`,
+              `Unsupported file type (${attachment.mime}): ${attachment.filename}`,
             )
           },
         },
@@ -169,7 +186,7 @@ export class QqOnebotLeadBridge {
       rememberMessageKey(this.config.stateDir, message.sessionKey, message.eventId)
     } catch (error) {
       const messageText = error instanceof Error ? error.message : String(error)
-      await onebot.sendGroupText(message.groupId, `处理失败：${messageText}`).catch(() => undefined)
+      await onebot.sendGroupText(message.groupId, `Processing failed: ${messageText}`).catch(() => undefined)
     }
   }
 }

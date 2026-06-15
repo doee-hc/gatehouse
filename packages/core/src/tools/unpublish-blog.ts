@@ -11,7 +11,6 @@ import {
 import { BLOG_PUBLISHER_LEAD, readBlogPublishedDocument, unpublishBlogPost } from "../portal/blog-publish.ts"
 import { readMissionsDocument } from "../missions/store.ts"
 import { requireMission } from "../missions/lifecycle.ts"
-import { requireActiveMissionId } from "../missions/scope.ts"
 import { getRegistryStore } from "../registry/context.ts"
 import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
 
@@ -81,7 +80,7 @@ export function unpublishBlogTool(input: PluginInput) {
             ...toolMetadata(toolName),
           }
         }
-        const missionId = args.mission_id ?? sender?.missionId
+        const missionId = args.mission_id ?? sender?.missionId ?? registry.getActiveMission()?.missionId
         let criteria: DoneWhenCriterion[] = []
         if (missionId) {
           const missionsDoc = await readMissionsDocument(input.directory)

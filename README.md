@@ -48,7 +48,7 @@ Each Mission spins up an execution team on demand and releases it when done. Wha
 
 **Architect** — A persistent, independent agent that answers "what team does this Mission need?" Designs TeamSpec (how many agents, how many coordination layers) from the frozen mission snapshot; the team dissolves when the Mission ends and is redesigned next time. During retro, reviews full team context and evaluates collaboration efficiency—token usage, tool calls, inter-agent messaging, elapsed time, and other metrics Architect explores in practice—and distills "what structure fits what kind of work" into meta-skills for better team design over time.
 
-**Curator** — Independent skill librarian. After Architect bootstraps topology, Curator assigns domain skills to execution nodes; after retro, executors extract skill updates from the work and Curator analyzes, consolidates, and archives them for reuse.
+**Curator** — Independent skill librarian. After Architect submits the orchestration script, Curator assigns domain skills to execution nodes; after retro, executors extract skill updates from the work and Curator analyzes, consolidates, and archives them for reuse.
 
 **Arbiter** — Independent permission authority; does not execute Missions. When the team hits risky or sensitive operations, Arbiter centrally decides allow / reject and maintains an audit trail.
 
@@ -56,13 +56,13 @@ Each Mission spins up an execution team on demand and releases it when done. Wha
 
 **Watchdog** — Built into the execution tree. When a node is marked `running` in orchestration but its session goes idle (e.g. work finished without `gatehouse_execution_complete`, or root stalled before final delivery), Gatehouse wakes **that session** directly to unblock the stalled step.
 
-**Mission lifecycle** — Queue → assemble → execute → accept → retro → skill distillation → complete. Lead freezes the mission snapshot; Architect writes TeamSpec and bootstraps; Curator assigns skills and the execution team starts automatically; after acceptance Lead kicks off retro; Architect and Curator summarize architecture and skills respectively, feeding the next planning cycle.
+**Mission lifecycle** — Queue → assemble → execute → accept → retro → skill distillation → complete. Lead freezes the mission snapshot; Architect writes `mission.script.ts` and submits orchestration; Curator assigns skills and the execution team starts automatically; after acceptance Lead kicks off retro; Architect and Curator summarize architecture and skills respectively, feeding the next planning cycle.
 
 ```mermaid
 flowchart TB
   User([User]) <--> Lead
   Lead -->|freeze snapshot| Architect
-  Architect -->|TeamSpec / bootstrap| Curator
+  Architect -->|mission.script.ts / submit| Curator
   Curator -->|assign skills| ExecTeam[Execution team]
   ExecTeam -->|risky ops| Arbiter
   ExecTeam -.->|abnormal idle| Watchdog

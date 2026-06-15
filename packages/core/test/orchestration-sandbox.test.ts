@@ -19,7 +19,7 @@ describe("mission script sandbox parse", () => {
     expect(parsed.scriptHash.length).toBe(64)
   })
 
-  test("dryRun rejects prompt(reply:true) without setBrief for the same node", () => {
+  test("dryRun rejects prompt(reply:true) without setBrief for the same node", async () => {
     const source = `
 export const team = {
   mission_id: "m1",
@@ -40,14 +40,14 @@ export default async function orchestrate(ctx) {
   await ctx.waitFor("coord", "complete")
 }
 `
-    const result = dryRunMissionScriptSource(source, "m1")
+    const result = await dryRunMissionScriptSource(source, "m1")
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.code).toBe("SCRIPT_MISSING_BRIEF")
     expect(result.message).toContain("coord")
   })
 
-  test("dryRun rejects gatehouse_publish_blog references", () => {
+  test("dryRun rejects gatehouse_publish_blog references", async () => {
     const source = `
 export const team = {
   mission_id: "m1",
@@ -63,13 +63,13 @@ export default async function orchestrate(ctx) {
   await ctx.waitFor("maker", "complete")
 }
 `
-    const result = dryRunMissionScriptSource(source, "m1")
+    const result = await dryRunMissionScriptSource(source, "m1")
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.code).toBe("SCRIPT_FORBIDDEN_PUBLISH")
   })
 
-  test("dryRun rejects invalid orchestrate JavaScript syntax", () => {
+  test("dryRun rejects invalid orchestrate JavaScript syntax", async () => {
     const source = `
 export const team = {
   mission_id: "m1",
@@ -87,16 +87,30 @@ export default async function orchestrate(ctx) {
   await ctx.waitFor("leaf", "complete")
 }
 `
-    const result = dryRunMissionScriptSource(source, "m1")
+    const result = await dryRunMissionScriptSource(source, "m1")
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.code).toBe("SCRIPT_INVALID_ORCHESTRATE_SYNTAX")
     expect(result.message).toContain("Unexpected identifier")
   })
 
+  test("dryRun rejects missing orchestrate export", async () => {
+    const source = `
+export const team = {
+  mission_id: "m1",
+  root: "leaf",
+  nodes: { leaf: { parent: null, description: "leaf" } },
+}
+`
+    const result = await dryRunMissionScriptSource(source, "m1")
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.code).toBe("SCRIPT_MISSING_ORCHESTRATE")
+  })
+
   test("dryRun rejects import declarations", async () => {
     const source = await Bun.file(importFsFixture).text()
-    const result = dryRunMissionScriptSource(source, "evil-m1")
+    const result = await dryRunMissionScriptSource(source, "evil-m1")
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.code).toBe("SCRIPT_FORBIDDEN_IMPORT")

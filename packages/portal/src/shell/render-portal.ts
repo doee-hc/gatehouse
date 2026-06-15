@@ -1,4 +1,4 @@
-import type { PortalSnapshot, PortalTreeNode } from "../api/types.ts"
+import type { PortalSnapshot } from "../api/types.ts"
 import { isQuietOffice, resolvePortalActivity, type PortalActivity } from "../portal/portal-activity.ts"
 import { getBlogSnapshot, getPortalSnapshot } from "../portal/state.ts"
 import { refreshAgentOverlay } from "./agent-overlay.ts"
@@ -6,6 +6,7 @@ import { renderBlog } from "./blog.ts"
 import { localeTag, t } from "./i18n.ts"
 import { renderKnowledge } from "./knowledge.ts"
 import { renderMissions } from "./office-sidebar.ts"
+import { renderOrchestrationPanel } from "./render-orchestration.ts"
 
 export function renderPortal(snapshot: PortalSnapshot) {
   renderNavStatus(snapshot)
@@ -75,33 +76,7 @@ function renderOffice(snapshot: PortalSnapshot) {
   }
 
   renderMissions(snapshot)
-
-  const miniTree = document.querySelector(".mini-tree")
-  if (miniTree) {
-    if (snapshot.tree) {
-      miniTree.textContent = formatExecTreeLines(snapshot.tree, t("tree.coordinator"))
-      return
-    }
-    miniTree.textContent = quiet
-      ? t("empty.execTreeArchived")
-      : snapshot.missions.length > 0
-        ? t("empty.noExecTreeForMission")
-        : t("empty.noExecTree")
-  }
-
-  const skillList = document.querySelector(".skill-list")
-  if (skillList) {
-    skillList.innerHTML =
-      snapshot.skills.length > 0
-        ? snapshot.skills
-            .slice(0, 12)
-            .map(
-              (skill) =>
-                `<li><span>${escapeHtml(skill.name)}</span><span class="skill-domain">${escapeHtml(skill.domain)}</span></li>`,
-            )
-            .join("")
-        : `<li class="empty-state">${escapeHtml(t("empty.noSkills"))}</li>`
-  }
+  renderOrchestrationPanel(snapshot)
 
   const eventLog = document.getElementById("event-log")
   if (eventLog && eventLog.children.length === 0) {
@@ -115,48 +90,6 @@ function renderOffice(snapshot: PortalSnapshot) {
         )}</p>`
       : `<p class="empty-state">${escapeHtml(t("empty.waitingEvents"))}</p>`
   }
-}
-
-function formatExecTreeLines(
-  tree: NonNullable<PortalSnapshot["tree"]>,
-  coordinatorLabel: string,
-) {
-  const nodeIds = new Set(tree.nodes.map((node) => node.node_id))
-  const childrenByParent = new Map<string, PortalTreeNode[]>()
-
-  for (const node of tree.nodes) {
-    if (node.node_id === tree.root_node) continue
-    const parentId =
-      node.parent && node.parent !== node.node_id && nodeIds.has(node.parent)
-        ? node.parent
-        : tree.root_node
-    const siblings = childrenByParent.get(parentId) ?? []
-    siblings.push(node)
-    childrenByParent.set(parentId, siblings)
-  }
-
-  for (const children of childrenByParent.values()) {
-    children.sort((a, b) => a.node_id.localeCompare(b.node_id))
-  }
-
-  const lines = [`${tree.root_node} ${coordinatorLabel}`]
-
-  const appendChildren = (parentId: string, prefix: string) => {
-    const children = childrenByParent.get(parentId)
-    if (!children?.length) return
-
-    children.forEach((node, index) => {
-      const isLast = index === children.length - 1
-      const branch = isLast ? "└── " : "├── "
-      const domain = node.skill_domain ? ` · ${node.skill_domain}` : ""
-      const label = node.display_name || node.node_id
-      lines.push(`${prefix}${branch}${label}${domain}`)
-      appendChildren(node.node_id, `${prefix}${isLast ? "    " : "│   "}`)
-    })
-  }
-
-  appendChildren(tree.root_node, "")
-  return lines.join("\n")
 }
 
 function escapeHtml(value: string) {

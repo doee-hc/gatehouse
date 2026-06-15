@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -16,14 +16,14 @@
         <div class="brand-icon"></div>
         <div>
           <h1>GATEHOUSE</h1>
-          <span data-i18n="brand.subtitle">团队门户</span>
+          <span data-i18n="brand.subtitle">Team Portal</span>
         </div>
       </div>
       <nav class="nav-tabs">
-        <button class="nav-tab active" data-view="office" type="button" data-i18n="nav.office">🏢 办公室</button>
-        <button class="nav-tab" data-view="blog" type="button" data-i18n="nav.blog">📝 博客</button>
+        <button class="nav-tab active" data-view="office" type="button" data-i18n="nav.office">🏢 Office</button>
+        <button class="nav-tab" data-view="blog" type="button" data-i18n="nav.blog">📝 Blog</button>
         <button class="nav-tab" data-view="knowledge" type="button" data-i18n="nav.knowledge">📚 SKILLs</button>
-        <button class="nav-tab" data-view="stats" type="button" data-i18n="nav.stats">📊 团队数据</button>
+        <button class="nav-tab" data-view="stats" type="button" data-i18n="nav.stats">📊 Team Stats</button>
         <button class="nav-tab" data-view="about" type="button" data-i18n="nav.about">ℹ️ About</button>
       </nav>
       <div class="header-actions">
@@ -33,7 +33,7 @@
         </div>
         <div class="nav-status">
           <span class="live-dot" id="nav-live-dot"></span>
-          <span id="nav-status-label" data-i18n="nav.loading">加载中…</span>
+          <span id="nav-status-label" data-i18n="nav.loading">Loading…</span>
         </div>
       </div>
     </header>
@@ -45,7 +45,7 @@
             <div class="esc-frame">
               <div class="esc-hud-bar">
                 <span><span class="time" id="esc-time">—</span></span>
-                <span id="esc-mission">任务 · —</span>
+                <span id="esc-mission">Mission · —</span>
                 <span class="esc-stats-ticker" id="esc-stats-ticker" hidden></span>
               </div>
               <div id="office-game-stack" class="office-game-stack">
@@ -53,7 +53,7 @@
                 <div id="office-renovation-overlay" class="office-renovation-overlay" hidden>
                   <div class="office-renovation-panel">
                     <span class="office-renovation-icon" aria-hidden="true">🔧</span>
-                    <p data-i18n="office.renovating">正在装修中…</p>
+                    <p data-i18n="office.renovating">Renovating the office…</p>
                   </div>
                 </div>
                 <aside id="agent-detail-panel" class="agent-detail-panel" hidden></aside>
@@ -64,19 +64,15 @@
 
         <aside class="office-sidebar">
           <div class="panel">
-            <div class="panel-title" data-i18n="panel.missions">任务</div>
+            <div class="panel-title" data-i18n="panel.missions">Missions</div>
             <div id="missions-host"></div>
           </div>
-          <div class="panel">
-            <div class="panel-title" data-i18n="panel.execTree">执行树</div>
-            <pre class="mini-tree"></pre>
-          </div>
-          <div class="panel">
-            <div class="panel-title" data-i18n="panel.skills">领域技能</div>
-            <ul class="skill-list"></ul>
+          <div class="panel panel-orchestration">
+            <div class="panel-title" data-i18n="panel.orchestration">Orchestration</div>
+            <div id="orchestration-host" class="orchestration-host"></div>
           </div>
           <div class="panel panel-events">
-            <div class="panel-title" data-i18n="panel.events">事件流</div>
+            <div class="panel-title" data-i18n="panel.events">Event Log</div>
             <div class="event-log" id="event-log"></div>
           </div>
         </aside>
@@ -86,12 +82,12 @@
     <section id="view-blog" class="view">
       <div class="blog-layout">
         <div class="blog-header">
-          <h2 data-i18n="blog.title">团队博客</h2>
-          <p data-i18n="blog.subtitle">由 Agent 发布的复盘摘要与 Mission 叙事</p>
+          <h2 data-i18n="blog.title">Team Blog</h2>
+          <p data-i18n="blog.subtitle">Retrospectives and mission narratives from Agents</p>
         </div>
         <div id="blog-list" class="blog-groups"></div>
         <div id="post-detail" class="post-detail">
-          <span class="back-link" id="back-to-list" data-i18n="blog.back">← 返回列表</span>
+          <span class="back-link" id="back-to-list" data-i18n="blog.back">← Back to list</span>
           <h2 id="detail-title"></h2>
           <div class="meta" id="detail-meta"></div>
           <div class="body" id="detail-body"></div>
@@ -103,15 +99,15 @@
       <div class="knowledge-layout">
         <div class="knowledge-header">
           <h2 data-i18n="knowledge.title">SKILLs</h2>
-          <p data-i18n="knowledge.subtitle">团队 Skill 目录</p>
+          <p data-i18n="knowledge.subtitle">Team skill catalog</p>
         </div>
         <div class="search-box">
-          <input type="text" id="kb-search" data-i18n-placeholder="knowledge.searchPlaceholder" placeholder="搜索 skill…" />
-          <button id="kb-search-btn" type="button" data-i18n="knowledge.searchBtn">搜索</button>
+          <input type="text" id="kb-search" data-i18n-placeholder="knowledge.searchPlaceholder" placeholder="Search skills…" />
+          <button id="kb-search-btn" type="button" data-i18n="knowledge.searchBtn">Search</button>
         </div>
         <div id="skill-list" class="skill-list"></div>
         <div id="skill-detail" class="post-detail">
-          <span class="back-link" id="back-to-skills" data-i18n="knowledge.back">← 返回列表</span>
+          <span class="back-link" id="back-to-skills" data-i18n="knowledge.back">← Back to list</span>
           <h2 id="skill-detail-title"></h2>
           <div class="meta" id="skill-detail-meta"></div>
           <div class="body" id="skill-detail-body"></div>
@@ -122,8 +118,8 @@
     <section id="view-stats" class="view">
       <div class="stats-layout">
         <div class="stats-header">
-          <h2 data-i18n="stats.title">团队数据</h2>
-          <p data-i18n="stats.subtitle">各 Mission 的 token、cost、耗时与 Inner 角色分布</p>
+          <h2 data-i18n="stats.title">Team Stats</h2>
+          <p data-i18n="stats.subtitle">Token, cost, duration per mission and inner role breakdown</p>
         </div>
         <div id="stats-host"></div>
       </div>
@@ -132,17 +128,17 @@
     <section id="view-about" class="view">
       <div class="about-layout">
         <div class="about-header">
-          <h2 data-i18n="about.title">关于与致谢</h2>
-          <p data-i18n="about.subtitle">Gatehouse 项目介绍与开源仓库。</p>
+          <h2 data-i18n="about.title">About & Credits</h2>
+          <p data-i18n="about.subtitle">Gatehouse overview and open-source repository.</p>
         </div>
 
         <div class="about-content">
-          <h3 data-i18n="about.projectTitle">项目介绍</h3>
+          <h3 data-i18n="about.projectTitle">About Gatehouse</h3>
           <p data-i18n-html="about.projectDesc">
-            Gatehouse 是一款基于 OpenCode 的自我迭代多智能体团队插件：角色分工协作、Mission 全生命周期管理，以及可视化的 Portal 像素办公室。复盘与技能沉淀会反哺后续任务，让团队能力随项目演进。
+            Gatehouse is a self-improving multi-agent team plugin for <a href="https://opencode.ai" target="_blank" rel="noopener noreferrer">OpenCode</a> — role-based collaboration, Mission lifecycle management, and a visual Portal pixel office. Retrospectives and skill distillation feed back into future missions as the team evolves with your project.
           </p>
           <p class="about-muted" data-i18n="about.projectNote">
-            项目仍处于早期开发阶段，功能可能变更或不完整，请自行评估风险。
+            The project is in early development; features may change or be incomplete. Use at your own risk.
           </p>
           <a
             class="about-github-link"
@@ -150,12 +146,12 @@
             target="_blank"
             rel="noopener noreferrer"
           >
-            <span class="about-github-label" data-i18n="about.githubLabel">GitHub 仓库</span>
+            <span class="about-github-label" data-i18n="about.githubLabel">GitHub repository</span>
             <span class="about-github-url">github.com/doee-hc/gatehouse</span>
           </a>
 
           <p class="about-muted" data-i18n-html="about.artCredit">
-            Portal 办公室的像素美术素材来自 <a href="https://limezu.itch.io/" target="_blank" rel="noopener noreferrer">LimeZu</a>，感谢作者的精彩创作。
+            Portal office pixel art is sourced from <a href="https://limezu.itch.io/" target="_blank" rel="noopener noreferrer">LimeZu</a> — thank you for the wonderful work.
           </p>
         </div>
       </div>

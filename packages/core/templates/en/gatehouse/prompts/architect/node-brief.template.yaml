@@ -1,4 +1,3 @@
-# Copy to .gatehouse/trees/<mission_id>/node-briefs/<node_id>.yaml
 node_id: <node_id>
 role: Executor
 your_work:

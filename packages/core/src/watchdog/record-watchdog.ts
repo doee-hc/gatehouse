@@ -1,15 +1,16 @@
 import type { PluginInput } from "@opencode-ai/plugin"
 import type { RegistryStore } from "../registry/store.ts"
 import type { RegistryAgent } from "../registry/types.ts"
-import { innerAgentId, retroAgentId } from "../registry/types.ts"
+import { retroAgentId, extractAgentId, verifyAgentId } from "../registry/types.ts"
 import { gatehouseLog } from "../log.ts"
+import type { ResolvedWatchdogPollTiming } from "../gatehouse-config.ts"
 import { sessionStatusById, type SessionRuntimeStatus } from "../session/status.ts"
 import { allSessionsIdle } from "./execution-tree.ts"
 import {
   loadWatchdogRetroRecordWakePrompt,
   loadWatchdogSkillRecordWakePrompt,
+  loadWatchdogSkillVerifyRecordWakePrompt,
   WATCHDOG_IDLE_THRESHOLD_MS,
-  WATCHDOG_POLL_MS,
 } from "./prompt.ts"
 import { watchdogIdleTickDecision } from "./tick.ts"
 import {
@@ -61,13 +62,14 @@ export async function checkRecordWatchdogMission(input: {
   kind: WatchdogKind
   statusMap: Map<string, SessionRuntimeStatus>
   now: number
+  timing?: ResolvedWatchdogPollTiming
   resolveAgent: (missionId: string, nodeId: string) => RegistryAgent | undefined
   loadWakePrompt: (
     projectDirectory: string,
     params: { missionId: string; nodeId: string; idleSeconds: number },
   ) => Promise<string>
 }) {
-  const { pluginInput, registry, run, kind, statusMap, now, resolveAgent, loadWakePrompt } = input
+  const { pluginInput, registry, run, kind, statusMap, now, timing, resolveAgent, loadWakePrompt } = input
   const { directory } = pluginInput
   const { missionId } = run
 
@@ -89,6 +91,8 @@ export async function checkRecordWatchdogMission(input: {
     allIdle,
     idleSince: state.allIdleSince,
     lastWakeAt: state.lastWakeAt,
+    idleThresholdMs: timing?.idle_threshold_ms,
+    wakeCooldownMs: timing?.wake_cooldown_ms,
   })
   const nextMissionState = {
     ...(decision.nextIdleSince !== undefined ? { allIdleSince: decision.nextIdleSince } : {}),
@@ -99,7 +103,9 @@ export async function checkRecordWatchdogMission(input: {
     return { action: decision.action }
   }
 
-  const idleSeconds = Math.round((decision.idleDurationMs ?? WATCHDOG_IDLE_THRESHOLD_MS) / 1000)
+  const idleSeconds = Math.round(
+    (decision.idleDurationMs ?? timing?.idle_threshold_ms ?? WATCHDOG_IDLE_THRESHOLD_MS) / 1000,
+  )
   let deliveredCount = 0
   let anyFailed = false
   for (const nodeId of run.pendingNodeIds) {
@@ -134,6 +140,7 @@ class RecordWatchdog {
     private input: PluginInput,
     private registry: RegistryStore,
     private kind: WatchdogKind,
+    private timing: ResolvedWatchdogPollTiming,
     private listRuns: (registry: RegistryStore) => IncompleteRecordRun[],
     private resolveAgent: (registry: RegistryStore, missionId: string, nodeId: string) => RegistryAgent | undefined,
     private loadWakePrompt: (
@@ -142,7 +149,7 @@ class RecordWatchdog {
     ) => Promise<string>,
   ) {}
 
-  start(pollMs = WATCHDOG_POLL_MS) {
+  start(pollMs = this.timing.poll_ms) {
     const interval = setInterval(() => {
       void this.tick()
     }, pollMs)
@@ -173,6 +180,7 @@ class RecordWatchdog {
         kind: this.kind,
         statusMap,
         now,
+        timing: this.timing,
         resolveAgent: (missionId, nodeId) => this.resolveAgent(this.registry, missionId, nodeId),
         loadWakePrompt: this.loadWakePrompt,
       })
@@ -187,13 +195,18 @@ class RecordWatchdog {
 
 const stopByDirectory = new Map<string, () => void>()
 
-export function startRecordWatchdogs(input: PluginInput, registry: RegistryStore) {
+export function startRecordWatchdogs(
+  input: PluginInput,
+  registry: RegistryStore,
+  timing: ResolvedWatchdogPollTiming,
+) {
   stopByDirectory.get(input.directory)?.()
 
   const stopRetro = new RecordWatchdog(
     input,
     registry,
     "retro_record",
+    timing,
     (store) => store.listIncompleteRetroRecordRuns(),
     (store, missionId, nodeId) => store.byAgentId(retroAgentId(missionId, nodeId)),
     loadWatchdogRetroRecordWakePrompt,
@@ -203,14 +216,26 @@ export function startRecordWatchdogs(input: PluginInput, registry: RegistryStore
     input,
     registry,
     "skill_record",
+    timing,
     (store) => store.listIncompleteSkillExtractRecordRuns(),
-    (store, missionId, nodeId) => store.byAgentId(innerAgentId(missionId, nodeId)),
+    (store, missionId, nodeId) => store.byAgentId(extractAgentId(missionId, nodeId)),
     loadWatchdogSkillRecordWakePrompt,
+  ).start()
+
+  const stopVerify = new RecordWatchdog(
+    input,
+    registry,
+    "skill_verify_record",
+    timing,
+    (store) => store.listIncompleteSkillVerifyRecordRuns(),
+    (store, missionId, nodeId) => store.byAgentId(verifyAgentId(missionId, nodeId)),
+    loadWatchdogSkillVerifyRecordWakePrompt,
   ).start()
 
   const stop = () => {
     stopRetro()
     stopSkill()
+    stopVerify()
   }
   stopByDirectory.set(input.directory, stop)
   return stop

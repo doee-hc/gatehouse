@@ -64,6 +64,12 @@ export {
 } from "./registry/agent-command.ts"
 export type { AgentCommand, AgentCommandResult } from "./registry/agent-command.ts"
 
+export {
+  handleAutopilotCommand,
+  parseAutopilotCommand,
+} from "./registry/autopilot-command.ts"
+export type { AutopilotCommand } from "./registry/autopilot-command.ts"
+
 export { createOpencodeClientForBridge } from "./opencode/client.ts"
 export type { OpencodeClient } from "./opencode/client.ts"
 export {

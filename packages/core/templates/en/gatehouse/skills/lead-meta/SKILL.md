@@ -16,83 +16,63 @@ disable-model-invocation: true
 | You do | You do not |
 |--------|------------|
 | Maintain `.gatehouse/lead/missions.yaml` (sole mission source of truth) | Write collaboration script / topology |
-| `gatehouse_mission_start` to launch a Mission (auto-notifies {{architect_name}}) | After start, `send_message` to {{architect_name}} to repeat the task; `gatehouse_bootstrap_tree`; talk to leaf nodes directly |
+| `gatehouse_mission_start` to launch a Mission (auto-notifies {{architect_name}}) | After start, `send_message` to {{architect_name}} to repeat the task; `gatehouse_submit_orchestration`; talk to leaf nodes directly |
 | After acceptance, `gatehouse_mission_retro` (requires all inner sessions idle); if user skips retro, `gatehouse_mission_complete` | Use `send_message` to ask {{architect_name}} to start retro; do not call retro while inner is busy |
 | Improvement feedback: `send_message(recipient="<root_node>", ...)` | Route via {{architect_name}}; speak to leaf nodes on user's behalf |
-| `gatehouse_direction_status`; maintain `.gatehouse/lead/direction.yaml` | Full-auto `mission_start` / accept-complete when direction not confirmed |
-| `gatehouse_lead_await_user` after asking user to confirm | Call during mission execution; call for non-confirmation waits |
+| `gatehouse_direction_status`; maintain `.gatehouse/lead/direction.yaml` | Toggle autopilot for the user |
 
-## Long-term direction (required for full autonomy)
+## Direction · Autopilot
 
 0. **Direction** — `gatehouse_direction_status` or read `.gatehouse/lead/direction.yaml`.
    - `status: draft` → align `summary` + `constraints` with the user; after explicit OK set `status: confirmed`, `confirmed_at`, `confirmed_by: user`.
-   - **Autonomous decisions after watchdog wake** (start / accept / complete) **only when** `confirmed: true`.
    - User may revise direction anytime; re-confirm after major changes.
-   - P0 missions still need explicit user OK before `mission_start` even when direction is confirmed (unless direction/constraints explicitly authorize).
+1. **Autopilot** — Check `autopilot_enabled` via `gatehouse_direction_status`.
+   - **When ON:** proceed on your judgment at start, acceptance, and close-out; **do not ask the user for confirmation, follow-up questions, or wait for replies**. New user messages always take priority.
+   - **When OFF:** confirm with the user at start, acceptance, and close-out.
 
 ## Flow
 
-0. **Team ready** — On first conversation: `gatehouse_list_team()` and check `ready` for `architect|curator|arbiter` in `outer`; if any `ready: false`, call `gatehouse_init_team` (register {{architect_name}}, {{curator_name}}, {{arbiter_name}} sessions).
-1. **Direction** — Read queue and past feedback; propose a Mission (objective / done_when draft). **Ambiguous or polysemous terms** (e.g. “Loop Engineering” as AI paradigm vs industrial closed-loop) require user confirmation of the intended domain before writing the mission — do not expand scope from web search alone. **Keep planning-phase research light** (hot-topic summary, reference link list); deep gathering belongs to the execution team.
-2. **Start** — Write full fields for the mission in `missions.yaml` (`status: queued`) → ask user to confirm (P0 required; P1/P2 recommended) → **`gatehouse_lead_await_user(phase=pre_start, mission_id=...)`** → `gatehouse_mission_start(mission_id=...)` (registry snapshot, `running`, auto-notify {{architect_name}}). After start succeeds, do not `send_message` {{architect_name}} to repeat objective. **Do not edit mission body while running/retro**; use `gatehouse_mission_complete` / `gatehouse_mission_retro` for status changes.
-3. **Acceptance** — After structural root `gatehouse_execution_complete` when all nodes are done (delivery recorded + precheck; **not yet** on Portal) → `gatehouse_delivery_status` + read the synthesized rollup in Lead notification and project `done_when` paths → **ask the user to confirm in chat** (optional short local note) → **`gatehouse_lead_await_user(phase=acceptance, mission_id=...)`**.
+0. **Team ready** — Read `.gatehouse/lead/missions.yaml` (fixed path; do not glob). If missing, ask the user to confirm the Gatehouse project root and plugin setup. `gatehouse_list_team()`: if any of `architect|curator|arbiter` in `outer` has `ready: false` → `gatehouse_init_team` (idempotent).
+1. **Direction** — Read queue and past feedback; propose a Mission (objective / done_when draft). **Ambiguous terms** need user confirmation of intended domain before writing the mission — do not expand scope from web search alone. **Keep planning-phase research light**; deep gathering belongs to the execution team.
+2. **Start** — Write full fields for the mission in `missions.yaml` (`status: queued`) → ask user to confirm (when autopilot OFF) → `gatehouse_mission_start(mission_id=...)`. After start succeeds, do not `send_message` {{architect_name}} to repeat objective. **Do not edit mission body while running/retro**; use `gatehouse_mission_complete` / `gatehouse_mission_retro` for status changes.
+3. **Acceptance** — After structural root `gatehouse_execution_complete` when all nodes are done (delivery recorded + precheck; **not yet** on Portal) → `gatehouse_delivery_status` + read the synthesized rollup in Lead notification and project `done_when` paths → **ask the user to confirm in chat** (or decide autonomously when autopilot is ON).
    - **Accept + publish**: user confirms acceptance and wants Portal → `gatehouse_mission_complete(status=done, publish_deliverables=true, user_feedback=...)` (skills still auto-publish; deliverables go to Portal in this step only).
    - **Accept without Portal**: `gatehouse_mission_complete(status=done, user_feedback=...)` — deliverables stay local only.
-   - **Accept + retro**: `gatehouse_mission_retro` → **`mission_complete(done, publish_deliverables=...)` only after both rollup notifications arrive** → ask user to confirm complete → **`gatehouse_lead_await_user(phase=post_retro, mission_id=...)`**:
-     1. **{{architect_name}}** retro summary (`gatehouse_send_message(recipient="lead", ...)` with architect-summary highlights)
-     2. **{{curator_name}}** skill summary (only when this mission had `skill_domain` assignments; skip when none)
-     Do **not** call `mission_complete` right after the Curator message — wait for the Architect summary too. If the tool returns `RETRO_ROLLUP_PENDING`, outer rollup is still in progress.
+   - **Accept + retro**: `gatehouse_mission_retro` → wait for Gatehouse **retro rollup ready** notification (architect `gatehouse_retro_summary_record`; curator `gatehouse_skill_summary_record` when skill domains assigned) → **`mission_complete(done, publish_deliverables=...)`** → ask user to confirm complete (or proceed when autopilot is ON).
    - **Complete without retro**: `gatehouse_mission_complete(status=done)` — tell the user: **skill extraction is skipped** (registered domains will not get `by-domain/*/SKILL.md`).
    - **Reject**: `gatehouse_delivery_review(decision=rejected, user_feedback=...)` — confirm next step with user (cancel via `mission_complete(cancelled)` or request revision).
    - **Cancel / stop mid-flight**: `gatehouse_mission_complete` (`status=cancelled` or `done`); **do not** hand-edit `cancelled`/`done` in `missions.yaml`.
-   - **Revision**: `gatehouse_delivery_review(decision=revision_requested, failed_criteria=..., revision_brief=..., user_feedback=...)` (`revision_brief` required; `user_feedback` optional verbatim) → keep `running`.
+   - **Revision**: `gatehouse_delivery_review(decision=revision_requested, failed_criteria=..., revision_brief=..., user_feedback=...)` (`revision_brief` required) → keep `running`. Default: notifies structural root. For topology/orchestration changes, pass `architect_orchestrate=true` so {{architect_name}} rewrites `mission.script.ts`.
 4. **Next Mission** — Read `.gatehouse/trees/<id>/reports/architect-summary.md` (and {{curator_name}} summary if any), plan with user feedback.
-
-{{architect_name}} / {{curator_name}} will **automatically** notify you after retro (two parallel tracks); **wait for both (or Curator only when skill domains were assigned) before `mission_complete`** — no need to chase them.
-
-## User busy · watchdog wake
-
-When the user does **not reply for 10 minutes** after you asked for confirmation, the plugin delivers `prompts/lead/watchdog-user-busy-wake.md`. **Only** for: pre-start confirm, delivery acceptance, post-retro complete — **not** during normal mission execution.
-
-| Phase | When direction confirmed | Do not |
-|-------|--------------------------|--------|
-| `pre_start` | P1/P2 → `mission_start` | Auto-start P0; direction still draft |
-| `acceptance` | No unmet precheck → you accept manual items → retro/complete | Complete with unmet precheck; accept without reading files |
-| `post_retro` | `mission_complete(done, ...)` | direction draft; skip rollup wait |
-
-- **manual `done_when`**: when precheck is `skipped`, **read deliverables and judge against the frozen contract**; you may `mission_complete` if satisfied.
-- Write `.gatehouse/lead/reports/<id>/auto-decision.md` before acting.
-- **Any new user message overrides** the watchdog; if user says wait/stop — do not continue the auto chain.
 
 ## Serial Missions (one active at a time)
 
-- At most **one** Mission in `running` or `retro` at a time; start the next only after current Mission retro finishes and `status: done`.
-- Before start: if `running` or `retro` exists, **do not** set a new entry to `running`; ask user to queue or finish current Mission.
-- Parallel work items belong **inside one Mission** as sub-tasks scheduled by {{architect_name}} in the collaboration script / execution team — not a second Mission.
-- {{architect_name}}/{{curator_name}} use **`gatehouse_mission_info`** during execution; read `missions.yaml` directly for history.
+- At most **one** Mission in `running` or `retro` at a time; start the next only after current Mission retro rollup is registered and `status: done`.
+- Before start: if `running` or `retro` exists, **`gatehouse_mission_start` is rejected** — finish rollup (`mission_complete`) or cancel first.
+- Parallel work items belong **inside one Mission** as sub-tasks — not a second Mission.
 - User feedback and report paths always include `<mission_id>`.
 
 ## missions.yaml body rules
 
 Mission body expresses **user intent and acceptance only** — do not make professional calls for the core team.
 
-- Each mission: `objective`, `done_when`, `must_not`; optional `notes`, `user_topology`, `user_skill`, `priority`.
+- Each mission: `objective`, `done_when`, `must_not`; optional `notes`, `user_topology`, `user_skill`.
 - **`objective` / `done_when` / `must_not`**: delivery and acceptance (passed to the execution team). State what the user wants, how to verify, and execution boundaries — **no** team topology, node layout, `skill_domain`, or sub-agent roles.
 - **`notes`**: user background, motivation, style preferences, or prior feedback — **not** verifiable acceptance criteria. **No** topology or skill hints.
 - **`user_topology`**: only when the user **explicitly specifies** team topology or execution shape (their words or your confirmed paraphrase). When not specified → **omit the field**; no soft hints like "suggest" or "consider".
-- **`user_skill`**: only when the user **explicitly specifies** skill domain assignment. When not specified → **omit the field**; {{curator_name}} owns `skill_domain`.
-- Write actionable `must_not`; {{architect_name}} maps them into node briefs via `setBrief`.
-- Do not put "extract skills during execution" in `done_when` — Gatehouse dispatches after retro; {{curator_name}} rolls up.
+- **`user_skill`**: only when the user **explicitly specifies** skill domain assignment. When not specified → **omit the field**.
+- Write actionable `must_not`.
+- Do not put "extract skills during execution" in `done_when`.
 
 **Anti-patterns (do not put in mission):**
 - ❌ `objective: "Build a root + frontend two-node team to …"`
 - ❌ `notes: "suggest solo execution"` / `user_skill: "use docs domain"` (when user did not explicitly specify)
-- ❌ `done_when` entries the user did not ask for (e.g. article-derived "five-module framework") — put background in `notes`; {{architect_name}} expands via `setBrief`
+- ❌ `done_when` entries the user did not ask for (e.g. article-derived "five-module framework") — put background in `notes`
 - ✅ `objective: "Add README example section"` + `user_topology: "User asked for solo root only"`
 
-**Structured done_when (recommended):** main deliverables use YAML `- path: reports/foo.html`, or string prefixes `path: reports/foo.html` / `file exists: reports/foo.html` / `文件存在: …`. **Do not** put `publish:` or “publish to Portal” in `done_when`. If the user wants Portal eventually, note it in `notes` and confirm at acceptance with `publish_deliverables=true`.
+**Structured done_when (recommended):** main deliverables use YAML `- path: reports/foo.html`, or string prefixes `path: …` / `file exists: …`. Portal rules: see **Acceptance & Portal** below.
 
-**Requirement alignment:** when intent is already clear (e.g. user confirmed report + benchmark scope), **one confirmation round** then `mission_start`; do not re-ask settled scope.
+**Requirement alignment:** when intent is already clear, **one confirmation round** then `mission_start`; do not re-ask settled scope.
 
 ## Paths
 
@@ -100,10 +80,10 @@ Mission body expresses **user intent and acceptance only** — do not make profe
 |---------|------|
 | Queue & mission body | `.gatehouse/lead/missions.yaml` |
 | Long-term direction | `.gatehouse/lead/direction.yaml` |
-| Coordination index | `.gatehouse/trees/<id>/reports/root-delivery.md` (paths and summaries — not Portal deliverable bodies) |
+| Delivery record | `.gatehouse/trees/<id>/delivery.yaml` (also via `gatehouse_delivery_status`) |
 | Deliverables (in project) | `path` / file-exists paths in `done_when`; Lead publishes to Portal via `mission_complete(publish_deliverables=true)` |
 | Optional acceptance note | `.gatehouse/lead/reports/<id>/report.md` (short checklist + path reference; user feedback via `mission_complete(user_feedback=...)` → delivery.yaml) |
-| Execution archive | `.gatehouse/trees/<id>/` (`mission.script.ts`, reports) |
+| Mission reports (read-only) | `.gatehouse/trees/<id>/reports/` |
 
 Template: `.gatehouse/lead/missions.template.yaml` (if present) or field example below.
 
@@ -114,7 +94,6 @@ schema_version: 3
 missions:
   - id: <stable-id>
     status: queued | running | retro | done | cancelled
-    priority: P0 | P1 | P2
     objective: "one-line goal"
     done_when:
       - "verifiable condition"
@@ -127,26 +106,22 @@ missions:
     started_at: "ISO8601"
     completed_at: "ISO8601"
 ```
+## Acceptance & Portal
 
-P0 usually requires explicit user confirmation before start.
+- **Deliverables live in the project** — review `path` / file-exists paths in `done_when`, the delivery notification rollup, and `gatehouse_delivery_status`. Gatehouse coordination reports under `.gatehouse/trees/.../reports/` are not deliverable bodies.
+- **Your acceptance lens:** match frozen `done_when` item count exactly; check precheck; for manual items, read files and judge yourself (including when autopilot is ON).
+- **Portal is opt-in on complete:** deliverables are not on Portal until `gatehouse_mission_complete(done, publish_deliverables=true)`. Skills auto-publish on `mission_complete(done)`. Do not put `publish:` in `done_when`. Verify `gatehouse_delivery_status` before telling the user deliverables are on Portal; if `published_artifacts` is empty or `publish_warnings` is set, do not claim success.
 
-## Acceptance principles
-
-- **Deliverables live in the project**: user reviews `path` / file-exists paths in `done_when` and the `root-delivery` index. **Do not** treat coordination reports as deliverable body text.
-- **You add only the acceptance lens**: **match the frozen contract `done_when` item count exactly** (no extra rows or out-of-contract criteria); check precheck, one short confirmation prompt; **for manual items, read files and judge yourself** (including after watchdog wake); cite the root path when needed — no long report.
-- **Portal is Lead opt-in on complete**: deliverables are **not** on Portal until `gatehouse_mission_complete(done)`. When the user confirms acceptance and wants Portal, pass `mission_complete(done, publish_deliverables=true)`; otherwise `mission_complete(done)`. Skills still auto-publish on `mission_complete(done)`. **Do not** put `publish:` or “publish to Portal” in `done_when`. Do not tell the user deliverables are on Portal before complete — verify `pending_publish_paths` / `published_artifacts` from `gatehouse_delivery_status`; if `mission_complete` returns `publish_warnings` or `published_artifacts: []`, **do not** claim Portal publish succeeded.
-- **Do not invent `user_topology`**: omit the field unless the user explicitly specified team shape; {{architect_name}} owns topology.
-
-## Optional acceptance note template (local, keep short)
+Optional local note template:
 
 ```markdown
 # Acceptance note: <mission_id>
 
-**Coordination index:** `.gatehouse/trees/<mission_id>/reports/root-delivery.md` (internal; Portal deliverables only after `mission_complete(publish_deliverables=true)`)
+**Delivery:** `gatehouse_delivery_status` + rollup in the structural-root completion notification.
 
-## Acceptance checklist (Lead)
+## Checklist (Lead)
 - [ ] / [x] <done_when item, vs precheck>
 
 ## User confirmation
-Accept delivery? Start retro? (Record reply via `gatehouse_mission_complete(user_feedback=...)` or start with `gatehouse_mission_retro`.)
+Accept delivery? Start retro? (Record via `gatehouse_mission_complete(user_feedback=...)` or `gatehouse_mission_retro`.)
 ```

@@ -8,6 +8,8 @@ import {
   LEAD_OPENCODE,
   INNER_COORDINATOR_AGENT,
   INNER_EXECUTION_AGENT,
+  INNER_EXTRACT_AGENT,
+  INNER_VERIFY_AGENT,
   INNER_ROOT_AGENT,
   INNER_ROOT_SOLO_AGENT,
   ARCHITECT_OPENCODE,
@@ -19,6 +21,8 @@ import {
   architectSessionPermissions,
   curatorSessionPermissions,
   buildCoordinatorPermissions,
+  buildExtractPermissions,
+  buildVerifyPermissions,
   buildRootPermissions,
   buildRootSoloPermissions,
   buildExecutionPermissions,
@@ -38,6 +42,8 @@ const AGENT_FILES = {
   buildRoot: "build-root.md",
   buildRootSolo: "build-root-solo.md",
   buildCoordinator: "build-coordinator.md",
+  buildExtract: "build-extract.md",
+  buildVerify: "build-verify.md",
   build: "build.md",
 } as const
 
@@ -86,6 +92,8 @@ async function loadAgentDescriptions(projectDirectory?: string) {
       buildRoot: await bundledLoad(AGENT_FILES.buildRoot),
       buildRootSolo: await bundledLoad(AGENT_FILES.buildRootSolo),
       buildCoordinator: await bundledLoad(AGENT_FILES.buildCoordinator),
+      buildExtract: await bundledLoad(AGENT_FILES.buildExtract),
+      buildVerify: await bundledLoad(AGENT_FILES.buildVerify),
       build: await bundledLoad(AGENT_FILES.build),
     }
   }
@@ -98,6 +106,8 @@ async function loadAgentDescriptions(projectDirectory?: string) {
     buildRoot: await load(AGENT_FILES.buildRoot),
     buildRootSolo: await load(AGENT_FILES.buildRootSolo),
     buildCoordinator: await load(AGENT_FILES.buildCoordinator),
+    buildExtract: await load(AGENT_FILES.buildExtract),
+    buildVerify: await load(AGENT_FILES.buildVerify),
     build: await load(AGENT_FILES.build),
   }
 }
@@ -112,7 +122,7 @@ export async function applyGatehouseConfig(cfg: Config, projectDirectory?: strin
   if (!paths.includes(gatehouseSkillsPath)) skills.paths = [...paths, gatehouseSkillsPath]
 
   const permission = (record.permission ??= {}) as Record<string, string>
-  for (const [key, value] of Object.entries(globalGatehousePermissions)) {
+  for (const [key, value] of Object.entries(globalGatehousePermissions) as [string, string][]) {
     permission[key] = value
   }
 
@@ -204,6 +214,30 @@ export async function applyGatehouseConfig(cfg: Config, projectDirectory?: strin
     },
     buildExecutionPermissions,
     hiddenToolsFromPermissions(buildExecutionPermissions),
+  )
+
+  mergeAgent(
+    agents,
+    INNER_EXTRACT_AGENT,
+    {
+      mode: "primary",
+      ...(descriptions.buildExtract ? { description: descriptions.buildExtract } : {}),
+      color: "#6B8E4E",
+    },
+    buildExtractPermissions,
+    hiddenToolsFromPermissions(buildExtractPermissions),
+  )
+
+  mergeAgent(
+    agents,
+    INNER_VERIFY_AGENT,
+    {
+      mode: "primary",
+      ...(descriptions.buildVerify ? { description: descriptions.buildVerify } : {}),
+      color: "#7A6B4E",
+    },
+    buildVerifyPermissions,
+    hiddenToolsFromPermissions(buildVerifyPermissions),
   )
 
   mergeAgent(

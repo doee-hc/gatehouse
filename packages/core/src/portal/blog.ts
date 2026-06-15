@@ -112,15 +112,14 @@ function treeNodeOrder(manifest: TreeManifest) {
 
 function blogPostSortRank(postId: string, manifest?: TreeManifest) {
   if (postId.includes(":deliverable:")) return 0
-  if (postId.endsWith(":root:delivery")) return 1
-  if (postId.endsWith(":lead:report")) return 2
-  if (postId.endsWith(":architect:summary")) return 3
+  if (postId.endsWith(":lead:report")) return 1
+  if (postId.endsWith(":architect:summary")) return 2
   const retroPrefix = ":retro:"
   const retroAt = postId.indexOf(retroPrefix)
   if (retroAt > 0 && manifest) {
     const nodeId = postId.slice(retroAt + retroPrefix.length)
     const index = treeNodeOrder(manifest).indexOf(nodeId)
-    return index < 0 ? 50 : 4 + index
+    return index < 0 ? 50 : 3 + index
   }
   return 99
 }

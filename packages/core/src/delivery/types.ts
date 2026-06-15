@@ -58,8 +58,6 @@ export type DeliveryRecord = {
   status: DeliveryStatus
   submitted_at: string
   submitted_by_node: string
-  /** @deprecated Legacy deliveries only; new records omit this field. */
-  report_path?: string
   blog_post_id?: string
   /** @deprecated Computed at read time from criteria; not persisted on new records. */
   pending_publish_paths?: string[]

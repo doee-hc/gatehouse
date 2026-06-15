@@ -1,13 +1,15 @@
 import { RegistryDatabase } from "../registry/db.ts"
 import {
   curatorSkillSummaryRelPath,
-  nodeDeliveryRelPath,
   retroNodeReportRelPath,
-  treeRelDir,
   watchdogNodeWakePromptPath,
-  watchdogLeadUserBusyWakePromptPath,
+  autopilotWakePromptPath,
+  autopilotEnabledPromptPath,
+  watchdogOrchestratorStallPromptPath,
   watchdogRetroRecordWakePromptPath,
   watchdogSkillRecordWakePromptPath,
+  watchdogSkillVerifyRecordWakePromptPath,
+  skillVerifyReportRelPath,
 } from "../paths.ts"
 import { readAgentNamesSync, renderGatehouseTemplate } from "../names.ts"
 
@@ -19,21 +21,16 @@ export {
 
 export async function loadWatchdogNodeWakePrompt(
   projectDirectory: string,
-  input: { missionId: string; nodeId: string; idleSeconds: number; rootNodeId: string },
+  input: { missionId: string; nodeId: string; idleSeconds: number },
 ) {
   const template = renderGatehouseTemplate(
     await Bun.file(watchdogNodeWakePromptPath(projectDirectory)).text(),
     readAgentNamesSync(projectDirectory),
   )
-  const isRoot = input.nodeId === input.rootNodeId
-  const deliveryPath = isRoot
-    ? `${treeRelDir(input.missionId)}/reports/root-delivery.md`
-    : nodeDeliveryRelPath(input.missionId, input.nodeId)
   return template
     .replaceAll("{{mission_id}}", input.missionId)
     .replaceAll("{{node_id}}", input.nodeId)
     .replaceAll("{{idle_seconds}}", String(input.idleSeconds))
-    .replaceAll("{{delivery_path}}", deliveryPath)
 }
 
 export async function loadWatchdogRetroRecordWakePrompt(
@@ -68,26 +65,56 @@ export async function loadWatchdogSkillRecordWakePrompt(
     .replaceAll("{{summary_path}}", summaryPath)
 }
 
+export async function loadWatchdogSkillVerifyRecordWakePrompt(
+  projectDirectory: string,
+  input: { missionId: string; nodeId: string; idleSeconds: number },
+) {
+  const template = renderGatehouseTemplate(
+    await Bun.file(watchdogSkillVerifyRecordWakePromptPath(projectDirectory)).text(),
+    readAgentNamesSync(projectDirectory),
+  )
+  const reportPath = skillVerifyReportRelPath(input.missionId, input.nodeId)
+  return template
+    .replaceAll("{{mission_id}}", input.missionId)
+    .replaceAll("{{node_id}}", input.nodeId)
+    .replaceAll("{{idle_seconds}}", String(input.idleSeconds))
+    .replaceAll("{{report_path}}", reportPath)
+}
+
 export function listRunningMissionIds(projectDirectory: string) {
   return new RegistryDatabase(projectDirectory, { readonly: true }).listTreeMissionIds("running")
 }
 
-export async function loadWatchdogLeadUserBusyWakePrompt(
+export async function loadWatchdogOrchestratorStallPrompt(
   projectDirectory: string,
   input: {
-    phase: string
     missionId: string
-    idleMinutes: number
-    directionConfirmed: boolean
+    phase: string
+    staleMinutes: number
+    stallKindLabel: string
   },
 ) {
   const template = renderGatehouseTemplate(
-    await Bun.file(watchdogLeadUserBusyWakePromptPath(projectDirectory)).text(),
+    await Bun.file(watchdogOrchestratorStallPromptPath(projectDirectory)).text(),
     readAgentNamesSync(projectDirectory),
   )
   return template
-    .replaceAll("{{phase}}", input.phase)
     .replaceAll("{{mission_id}}", input.missionId)
-    .replaceAll("{{idle_minutes}}", String(input.idleMinutes))
-    .replaceAll("{{direction_confirmed}}", input.directionConfirmed ? "yes" : "no")
+    .replaceAll("{{phase}}", input.phase)
+    .replaceAll("{{stale_minutes}}", String(input.staleMinutes))
+    .replaceAll("{{stall_kind_label}}", input.stallKindLabel)
+}
+
+export async function loadAutopilotWakePrompt(projectDirectory: string) {
+  return renderGatehouseTemplate(
+    await Bun.file(autopilotWakePromptPath(projectDirectory)).text(),
+    readAgentNamesSync(projectDirectory),
+  )
+}
+
+export async function loadAutopilotEnabledPrompt(projectDirectory: string) {
+  return renderGatehouseTemplate(
+    await Bun.file(autopilotEnabledPromptPath(projectDirectory)).text(),
+    readAgentNamesSync(projectDirectory),
+  )
 }

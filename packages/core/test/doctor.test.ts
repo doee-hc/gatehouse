@@ -71,7 +71,7 @@ describe("gatehouse doctor", () => {
       expect(report.issues.filter((issue) => issue.category === "Agents" && issue.level === "error")).toHaveLength(0)
       expect(
         report.issues.some(
-          (issue) => issue.category === "Models" && issue.message.includes("未配置 models"),
+          (issue) => issue.category === "Models" && issue.message.includes("No models configured"),
         ),
       ).toBe(true)
     })

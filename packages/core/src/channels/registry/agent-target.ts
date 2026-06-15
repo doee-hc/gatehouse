@@ -143,22 +143,22 @@ export function formatAgentDirectory(
   if (options?.currentAgentId) {
     const current = agents.find((agent) => agent.agentId === options.currentAgentId)
     if (current) {
-      lines.push("当前对话：")
+      lines.push("Current conversation:")
       lines.push(formatAgentEntry(current, describe(current)))
     } else {
-      lines.push(`当前绑定：${options.currentAgentId}（已不在可选列表，请重新 /agent）`)
+      lines.push(`Current binding: ${options.currentAgentId} (no longer in list — run /agent again)`)
     }
     lines.push("")
   }
   if (options?.currentMissionId) {
-    lines.push(`当前 mission：${options.currentMissionId}`)
+    lines.push(`Current mission: ${options.currentMissionId}`)
     lines.push("")
   }
   if (agents.length === 0) {
-    lines.push("暂无可用 agent。请先在 OpenCode 完成 Gatehouse 登记。")
+    lines.push("No agents available. Complete Gatehouse registration in OpenCode first.")
     return lines.join("\n")
   }
-  lines.push("可用 agent：")
+  lines.push("Available agents:")
   for (let i = 0; i < agents.length; i++) {
     if (i > 0) lines.push("")
     const agent = agents[i]!
@@ -211,15 +211,15 @@ export async function resolveAgentTarget(client: OpencodeClient, config: Channel
     const directory = formatAgentDirectoryForProject(config.projectDir, switchable, {
       currentMissionId: currentMissionId,
     })
-    throw new Error(`未找到 agent「${trimmed}」。\n\n${directory}`)
+    throw new Error(`Agent not found: "${trimmed}".\n\n${directory}`)
   }
   if (!isAgentSwitchable(agent, currentMissionId)) {
     const switchable = await listSwitchableAgents(config.projectDir)
     const reason =
       agent.scope === "inner" || agent.scope === "retro"
-        ? `agent「${trimmed}」属于其它或已结束的 mission，仅可切换当前 mission 的 inner/retro agent。`
-        : `agent「${trimmed}」不可通过当前频道切换。`
-    const missionHint = currentMissionId ? `当前 mission：${currentMissionId}。` : "当前无 running/retro mission，inner agent 不可用。"
+        ? `Agent "${trimmed}" belongs to another or ended mission — only inner/retro agents from the current mission can be switched.`
+        : `Agent "${trimmed}" cannot be switched via this channel.`
+    const missionHint = currentMissionId ? `Current mission: ${currentMissionId}.` : "No running/retro mission — inner agents unavailable."
     const directory = formatAgentDirectoryForProject(config.projectDir, switchable, {
       currentMissionId: currentMissionId,
     })
@@ -227,7 +227,7 @@ export async function resolveAgentTarget(client: OpencodeClient, config: Channel
   }
   if (!(await opencodeSessionExists(client, config, agent.sessionId))) {
     throw new Error(
-      `registry 登记的 session（${agent.sessionId}）在 OpenCode 中不存在，请重新打开 ${agent.agentId}。`,
+      `Registry session (${agent.sessionId}) does not exist in OpenCode — reopen ${agent.agentId}.`,
     )
   }
   return agent

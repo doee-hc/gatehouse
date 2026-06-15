@@ -9,39 +9,43 @@ Architecture & workflow: project `.gatehouse/**/SKILL.md` prompts (scaffolded on
 | Tool | Purpose |
 |------|---------|
 | `gatehouse_init_team` | **profile lead** — register architect, curator, arbiter registry sessions (idempotent; first conversation) |
-| `gatehouse_bootstrap_tree` | **profile architect** — validate `mission.script.ts`, wake curator for skill_domain assignment (no exec sessions yet). Execution tree is created inside `gatehouse_apply_skill_domains` |
+| `gatehouse_submit_orchestration` | **profile architect** — validate `mission.script.ts`, wake curator for skill_domain assignment (no exec sessions yet). Execution tree is created inside `gatehouse_apply_skill_domains` |
 | `gatehouse_list_team` | Team roster (no args): outer sees full mission roster; inner root sees lead + execution; inner leaf sees all execution; retro sees subtree only; arbiter includes `session_id` |
 | `gatehouse_send_message` | Registry messaging; busy→queue in SQLite, idle/15s flush; send policy by sender scope |
-| `gatehouse_session_snapshot` | Read-only diagnostic tail (≤50 lines) + `session_status`; one-off check only — not for polling while waiting for replies |
-| `gatehouse_apply_skill_domains` | **profile curator** — assign `skill_domain` and bootstrap execution team when no manifest yet |
+| `gatehouse_session_snapshot` | **lead / architect / arbiter** — one-off diagnostic tail (≤50 lines) + `session_status`; not for polling |
+| `gatehouse_apply_skill_domains` | **profile curator** — assign `skill_domain` and create execution team when no manifest yet |
 | `gatehouse_mission_start` | **profile lead** — read queued entry from `missions.yaml`, freeze snapshot in `registry.db`, set `running`, notify architect |
 | `gatehouse_mission_info` | **all roles except arbiter** — mission scope for the caller: boundaries, frozen contract, and own node brief (role-filtered) |
-| `gatehouse_mission_retro` | **profile lead** — start retro after user confirms submitted delivery (requires all inner idle); fork retro sessions, dump `context/`, kickoff retro + skill-extract |
-| `gatehouse_mission_complete` | **profile lead** — end mission (`done` or `cancelled`): abort all inner/retro sessions, archive manifest, auto-notify architect + curator; on `done`, finalizes submitted delivery (records user feedback); pass `publish_deliverables=true` after user confirms Portal publish to publish `done_when` path deliverables; auto-publishes `.gatehouse/skills/by-domain/*/SKILL.md` to Portal on every `done` |
+| `gatehouse_mission_retro` | **profile lead** — start retro after user confirms submitted delivery (requires all inner idle); fork retro sessions, dump `context/`, create isolated `build-extract` sessions for nodes with `skill_domain`, kickoff retro + skill-extract |
+| `gatehouse_mission_complete` | **profile lead** — end mission (`done` or `cancelled`): abort inner/retro/extract/verify sessions, archive manifest, auto-notify architect + curator; on `done`, finalizes submitted delivery (records user feedback); pass `publish_deliverables=true` after user confirms Portal publish to publish `done_when` path deliverables; auto-publishes `.gatehouse/skills/by-domain/*/SKILL.md` to Portal on every `done` |
 | `gatehouse_execution_complete` | **inner** — mark node done; structural root auto-delivers to lead when all nodes done |
 | `gatehouse_delivery_review` | **profile lead** — request revision or reject submitted delivery (deliverable publish is Lead opt-in on `mission_complete(done, publish_deliverables=true)`) |
 | `gatehouse_delivery_status` | Read structured delivery record (lead, architect, structural root) |
 | `gatehouse_unpublish_blog` | **profile lead** — remove a published Portal post by `report_path` (corrections only; publish is system-managed) |
 | `gatehouse_retro_record` | Retro session marks report done in registry; when all complete, auto-notifies **profile architect** |
-| `gatehouse_skill_extract_record` | Exec session marks skill extract done; when all complete, auto-notifies **profile curator** |
+| `gatehouse_retro_summary_record` | **profile architect** — register `architect-summary.md`; when rollup is complete, auto-notifies **profile lead** |
+| `gatehouse_skill_extract_record` | **build-extract** session only — runs quality gates, records extract completion; when all nodes complete, auto-starts verify sessions |
+| `gatehouse_skill_verify_record` | **build-verify** session only — programmatic + agent verification; when all nodes pass, auto-notifies **profile curator** |
+| `gatehouse_skill_summary_record` | **profile curator** — register `curator-summary.md`; when rollup is complete, auto-notifies **profile lead** |
 | `gatehouse_inspector_queue` | **profile arbiter** — list pending permission requests |
 | `gatehouse_inspector_decide` | **profile arbiter** — approve (`once` / `always`) or reject a permission request |
 | `gatehouse_execution_rework` | **inner** — reopen a dependency node (in-flight rework) |
 | `gatehouse_execution_status` | **lead / architect / root / coordinators** — read orchestration runtime state |
-| `gatehouse_lead_await_user` | **profile lead** — arm user-await watchdog after asking user to confirm (pre_start / acceptance / post_retro) |
-| `gatehouse_direction_status` | **profile lead** — read `.gatehouse/lead/direction.yaml` (autonomous decisions require `confirmed`) |
+| `gatehouse_direction_status` | **profile lead** — read `.gatehouse/lead/direction.yaml` |
 
 Everything else (missions queue, reports, skills) uses OpenCode **read/write** + SKILL prompts under `.gatehouse/`. Portal: domain skills auto-publish on `gatehouse_mission_complete(done)`; deliverables publish only when Lead passes `publish_deliverables=true`.
 
-Personnel registry (outer + inner + retro agents ↔ OpenCode `session_id`) and **execution-tree manifests** (`manifest` / `retro-manifest`) live in **`.gatehouse/registry.db`** (SQLite). Frozen mission contract, node briefs, orchestration state, and delivery records are also stored in `registry.db`; agents read them via `gatehouse_mission_*` / `gatehouse_execution_*` tools — not plaintext under `.gatehouse/trees/`. Optional exports for human inspection live under **`.gatehouse/internal/exports/trees/<mission_id>/`**. Architects author **`.gatehouse/trees/<mission_id>/mission.script.ts`** (`export const team` + `orchestrate`); bootstrap starts orchestration from the script. Node briefs are written via `ctx.setBrief` during orchestration and stored in `registry.db`. `gatehouse_send_message` resolves recipients and enforces who may message whom; OpenCode `task` child sessions for lead/architect are disabled. **Lead should call `gatehouse_init_team` on first conversation** to register architect/curator/arbiter; thereafter `send_message` and architect `gatehouse_bootstrap_tree` require registered targets. Curator `apply_skill_domains` creates Mission execution sessions.
+**Autopilot:** user toggles with **TUI** `/autopilot` (picker or `/autopilot-on` / `/autopilot-off`) or **IM** `/autopilot on|off`. When ON and `direction.yaml` is `status: confirmed`, if the lead session is idle, the last message is from the assistant, and the user has not replied for **10 minutes**, Gatehouse delivers `prompts/lead/autopilot-wake.md` — full delegation; Lead proceeds without asking the user. User messages reset the idle timer. TUI sidebar shows autopilot + direction status (read-only).
+
+Personnel registry (outer + inner + retro + extract + verify agents ↔ OpenCode `session_id`) and **execution-tree manifests** (`manifest` / `retro-manifest` / `extract-manifest` / `verify-manifest`) live in **`.gatehouse/registry.db`** (SQLite). Frozen mission contract, node briefs, orchestration state, and delivery records are also stored in `registry.db`; agents read them via `gatehouse_mission_*` / `gatehouse_execution_*` tools — not plaintext under `.gatehouse/trees/`. Optional exports for human inspection live under **`.gatehouse/internal/exports/trees/<mission_id>/`**. Architects author **`.gatehouse/trees/<mission_id>/mission.script.ts`** (`export const team` + `orchestrate`); `gatehouse_submit_orchestration` validates the script and kicks off orchestration. Node briefs are written via `ctx.setBrief` during orchestration and stored in `registry.db`. `gatehouse_send_message` resolves recipients and enforces who may message whom; OpenCode `task` child sessions for lead/architect are disabled. **Lead should call `gatehouse_init_team` on first conversation** to register architect/curator/arbiter; thereafter `send_message` and architect `gatehouse_submit_orchestration` require registered targets. Curator `apply_skill_domains` creates Mission execution sessions.
 
 **Delivery queue:** if the recipient session is `busy` or `retry`, the prompt is appended to `registry_pending_delivery` and the tool returns `delivery: queued`. The plugin flushes the FIFO queue when OpenCode emits `session.status: idle` for that session, and every 15s as a fallback.
 
-**Watchdog:** while a mission is `running` with orchestration state (no retro fork), the plugin polls every 2s; for each node marked `running` or `rework` in orchestration whose session stays `idle` for 10s, it wakes **that node** with `prompts/architect/watchdog-node-wake.md` (30s per-node cooldown). Watchdog **pauses** after structural root delivery notification to lead (awaiting reply) and **resumes** on any `send_message` to a tree member (`recipient=<node_id>` or inner session).
+**Watchdog:** while a mission is `running` with orchestration state (no retro fork), the plugin polls every 2s; for each node marked `running` or `rework` in orchestration whose session stays `idle` for 10s, it wakes **that node** with `prompts/architect/watchdog-node-wake.md` (30s per-node cooldown). Watchdog **pauses** after structural root delivery notification to lead (awaiting reply) and **resumes** on `send_message` from lead to a tree member (`recipient=<node_id>` or inner session).
 
-**Retro / skill record watchdogs:** two independent pollers (same 2s / 10s idle / 30s cooldown). While `gatehouse_retro_record` or `gatehouse_skill_extract_record` completions are still pending, if **all** expected retro or exec sessions are idle for 10s, Gatehouse notifies each **pending** agent with `watchdog-retro-record-wake.md` or `watchdog-skill-record-wake.md` to finish and call the record tool.
+**Retro / skill record watchdogs:** four independent pollers (same 2s / 10s idle / 30s cooldown). While `gatehouse_retro_record`, `gatehouse_skill_extract_record`, or `gatehouse_skill_verify_record` completions are still pending, if **all** expected retro, extract, or verify sessions are idle for 10s, Gatehouse notifies each **pending** agent with `watchdog-retro-record-wake.md`, `watchdog-skill-record-wake.md`, or `watchdog-skill-verify-record-wake.md` to finish and call the record tool.
 
-**Lead user-await watchdog:** polls every 30s. Only when the project is in a **user-confirmation gate** (queued mission start after `gatehouse_lead_await_user`, submitted delivery awaiting acceptance, or retro rollup ready for `mission_complete`) **and** the lead session’s last message is from the assistant: if the user does not reply for 10 minutes, Gatehouse wakes **lead** with `prompts/lead/watchdog-user-busy-wake.md`. Does **not** run during normal mission execution (running without submitted delivery). User chat on the lead session clears the timer. Autonomous actions require `direction.yaml` `status: confirmed`.
+**Autopilot watchdog:** polls every 30s when `/autopilot` is ON and direction is confirmed. See **Autopilot** above.
 
 ## Enable (global plugin — no per-project install)
 
@@ -81,19 +85,19 @@ bun run --cwd packages/core scaffold /path/to/project
 
 Forces an early `.gatehouse/` + project `file://` plugin entries (normally the plugin does this on first OpenCode start).
 
-## 在任意目录启动 OpenCode（推荐）
+## Start OpenCode from any directory (recommended)
 
-在 gatehouse 仓库根目录：
+From the gatehouse repo root:
 
 ```bash
-bun run dev ../test              # 打开 ../test 作为项目根
-bun run dev ../test --port 4096  # 固定端口（也支持 --port 4096 ../test）
+bun run dev ../test              # open ../test as project root
+bun run dev ../test --port 4096  # fixed port (also supports --port 4096 ../test)
 bun run dev /path/to/project
 ```
 
-启动前会自动：`prepareGatehouseProject` → 独立 `.gatehouse` + 插件配置。
+Before startup: `prepareGatehouseProject` → isolated `.gatehouse` + plugin config.
 
-**Gatehouse Portal：** 展示 API 默认 `18471`（只读 + SSE + UI）；Admin 控制面默认 `18472`（`/admin`、Channel API，仅 loopback）。`bun run build` 后 UI 为静态 `dist/portal/`；Monorepo 开发时 `bun run dev` 在 `18471` 嵌入 Vite middleware（HMR）。关闭：`GATEHOUSE_PORTAL=0`。
+**Gatehouse Portal:** display API defaults to `18471` (read-only + SSE + UI); Admin control plane defaults to `18472` (`/admin`, Channel API, loopback only). After `bun run build`, UI is static `dist/portal/`; during monorepo dev, `bun run dev` embeds Vite middleware on `18471` (HMR). Disable: `GATEHOUSE_PORTAL=0`.
 
 ## IM Channels
 
@@ -109,7 +113,7 @@ bun run channels stop -C /path/to/project
 
 User guide: [docs/guide/channels.md](../../docs/guide/channels.md) · [docs/guide/channels.zh.md](../../docs/guide/channels.zh.md). Platform setup: [weixin](../weixin-bridge/README.md) / [feishu](../feishu-bridge/README.md) / [qq](../qq-bridge/README.md). Monorepo source: [`src/channels/`](./src/channels/). Legacy `bun run dev:weixin-bridge` still works.
 
-**注意：** 必须把**项目目录**传给 dev 脚本（如上），OpenCode 才会在正确 cwd 下加载配置；`--port` 与项目路径顺序可互换。
+**Note:** You must pass the **project directory** to the dev script (as above) so OpenCode loads config from the correct cwd; `--port` and the project path can be in either order.
 
 Creates `.gatehouse/` with:
 
@@ -119,19 +123,19 @@ Creates `.gatehouse/` with:
 - `skills/curator-meta/SKILL.md`（`curator-meta`）+ `prompts/curator/` skill assignment / rollup prompts
 - `skills/arbiter-meta/SKILL.md`（`arbiter-meta`）
 - `config.yaml` — global `~/.config/gatehouse/config.yaml` + project `.gatehouse/config.yaml` (Portal brand, ICP, **outer team display names**, per-role `models`)
-- `skills/by-domain/` + `skills/domains.yaml` (curator assigns domains after bootstrap; Gatehouse delivers skill-extract prompts on retro)
+- `skills/by-domain/` + `skills/domains.yaml` (curator assigns domains after orchestration submit; Gatehouse creates extract/verify sessions and delivers skill prompts on retro)
 - empty `trees/`, `trees-index.yaml` (missions written after lead confirms)
 
-## 测试用示例任务（core-example-smoke-v1）
+## Example smoke mission (core-example-smoke-v1)
 
-轻装 smoke 样例在 **`test/fixtures/core-example-smoke-v1/mission.script.ts`**（不随项目初始化写入用户项目）。`bun test` 会临时复制该 fixture 做协作脚本解析与 mock bootstrap。
+Lightweight smoke fixture at **`test/fixtures/core-example-smoke-v1/mission.script.ts`** (not written to user projects on init). `bun test` copies this fixture temporarily for collaboration script parsing and mock submit_orchestration.
 
 ```bash
 bun run --cwd packages/core test
 ```
 
-手动 OpenCode smoke：将 `test/fixtures/core-example-smoke-v1/mission.script.ts` 复制到 `.gatehouse/trees/core-example-smoke-v1/`，在 `missions.yaml` 中启动任务后走 architect → curator bootstrap 流程。
+Manual OpenCode smoke: copy `test/fixtures/core-example-smoke-v1/mission.script.ts` to `.gatehouse/trees/core-example-smoke-v1/`, start the mission in `missions.yaml`, then run architect submit_orchestration → curator apply_skill_domains.
 
 ## Legacy
 
-Org OS（`gatehouse-plugin`、eval、EDA）仅在 **`dev`** 分支维护；本仓库不包含上述代码。
+Org OS (`gatehouse-plugin`, eval, EDA) is maintained on the **`dev`** branch only; this repo does not include that code.

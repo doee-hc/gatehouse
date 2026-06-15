@@ -11,12 +11,14 @@ import {
 } from "../session/snapshot.ts"
 import { sessionRuntimeStatus, sessionStatusById } from "../session/status.ts"
 import { readAgentNamesSync } from "../names.ts"
+import { gatehouseMessage } from "../i18n.ts"
+import { readLocaleSync, type GatehouseLocale } from "../locale.ts"
 import { resolveRecipientMissionId } from "../missions/scope.ts"
 import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
 import {
   checkSessionSnapshotPollGuard,
+  getSnapshotPollLimitGuidance,
   MAX_CONSECUTIVE_SESSION_SNAPSHOTS,
-  SNAPSHOT_POLL_LIMIT_GUIDANCE,
 } from "./session-snapshot-poll-guard.ts"
 import { trimRecipientQuery } from "./recipient.ts"
 
@@ -34,11 +36,8 @@ function snapshotPolicyViolation(
   recipient: RegistryAgent,
   names: ReturnType<typeof readAgentNamesSync>,
 ) {
-  if (sender.scope === "retro" && recipient.scope === "inner" && sender.missionId === recipient.missionId) {
-    return undefined
-  }
-  if (sender.scope === "retro") {
-    return "retro sessions should use context/ (messages, timeline, metrics, subtree-metrics)"
+  if (sender.scope === "inner" || sender.scope === "retro") {
+    return "execution sessions cannot snapshot other sessions"
   }
   if (sender.scope === "outer" && sender.profile === "lead") {
     if (recipient.scope === "outer" && recipient.profile === "architect") return undefined
@@ -51,12 +50,6 @@ function snapshotPolicyViolation(
     return `profile architect (${names.architect}) may only snapshot lead (${names.lead}) or same-mission execution sessions`
   }
   if (sender.scope === "outer" && sender.profile === "arbiter") {
-    return undefined
-  }
-  if (sender.scope === "inner") {
-    if (recipient.scope === "outer" && recipient.profile === "lead") return undefined
-    if (recipient.scope === "outer") return "execution-tree nodes may only snapshot peers in the same mission"
-    if (sender.missionId !== recipient.missionId) return "execution-tree nodes may only snapshot peers in the same mission"
     return undefined
   }
   return "sender is not allowed to snapshot this session"
@@ -74,20 +67,20 @@ function activityHint(input: {
   return "unknown"
 }
 
-function waitGuidance(hint: ReturnType<typeof activityHint>) {
+function waitGuidance(hint: ReturnType<typeof activityHint>, locale: GatehouseLocale) {
   if (hint === "likely_working") {
-    return "对方仍在执行或队列中有待投递消息；请结束本轮并耐心等待消息回报，勿循环 gatehouse_send_message 或 gatehouse_session_snapshot。"
+    return gatehouseMessage("sessionSnapshot.wait.likelyWorking", locale)
   }
   if (hint === "likely_idle") {
-    return "对方 session 为 idle 且尾部无 running 工具；若你刚分配任务，应先结束本轮等待其 send_message 汇报。确需跟进时 send_message 一次即可，勿循环 snapshot。"
+    return gatehouseMessage("sessionSnapshot.wait.likelyIdle", locale)
   }
-  return "无法判断活动状态；若处于正常等待期，结束本轮等待消息，勿循环 snapshot。"
+  return gatehouseMessage("sessionSnapshot.wait.unknown", locale)
 }
 
 export function sessionSnapshotTool(input: PluginInput) {
   return tool({
     description:
-      "Read-only diagnostic tail of another registry agent's OpenCode session plus session_status. recipient: outer profile, node_id, session_id, or agent_id. One-off use only — do not poll while waiting for send_message replies.",
+      "Read-only diagnostic tail of another agent session. One-off triage only — do not poll while waiting for replies.",
     args: {
       recipient: tool.schema
         .string()
@@ -160,17 +153,20 @@ export function sessionSnapshotTool(input: PluginInput) {
           }
         }
 
+        const locale = readLocaleSync(input.directory)
+
         const pollGuard = checkSessionSnapshotPollGuard({
           senderSessionId: context.sessionID,
           messageId: context.messageID,
           recipientSessionId: recipient.sessionId,
+          locale,
         })
         if (!pollGuard.allowed) {
           return {
             output: toolFail(
               toolName,
               "SNAPSHOT_POLL_LIMIT",
-              SNAPSHOT_POLL_LIMIT_GUIDANCE,
+              getSnapshotPollLimitGuidance(locale),
               {
                 recipient: query,
                 recipient_session_id: recipient.sessionId,
@@ -198,15 +194,10 @@ export function sessionSnapshotTool(input: PluginInput) {
             recipient_agent_id: recipient.agentId,
             recipient_profile: recipient.profile,
             session_id: recipient.sessionId,
-            mission_id: recipient.missionId ?? null,
-            node_id: recipient.nodeId ?? null,
             session_status: sessionStatus,
             pending_deliveries: pendingDeliveries,
-            lines_requested: lineCount,
-            tail_line_count: tail.length,
             tail,
-            activity_hint: hint,
-            guidance: waitGuidance(hint),
+            guidance: waitGuidance(hint, locale),
           }),
           ...toolMetadata(toolName),
         }

@@ -1,6 +1,6 @@
 schema_version: 3
 
-# 本项目 Mission 队列（独立于 gatehouse monorepo；由 {{lead_name}} 维护）
-# 串行策略：同时最多一条 status 为 running 或 retro
+# Project mission queue (separate from the gatehouse monorepo; maintained by {{lead_name}})
+# Serial policy: at most one mission with status running or retro at a time
 
 missions: []

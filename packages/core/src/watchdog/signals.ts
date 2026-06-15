@@ -5,6 +5,11 @@ export type NodeWatchState = {
   lastWakeAt?: number
 }
 
+export type OrchestratorStallWatchState = {
+  lastNotifiedAt?: number
+  lastAutoResumeAt?: number
+}
+
 export type MissionWatchState = {
   /** Per-node idle tracking for execution watchdog. */
   nodes?: Record<string, NodeWatchState>
@@ -13,6 +18,8 @@ export type MissionWatchState = {
   lastWakeAt?: number
   /** 执行树已向 lead send_message，等待答复期间不触发看门狗 */
   paused?: boolean
+  /** Orchestrator stall detection cooldown / auto-resume tracking. */
+  orchestratorStall?: OrchestratorStallWatchState
 }
 
 export function watchdogMissionId(

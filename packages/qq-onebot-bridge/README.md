@@ -5,8 +5,8 @@ Bridges **QQ group chat** via NapCat (OneBot V11) to Gatehouse registry agent se
 ## Architecture
 
 ```
-QQ 群消息 ←→ NapCat (OneBot V11 WS) ←→ Gatehouse qq-onebot-bridge ←→ OpenCode
-QQ 私聊   ←→ QQ 官方 Bot (qq-bridge)  ←→ Gatehouse
+QQ group messages ←→ NapCat (OneBot V11 WS) ←→ Gatehouse qq-onebot-bridge ←→ OpenCode
+QQ private chat   ←→ QQ official Bot (qq-bridge)  ←→ Gatehouse
 ```
 
 ## Prerequisites
@@ -14,12 +14,12 @@ QQ 私聊   ←→ QQ 官方 Bot (qq-bridge)  ←→ Gatehouse
 1. Gatehouse project with `.gatehouse/`
 2. OpenCode running in the project directory
 3. [NapCat](https://github.com/NapNeko/NapCatQQ) deployed and logged in
-4. NapCat **正向 WebSocket** enabled (default port `3001`)
+4. NapCat **forward WebSocket** enabled (default port `3001`)
 
 ## NapCat setup
 
 1. Start NapCat (Docker or native) and scan QR to log in
-2. Open NapCat WebUI → **网络配置** → enable **正向 WebSocket**
+2. Open NapCat WebUI → **Network settings** → enable **forward WebSocket**
 3. Note the WS URL and optional Access Token
 
 ## Configuration

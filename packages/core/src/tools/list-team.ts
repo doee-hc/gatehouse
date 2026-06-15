@@ -6,7 +6,7 @@ import { buildListTeamData } from "./list-views.ts"
 export function listTeamTool(input: PluginInput) {
   return tool({
     description:
-      "List team members visible to your role (no arguments). Outer profiles: full outer roster plus active-mission execution tree and retro nodes when present; arbiter entries include session_id. Inner structural root: lead plus all execution nodes. Other inner: all execution nodes. Retro fork: only your subtree from the execution manifest.",
+      "List team members visible to your role (no arguments). Outer profiles: full outer roster plus active-mission execution tree and retro nodes when present; arbiter entries include session_id. Inner structural root: lead plus all execution nodes. Other inner: all execution nodes. Retro session: only your subtree from the execution manifest.",
     args: {},
     async execute(_args, context) {
       const toolName = "gatehouse_list_team"

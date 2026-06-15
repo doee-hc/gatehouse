@@ -11,10 +11,14 @@ import { GATEHOUSE_OUTER_AGENTS } from "./registry/types.ts"
 import { createGatehouseCoreTools } from "./tools/index.ts"
 import { getPermissionArbiter, permissionEventProperties } from "./arbiter/arbiter.ts"
 import { startExecutionTreeWatchdog } from "./watchdog/execution-tree.ts"
-import { startLeadUserAwaitWatchdog, onLeadSessionUserMessage } from "./watchdog/lead-user-await.ts"
+import { resumeOrchestrationForRunningMissions } from "./orchestration/recover.ts"
+import { startAutopilotWatchdog } from "./watchdog/autopilot.ts"
+import { onLeadSessionUserMessage } from "./lead/chat-autopilot.ts"
 import { startRecordWatchdogs } from "./watchdog/record-watchdog.ts"
+import { loadGatehouseConfig } from "./gatehouse-config.ts"
 import { notifyPortalPortInUse, PortalPortInUseError } from "./portal/ports.ts"
 import { ensurePortalServer } from "./portal/server.ts"
+import { gatehouseLog } from "./log.ts"
 import { gatehousePackageRoot } from "./setup/package.ts"
 
 const packageRoot = gatehousePackageRoot(import.meta.dir)
@@ -60,13 +64,21 @@ export default {
       await ensureOpencodeConfig(input.directory, packageRoot).catch(() => undefined)
     }
     const registry = await getRegistryStore(input)
+    void resumeOrchestrationForRunningMissions(input, registry).catch((error: unknown) => {
+      gatehouseLog(
+        "error",
+        `orchestration startup resume failed: ${error instanceof Error ? error.message : String(error)}`,
+        { projectDirectory: input.directory, title: "Orchestration" },
+      )
+    })
     const flushInterval = setInterval(() => {
       void registry.flushPendingDeliveries()
     }, 15_000)
     flushInterval.unref?.()
-    startExecutionTreeWatchdog(input, registry)
-    startRecordWatchdogs(input, registry)
-    startLeadUserAwaitWatchdog(input, registry)
+    const watchdog = loadGatehouseConfig(input.directory).watchdog
+    startExecutionTreeWatchdog(input, registry, watchdog)
+    startRecordWatchdogs(input, registry, watchdog.record)
+    startAutopilotWatchdog(input, registry, watchdog.autopilot)
     if (process.env.GATEHOUSE_PORTAL !== "0") {
       queueMicrotask(() => {
         void ensurePortalServer(input.directory, packageRoot).catch((error: unknown) => {
@@ -118,9 +130,9 @@ export default {
         const blockedName = blocked === ARCHITECT_OPENCODE ? names.architect : names.lead
         const hint =
           blocked === ARCHITECT_OPENCODE
-            ? `请 ${names.lead} 在 missions.yaml 写全字段后调用 gatehouse_mission_start（自动通知 ${names.architect}；勿用 send_message 复述 kickoff）`
-            : `请改用 gatehouse_send_message(recipient="lead", message=...) 通过 registry 投递`
-        throw new Error(`Gatehouse 禁用 OpenCode task 子会话来启动 ${blockedName}。${hint}`)
+            ? `Have ${names.lead} fill missions.yaml and call gatehouse_mission_start (${names.architect} is notified automatically; do not restate kickoff via send_message)`
+            : `Use gatehouse_send_message(recipient="lead", message=...) to deliver via registry`
+        throw new Error(`Gatehouse blocks OpenCode task sub-sessions to start ${blockedName}. ${hint}`)
       },
       tool: createGatehouseCoreTools(input),
     }

@@ -1,7 +1,11 @@
+import type { GatehouseLocale } from "../locale.ts"
+import { gatehouseMessage } from "../i18n.ts"
+
 export const MAX_CONSECUTIVE_SESSION_SNAPSHOTS = 3
 
-export const SNAPSHOT_POLL_LIMIT_GUIDANCE =
-  "你已连续对同一目标调用 gatehouse_session_snapshot 超过 3 次。请勿重复轮询对方 session；请立即结束本轮对话，等待系统消息（如 send_message 回报或看门狗通知）后再继续。"
+export function getSnapshotPollLimitGuidance(locale: GatehouseLocale) {
+  return gatehouseMessage("sessionSnapshot.pollLimitGuidance", locale)
+}
 
 type SnapshotPollState = {
   messageId: string
@@ -19,6 +23,7 @@ export function checkSessionSnapshotPollGuard(input: {
   senderSessionId: string
   messageId: string
   recipientSessionId: string
+  locale: GatehouseLocale
 }): SnapshotPollGuardResult {
   const existing = pollStateBySenderSession.get(input.senderSessionId)
   const sameTurn = existing?.messageId === input.messageId
@@ -39,7 +44,7 @@ export function checkSessionSnapshotPollGuard(input: {
     return {
       allowed: false,
       consecutiveCount: nextCount,
-      guidance: SNAPSHOT_POLL_LIMIT_GUIDANCE,
+      guidance: getSnapshotPollLimitGuidance(input.locale),
     }
   }
 

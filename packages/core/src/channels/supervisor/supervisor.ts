@@ -94,20 +94,20 @@ export class ChannelSupervisor {
 
     const existing = readLiveSupervisorState(this.projectDir)
     if (existing && existing.pid !== process.pid) {
-      throw new Error(`supervisor 已在运行 (pid ${existing.pid})，请先 bunx @gatehouse/core channels stop`)
+      throw new Error(`Supervisor is already running (pid ${existing.pid}) — run bunx @gatehouse/core channels stop first`)
     }
 
     const config = loadChannelsConfig(this.projectDir)
     const enabled = listEnabledChannels(config, this.requestedChannels)
     if (!enabled.length) {
-      throw new Error("没有启用的 channel。编辑 .gatehouse/channels.yaml 或运行 bunx @gatehouse/core channels login <name>")
+      throw new Error("No channels enabled. Edit .gatehouse/channels.yaml or run bunx @gatehouse/core channels login <name>")
     }
 
     writeSupervisorState(this.projectDir, this.state)
     this.installSignalHandlers()
 
-    console.log(`Gatehouse Channels Supervisor 已启动 (pid ${process.pid})`)
-    console.log(`  项目: ${this.projectDir}`)
+    console.log(`Gatehouse Channels Supervisor started (pid ${process.pid})`)
+    console.log(`  Project: ${this.projectDir}`)
     console.log(`  OpenCode: ${config.opencodeUrl}`)
     console.log(`  Channels: ${enabled.join(", ")}`)
 
@@ -122,7 +122,7 @@ export class ChannelSupervisor {
     const shutdown = async (signal: NodeJS.Signals) => {
       if (this.stopping) return
       this.stopping = true
-      console.log(`\n[supervisor] 收到 ${signal}，正在停止…`)
+      console.log(`\n[supervisor] Received ${signal}, shutting down…`)
       await this.stopAll()
       process.exit(0)
     }
@@ -192,7 +192,7 @@ export class ChannelSupervisor {
         lastError: ready.reason,
         stoppedAt: Date.now(),
       })
-      console.error(`[supervisor] 跳过 ${channelId}: ${ready.reason}`)
+      console.error(`[supervisor] Skipping ${channelId}: ${ready.reason}`)
       return
     }
 
@@ -255,18 +255,18 @@ export class ChannelSupervisor {
       return
     }
 
-    const message = `bridge 退出 (code ${code})`
+    const message = `bridge exited (code ${code})`
     managed.restarts += 1
 
     if (!this.shouldRestart(managed)) {
       this.updateChannelState(managed.channelId, {
         status: "failed",
         restarts: managed.restarts,
-        lastError: `${message}，重启次数过多，已停止`,
+        lastError: `${message}; too many restarts, stopped`,
         stoppedAt: Date.now(),
         pid: undefined,
       })
-      console.error(`[supervisor] ${managed.channelId} ${message}，已放弃重启`)
+      console.error(`[supervisor] ${managed.channelId} ${message}; giving up on restart`)
       return
     }
 
@@ -276,7 +276,7 @@ export class ChannelSupervisor {
       lastError: message,
       pid: undefined,
     })
-    console.error(`[supervisor] ${managed.channelId} ${message}，${RESTART_DELAY_MS / 1000}s 后重启…`)
+    console.error(`[supervisor] ${managed.channelId} ${message}; restarting in ${RESTART_DELAY_MS / 1000}s…`)
     await Bun.sleep(RESTART_DELAY_MS)
     if (this.stopping) return
     this.children.delete(managed.channelId)

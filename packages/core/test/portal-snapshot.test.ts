@@ -137,6 +137,8 @@ nodes:
     retroCompletions: [],
     skillExtractRuns: [],
     skillExtractCompletions: [],
+    skillVerifyRuns: [],
+    skillVerifyCompletions: [],
   })
 })
 
@@ -279,6 +281,8 @@ nodes:
     retroCompletions: [],
     skillExtractRuns: [],
     skillExtractCompletions: [],
+    skillVerifyRuns: [],
+    skillVerifyCompletions: [],
   })
 
   const snap = await buildPortalSnapshot(lingeringDir)
@@ -341,6 +345,8 @@ nodes:
     retroCompletions: [],
     skillExtractRuns: [],
     skillExtractCompletions: [],
+    skillVerifyRuns: [],
+    skillVerifyCompletions: [],
   })
 
   const snap = await buildPortalSnapshot(retroDir)

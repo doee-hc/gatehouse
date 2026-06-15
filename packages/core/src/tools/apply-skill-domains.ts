@@ -3,7 +3,8 @@ import { getRegistryStore } from "../registry/context.ts"
 import { readManifest, writeManifest } from "../tree/store.ts"
 import { resolveTeamSource } from "../orchestration/resolve-team.ts"
 import { runBootstrapTree } from "../tree/bootstrap-run.ts"
-import { skillDomainContextNote, listSkillSlugsInDomain } from "../retro/skill-kickoff.ts"
+import { skillDomainContextNote } from "../retro/skill-kickoff.ts"
+import { selectSkillsForTask, formatRetrievedSkillCatalog } from "../skills/retrieval.ts"
 import { readLocaleSync } from "../locale.ts"
 import { readAgentNamesSync } from "../names.ts"
 import { innerAgentId } from "../registry/types.ts"
@@ -15,12 +16,11 @@ import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
 export function applySkillDomainsTool(input: PluginInput) {
   return tool({
     description:
-      "profile curator only: assign skill_domain on execution nodes for the active Mission. Creates missing `.gatehouse/skills/by-domain/<domain-id>/` dirs (no SKILL.md). Call after architect gatehouse_bootstrap_tree.",
+      "profile curator only: assign skill_domain on execution nodes for the active Mission. Creates missing `.gatehouse/skills/by-domain/<domain-id>/` dirs (no SKILL.md). Call after architect gatehouse_submit_orchestration.",
     args: {
       assignments: tool.schema
-        .string()
-        .describe('JSON object: { "<node_id>": "<domain-id>", ... } — include only nodes that need a domain'),
-      objective: tool.schema.string().optional().describe("Optional one-line objective for trees-index; default from active mission contract"),
+        .record(tool.schema.string(), tool.schema.string())
+        .describe('Map node_id to domain-id for nodes that need a domain'),
     },
     async execute(args, context) {
       const toolName = "gatehouse_apply_skill_domains"
@@ -35,19 +35,9 @@ export function applySkillDomainsTool(input: PluginInput) {
         }
 
         const missionId = requireActiveMissionId(registry)
+        const assignments = args.assignments
 
-        const parsed = JSON.parse(args.assignments) as unknown
-        if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-          return {
-            output: toolFail(toolName, "INVALID_ASSIGNMENTS", "assignments must be a JSON object"),
-            ...toolMetadata(toolName),
-          }
-        }
-
-        const domainDirsEnsured = await ensureSkillDomainDirs(
-          input.directory,
-          skillDomainIdsFromAssignments(parsed as Record<string, unknown>),
-        )
+        await ensureSkillDomainDirs(input.directory, skillDomainIdsFromAssignments(assignments))
 
         const manifest = await readManifest(input.directory, missionId)
         if (!manifest) {
@@ -59,8 +49,8 @@ export function applySkillDomainsTool(input: PluginInput) {
             }
           }
           const spec = structuredClone(resolved.spec)
-          for (const [nodeId, domainValue] of Object.entries(parsed)) {
-            if (typeof domainValue !== "string" || !domainValue.trim()) continue
+          for (const [nodeId, domainValue] of Object.entries(assignments)) {
+            if (!domainValue.trim()) continue
             const node = spec.nodes[nodeId]
             if (!node) {
               return {
@@ -72,52 +62,46 @@ export function applySkillDomainsTool(input: PluginInput) {
           }
           const contract = readActiveMissionContract(input.directory, missionId)
           const bootstrap = await runBootstrapTree(input, spec, {
-            objective: args.objective ?? contract?.objective,
+            objective: contract?.objective,
           })
           return {
             output: toolOk(toolName, {
               phase: "bootstrapped",
               mission_id: missionId,
-              applied: Object.keys(parsed).length,
-              domain_dirs_ensured: domainDirsEnsured,
-              bootstrap,
+              applied: Object.keys(assignments).length,
+              node_count: bootstrap.node_count,
             }),
             ...toolMetadata(toolName),
           }
         }
 
-        const deliveries: Array<{ nodeId: string; skillDomain: string; delivery: "sent" | "queued" | "failed"; error?: string }> =
-          []
-        for (const [nodeId, domainValue] of Object.entries(parsed)) {
-          if (typeof domainValue !== "string" || !domainValue.trim()) continue
+        const resolvedTeam = await resolveTeamSource(input.directory, missionId)
+        const locale = readLocaleSync(input.directory)
+        const agentNames = readAgentNamesSync(input.directory)
+
+        let delivered = 0
+        for (const [nodeId, domainValue] of Object.entries(assignments)) {
+          if (!domainValue.trim()) continue
           const node = manifest.nodes[nodeId]
-          if (!node) {
-            deliveries.push({ nodeId, skillDomain: domainValue, delivery: "failed", error: "unknown node_id" })
-            continue
-          }
+          if (!node) continue
           node.skill_domain = domainValue.trim()
           const recipient = registry.byAgentId(innerAgentId(missionId, nodeId))
-          if (!recipient) {
-            deliveries.push({ nodeId, skillDomain: domainValue, delivery: "failed", error: "exec agent not in registry" })
-            continue
-          }
-          const slugs = await listSkillSlugsInDomain(input.directory, domainValue.trim())
+          if (!recipient) continue
+          const specNode = resolvedTeam?.spec.nodes[nodeId]
+          const query = specNode?.description ?? nodeId
+          const skillEntries = await selectSkillsForTask({
+            projectDirectory: input.directory,
+            domain: domainValue.trim(),
+            query,
+            missionId,
+          })
+          const skillCatalog = formatRetrievedSkillCatalog(skillEntries, locale === "zh" ? "zh" : "en")
           const result = await registry.deliverSystemMessage(
             recipient,
-            skillDomainContextNote(
-              domainValue.trim(),
-              readAgentNamesSync(input.directory),
-              readLocaleSync(input.directory),
-              slugs,
-            ),
+            skillDomainContextNote(domainValue.trim(), agentNames, locale, skillCatalog),
             recipient.profile,
           )
-          deliveries.push({
-            nodeId,
-            skillDomain: domainValue.trim(),
-            delivery: result.status,
-            ...(result.error && { error: result.error }),
-          })
+          if (result.status === "sent" || result.status === "queued") delivered += 1
         }
 
         await writeManifest(input.directory, manifest)
@@ -128,9 +112,8 @@ export function applySkillDomainsTool(input: PluginInput) {
           output: toolOk(toolName, {
             phase: "manifest_updated",
             mission_id: missionId,
-            applied: Object.keys(parsed).length,
-            domain_dirs_ensured: domainDirsEnsured,
-            deliveries,
+            applied: Object.keys(assignments).length,
+            delivered,
           }),
           ...toolMetadata(toolName),
         }

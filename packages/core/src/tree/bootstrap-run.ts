@@ -107,7 +107,10 @@ export async function runBootstrapTree(
   const registry = await getRegistryStore(input)
   registry.syncInnerFromManifest(manifest)
 
-  await prepareOrchestrationRuntime(input.directory, manifest, script)
+  const prepared = await prepareOrchestrationRuntime(input.directory, manifest, script)
+  if (prepared.status === "error") {
+    throw new Error(prepared.message)
+  }
   const orchestrationRuntime = await startOrchestrationRuntime(input, registry, manifest, script)
   if (orchestrationRuntime.status === "error") {
     throw new Error(`Orchestration failed for ${spec.mission_id}: ${orchestrationRuntime.message}`)

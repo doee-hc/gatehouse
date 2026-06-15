@@ -25,11 +25,11 @@ export function mimeFromImageBytes(data: Uint8Array) {
 
 export async function downloadImageItem(item: MessageItem, cdnBaseUrl: string) {
   if (item.type !== MessageItemType.IMAGE || !item.image_item) {
-    throw new Error("不是图片消息")
+    throw new Error("Not an image message")
   }
   const img = item.image_item
   if (!img.media?.encrypt_query_param && !img.media?.full_url) {
-    throw new Error("图片缺少 CDN 引用")
+    throw new Error("Image missing CDN reference")
   }
   const aesKeyBase64 = img.aeskey
     ? Buffer.from(img.aeskey, "hex").toString("base64")

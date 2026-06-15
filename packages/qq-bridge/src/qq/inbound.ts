@@ -67,5 +67,5 @@ export function normalizePrivateMessage(event: PrivateMessageEvent): QqInboundMe
 }
 
 export function unsupportedMediaReply() {
-  return "暂不支持文件/语音/视频，请发送文字或图片。"
+  return "Files, voice, and video are not supported. Please send text or images."
 }

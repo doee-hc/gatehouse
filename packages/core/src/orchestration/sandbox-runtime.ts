@@ -4,6 +4,15 @@ import { gatehouseLog } from "../log.ts"
 import { readActiveMissionContract } from "../missions/contract.ts"
 import type { RegistryStore } from "../registry/store.ts"
 import { createMissionHostHandlers } from "./ctx-host.ts"
+import {
+  markSandboxRunning,
+  markSandboxStopped,
+  orchestrationAllDone,
+  readOrchestrationState,
+  writeOrchestrationState,
+} from "./state.ts"
+import { saveOrchestrationPlanRecord } from "./plan-store.ts"
+import { clearMissionWaits } from "./wait.ts"
 import type {
   SandboxHostInbound,
   SandboxHostOutbound,
@@ -23,6 +32,7 @@ export async function startSandboxOrchestration(input: {
   plugin: PluginInput
   store: RegistryStore
   script: LoadedMissionScript
+  resume?: boolean
 }) {
   const missionId = input.script.team.mission_id
   if (!input.script.orchestrateSource) {
@@ -34,6 +44,15 @@ export async function startSandboxOrchestration(input: {
   }
   if (runningSandboxes.has(missionId)) {
     return { status: "already_running" as const, mission_id: missionId }
+  }
+
+  const state = readOrchestrationState(input.plugin.directory, missionId)
+  if (state) {
+    markSandboxRunning(state, input.script.scriptHash, input.script.plan?.plan_version)
+    writeOrchestrationState(input.plugin.directory, state)
+  }
+  if (input.script.plan) {
+    saveOrchestrationPlanRecord(input.plugin.directory, input.script.plan)
   }
 
   runningSandboxes.add(missionId)
@@ -62,6 +81,13 @@ export async function startSandboxOrchestration(input: {
     team: input.script.team,
     ...(contract?.objective && { objective: contract.objective }),
     ...(input.script.meta && { meta: input.script.meta }),
+    ...(input.script.plan && {
+      plan: {
+        plan_version: input.script.plan.plan_version,
+        steps: input.script.plan.steps,
+        cursor_step_index: state?.cursor_step_index ?? 0,
+      },
+    }),
   }
 
   const workerDone = new Promise<{ status: "done" } | { status: "error"; message: string }>((resolve) => {
@@ -78,12 +104,14 @@ export async function startSandboxOrchestration(input: {
         return
       }
       if (data.type === "done") {
+        persistSandboxOutcome(input.plugin.directory, missionId, "completed")
         cleanupSandboxWorker(missionId)
         resolve({ status: "done" })
         return
       }
       if (data.type === "error") {
         gatehouseLog("error", `orchestration sandbox failed for ${missionId}: ${data.message}`)
+        persistSandboxOutcome(input.plugin.directory, missionId, "failed", data.message)
         cleanupSandboxWorker(missionId)
         resolve({ status: "error", message: data.message })
       }
@@ -92,12 +120,17 @@ export async function startSandboxOrchestration(input: {
     worker.onerror = (event) => {
       const message = event.message || "sandbox worker error"
       gatehouseLog("error", `orchestration sandbox worker error for ${missionId}: ${message}`)
+      persistSandboxOutcome(input.plugin.directory, missionId, "failed", message)
       cleanupSandboxWorker(missionId)
       resolve({ status: "error", message })
     }
   })
 
   worker.postMessage(initMessage)
+  if (input.resume) {
+    gatehouseLog("info", `[orchestration:${missionId}] replaying orchestrate() (resume)`)
+  }
+
   const startupResult = await Promise.race([
     firstPromptPromise.then(() => ({ status: "first_prompt" as const })),
     workerDone,
@@ -116,6 +149,11 @@ export async function startSandboxOrchestration(input: {
   void workerDone.then((result) => {
     if (result.status === "error") {
       gatehouseLog("error", `orchestration sandbox exited for ${missionId}: ${result.message}`)
+      return
+    }
+    const latest = readOrchestrationState(input.plugin.directory, missionId)
+    if (latest && orchestrationAllDone(latest)) {
+      gatehouseLog("info", `[orchestration:${missionId}] orchestrate() finished; all nodes done`)
     }
   })
 
@@ -123,6 +161,7 @@ export async function startSandboxOrchestration(input: {
     status: "started" as const,
     mission_id: missionId,
     sandbox: true as const,
+    ...(input.resume && { resumed: true as const }),
   }
 }
 
@@ -148,8 +187,21 @@ async function handleWorkerRpc(
   worker.postMessage(response satisfies SandboxHostOutbound)
 }
 
+function persistSandboxOutcome(
+  projectDirectory: string,
+  missionId: string,
+  outcome: "stopped" | "completed" | "failed",
+  error?: string,
+) {
+  const state = readOrchestrationState(projectDirectory, missionId)
+  if (!state) return
+  markSandboxStopped(state, outcome, error)
+  writeOrchestrationState(projectDirectory, state)
+}
+
 function cleanupSandboxWorker(missionId: string) {
   runningSandboxes.delete(missionId)
+  clearMissionWaits(missionId)
   const worker = workersByMission.get(missionId)
   if (worker) {
     worker.terminate()

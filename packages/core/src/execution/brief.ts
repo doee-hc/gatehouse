@@ -1,3 +1,5 @@
+import { gatehouseMessage } from "../i18n.ts"
+import { DEFAULT_GATEHOUSE_LOCALE, type GatehouseLocale } from "../locale.ts"
 import { isRecord, parseYaml, readString } from "../yaml.ts"
 import type { NodeBrief } from "./types.ts"
 
@@ -24,24 +26,24 @@ export function parseNodeBrief(text: string, nodeId: string): NodeBrief {
   }
 }
 
-export function formatNodeBriefBlock(brief: NodeBrief) {
-  const lines = [`## 节点任务书（Node Brief · ${brief.node_id}）`]
-  if (brief.role) lines.push(`**角色：** ${brief.role}`)
+export function formatNodeBriefBlock(
+  brief: NodeBrief,
+  locale: GatehouseLocale = DEFAULT_GATEHOUSE_LOCALE,
+) {
+  const lines = [gatehouseMessage("execution.nodeBrief.header", locale, { node_id: brief.node_id })]
+  if (brief.role) lines.push(gatehouseMessage("execution.nodeBrief.role", locale, { role: brief.role }))
   if (brief.your_work.length) {
-    lines.push("", "**你的职责（your_work）：**")
+    lines.push("", gatehouseMessage("execution.nodeBrief.yourWorkHeader", locale))
     for (const item of brief.your_work) lines.push(`- ${item}`)
   }
   if (brief.not_your_job.length) {
-    lines.push("", "**不是你的事（not_your_job）：**")
+    lines.push("", gatehouseMessage("execution.nodeBrief.notYourJobHeader", locale))
     for (const item of brief.not_your_job) lines.push(`- ${item}`)
   }
   if (brief.acceptance_slice.length) {
-    lines.push("", "**本节点验收切片（acceptance_slice）：**")
+    lines.push("", gatehouseMessage("execution.nodeBrief.acceptanceSliceHeader", locale))
     for (const item of brief.acceptance_slice) lines.push(`- ${item}`)
   }
-  lines.push(
-    "",
-    "**优先级：** 以本 Brief 为行动依据；核对边界与任务快照用 `gatehouse_mission_info`。",
-  )
+  lines.push("", gatehouseMessage("execution.nodeBrief.priorityHint", locale))
   return lines.join("\n")
 }

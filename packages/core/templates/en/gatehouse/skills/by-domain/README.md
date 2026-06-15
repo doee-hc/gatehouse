@@ -1,20 +1,20 @@
 # by-domain · domain skill storage
 
-Skills are grouped by **domain** (e.g. `mbist/`, `scan/`). Each domain may have multiple skills; each skill is one subdirectory + `SKILL.md`.
+One folder per **domain** (e.g. `mbist/`, `scan/`). Each skill is a subdirectory with `SKILL.md`.
 
 ## Domain registry
 
-Repository-wide domain list: `.gatehouse/skills/domains.yaml` (read by profile lead / {{lead_name}} when planning Missions).
+Repository-wide domain list: `.gatehouse/skills/domains.yaml` (read by profile lead / {{lead_name}} when planning missions).
 
 ## Per-skill conventions
 
-- **Granularity**: one business action + minimal knowledge loop per skill.
-- **Naming**: subdirectory slug is verb+noun, e.g. `resolve-tessent-c9-drc`.
-- **Frontmatter**: clear trigger and anti-trigger scenarios.
-- **Size**: 1k–3k tokens body.
-- **Timing**: only after {{lead_name}} accepts delivery and runs `gatehouse_mission_retro`; Gatehouse dispatches `.gatehouse/<locale>/prompts/architect/domain-skill-extract.md` to execution sessions (`<locale>` from `config.yaml`).
-- **Loading**: during execution use `skill({ name: "<slug>" })` or read `SKILL.md`; frontmatter may include `metadata.gatehouse-domain`.
+- **Granularity:** one business action + minimal closed loop.
+- **Naming:** verb-noun slug, e.g. `resolve-tessent-c9-drc`.
+- **Frontmatter:** trigger and forbidden scenarios.
+- **Size:** 1k–3k token body.
+- **Timing:** only after {{lead_name}} accepts delivery and runs `gatehouse_mission_retro`; Gatehouse creates **extract sessions** (`build-extract`) for assigned nodes and dispatches `domain-skill-extract.md`; after all extract complete, **verify sessions** (`build-verify`) run automatically.
+- **Loading:** at execution time use `skill({ name: "<slug>" })` or read `SKILL.md`; frontmatter may include `metadata.gatehouse-domain`.
 
-## Context policy
+## Context strategy
 
-Neither execution nor retro injects full existing SKILL text into agent context; manifest `skill_domain` only gives domain id and directory path — agents read on demand.
+Execution bootstrap injects a **semantic top-k skill catalog** (with scores), not the full domain listing; manifest `skill_domain` gives the domain id and directory path — agents read the `SKILL.md` files they need.

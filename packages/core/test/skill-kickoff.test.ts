@@ -27,11 +27,11 @@ describe("domain skill kickoff", () => {
       expect(prompt).toContain("node-a")
       expect(prompt).toContain("scan")
       expect(prompt).toContain("by-domain/scan")
-      expect(prompt).toContain("1k–3k token")
+      expect(prompt).toContain("context/node-a/")
+      expect(prompt).toContain("方法论结构")
       expect(prompt).toContain("动词+名词")
       expect(prompt).toContain("## 约束")
       expect(prompt).toContain("不要")
-      expect(prompt).toContain("批量 `mkdir`")
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
@@ -64,15 +64,15 @@ describe("domain skill kickoff", () => {
   })
 
   test("formatSkillDomainExistingSection omits mkdir guidance when empty", () => {
-    const section = formatSkillDomainExistingSection(".gatehouse/skills/by-domain/scan", [])
+    const section = formatSkillDomainExistingSection(".gatehouse/skills/by-domain/scan", [], "zh")
     expect(section).toContain("尚无已有 skill")
     expect(section).not.toContain("mkdir")
   })
 
   test("skillDomainContextNote includes catalog and skill tool guidance", () => {
-    const note = skillDomainContextNote("mbist", undefined, "zh", ["scan-chip", "read-spec"])
+    const note = skillDomainContextNote("mbist", undefined, "zh", "- `scan-chip` — scan (score=0.80)")
     expect(note).toContain("by-domain/mbist")
-    expect(note).toContain("scan-chip, read-spec")
+    expect(note).toContain("scan-chip")
     expect(note).toContain('skill({ name:')
     expect(note).toContain("勿提炼 skill")
   })

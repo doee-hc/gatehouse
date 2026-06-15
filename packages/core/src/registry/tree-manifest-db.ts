@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite"
 import { REGISTRY_SCHEMA_VERSION } from "./types.ts"
-import type { RetroManifest, TreeManifest, TreeNode, TreesIndex, TreesIndexEntry } from "../tree/types.ts"
+import type { ExtractManifest, RetroManifest, TreeManifest, TreeNode, TreesIndex, TreesIndexEntry, VerifyManifest } from "../tree/types.ts"
 
 type TreeRow = {
   mission_id: string
@@ -25,6 +25,34 @@ type RetroRow = {
   mission_id: string
   created_at: string
   retro_order_json: string
+}
+
+type VerifyNodeRow = {
+  mission_id: string
+  node_id: string
+  extract_session_id: string
+  verify_session_id: string
+  skill_domain: string
+}
+
+type ExtractNodeRow = {
+  mission_id: string
+  node_id: string
+  exec_session_id: string
+  extract_session_id: string
+  skill_domain: string
+}
+
+type ExtractRow = {
+  mission_id: string
+  created_at: string
+  extract_order_json: string
+}
+
+type VerifyRow = {
+  mission_id: string
+  created_at: string
+  verify_order_json: string
 }
 
 type RetroNodeRow = {
@@ -258,6 +286,168 @@ export function findTreeManifestByRetroSession(db: Database, sessionId: string) 
   return { missionId: node.mission_id, manifest, retro }
 }
 
+function rowsToExtract(tree: ExtractRow, nodeRows: ExtractNodeRow[]): ExtractManifest {
+  const nodes: ExtractManifest["nodes"] = {}
+  for (const row of nodeRows) {
+    nodes[row.node_id] = {
+      exec_session_id: row.exec_session_id,
+      extract_session_id: row.extract_session_id,
+      skill_domain: row.skill_domain,
+    }
+  }
+  return {
+    mission_id: tree.mission_id,
+    created_at: tree.created_at,
+    extract_order: JSON.parse(tree.extract_order_json) as string[],
+    nodes,
+  }
+}
+
+function rowsToVerify(tree: VerifyRow, nodeRows: VerifyNodeRow[]): VerifyManifest {
+  const nodes: VerifyManifest["nodes"] = {}
+  for (const row of nodeRows) {
+    nodes[row.node_id] = {
+      extract_session_id: row.extract_session_id,
+      verify_session_id: row.verify_session_id,
+      skill_domain: row.skill_domain,
+    }
+  }
+  return {
+    mission_id: tree.mission_id,
+    created_at: tree.created_at,
+    verify_order: JSON.parse(tree.verify_order_json) as string[],
+    nodes,
+  }
+}
+
+export function getExtractManifest(db: Database, missionId: string) {
+  const tree = db
+    .query("SELECT * FROM registry_extract_tree WHERE mission_id = $mission_id")
+    .get({ $mission_id: missionId }) as ExtractRow | undefined
+  if (!tree) return undefined
+  const nodeRows = db
+    .query("SELECT * FROM registry_extract_tree_node WHERE mission_id = $mission_id ORDER BY node_id")
+    .all({ $mission_id: missionId }) as ExtractNodeRow[]
+  return rowsToExtract(tree, nodeRows)
+}
+
+export function saveExtractManifest(db: Database, extract: ExtractManifest) {
+  db.exec("BEGIN")
+  try {
+    db.prepare(`
+      INSERT INTO registry_extract_tree (mission_id, created_at, extract_order_json)
+      VALUES ($mission_id, $created_at, $extract_order_json)
+      ON CONFLICT(mission_id) DO UPDATE SET
+        created_at = excluded.created_at,
+        extract_order_json = excluded.extract_order_json
+    `).run({
+      $mission_id: extract.mission_id,
+      $created_at: extract.created_at,
+      $extract_order_json: JSON.stringify(extract.extract_order),
+    })
+    db.prepare("DELETE FROM registry_extract_tree_node WHERE mission_id = $mission_id").run({
+      $mission_id: extract.mission_id,
+    })
+    const insertNode = db.prepare(`
+      INSERT INTO registry_extract_tree_node (
+        mission_id, node_id, exec_session_id, extract_session_id, skill_domain
+      ) VALUES (
+        $mission_id, $node_id, $exec_session_id, $extract_session_id, $skill_domain
+      )
+    `)
+    for (const [nodeId, node] of Object.entries(extract.nodes)) {
+      insertNode.run({
+        $mission_id: extract.mission_id,
+        $node_id: nodeId,
+        $exec_session_id: node.exec_session_id,
+        $extract_session_id: node.extract_session_id,
+        $skill_domain: node.skill_domain,
+      })
+    }
+    db.exec("COMMIT")
+  } catch (error) {
+    db.exec("ROLLBACK")
+    throw error
+  }
+}
+
+export function getVerifyManifest(db: Database, missionId: string) {
+  const tree = db
+    .query("SELECT * FROM registry_verify_tree WHERE mission_id = $mission_id")
+    .get({ $mission_id: missionId }) as VerifyRow | undefined
+  if (!tree) return undefined
+  const nodeRows = db
+    .query("SELECT * FROM registry_verify_tree_node WHERE mission_id = $mission_id ORDER BY node_id")
+    .all({ $mission_id: missionId }) as VerifyNodeRow[]
+  return rowsToVerify(tree, nodeRows)
+}
+
+export function saveVerifyManifest(db: Database, verify: VerifyManifest) {
+  db.exec("BEGIN")
+  try {
+    db.prepare(`
+      INSERT INTO registry_verify_tree (mission_id, created_at, verify_order_json)
+      VALUES ($mission_id, $created_at, $verify_order_json)
+      ON CONFLICT(mission_id) DO UPDATE SET
+        created_at = excluded.created_at,
+        verify_order_json = excluded.verify_order_json
+    `).run({
+      $mission_id: verify.mission_id,
+      $created_at: verify.created_at,
+      $verify_order_json: JSON.stringify(verify.verify_order),
+    })
+    db.prepare("DELETE FROM registry_verify_tree_node WHERE mission_id = $mission_id").run({
+      $mission_id: verify.mission_id,
+    })
+    const insertNode = db.prepare(`
+      INSERT INTO registry_verify_tree_node (
+        mission_id, node_id, extract_session_id, verify_session_id, skill_domain
+      ) VALUES (
+        $mission_id, $node_id, $extract_session_id, $verify_session_id, $skill_domain
+      )
+    `)
+    for (const [nodeId, node] of Object.entries(verify.nodes)) {
+      insertNode.run({
+        $mission_id: verify.mission_id,
+        $node_id: nodeId,
+        $extract_session_id: node.extract_session_id,
+        $verify_session_id: node.verify_session_id,
+        $skill_domain: node.skill_domain,
+      })
+    }
+    db.exec("COMMIT")
+  } catch (error) {
+    db.exec("ROLLBACK")
+    throw error
+  }
+}
+
+export function findTreeManifestByExtractSession(db: Database, sessionId: string) {
+  const node = db
+    .query(
+      "SELECT mission_id FROM registry_extract_tree_node WHERE extract_session_id = $session_id LIMIT 1",
+    )
+    .get({ $session_id: sessionId }) as { mission_id: string } | undefined
+  if (!node) return undefined
+  const extract = getExtractManifest(db, node.mission_id)
+  const manifest = getTreeManifest(db, node.mission_id)
+  if (!extract || !manifest) return undefined
+  return { missionId: node.mission_id, manifest, extract }
+}
+
+export function findTreeManifestByVerifySession(db: Database, sessionId: string) {
+  const node = db
+    .query(
+      "SELECT mission_id FROM registry_verify_tree_node WHERE verify_session_id = $session_id LIMIT 1",
+    )
+    .get({ $session_id: sessionId }) as { mission_id: string } | undefined
+  if (!node) return undefined
+  const verify = getVerifyManifest(db, node.mission_id)
+  const manifest = getTreeManifest(db, node.mission_id)
+  if (!verify || !manifest) return undefined
+  return { missionId: node.mission_id, manifest, verify }
+}
+
 function treeNodeColumnNames(db: Database) {
   const table = db
     .query("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'registry_tree_node'")
@@ -329,4 +519,38 @@ export const TREE_MANIFEST_SCHEMA_SQL = `
     );
     CREATE INDEX IF NOT EXISTS registry_retro_tree_node_retro_session_idx
       ON registry_retro_tree_node(retro_session_id);
+
+    CREATE TABLE IF NOT EXISTS registry_extract_tree (
+      mission_id TEXT PRIMARY KEY,
+      created_at TEXT NOT NULL,
+      extract_order_json TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS registry_extract_tree_node (
+      mission_id TEXT NOT NULL,
+      node_id TEXT NOT NULL,
+      exec_session_id TEXT NOT NULL,
+      extract_session_id TEXT NOT NULL,
+      skill_domain TEXT NOT NULL,
+      PRIMARY KEY (mission_id, node_id)
+    );
+    CREATE INDEX IF NOT EXISTS registry_extract_tree_node_extract_session_idx
+      ON registry_extract_tree_node(extract_session_id);
+
+    CREATE TABLE IF NOT EXISTS registry_verify_tree (
+      mission_id TEXT PRIMARY KEY,
+      created_at TEXT NOT NULL,
+      verify_order_json TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS registry_verify_tree_node (
+      mission_id TEXT NOT NULL,
+      node_id TEXT NOT NULL,
+      extract_session_id TEXT NOT NULL,
+      verify_session_id TEXT NOT NULL,
+      skill_domain TEXT NOT NULL,
+      PRIMARY KEY (mission_id, node_id)
+    );
+    CREATE INDEX IF NOT EXISTS registry_verify_tree_node_verify_session_idx
+      ON registry_verify_tree_node(verify_session_id);
 `

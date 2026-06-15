@@ -42,11 +42,11 @@ export function inboundText(message: Pick<FeishuInboundMessage, "messageType" | 
 }
 
 export function unsupportedMediaReply(messageType: string) {
-  if (messageType === "file") return "暂不支持文件，请发送文字描述你的需求。"
-  if (messageType === "audio") return "暂不支持语音，请发送文字描述你的需求。"
-  if (messageType === "media") return "暂不支持媒体消息，请发送文字描述你的需求。"
-  if (messageType === "sticker") return "暂不支持表情，请发送文字描述你的需求。"
-  return `暂不支持 ${messageType} 消息，请发送文字。`
+  if (messageType === "file") return "Files are not supported. Please describe your request in text."
+  if (messageType === "audio") return "Voice messages are not supported. Please describe your request in text."
+  if (messageType === "media") return "Media messages are not supported. Please describe your request in text."
+  if (messageType === "sticker") return "Stickers are not supported. Please describe your request in text."
+  return `Unsupported ${messageType} messages. Please send text.`
 }
 
 export function shouldHandleMessage(message: FeishuInboundMessage) {

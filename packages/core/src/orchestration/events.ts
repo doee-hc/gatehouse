@@ -9,10 +9,9 @@ import { sanitizeInnerBriefStrings } from "../missions/done-when-filter.ts"
 import type { NodeBrief } from "../execution/types.ts"
 import type { NodeCompletion } from "./types.ts"
 import { deliverOrchestrationPrompt } from "./prompt.ts"
-import { readOrchestrationState, writeOrchestrationState } from "./state.ts"
+import { readOrchestrationState, mutateOrchestrationState } from "./state.ts"
 import { validateReworkRequest } from "./rework.ts"
 import { formatReworkResumeText, formatReworkText } from "./templates.ts"
-import { notifyOrchestrationWaiters } from "./wait.ts"
 
 function mergeBrief(existing: NodeBrief | undefined, nodeId: string, partial: Partial<NodeBrief>): NodeBrief {
   const your_work = sanitizeInnerBriefStrings(partial.your_work ?? existing?.your_work ?? [])
@@ -44,10 +43,10 @@ export async function orchestrationComplete(input: {
   const state = readOrchestrationState(input.plugin.directory, input.missionId)
   if (!state) return { status: "no_state" as const }
 
-  const node = state.nodes[input.nodeId]
-  if (!node) return { status: "unknown_node" as const, node_id: input.nodeId }
-  if (node.status !== "running" && node.status !== "rework") {
-    return { status: "not_active" as const, current: node.status }
+  const currentNode = state.nodes[input.nodeId]
+  if (!currentNode) return { status: "unknown_node" as const, node_id: input.nodeId }
+  if (currentNode.status !== "running" && currentNode.status !== "rework") {
+    return { status: "not_active" as const, current: currentNode.status }
   }
 
   const registry = new RegistryDatabase(input.plugin.directory, { readonly: true })
@@ -68,32 +67,40 @@ export async function orchestrationComplete(input: {
   }
 
   const now = new Date().toISOString()
-  state.nodes[input.nodeId] = {
-    ...node,
-    status: "done",
-    completed_at: now,
-    blocked_by: undefined,
-    rework_reason: undefined,
-    ...(input.completion && { completion: input.completion }),
-  }
-
   const unblocked: string[] = []
-  for (const [id, entry] of Object.entries(state.nodes)) {
-    if (entry.status === "blocked" && entry.blocked_by === input.nodeId) {
-      state.nodes[id] = {
-        ...entry,
-        status: "running",
-        activated_at: now,
-      }
-      unblocked.push(id)
-    }
-  }
 
-  writeOrchestrationState(input.plugin.directory, state)
-  notifyOrchestrationWaiters(input.missionId, state)
+  const next = mutateOrchestrationState(input.plugin.directory, input.missionId, (state) => {
+    const node = state.nodes[input.nodeId]
+    if (!node) throw new Error(`unknown node ${input.nodeId}`)
+    if (node.status !== "running" && node.status !== "rework") {
+      throw new Error(`node ${input.nodeId} not active (${node.status})`)
+    }
+
+    state.nodes[input.nodeId] = {
+      ...node,
+      status: "done",
+      completed_at: now,
+      blocked_by: undefined,
+      rework_reason: undefined,
+      ...(input.completion && { completion: input.completion }),
+    }
+
+    for (const [id, entry] of Object.entries(state.nodes)) {
+      if (entry.status === "blocked" && entry.blocked_by === input.nodeId) {
+        state.nodes[id] = {
+          ...entry,
+          status: "running",
+          activated_at: now,
+        }
+        unblocked.push(id)
+      }
+    }
+  })
+
+  if (!next) return { status: "no_state" as const }
 
   for (const nodeId of unblocked) {
-    const entry = state.nodes[nodeId]
+    const entry = next.nodes[nodeId]
     const text = formatReworkResumeText(input.plugin.directory, {
       missionId: input.missionId,
       nodeId,
@@ -113,7 +120,7 @@ export async function orchestrationComplete(input: {
     status: "ok" as const,
     node_id: input.nodeId,
     unblocked,
-    all_done: Object.values(state.nodes).every((n) => n.status === "done"),
+    all_done: Object.values(next.nodes).every((n) => n.status === "done"),
     ...(input.completion && { completion: input.completion }),
   }
 }
@@ -151,20 +158,20 @@ export async function orchestrationRework(input: {
     return { status: "forbidden" as const, reason: validation.reason ?? validation.code }
   }
 
-  state.nodes[input.blockedByNodeId] = {
-    ...state.nodes[input.blockedByNodeId],
-    status: "rework",
-    rework_reason: input.reason,
-    blocked_by: input.requesterNodeId,
-  }
-  state.nodes[input.requesterNodeId] = {
-    ...state.nodes[input.requesterNodeId],
-    status: "blocked",
-    blocked_by: input.blockedByNodeId,
-    rework_reason: input.reason,
-  }
-
-  writeOrchestrationState(input.plugin.directory, state)
+  mutateOrchestrationState(input.plugin.directory, input.missionId, (state) => {
+    state.nodes[input.blockedByNodeId] = {
+      ...state.nodes[input.blockedByNodeId],
+      status: "rework",
+      rework_reason: input.reason,
+      blocked_by: input.requesterNodeId,
+    }
+    state.nodes[input.requesterNodeId] = {
+      ...state.nodes[input.requesterNodeId],
+      status: "blocked",
+      blocked_by: input.blockedByNodeId,
+      rework_reason: input.reason,
+    }
+  })
 
   const text = formatReworkText(input.plugin.directory, {
     missionId: input.missionId,

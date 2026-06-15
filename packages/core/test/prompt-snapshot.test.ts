@@ -75,7 +75,7 @@ describe("prompt snapshot injections", () => {
     }
   })
 
-  test("loadWatchdogNodeWakePrompt injects node and delivery path", async () => {
+  test("loadWatchdogNodeWakePrompt injects node context", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-watchdog-snap-"))
     try {
       await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
@@ -83,12 +83,10 @@ describe("prompt snapshot injections", () => {
         missionId: "m1",
         nodeId: "node-doc",
         idleSeconds: 12,
-        rootNodeId: "node-root",
       })
       expect(prompt).toContain("node-doc")
       expect(prompt).toContain("m1")
       expect(prompt).toContain("gatehouse_execution_complete")
-      expect(prompt).not.toContain("{{delivery_path}}")
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
@@ -142,7 +140,7 @@ nodes:
       expect(prompt).toContain("tokens_total=3")
       expect(prompt).not.toContain("{{retro_context_snapshot}}")
       expect(prompt).toContain(".gatehouse/trees/retro-m1/context/")
-      expect(prompt).toContain(".gatehouse/trees/retro-m1/context/subtree-metrics.json")
+      expect(prompt).toContain("subtree-metrics.json")
       expect(prompt).toContain(".gatehouse/trees/retro-m1/reports/nodes/node-root-retro.md")
       expect(prompt).toContain("工具贡献")
       expect(prompt).not.toContain("architect/trees")
@@ -160,7 +158,6 @@ nodes:
         status: "submitted",
         submitted_at: "2026-01-01T00:00:00.000Z",
         submitted_by_node: "root",
-        report_path: ".gatehouse/trees/m1/reports/root-delivery.md",
         criteria: [],
         evidence: [],
         precheck: [],
@@ -175,7 +172,7 @@ nodes:
         is_active: true,
       },
     })
-    expect(leadDeliveryMessageAlreadyEnriched(formatted, "zh")).toBe(true)
+    expect(leadDeliveryMessageAlreadyEnriched(formatted)).toBe(true)
     expect(
       enrichLeadDeliveryMessage("/tmp", {
         sender: {

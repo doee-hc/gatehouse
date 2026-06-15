@@ -32,8 +32,8 @@ Usage:
   bunx @gatehouse/core channels status [-C project]
 
 Options:
-  -C, --project <dir>   Gatehouse 项目根目录（默认当前目录）
-  --probe               doctor/status 时探测 OpenCode 连通性
+  -C, --project <dir>   Gatehouse project root (default: current directory)
+  --probe               Probe OpenCode connectivity during doctor/status
 
 Examples:
   bunx @gatehouse/core channels init
@@ -53,7 +53,7 @@ function parseArgs(args: string[]): ParsedArgs {
     const arg = args[i]!
     if (arg === "-C" || arg === "--project") {
       const next = args[++i]
-      if (!next) throw new Error(`${arg} 需要项目路径`)
+      if (!next) throw new Error(`${arg} requires a project path`)
       projectDir = next
       continue
     }
@@ -71,7 +71,7 @@ function parseChannelNames(values: string[]): ChannelId[] {
   const ids: ChannelId[] = []
   for (const value of values) {
     if (!CHANNEL_IDS.includes(value as ChannelId)) {
-      throw new Error(`未知 channel: ${value}（可选: ${CHANNEL_IDS.join(", ")}）`)
+      throw new Error(`Unknown channel: ${value} (options: ${CHANNEL_IDS.join(", ")})`)
     }
     ids.push(value as ChannelId)
   }
@@ -100,10 +100,10 @@ export async function runChannelsCommand(rawArgs: string[]) {
     case "init": {
       const result = initChannelsConfig(projectDir!)
       if (result.created) {
-        console.log(`已创建 ${result.path}`)
-        console.log("编辑 enabled / 凭证后运行: bunx @gatehouse/core channels serve")
+        console.log(`Created ${result.path}`)
+        console.log("Edit enabled / credentials, then run: bunx @gatehouse/core channels serve")
       } else {
-        console.log(`已存在 ${result.path}`)
+        console.log(`Already exists: ${result.path}`)
       }
       return
     }
@@ -132,9 +132,9 @@ export async function runChannelsCommand(rawArgs: string[]) {
 
     case "login": {
       const channelId = positional[1]
-      if (!channelId) throw new Error("用法: bunx @gatehouse/core channels login <weixin|feishu|qq|qq-onebot>")
+      if (!channelId) throw new Error("Usage: bunx @gatehouse/core channels login <weixin|feishu|qq|qq-onebot>")
       if (!CHANNEL_IDS.includes(channelId as ChannelId)) {
-        throw new Error(`未知 channel: ${channelId}`)
+        throw new Error(`Unknown channel: ${channelId}`)
       }
       initChannelsConfig(projectDir!)
       await runChannelLogin(projectDir!, channelId as ChannelId, searchDirs)
@@ -151,8 +151,8 @@ export async function runChannelsCommand(rawArgs: string[]) {
     case "stop": {
       const result = await stopSupervisorProcess(projectDir!)
       if (result.stopped) {
-        const forced = result.forced ? "（已强制结束）" : ""
-        console.log(`Supervisor 已停止 (pid ${result.pid})${forced}`)
+        const forced = result.forced ? " (forced)" : ""
+        console.log(`Supervisor stopped (pid ${result.pid})${forced}`)
       } else {
         console.log(result.reason)
       }

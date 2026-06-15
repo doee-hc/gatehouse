@@ -38,3 +38,19 @@ agents:
 #   arbiter: opencode/deepseek-v4-flash-free
 #   executor: opencode/big-pickle
 #   coordinator: opencode/big-pickle
+# Watchdog timings (milliseconds). Top-level keys are defaults for execution + record; override per kind.
+# Restart OpenCode after changes. Project .gatehouse/config.yaml overrides ~/.config/gatehouse/config.yaml.
+# watchdog:
+#   poll_ms: 2000
+#   idle_threshold_ms: 10000
+#   wake_cooldown_ms: 30000
+#   execution: {}
+#   record: {}
+#   orchestration_stall:
+#     stall_threshold_ms: 180000
+#     notify_cooldown_ms: 300000
+#     resume_cooldown_ms: 60000
+#   autopilot:
+#     poll_ms: 30000
+#     idle_threshold_ms: 180000
+#     wake_cooldown_ms: 30000

@@ -29,11 +29,13 @@ import { getPortalDisplaySettings } from "./portal-display-settings.ts"
 import { spawnIdForAgent } from "./spawn-id.ts"
 import { readOfficeLayoutManifest, readOfficeLayoutSpec, computeOfficeLayoutSpec } from "./office-layout.ts"
 import { scheduleOfficeLayoutSync } from "./office-layout-schedule.ts"
+import { buildPortalOrchestration, type PortalOrchestration } from "./orchestration-view.ts"
+
+export type { PortalOrchestration, PortalOrchestrationNode, PortalOrchestrationPhase, PortalOrchestrationStep } from "./orchestration-view.ts"
 
 export type PortalMission = {
   id: string
   status: string
-  priority?: string
   objective?: string
   started_at?: string
   completed_at?: string
@@ -104,6 +106,7 @@ export type PortalSnapshot = {
     pending_node_ids: string[]
     completed_node_ids: string[]
   }
+  orchestration?: PortalOrchestration
 }
 
 async function readMissionsDocument(projectDirectory: string) {
@@ -223,7 +226,6 @@ export async function buildPortalSnapshot(projectDirectory: string, opencodeUrl?
       return {
         id: mission.id,
         status: mission.status,
-        ...(mission.priority && { priority: mission.priority }),
         ...(mission.objective && { objective: mission.objective }),
         ...(mission.started_at && { started_at: mission.started_at }),
         ...(mission.completed_at && { completed_at: mission.completed_at }),
@@ -232,7 +234,6 @@ export async function buildPortalSnapshot(projectDirectory: string, opencodeUrl?
     return {
       id: mission.id,
       status: mission.status,
-      ...(activeRecord.priority && { priority: activeRecord.priority }),
       ...(activeRecord.objective && { objective: activeRecord.objective }),
       ...(activeRecord.startedAt && { started_at: activeRecord.startedAt }),
       ...(activeRecord.completedAt && { completed_at: activeRecord.completedAt }),
@@ -338,6 +339,8 @@ export async function buildPortalSnapshot(projectDirectory: string, opencodeUrl?
       }
     })()
 
+  const orchestration = buildPortalOrchestration(projectDirectory, tree)
+
   return {
     project_directory: projectDirectory,
     updated_at: new Date().toISOString(),
@@ -352,6 +355,7 @@ export async function buildPortalSnapshot(projectDirectory: string, opencodeUrl?
     session_status: sessionStatus,
     opencode_reachable: reachable,
     ...(retro && { retro }),
+    ...(orchestration && { orchestration }),
     ...(layoutSpec && {
       office_layout: {
         revision: layoutSpec.revision,

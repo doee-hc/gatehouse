@@ -186,7 +186,7 @@ describe("node completion", () => {
 
         const posted = capture.posted as { text?: string } | undefined
         expect(posted?.text).toContain("leaf output")
-        expect(posted?.text).toContain("下属节点交付")
+        expect(posted?.text).toContain("Referenced node completions")
       })
     } finally {
       capture.server.stop()

@@ -83,7 +83,7 @@ export function channelsConfigPath(projectDir: string) {
 export function resolveProjectDir(cwd: string, explicit?: string) {
   const dir = path.resolve(explicit?.trim() || cwd)
   if (!fs.existsSync(path.join(dir, ".gatehouse"))) {
-    throw new Error(`未找到 Gatehouse 项目: ${dir}（缺少 .gatehouse/）`)
+    throw new Error(`Gatehouse project not found: ${dir} (missing .gatehouse/)`)
   }
   return dir
 }
@@ -97,7 +97,7 @@ export function loadChannelsConfig(projectDir: string): ChannelsFileConfig {
   if (!fs.existsSync(configPath)) return structuredClone(DEFAULT_CONFIG)
 
   const raw = parseYaml(fs.readFileSync(configPath, "utf-8"))
-  if (!isRecord(raw)) throw new Error(`${configPath} 必须是 YAML mapping`)
+  if (!isRecord(raw)) throw new Error(`${configPath} must be a YAML mapping`)
 
   const channelsRaw = isRecord(raw.channels) ? raw.channels : {}
   return {
@@ -226,13 +226,13 @@ export function buildBridgeEnv(projectDir: string, config: ChannelsFileConfig, c
 
 export function validateChannelReady(projectDir: string, channelId: ChannelId, config: ChannelsFileConfig) {
   if (!config.channels[channelId].enabled) {
-    return { ok: false as const, reason: "未启用" }
+    return { ok: false as const, reason: "Not enabled" }
   }
   if (!isChannelConfigured(projectDir, channelId, config)) {
     if (channelId === "weixin") {
-      return { ok: false as const, reason: "未登录，请运行: bunx @gatehouse/core channels login weixin" }
+      return { ok: false as const, reason: "Not logged in — run: bunx @gatehouse/core channels login weixin" }
     }
-    return { ok: false as const, reason: "缺少凭证，请运行: bunx @gatehouse/core channels login " + channelId }
+    return { ok: false as const, reason: "Missing credentials — run: bunx @gatehouse/core channels login " + channelId }
   }
   return { ok: true as const }
 }

@@ -198,6 +198,55 @@ test("refreshPortalOfflineContentCache incrementally updates changed skill files
   expect(bundle?.skills?.[portalOfflineSkillCacheKey("docs", "write")]?.markdown).toBe("# Version 2\n")
 })
 
+test("mergePortalOfflineDiskCache handles concurrent patches without write errors", async () => {
+  await Bun.$`rm -rf ${dir} && mkdir -p ${dir}/.gatehouse/portal/cache`.quiet()
+
+  const snapshot = {
+    project: "demo",
+    updated_at: "2026-06-14T00:00:00.000Z",
+    missions: [],
+    agents: [],
+    skills: [],
+  }
+
+  await mergePortalOfflineDiskCache(dir, { snapshot })
+
+  const jobs = Array.from({ length: 24 }, (_, index) =>
+    mergePortalOfflineDiskCache(dir, {
+      branding: { title: `brand-${index}` },
+      displayConfig: {
+        snapshot_poll_ms: 1000 + index,
+        team_stats_poll_ms: 5000,
+        office: { idle_wander: false, play_release: "seat" },
+      },
+      teamStats: {
+        project: "demo",
+        updated_at: "2026-06-14T00:00:00.000Z",
+        opencode_reachable: true,
+        outer: [],
+        missions: [
+          {
+            id: `m${index}`,
+            status: "done",
+            tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 }, total: 0 },
+            cost: 0,
+            duration_ms: 0,
+            roles: [],
+          },
+        ],
+      },
+    }),
+  )
+
+  await Promise.all(jobs)
+
+  const bundle = await readPortalOfflineDiskBundle(dir)
+  expect(bundle?.snapshot?.project).toBe("demo")
+  expect(bundle?.branding?.title).toBe("brand-23")
+  expect(bundle?.displayConfig?.snapshot_poll_ms).toBe(1023)
+  expect(bundle?.teamStats?.missions.at(-1)?.id).toBe("m23")
+})
+
 test("mergePortalOfflineDiskCache exports browser bundle to static-cache", async () => {
   const exportDir = path.join(dir, ".export-static-cache")
   const prev = process.env.GATEHOUSE_PORTAL_STATIC_CACHE_DIR

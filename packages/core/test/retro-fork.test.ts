@@ -5,8 +5,10 @@ import { tmpdir } from "node:os"
 import type { PluginInput } from "@opencode-ai/plugin"
 import type { ToolContext } from "@opencode-ai/plugin/tool"
 import { missionRetroTool } from "../src/tools/retro.ts"
-import { bootstrapTreeTool } from "../src/tools/bootstrap.ts"
+import { submitOrchestrationTool } from "../src/tools/submit-orchestration.ts"
 import { applySkillDomainsTool } from "../src/tools/apply-skill-domains.ts"
+import { readExtractManifest, readRetroManifest } from "../src/tree/store.ts"
+import { readMissionsDocument } from "../src/missions/store.ts"
 import { copyExampleMission } from "./copy-example-mission.ts"
 import { missionEntryToRecord } from "../src/missions/contract.ts"
 import { RegistryDatabase } from "../src/registry/db.ts"
@@ -14,8 +16,13 @@ import { isRecord, parseYaml } from "../src/yaml.ts"
 import { getRegistryStore } from "../src/registry/context.ts"
 import { OUTER_CURATOR_ID, OUTER_LEAD_ID } from "../src/registry/types.ts"
 import { seedSubmittedDelivery } from "./seed-delivery.ts"
+import { stopSandboxOrchestration } from "../src/orchestration/sandbox-runtime.ts"
 
 const scaffoldScript = path.join(import.meta.dir, "../script/scaffold.ts")
+
+function stopTestOrchestration(...missionIds: string[]) {
+  for (const missionId of missionIds) stopSandboxOrchestration(missionId)
+}
 
 function toolOutput(result: Awaited<ReturnType<ReturnType<typeof missionRetroTool>["execute"]>>) {
   return typeof result === "string" ? result : result.output
@@ -58,9 +65,9 @@ async function registerLeadForTest(pluginInput: PluginInput, sessionId = "ses_le
   })
 }
 
-describe("retro_fork_batch skill kickoffs", () => {
+describe("retro_batch skill kickoffs", () => {
   test("sends domain-skill-extract to exec sessions after jiyi assigns skill_domain", async () => {
-    const dir = await mkdtemp(path.join(tmpdir(), "gh-retro-fork-"))
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-retro-batch-"))
     try {
       await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
       await copyExampleMission(dir)
@@ -72,10 +79,6 @@ describe("retro_fork_batch skill kickoffs", () => {
           async create() {
             sessionCounter += 1
             return { id: `ses_${sessionCounter}` }
-          },
-          async fork(input: { path?: { id: string } }) {
-            sessionCounter += 1
-            return { id: `ses_fork_${sessionCounter}`, parent: input.path?.id }
           },
           async update() {},
           async promptAsync(input: {
@@ -105,12 +108,12 @@ describe("retro_fork_batch skill kickoffs", () => {
 
       const pluginInput = { directory: dir, client: mockClient } as unknown as PluginInput
       await registerJiyiForTest(pluginInput, "ses_curator")
-      const bootstrap = bootstrapTreeTool(pluginInput)
+      const bootstrap = submitOrchestrationTool(pluginInput)
       await bootstrap.execute({}, mockToolContext(dir, "architect"))
 
       const apply = applySkillDomainsTool(pluginInput)
       await apply.execute(
-        { assignments: JSON.stringify({ "node-doc": "docs" }) },
+        { assignments: { "node-doc": "docs" } },
         mockToolContext(dir, "ses_curator", "curator"),
       )
 
@@ -125,31 +128,28 @@ describe("retro_fork_batch skill kickoffs", () => {
       const parsed = parseYaml(output)
       if (!isRecord(parsed) || !isRecord(parsed.data)) throw new Error("unexpected tool output")
 
-      const skillKickoffs = parsed.data.skill_kickoffs
-      expect(Array.isArray(skillKickoffs)).toBe(true)
-      expect(skillKickoffs).toHaveLength(1)
-      if (!Array.isArray(skillKickoffs) || !isRecord(skillKickoffs[0])) throw new Error("bad skill_kickoffs")
-      expect(skillKickoffs[0].nodeId).toBe("node-doc")
-      expect(skillKickoffs[0].skillDomain).toBe("docs")
-      expect(skillKickoffs[0].delivery).toBe("sent")
+      expect(parsed.data.retro_sessions).toBe(1)
 
       const skillPrompts = promptCalls.filter((call) => call.text.includes("领域 skill 提炼"))
       expect(skillPrompts).toHaveLength(1)
-      expect(skillPrompts[0]?.sessionId).toBe("ses_2")
+      const extractDoc = await readExtractManifest(dir, "core-example-smoke-v1")
+      expect(skillPrompts[0]?.sessionId).toBe(extractDoc?.nodes["node-doc"]?.extract_session_id)
       expect(skillPrompts[0]?.text).toContain("docs")
       expect(skillPrompts[0]?.text).toContain("node-doc")
       expect(skillPrompts[0]?.text).toContain("gatehouse_skill_extract_record")
 
       const retroPrompts = promptCalls.filter((call) => call.text.includes("复盘任务"))
       expect(retroPrompts).toHaveLength(1)
-      expect(retroPrompts[0]?.sessionId.startsWith("ses_fork_")).toBe(true)
+      const retroDoc = await readRetroManifest(dir, "core-example-smoke-v1")
+      expect(retroPrompts[0]?.sessionId).toBe(retroDoc?.nodes["node-root"]?.retro_session_id)
     } finally {
+      stopTestOrchestration("core-example-smoke-v1")
       await rm(dir, { recursive: true, force: true })
     }
   })
 
-  test("forks solo root retro session and skill kickoff in parallel", async () => {
-    const dir = await mkdtemp(path.join(tmpdir(), "gh-retro-fork-solo-"))
+  test("creates solo root retro session and skill kickoff in parallel", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-retro-batch-solo-"))
     try {
       await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
       const missionId = "solo-root-mission"
@@ -217,9 +217,138 @@ export default async function orchestrate(ctx) {
             sessionCounter += 1
             return { id: `ses_${sessionCounter}` }
           },
-          async fork(input: { path?: { id: string } }) {
+          async update() {},
+          async promptAsync(input: { path?: { id: string }; body?: { parts?: { text?: string }[] } }) {
+            promptCalls.push({
+              sessionId: input.path?.id ?? "",
+              text: input.body?.parts?.[0]?.text ?? "",
+            })
+          },
+          async messages() {
+            return { data: [] }
+          },
+          async get() {
+            return { data: { time: { created: 0, updated: 1000 } } }
+          },
+          async status() {
+            return { data: {} }
+          },
+          async todo() {
+            return { data: [] }
+          },
+        },
+      }
+
+      const pluginInput = { directory: dir, client: mockClient } as unknown as PluginInput
+      await registerJiyiForTest(pluginInput, "ses_curator")
+      await submitOrchestrationTool(pluginInput).execute({}, mockToolContext(dir, "architect"))
+      await applySkillDomainsTool(pluginInput).execute(
+        { assignments: { "node-root": "docs" } },
+        mockToolContext(dir, "ses_curator", "curator"),
+      )
+
+      promptCalls.length = 0
+
+      await registerLeadForTest(pluginInput)
+      await seedSubmittedDelivery(dir, missionId)
+      const output = toolOutput(
+        await missionRetroTool(pluginInput).execute(
+          {},
+          mockToolContext(dir, "ses_lead", "lead"),
+        ),
+      )
+      const parsed = parseYaml(output)
+      if (!isRecord(parsed) || !isRecord(parsed.data)) throw new Error("unexpected tool output")
+
+      expect(parsed.data.retro_sessions).toBe(1)
+
+      const skillPrompts = promptCalls.filter((call) => call.text.includes("领域 skill 提炼"))
+      expect(skillPrompts).toHaveLength(1)
+      const extractSolo = await readExtractManifest(dir, missionId)
+      expect(skillPrompts[0]?.sessionId).toBe(extractSolo?.nodes["node-root"]?.extract_session_id)
+
+      const retroPrompts = promptCalls.filter((call) => call.text.includes("复盘任务"))
+      expect(retroPrompts).toHaveLength(1)
+      const retroSolo = await readRetroManifest(dir, missionId)
+      expect(retroPrompts[0]?.sessionId).toBe(retroSolo?.nodes["node-root"]?.retro_session_id)
+      expect(retroPrompts[0]?.text).toContain("node-root")
+    } finally {
+      stopTestOrchestration("solo-root-mission")
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  test("skips skill kickoff when manifest has no skill_domain", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-retro-batch-empty-"))
+    try {
+      await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
+      await copyExampleMission(dir)
+
+      let sessionCounter = 0
+      const mockClient = {
+        session: {
+          async create() {
             sessionCounter += 1
-            return { id: `ses_fork_${sessionCounter}`, parent: input.path?.id }
+            return { id: `ses_${sessionCounter}` }
+          },
+          async update() {},
+          async promptAsync() {},
+          async messages() {
+            return { data: [] }
+          },
+          async get() {
+            return { data: { time: { created: 0, updated: 1000 } } }
+          },
+          async status() {
+            return { data: {} }
+          },
+          async todo() {
+            return { data: [] }
+          },
+        },
+      }
+
+      const pluginInput = { directory: dir, client: mockClient } as unknown as PluginInput
+      await registerJiyiForTest(pluginInput, "ses_curator")
+      await submitOrchestrationTool(pluginInput).execute(
+        {},
+        mockToolContext(dir, "architect"),
+      )
+      await applySkillDomainsTool(pluginInput).execute(
+        { assignments: {} },
+        mockToolContext(dir, "ses_curator", "curator"),
+      )
+
+      await registerLeadForTest(pluginInput)
+      await seedSubmittedDelivery(dir, "core-example-smoke-v1")
+      const output = toolOutput(
+        await missionRetroTool(pluginInput).execute(
+          {},
+          mockToolContext(dir, "ses_lead", "lead"),
+        ),
+      )
+      const parsed = parseYaml(output)
+      if (!isRecord(parsed) || !isRecord(parsed.data)) throw new Error("unexpected tool output")
+      expect(parsed.data.retro_sessions).toBe(1)
+    } finally {
+      stopTestOrchestration("core-example-smoke-v1")
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  test("second mission_retro call is idempotent when retro already started", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-retro-idempotent-"))
+    try {
+      await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
+      await copyExampleMission(dir)
+
+      let sessionCounter = 0
+      const promptCalls: Array<{ sessionId: string; text: string }> = []
+      const mockClient = {
+        session: {
+          async create() {
+            sessionCounter += 1
+            return { id: `ses_${sessionCounter}` }
           },
           async update() {},
           async promptAsync(input: { path?: { id: string }; body?: { parts?: { text?: string }[] } }) {
@@ -245,107 +374,46 @@ export default async function orchestrate(ctx) {
 
       const pluginInput = { directory: dir, client: mockClient } as unknown as PluginInput
       await registerJiyiForTest(pluginInput, "ses_curator")
-      await bootstrapTreeTool(pluginInput).execute({}, mockToolContext(dir, "architect"))
+      await submitOrchestrationTool(pluginInput).execute({}, mockToolContext(dir, "architect"))
       await applySkillDomainsTool(pluginInput).execute(
-        { assignments: JSON.stringify({ "node-root": "docs" }) },
-        mockToolContext(dir, "ses_curator", "curator"),
-      )
-
-      promptCalls.length = 0
-
-      await registerLeadForTest(pluginInput)
-      await seedSubmittedDelivery(dir, missionId)
-      const output = toolOutput(
-        await missionRetroTool(pluginInput).execute(
-          {},
-          mockToolContext(dir, "ses_lead", "lead"),
-        ),
-      )
-      const parsed = parseYaml(output)
-      if (!isRecord(parsed) || !isRecord(parsed.data)) throw new Error("unexpected tool output")
-
-      expect(parsed.data.retro_order).toEqual(["node-root"])
-      expect(parsed.data.forked).toBe(1)
-
-      const skillKickoffs = parsed.data.skill_kickoffs
-      expect(Array.isArray(skillKickoffs)).toBe(true)
-      expect(skillKickoffs).toHaveLength(1)
-      if (!Array.isArray(skillKickoffs) || !isRecord(skillKickoffs[0])) throw new Error("bad skill_kickoffs")
-      expect(skillKickoffs[0].nodeId).toBe("node-root")
-      expect(skillKickoffs[0].delivery).toBe("sent")
-
-      const skillPrompts = promptCalls.filter((call) => call.text.includes("领域 skill 提炼"))
-      expect(skillPrompts).toHaveLength(1)
-      expect(skillPrompts[0]?.sessionId).toBe("ses_1")
-
-      const retroPrompts = promptCalls.filter((call) => call.text.includes("复盘任务"))
-      expect(retroPrompts).toHaveLength(1)
-      expect(retroPrompts[0]?.sessionId.startsWith("ses_fork_")).toBe(true)
-      expect(retroPrompts[0]?.text).toContain("node-root")
-    } finally {
-      await rm(dir, { recursive: true, force: true })
-    }
-  })
-
-  test("skips skill kickoff when manifest has no skill_domain", async () => {
-    const dir = await mkdtemp(path.join(tmpdir(), "gh-retro-fork-empty-"))
-    try {
-      await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
-      await copyExampleMission(dir)
-
-      let sessionCounter = 0
-      const mockClient = {
-        session: {
-          async create() {
-            sessionCounter += 1
-            return { id: `ses_${sessionCounter}` }
-          },
-          async fork() {
-            sessionCounter += 1
-            return { id: `ses_fork_${sessionCounter}` }
-          },
-          async update() {},
-          async promptAsync() {},
-          async messages() {
-            return { data: [] }
-          },
-          async get() {
-            return { data: { time: { created: 0, updated: 1000 } } }
-          },
-          async status() {
-            return { data: {} }
-          },
-          async todo() {
-            return { data: [] }
-          },
-        },
-      }
-
-      const pluginInput = { directory: dir, client: mockClient } as unknown as PluginInput
-      await registerJiyiForTest(pluginInput, "ses_curator")
-      await bootstrapTreeTool(pluginInput).execute(
-        {},
-        mockToolContext(dir, "architect"),
-      )
-      await applySkillDomainsTool(pluginInput).execute(
-        { assignments: "{}" },
+        { assignments: {} },
         mockToolContext(dir, "ses_curator", "curator"),
       )
 
       await registerLeadForTest(pluginInput)
       await seedSubmittedDelivery(dir, "core-example-smoke-v1")
-      const output = toolOutput(
-        await missionRetroTool(pluginInput).execute(
-          {},
-          mockToolContext(dir, "ses_lead", "lead"),
-        ),
+
+      const retro = missionRetroTool(pluginInput)
+      const leadCtx = mockToolContext(dir, "ses_lead", "lead")
+
+      const firstOutput = toolOutput(await retro.execute({}, leadCtx))
+      const firstParsed = parseYaml(firstOutput)
+      if (!isRecord(firstParsed) || !isRecord(firstParsed.data)) throw new Error("unexpected first tool output")
+      expect(firstParsed.ok).toBe(true)
+      expect(firstParsed.data.already_started).toBeUndefined()
+
+      const sessionsAfterFirst = sessionCounter
+      const promptsAfterFirst = promptCalls.length
+      const retroAfterFirst = await readRetroManifest(dir, "core-example-smoke-v1")
+
+      const secondOutput = toolOutput(await retro.execute({}, leadCtx))
+      const secondParsed = parseYaml(secondOutput)
+      if (!isRecord(secondParsed) || !isRecord(secondParsed.data)) throw new Error("unexpected second tool output")
+      expect(secondParsed.ok).toBe(true)
+      expect(secondParsed.data.already_started).toBe(true)
+      expect(sessionCounter).toBe(sessionsAfterFirst)
+      expect(promptCalls.length).toBe(promptsAfterFirst)
+
+      const missions = await readMissionsDocument(dir)
+      const mission = missions.missions.find((entry) => entry.id === "core-example-smoke-v1")
+      expect(mission?.status).toBe("retro")
+
+      const retroAfterSecond = await readRetroManifest(dir, "core-example-smoke-v1")
+      expect(retroAfterSecond?.nodes["node-root"]?.retro_session_id).toBe(
+        retroAfterFirst?.nodes["node-root"]?.retro_session_id,
       )
-      const parsed = parseYaml(output)
-      if (!isRecord(parsed) || !isRecord(parsed.data)) throw new Error("unexpected tool output")
-      const skillKickoffs = parsed.data.skill_kickoffs
-      expect(Array.isArray(skillKickoffs)).toBe(true)
-      expect(skillKickoffs).toHaveLength(0)
     } finally {
+      stopTestOrchestration("core-example-smoke-v1")
       await rm(dir, { recursive: true, force: true })
     }
   })

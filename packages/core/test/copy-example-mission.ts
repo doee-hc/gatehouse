@@ -13,7 +13,6 @@ function exampleMissionEntry(): MissionEntry {
   return {
     id: missionId,
     status: "running",
-    priority: "P1",
     objective: "完善 packages/core 示例说明，验证 scaffold 与 mission.script.ts 可解析",
     done_when: [
       "packages/core/README.md 含「示例 Mission」章节",

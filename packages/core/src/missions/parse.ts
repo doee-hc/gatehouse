@@ -6,7 +6,6 @@ import { normalizeMissionOverrideFields } from "./normalize.ts"
 export type MissionEntry = {
   id: string
   status: string
-  priority?: string
   objective?: string
   done_when: string[]
   must_not: string[]
@@ -24,24 +23,27 @@ export type MissionsDocument = {
   missions: MissionEntry[]
 }
 
-function formatDoneWhenItem(value: unknown) {
+function formatDoneWhenItem(value: unknown, locale: GatehouseLocale) {
   if (typeof value === "string") return value
   if (isRecord(value)) {
     const pathValue = readString(value.path)
-    if (pathValue) return `文件存在: ${pathValue}`
+    if (pathValue) return gatehouseMessage("doneWhen.fileExists", locale, { path: pathValue })
   }
   return undefined
 }
 
-export function formatListItems(values: unknown) {
+export function formatListItems(values: unknown, locale: GatehouseLocale = DEFAULT_GATEHOUSE_LOCALE) {
   if (!Array.isArray(values)) return []
   return values.flatMap((item) => {
-    const formatted = typeof item === "string" ? item : formatDoneWhenItem(item)
+    const formatted = typeof item === "string" ? item : formatDoneWhenItem(item, locale)
     return formatted ? [formatted] : []
   })
 }
 
-function parseMissionEntry(item: Record<string, unknown>): MissionEntry | undefined {
+function parseMissionEntry(
+  item: Record<string, unknown>,
+  locale: GatehouseLocale,
+): MissionEntry | undefined {
   const id = readString(item.id)
   const status = readString(item.status)
   if (!id || !status) return undefined
@@ -53,9 +55,8 @@ function parseMissionEntry(item: Record<string, unknown>): MissionEntry | undefi
   return {
     id,
     status,
-    done_when: formatListItems(item.done_when),
-    must_not: formatListItems(item.must_not),
-    ...(readString(item.priority) && { priority: readString(item.priority) }),
+    done_when: formatListItems(item.done_when, locale),
+    must_not: formatListItems(item.must_not, locale),
     ...(readString(item.objective) && { objective: readString(item.objective) }),
     ...overrides,
     ...(readString(item.started_at) && { started_at: readString(item.started_at) }),
@@ -63,14 +64,17 @@ function parseMissionEntry(item: Record<string, unknown>): MissionEntry | undefi
   }
 }
 
-export function parseMissionsFile(text: string): MissionsDocument {
+export function parseMissionsFile(
+  text: string,
+  locale: GatehouseLocale = DEFAULT_GATEHOUSE_LOCALE,
+): MissionsDocument {
   const raw = parseYaml(text)
   if (!isRecord(raw)) throw new Error("missions.yaml must be a mapping")
   const schema_version = typeof raw.schema_version === "number" ? raw.schema_version : 1
   const missions = Array.isArray(raw.missions)
     ? raw.missions.flatMap((item): MissionEntry[] => {
         if (!isRecord(item)) return []
-        const entry = parseMissionEntry(item)
+        const entry = parseMissionEntry(item, locale)
         return entry ? [entry] : []
       })
     : []
@@ -115,7 +119,7 @@ export function lingeringPortalMissionId(doc: MissionsDocument) {
   return newestMission(done).id
 }
 
-export function assertCanStartRunning(doc: MissionsDocument) {
+export function assertCanStartRunning(doc: MissionsDocument, registry?: import("../registry/store.ts").RegistryStore) {
   const running = runningMissionIds(doc)
   if (running.length > 0) {
     throw new Error(
@@ -124,8 +128,15 @@ export function assertCanStartRunning(doc: MissionsDocument) {
   }
   const retro = retroMissionIds(doc)
   if (retro.length > 0) {
+    let detail = retro.join(", ")
+    if (registry && retro.length === 1) {
+      const readiness = registry.retroCompleteReadiness(retro[0]!)
+      if (!readiness.ready) {
+        detail += ` (rollup pending: ${readiness.pending.join(", ")})`
+      }
+    }
     throw new Error(
-      `Cannot start a new mission while retro is in progress: ${retro.join(", ")}`,
+      `Cannot start a new mission while retro is in progress: ${detail}`,
     )
   }
 }
@@ -135,7 +146,7 @@ export function assertMissionRunning(doc: MissionsDocument, missionId: string) {
   if (!mission) throw new Error(`Mission not found in missions.yaml: ${missionId}`)
   if (mission.status !== "running") {
     throw new Error(
-      `Mission ${missionId} must be running before bootstrap (current status: ${mission.status})`,
+      `Mission ${missionId} must be running before submitting orchestration (current status: ${mission.status})`,
     )
   }
 }

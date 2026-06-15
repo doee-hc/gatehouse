@@ -10,6 +10,12 @@ export function spawnIdForAgent(agent: Pick<RegistryAgent, "scope" | "profile" |
   if (agent.scope === "retro" && agent.nodeId) {
     return `retro-${agent.nodeId.replace(/[^a-zA-Z0-9_-]/g, "-")}`
   }
+  if (agent.scope === "extract" && agent.nodeId) {
+    return `extract-${agent.nodeId.replace(/[^a-zA-Z0-9_-]/g, "-")}`
+  }
+  if (agent.scope === "verify" && agent.nodeId) {
+    return `verify-${agent.nodeId.replace(/[^a-zA-Z0-9_-]/g, "-")}`
+  }
   if (agent.nodeId) return agent.nodeId.replace(/[^a-zA-Z0-9_-]/g, "-")
   return agent.agentId.replace(/:/g, "-")
 }

@@ -120,7 +120,7 @@ export async function promptSession(
   await waitForSessionIdle(client, config, input.sessionId, config.leadReplyTimeoutMs)
   const after = await latestAssistantText(client, config, input.sessionId)
   if (after && after !== before) return after
-  return after || "已收到，但没有返回文本回复。"
+  return after || "Received, but no text reply was returned."
 }
 
 export async function promptLead(client: OpencodeClient, config: ChannelBridgeConfig, sessionId: string, text: string) {
@@ -132,7 +132,7 @@ export async function verifyOpencode(config: ChannelBridgeConfig) {
   const health = await client.session.list({ query: { directory: config.projectDir } })
   if (health.error) {
     throw new Error(
-      `无法连接 OpenCode (${config.opencodeUrl})，请先运行: bun run dev ${config.projectDir}`,
+      `Cannot connect to OpenCode (${config.opencodeUrl}) — run: bun run dev ${config.projectDir}`,
     )
   }
 }

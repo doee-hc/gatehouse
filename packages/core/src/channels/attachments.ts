@@ -43,14 +43,14 @@ export function mimeFromFilename(filename: string) {
 
 export async function saveAttachment(projectDir: string, filename: string, data: Uint8Array) {
   if (data.byteLength > MAX_ATTACHMENT_BYTES) {
-    throw new Error(`附件超过 ${MAX_ATTACHMENT_BYTES / 1024 / 1024}MB 限制`)
+    throw new Error(`Attachment exceeds ${MAX_ATTACHMENT_BYTES / 1024 / 1024}MB limit`)
   }
   const dir = resolveAttachmentsDir(projectDir)
   await mkdir(dir, { recursive: true })
   const safeName = sanitizeFilename(filename)
   const filepath = path.join(dir, safeName)
   if (!path.resolve(filepath).startsWith(path.resolve(dir))) {
-    throw new Error("附件路径无效")
+    throw new Error("Invalid attachment path")
   }
   await Bun.write(filepath, data)
   return filepath
@@ -59,15 +59,15 @@ export async function saveAttachment(projectDir: string, filename: string, data:
 export async function downloadUrlAttachment(projectDir: string, url: string, filename: string) {
   const response = await fetch(url)
   if (!response.ok) {
-    throw new Error(`下载失败: HTTP ${response.status}`)
+    throw new Error(`Download failed: HTTP ${response.status}`)
   }
   const contentLength = response.headers.get("content-length")
   if (contentLength && Number(contentLength) > MAX_ATTACHMENT_BYTES) {
-    throw new Error(`附件超过 ${MAX_ATTACHMENT_BYTES / 1024 / 1024}MB 限制`)
+    throw new Error(`Attachment exceeds ${MAX_ATTACHMENT_BYTES / 1024 / 1024}MB limit`)
   }
   const data = new Uint8Array(await response.arrayBuffer())
   if (data.byteLength > MAX_ATTACHMENT_BYTES) {
-    throw new Error(`附件超过 ${MAX_ATTACHMENT_BYTES / 1024 / 1024}MB 限制`)
+    throw new Error(`Attachment exceeds ${MAX_ATTACHMENT_BYTES / 1024 / 1024}MB limit`)
   }
   const mime = mimeFromContentType(response.headers.get("content-type"), mimeFromFilename(filename))
   const filepath = await saveAttachment(projectDir, filename, data)

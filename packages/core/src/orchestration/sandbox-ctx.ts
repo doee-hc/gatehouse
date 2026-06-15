@@ -1,6 +1,7 @@
 import { childNodeIdsFromSpec } from "../tree/parse.ts"
 import type { GatehouseLocale } from "../locale.ts"
 import type { TeamSpec } from "../tree/types.ts"
+import { orchestrationParallel, orchestrationPipeline } from "./primitives.ts"
 import type { MissionContext } from "./types.ts"
 import type { SandboxRpcRequest } from "./sandbox-protocol.ts"
 import {
@@ -49,17 +50,16 @@ export function createSandboxMissionContext(input: {
       })
     },
 
-    async waitForAll(nodeIds, _event, opts) {
-      await sendRpc({
-        op: "waitForAll",
-        nodeIds,
-        event: "complete",
-        ...(opts?.timeout && { timeout: opts.timeout }),
-      })
-    },
-
     async waitForRollup(rootNodeId) {
       await sendRpc({ op: "waitForRollup", rootNodeId })
+    },
+
+    async parallel(thunks) {
+      return orchestrationParallel(thunks)
+    },
+
+    async pipeline(items, ...stages) {
+      return orchestrationPipeline(items, ...stages)
     },
 
     phase(title) {

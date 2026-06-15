@@ -47,13 +47,13 @@ export async function runGatehouseDoctor(
     issues.push({
       level: "error",
       category: "System",
-      message: "未找到 OpenCode CLI，请先安装 https://opencode.ai",
+      message: "OpenCode CLI not found — install from https://opencode.ai",
     })
   } else if (!opencode.version) {
     issues.push({
       level: "warn",
       category: "System",
-      message: `OpenCode 已安装，但无法解析版本${opencode.raw ? ` (${opencode.raw})` : ""}`,
+      message: `OpenCode is installed but version could not be parsed${opencode.raw ? ` (${opencode.raw})` : ""}`,
     })
   } else {
     const check = satisfiesOpencodeVersion(opencode.version)
@@ -61,7 +61,7 @@ export async function runGatehouseDoctor(
       issues.push({
         level: "ok",
         category: "System",
-        message: `OpenCode ${opencode.version} 已安装`,
+        message: `OpenCode ${opencode.version} installed`,
       })
     } else {
       issues.push({ level: "error", category: "System", message: check.reason })
@@ -75,13 +75,13 @@ export async function runGatehouseDoctor(
     issues.push({
       level: "ok",
       category: "System",
-      message: version ? `Bun ${version} 可用` : "Bun 可用",
+      message: version ? `Bun ${version} available` : "Bun available",
     })
   } else {
     issues.push({
       level: "warn",
       category: "System",
-      message: "未找到 Bun — Gatehouse 插件运行时通常需要 Bun",
+      message: "Bun not found — Gatehouse plugin runtime usually requires Bun",
     })
   }
 
@@ -91,13 +91,13 @@ export async function runGatehouseDoctor(
     issues.push({
       level: "ok",
       category: "Config",
-      message: `全局 server 插件已注册 (${configPath})`,
+      message: `Global server plugin registered (${configPath})`,
     })
   } else {
     issues.push({
       level: "error",
       category: "Config",
-      message: `全局 OpenCode 配置缺少 @gatehouse/core — 运行: bunx @gatehouse/core install`,
+      message: `Global OpenCode config missing @gatehouse/core — run: bunx @gatehouse/core install`,
     })
   }
 
@@ -107,13 +107,13 @@ export async function runGatehouseDoctor(
     issues.push({
       level: "ok",
       category: "Config",
-      message: `全局 TUI 插件已注册 (${tuiPath})`,
+      message: `Global TUI plugin registered (${tuiPath})`,
     })
   } else {
     issues.push({
       level: "error",
       category: "Config",
-      message: `~/.config/opencode/tui.json 缺少 @gatehouse/core — 运行: bunx @gatehouse/core install`,
+      message: `~/.config/opencode/tui.json missing @gatehouse/core — run: bunx @gatehouse/core install`,
     })
   }
 
@@ -121,13 +121,13 @@ export async function runGatehouseDoctor(
     issues.push({
       level: "ok",
       category: "Config",
-      message: `全局 Gatehouse 配置已存在 (${gatehouseGlobalConfigPath()})`,
+      message: `Global Gatehouse config exists (${gatehouseGlobalConfigPath()})`,
     })
   } else {
     issues.push({
       level: "warn",
       category: "Config",
-      message: "缺少 ~/.config/gatehouse/config.yaml — install 时会自动创建",
+      message: "Missing ~/.config/gatehouse/config.yaml — created automatically during install",
     })
   }
 
@@ -137,13 +137,13 @@ export async function runGatehouseDoctor(
       issues.push({
         level: "ok",
         category: "Agents",
-        message: `${filename} 已同步`,
+        message: `${filename} synced`,
       })
     } else {
       issues.push({
         level: "error",
         category: "Agents",
-        message: `缺少 ${agentPath} — 运行: bunx @gatehouse/core install`,
+        message: `Missing ${agentPath} — run: bunx @gatehouse/core install`,
       })
     }
   }
@@ -153,20 +153,20 @@ export async function runGatehouseDoctor(
       issues.push({
         level: "error",
         category: "Project",
-        message: `项目目录不存在: ${root}`,
+        message: `Project directory does not exist: ${root}`,
       })
     } else if (!existsSync(gatehouseRoot(root))) {
       issues.push({
         level: "warn",
         category: "Project",
         message:
-          "缺少 .gatehouse/ — 运行 bunx @gatehouse/core scaffold -C <项目> 或在项目目录启动 opencode",
+          "Missing .gatehouse/ — run bunx @gatehouse/core scaffold -C <project> or start opencode in the project directory",
       })
     } else {
       issues.push({
         level: "ok",
         category: "Project",
-        message: `.gatehouse/ 已存在 (${gatehouseRoot(root)})`,
+        message: `.gatehouse/ exists (${gatehouseRoot(root)})`,
       })
 
       const projectConfigPath = projectOpencodeConfigPath(root)
@@ -175,28 +175,28 @@ export async function runGatehouseDoctor(
         const defaultAgent = projectConfig.default_agent
         const skillPaths = (projectConfig.skills as { paths?: string[] } | undefined)?.paths ?? []
         if (defaultAgent === "lead") {
-          issues.push({ level: "ok", category: "Project", message: "项目 default_agent=lead" })
+          issues.push({ level: "ok", category: "Project", message: "Project default_agent=lead" })
         } else {
           issues.push({
             level: "warn",
             category: "Project",
-            message: `项目 default_agent=${String(defaultAgent)}（期望 lead）`,
+            message: `Project default_agent=${String(defaultAgent)} (expected lead)`,
           })
         }
         if (skillPaths.includes(".gatehouse")) {
-          issues.push({ level: "ok", category: "Project", message: "skills.paths 包含 .gatehouse" })
+          issues.push({ level: "ok", category: "Project", message: "skills.paths includes .gatehouse" })
         } else {
           issues.push({
             level: "warn",
             category: "Project",
-            message: "项目 opencode.jsonc 未包含 skills.paths: [\".gatehouse\"]",
+            message: "Project opencode.jsonc missing skills.paths: [\".gatehouse\"]",
           })
         }
       } else {
         issues.push({
           level: "warn",
           category: "Project",
-          message: "缺少项目 opencode.jsonc — scaffold 或首次启动 OpenCode 时会自动创建",
+          message: "Missing project opencode.jsonc — created by scaffold or on first OpenCode start",
         })
       }
     }
@@ -244,7 +244,7 @@ export async function runGatehouseDoctor(
       issues.push({
         level: "warn",
         category: "Models",
-        message: "未配置 models — 将使用 OpenCode 默认模型；可在 config.yaml 中设置",
+        message: "No models configured — OpenCode defaults will be used; set in config.yaml",
       })
     } else {
       for (const [profile, model] of configuredModels) {
@@ -265,7 +265,7 @@ export async function runGatehouseDoctor(
     issues.push({
       level: "warn",
       category: "Models",
-      message: "项目尚未 scaffold，跳过 models 检查",
+      message: "Project not scaffolded yet — skipping models check",
     })
   }
 
@@ -302,11 +302,11 @@ export async function runGatehouseDoctorCli(args: string[]) {
   const report = await runGatehouseDoctor(projectDir, probe, globalOnly ? "global" : "full")
   console.log(formatDoctorReport(report.issues))
   if (report.exitCode === 2) {
-    console.log("\nDoctor 完成，存在警告。")
+    console.log("\nDoctor finished with warnings.")
   } else if (report.exitCode === 1) {
-    console.log("\nDoctor 发现错误，请先修复后再启动 OpenCode。")
+    console.log("\nDoctor found errors — fix them before starting OpenCode.")
   } else {
-    console.log("\nDoctor 全部通过。")
+    console.log("\nDoctor passed.")
   }
   process.exitCode = report.exitCode
 }

@@ -5,7 +5,6 @@ summary: |
   确认后改为 status: confirmed，并填写 confirmed_at / confirmed_by。
 constraints:
   - "示例：不自动修改生产配置"
-  - "示例：P0 任务仍须用户显式确认后再启动"
 # confirmed_at: "2026-01-01T00:00:00.000Z"
 # confirmed_by: user
 # review_after: "2026-07-01"

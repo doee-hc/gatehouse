@@ -11,12 +11,12 @@ import {
   runDeliveryPrecheck,
 } from "../delivery/criteria.ts"
 import { parseEvidenceInput } from "../delivery/evidence.ts"
-import { pendingMissionPublishPaths } from "../delivery/publish-artifacts.ts"
 import { submitDeliveryOnRootComplete } from "../delivery/root-complete.ts"
 import { buildCriteriaForMission } from "../delivery/store.ts"
 import { readMissionsDocument } from "../missions/store.ts"
 import { RegistryDatabase } from "../registry/db.ts"
 import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
+import { summarizeExecutionNodes } from "./helpers.ts"
 
 function allOtherNodesDone(
   state: NonNullable<ReturnType<typeof readOrchestrationState>>,
@@ -32,25 +32,29 @@ export function executionCompleteTool(input: PluginInput) {
     args: {
       summary: tool.schema.string().min(1).describe("Short completion summary (required)"),
       artifacts: tool.schema
-        .string()
+        .array(
+          tool.schema.object({
+            path: tool.schema.string(),
+            description: tool.schema.string(),
+          }),
+        )
         .optional()
-        .describe(
-          'Project deliverable paths with descriptions as JSON array: [{"path":"docs/foo.md","description":"..."}]',
-        ),
-      risks: tool.schema
-        .string()
-        .optional()
-        .describe('Open risks or unfinished items as JSON array of strings, or omit if none'),
+        .describe("Project deliverable paths with descriptions"),
+      risks: tool.schema.array(tool.schema.string()).optional().describe("Open risks or unfinished items; omit if none"),
       force_reason: tool.schema
         .string()
         .optional()
         .describe("Structural root only, final delivery: required when done_when precheck has unmet items"),
       evidence: tool.schema
-        .string()
+        .array(
+          tool.schema.object({
+            criterion_id: tool.schema.number(),
+            status: tool.schema.enum(["met", "unmet", "partial", "skipped"]),
+            proof: tool.schema.string().optional(),
+          }),
+        )
         .optional()
-        .describe(
-          'Structural root only, final delivery: evidence array as JSON string or array: [{"criterion_id":0,"status":"met","proof":"..."}]',
-        ),
+        .describe("Structural root only, final delivery: evidence per criterion"),
     },
     async execute(args, context) {
       const toolName = "gatehouse_execution_complete"
@@ -86,7 +90,7 @@ export function executionCompleteTool(input: PluginInput) {
             output: toolFail(
               toolName,
               "NO_ORCHESTRATION",
-              "Mission has no orchestration runtime; ensure mission.script.ts was bootstrapped",
+              "Mission has no orchestration runtime; ensure mission.script.ts was submitted via gatehouse_submit_orchestration",
             ),
             ...toolMetadata(toolName),
           }
@@ -213,14 +217,10 @@ export function executionCompleteTool(input: PluginInput) {
             node_id: result.node_id,
             activated: "activated" in result ? result.activated : result.unblocked,
             all_nodes_done: result.all_done,
-            summary,
-            ...(artifacts?.length && { artifacts }),
-            ...(risks?.length && { risks }),
             ...(delivery && {
               delivery_version: delivery.record.version,
               delivery_status: delivery.record.status,
               lead_delivery: delivery.lead_delivery,
-              pending_publish_paths: pendingMissionPublishPaths(delivery.record.criteria),
             }),
           }),
           ...toolMetadata(toolName),
@@ -236,7 +236,7 @@ export function executionCompleteTool(input: PluginInput) {
 export function executionReworkTool(input: PluginInput) {
   return tool({
     description:
-      "In-flight correction: reopen a dependency (blocked_by) and block yourself until it calls gatehouse_execution_complete again. Scope is only what you put in reason — not a full redo. You must still be running. Do not use for Q&A or nudges while the peer is still working — gatehouse_send_message. Do not use after you already completed this phase.",
+      "In-flight correction: reopen a dependency (blocked_by) and block yourself until it calls gatehouse_execution_complete again. Scope is only what you put in reason — not a full redo. You must still be running. Do not use after you already completed this phase.",
     args: {
       blocked_by: tool.schema.string().min(1).describe("node_id of the dependency to reopen for correction"),
       reason: tool.schema
@@ -268,7 +268,7 @@ export function executionReworkTool(input: PluginInput) {
             output: toolFail(
               toolName,
               "NO_ORCHESTRATION",
-              "Mission has no orchestration runtime; ensure mission.script.ts was bootstrapped",
+              "Mission has no orchestration runtime; ensure mission.script.ts was submitted via gatehouse_submit_orchestration",
             ),
             ...toolMetadata(toolName),
           }
@@ -386,10 +386,8 @@ export function executionStatusTool(input: PluginInput) {
         return {
           output: toolOk(toolName, {
             mission_id: missionId,
-            orchestration: true,
             phase: state.phase,
-            updated_at: state.updated_at,
-            nodes: state.nodes,
+            nodes: summarizeExecutionNodes(state.nodes),
           }),
           ...toolMetadata(toolName),
         }

@@ -129,7 +129,6 @@ export function parseDeliveryRecord(raw: unknown): DeliveryRecord | undefined {
     criteria,
     evidence,
     precheck,
-    ...(readString(raw.report_path) && { report_path: readString(raw.report_path) }),
     ...(readString(raw.blog_post_id) && { blog_post_id: readString(raw.blog_post_id) }),
     ...(Array.isArray(raw.pending_publish_paths) && {
       pending_publish_paths: raw.pending_publish_paths.filter((item): item is string => typeof item === "string"),

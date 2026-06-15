@@ -7,13 +7,12 @@ import type { ToolContext } from "@opencode-ai/plugin/tool"
 import { getRegistryStore } from "../src/registry/context.ts"
 import { OUTER_ARCHITECT_ID } from "../src/registry/types.ts"
 import { initOrchestrationState, writeOrchestrationState } from "../src/orchestration/state.ts"
-import { startSandboxOrchestration, stopSandboxOrchestration } from "../src/orchestration/sandbox-runtime.ts"
-import { parseMissionScriptSource } from "../src/orchestration/script-parse.ts"
+import { stopSandboxOrchestration } from "../src/orchestration/sandbox-runtime.ts"
+import { loadMissionScript } from "../src/orchestration/script-load.ts"
 import { notifyArchitectOrchestrationFailure } from "../src/orchestration/notify.ts"
-import { orchestrationCanRetry } from "../src/orchestration/retry.ts"
-import { topologicalNodeOrder } from "../src/tree/parse.ts"
+import { orchestrationNeedsResume } from "../src/orchestration/resume.ts"
 import { writeManifest } from "../src/tree/store.ts"
-import { bootstrapTreeTool } from "../src/tools/bootstrap.ts"
+import { submitOrchestrationTool } from "../src/tools/submit-orchestration.ts"
 import { writeMissionsDocument } from "../src/missions/store.ts"
 import { seedActiveMissionRegistry } from "./copy-example-mission.ts"
 
@@ -57,7 +56,6 @@ async function seedRunningMission(dir: string, missionId: string) {
       {
         id: missionId,
         status: "running",
-        priority: "P1",
         objective: "test mission",
         done_when: ["done"],
         must_not: [],
@@ -68,38 +66,29 @@ async function seedRunningMission(dir: string, missionId: string) {
   seedActiveMissionRegistry(dir, missionId)
 }
 
-function toolOutput(result: Awaited<ReturnType<ReturnType<typeof bootstrapTreeTool>["execute"]>>) {
+function toolOutput(result: Awaited<ReturnType<ReturnType<typeof submitOrchestrationTool>["execute"]>>) {
   return typeof result === "string" ? result : result.output
 }
 
 describe("orchestration failure feedback", () => {
-  test("startSandboxOrchestration returns error for invalid orchestrate syntax", async () => {
+  test("loadMissionScript rejects invalid orchestrate syntax before sandbox start", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-orch-fail-"))
     try {
       const missionId = "orch-fail-m1"
-      const parsed = parseMissionScriptSource(brokenScript, missionId)
-      const script = {
-        team: parsed.team,
-        orchestrateSource: parsed.orchestrateSource!,
-        scriptSource: brokenScript,
-        scriptHash: parsed.scriptHash,
-        scriptPath: path.join(dir, ".gatehouse/trees", missionId, "mission.script.ts"),
+      const dest = path.join(dir, ".gatehouse/trees", missionId)
+      await Bun.$`mkdir -p ${dest}`.quiet()
+      await Bun.write(path.join(dest, "mission.script.ts"), brokenScript)
+
+      let thrown: unknown
+      try {
+        await loadMissionScript(dir, missionId)
+      } catch (error) {
+        thrown = error
       }
-      writeOrchestrationState(dir, initOrchestrationState(missionId, topologicalNodeOrder(script.team)))
-
-      const pluginInput = {
-        directory: dir,
-        client: { session: { async promptAsync() {}, async status() { return { data: {} } } } },
-      } as unknown as PluginInput
-      const store = await getRegistryStore(pluginInput)
-      store.registerInnerNode({ missionId, nodeId: "leaf", sessionId: "ses_leaf", profile: "build-root" })
-
-      const started = await startSandboxOrchestration({ plugin: pluginInput, store, script })
-      expect(started.status).toBe("error")
-      if (started.status !== "error") return
-      expect(started.message).toContain("Unexpected identifier")
+      expect(thrown !== undefined).toBe(true)
+      const message = thrown instanceof Error ? thrown.message : String(thrown)
+      expect(message).toContain("Unexpected identifier")
     } finally {
-      stopSandboxOrchestration("orch-fail-m1")
       await rm(dir, { recursive: true, force: true })
     }
   })
@@ -132,13 +121,105 @@ describe("orchestration failure feedback", () => {
       })
       expect(result.delivery).toBe("sent")
       expect(delivered[0]).toContain("Unexpected identifier 'ai'")
-      expect(delivered[0]).toContain("gatehouse_bootstrap_tree")
+      expect(delivered[0]).toContain("gatehouse_submit_orchestration")
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
   })
 
-  test("architect can restart orchestration via bootstrap_tree after fix", async () => {
+  test("notifyArchitectOrchestrationFailure skips stale failure when script hash changed", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-orch-notify-stale-"))
+    try {
+      const missionId = "orch-fail-m1"
+      const dest = path.join(dir, ".gatehouse/trees", missionId)
+      await Bun.$`mkdir -p ${dest}`.quiet()
+      await Bun.write(path.join(dest, "mission.script.ts"), brokenScript.replace("orch-fail-m1", missionId))
+
+      const pluginInput = {
+        directory: dir,
+        client: { session: { async promptAsync() {}, async status() { return { data: {} } } } },
+      } as unknown as PluginInput
+      const store = await getRegistryStore(pluginInput)
+      store.register({
+        agentId: OUTER_ARCHITECT_ID,
+        scope: "outer",
+        profile: "architect",
+        sessionId: "ses_architect",
+        displayName: "Architect",
+      })
+
+      const delivered: string[] = []
+      store.deliverSystemMessage = async (_agent, content) => {
+        delivered.push(content)
+        return { status: "sent" as const }
+      }
+
+      const fixedScript = `
+export const team = {
+  mission_id: "${missionId}",
+  root: "leaf",
+  nodes: { leaf: { parent: null, description: "leaf" } },
+}
+export default async function orchestrate(ctx) {
+  await ctx.setBrief("leaf", { your_work: ["work"], acceptance_slice: ["done"] })
+  await ctx.prompt("leaf", { text: ctx.template.workOrder("leaf"), reply: true })
+  await ctx.waitFor("leaf", "complete")
+}
+`
+      await Bun.write(path.join(dest, "mission.script.ts"), fixedScript)
+
+      const result = await notifyArchitectOrchestrationFailure(store, dir, {
+        missionId,
+        error: "Unexpected identifier 'ai'",
+        scriptHash: "0000000000000000000000000000000000000000000000000000000000000000",
+      })
+      expect(result.delivery).toBe("skipped")
+      expect(delivered).toHaveLength(0)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  test("submit_orchestration dry-run failure does not notify architect via system message", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-orch-submit-dryrun-"))
+    try {
+      const missionId = "orch-fail-m1"
+      const dest = path.join(dir, ".gatehouse/trees", missionId)
+      await Bun.$`mkdir -p ${dest}`.quiet()
+      await Bun.write(path.join(dest, "mission.script.ts"), brokenScript)
+      await seedRunningMission(dir, missionId)
+
+      const pluginInput = {
+        directory: dir,
+        client: { session: { async promptAsync() {}, async status() { return { data: {} } } } },
+      } as unknown as PluginInput
+      const store = await getRegistryStore(pluginInput)
+      store.register({
+        agentId: OUTER_ARCHITECT_ID,
+        scope: "outer",
+        profile: "architect",
+        sessionId: "ses_architect",
+        displayName: "Architect",
+      })
+
+      const delivered: string[] = []
+      store.deliverSystemMessage = async (_agent, content) => {
+        delivered.push(content)
+        return { status: "sent" as const }
+      }
+
+      const parsed = JSON.parse(
+        toolOutput(await submitOrchestrationTool(pluginInput).execute({}, mockToolContext(dir, "architect"))),
+      ) as { ok: boolean; error?: { message?: string } }
+      expect(parsed.ok).toBe(false)
+      expect(parsed.error?.message).toContain("Unexpected identifier")
+      expect(delivered).toHaveLength(0)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  test("architect can resume orchestration via submit_orchestration after restart", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-orch-retry-"))
     try {
       const missionId = "orch-retry-m1"
@@ -200,13 +281,13 @@ describe("orchestration failure feedback", () => {
       })
 
       const state = initOrchestrationState(missionId, ["node-root", "node-doc"])
-      expect(orchestrationCanRetry(state, false)).toBe(true)
+      expect(orchestrationNeedsResume(state, false)).toBe(true)
 
       const parsed = JSON.parse(
-        toolOutput(await bootstrapTreeTool(pluginInput).execute({}, mockToolContext(dir, "architect"))),
+        toolOutput(await submitOrchestrationTool(pluginInput).execute({}, mockToolContext(dir, "architect"))),
       ) as { ok: boolean; data?: { phase?: string } }
       expect(parsed.ok).toBe(true)
-      expect(parsed.data?.phase).toBe("orchestration_restarted")
+      expect(parsed.data?.phase).toBe("orchestration_resumed")
       expect(promptTexts.some((text) => text.includes("执行激活") || text.includes("execution activate"))).toBe(true)
     } finally {
       stopSandboxOrchestration("orch-retry-m1")

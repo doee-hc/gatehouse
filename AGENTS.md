@@ -1,8 +1,8 @@
-- 默认分支建议使用 `main` 或 `dev`。
-- 本地 typecheck：`bun run typecheck`（或 `bun run --cwd packages/core typecheck`）。`git push` 前会通过 husky 自动跑 typecheck。
-- 测试：`bun run test`（根目录会跑 core 与 bridge 包；core 内单独测：`bun run --cwd packages/core test`）。
-- 发布前：`bun run build` → `bun run --cwd packages/core pack`。
-- OpenCode 插件开发：`bun run dev <project>`；可选 `OPENCODE_ROOT` 指向 opencode 源码目录。
+- Prefer `main` or `dev` as the default branch.
+- Local typecheck: `bun run typecheck` (or `bun run --cwd packages/core typecheck`). Husky runs typecheck automatically before `git push`.
+- Tests: `bun run test` (root runs core and bridge packages; core only: `bun run --cwd packages/core test`).
+- Before release: `bun run build` → `bun run --cwd packages/core pack`.
+- OpenCode plugin development: `bun run dev <project>`; optionally set `OPENCODE_ROOT` to the OpenCode source directory.
 
 ## Commits and PR Titles
 

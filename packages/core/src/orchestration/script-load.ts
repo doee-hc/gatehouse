@@ -20,7 +20,7 @@ export async function loadMissionScript(
   const source = await readMissionScriptSource(projectDirectory, missionId)
   if (!source) return undefined
 
-  const dryRun = dryRunMissionScriptSource(source, missionId)
+  const dryRun = await dryRunMissionScriptSource(source, missionId)
   if (!dryRun.ok) {
     throw new MissionScriptParseError(dryRun.code, dryRun.message)
   }
@@ -33,5 +33,6 @@ export async function loadMissionScript(
     scriptSource: parsed.scriptSource,
     scriptHash: parsed.scriptHash,
     scriptPath,
+    plan: dryRun.plan,
   }
 }

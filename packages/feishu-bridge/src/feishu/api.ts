@@ -37,7 +37,7 @@ export function createFeishuClient(config: FeishuBridgeConfig): FeishuClient {
       expire?: number
     }
     if (data.code !== 0 || !data.tenant_access_token || !data.expire) {
-      throw new Error(`飞书 tenant_access_token 获取失败: ${data.msg}`)
+      throw new Error(`Failed to obtain Feishu tenant_access_token: ${data.msg}`)
     }
     tokenState = {
       token: data.tenant_access_token,
@@ -75,7 +75,7 @@ export function createFeishuClient(config: FeishuBridgeConfig): FeishuClient {
       return apiRequest(method, urlPath, body, retry + 1)
     }
     if (data.code !== 0) {
-      throw new Error(`飞书 API ${urlPath} 失败: ${data.code} ${data.msg}`)
+      throw new Error(`Feishu API ${urlPath} failed: ${data.code} ${data.msg}`)
     }
     return data
   }
@@ -102,7 +102,7 @@ export function createFeishuClient(config: FeishuBridgeConfig): FeishuClient {
         data?: { image_key?: string }
       }
       if (uploadData.code !== 0 || !uploadData.data?.image_key) {
-        throw new Error(`飞书图片上传失败: ${uploadData.code} ${uploadData.msg}`)
+        throw new Error(`Feishu image upload failed: ${uploadData.code} ${uploadData.msg}`)
       }
       await apiRequest("POST", `/im/v1/messages/${messageId}/reply`, {
         msg_type: "image",
@@ -121,7 +121,7 @@ export function createFeishuClient(config: FeishuBridgeConfig): FeishuClient {
       })
       if (!response.ok) {
         const body = await response.text().catch(() => "")
-        throw new Error(`飞书资源下载失败: ${response.status} ${body}`)
+        throw new Error(`Feishu resource download failed: ${response.status} ${body}`)
       }
       const data = new Uint8Array(await response.arrayBuffer())
       return { data, contentType: response.headers.get("content-type") }

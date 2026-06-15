@@ -1,7 +1,7 @@
 import type { Database } from "bun:sqlite"
 import type { MissionWatchState } from "./signals.ts"
 
-export type WatchdogKind = "execution" | "retro_record" | "skill_record"
+export type WatchdogKind = "execution" | "retro_record" | "skill_record" | "skill_verify_record"
 
 export const WATCHDOG_STATE_TABLE_SQL = `
     CREATE TABLE IF NOT EXISTS registry_watchdog_state (

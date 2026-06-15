@@ -2,7 +2,6 @@
 
 - id: <mission_id>
   status: queued
-  priority: P1
   objective: "one-line goal"
   done_when:
     - "verifiable acceptance criterion"

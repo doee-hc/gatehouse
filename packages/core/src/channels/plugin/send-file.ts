@@ -36,7 +36,6 @@ export function channelsSendFileTool(input: PluginInput) {
         return {
           output: toolOk(toolName, {
             queued: true,
-            session_id: context.sessionID,
             path: item.path,
             mime: item.mime,
             filename: item.filename,

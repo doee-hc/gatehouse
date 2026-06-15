@@ -6,6 +6,7 @@ import { GATEHOUSE_LOCALES } from "./locale.ts"
 import { readAgentNamesSync, renderGatehouseTemplate } from "./names.ts"
 import { bundledGatehouseTemplateRoot } from "./paths.ts"
 import { writeTemplateFile } from "./setup/template-copy.ts"
+import { ensureMetaSkillCopies } from "./skills/meta-skill-copies.ts"
 import { gatehouseTemplateDest, isLocaleSpecificGatehouseRelative } from "./template-paths.ts"
 
 async function listLocaleTemplateRelatives(locale: (typeof GATEHOUSE_LOCALES)[number]) {
@@ -52,7 +53,6 @@ export async function scaffoldGatehouse(projectRoot: string) {
     ".gatehouse/lead/reports",
     ".gatehouse/trees",
     ".gatehouse/internal/exports",
-    ".gatehouse/skills/retro-toolkit/tools",
     ".gatehouse/arbiter",
     ".gatehouse/skills/by-domain",
     ...GATEHOUSE_LOCALES.map((locale) => `.gatehouse/${locale}`),
@@ -77,6 +77,8 @@ export async function scaffoldGatehouse(projectRoot: string) {
   for (const locale of GATEHOUSE_LOCALES) {
     await copyLocaleTemplateTree(locale, root, renderNames)
   }
+
+  ensureMetaSkillCopies(root)
 
   const brandSrc = path.join(bundledGatehouseTemplateRoot("zh"), "brand", "logo.png")
   const brandDest = path.join(root, ".gatehouse", "brand", "logo.png")

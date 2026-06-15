@@ -6,6 +6,7 @@ import type { PluginInput } from "@opencode-ai/plugin"
 import type { ToolContext } from "@opencode-ai/plugin/tool"
 import { missionRetroTool } from "../src/tools/retro.ts"
 import { missionCompleteTool } from "../src/tools/mission-complete.ts"
+import { waitForAllMissionAgentsIdle, missionEndedOuterMessage } from "../src/missions/lifecycle.ts"
 import { getRegistryStore } from "../src/registry/context.ts"
 import { OUTER_LEAD_ID, OUTER_ARCHITECT_ID, OUTER_CURATOR_ID } from "../src/registry/types.ts"
 import { stringifyYaml, isRecord, parseYaml } from "../src/yaml.ts"
@@ -59,7 +60,9 @@ async function registerOuterTeam(pluginInput: PluginInput) {
 }
 
 describe("mission lifecycle tools", () => {
-  test("mission_retro rejects when inner session is busy", async () => {
+  test("mission_retro rejects when inner session stays busy", async () => {
+    const prevWait = process.env.GATEHOUSE_MISSION_IDLE_WAIT_MS
+    process.env.GATEHOUSE_MISSION_IDLE_WAIT_MS = "150"
     const dir = await mkdtemp(path.join(tmpdir(), "gh-mission-retro-busy-"))
     try {
       await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
@@ -125,6 +128,57 @@ describe("mission lifecycle tools", () => {
       expect(parsed.ok).toBe(false)
       expect(parsed.error?.code).toBe("MISSION_RETRO_FAILED")
       expect(output).toContain("idle")
+    } finally {
+      if (prevWait === undefined) delete process.env.GATEHOUSE_MISSION_IDLE_WAIT_MS
+      else process.env.GATEHOUSE_MISSION_IDLE_WAIT_MS = prevWait
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  test("waitForAllMissionAgentsIdle succeeds after transient session busy", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-mission-idle-wait-"))
+    try {
+      await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
+      const missionId = "m-transient-busy"
+      const registry = await getRegistryStore({ directory: dir } as PluginInput)
+      registry.syncInnerFromManifest({
+        mission_id: missionId,
+        status: "running",
+        root_node: "root",
+        created_at: new Date().toISOString(),
+        nodes: {
+          root: { session_id: "ses_root", parent: null, display_name: "root", profile: "build-root" },
+        },
+      })
+
+      let polls = 0
+      const mockClient = {
+        session: {
+          async status() {
+            polls += 1
+            return { data: polls < 3 ? { ses_root: { type: "busy" } } : {} }
+          },
+        },
+      }
+      const pluginInput = {
+        directory: dir,
+        client: mockClient,
+      } as unknown as PluginInput
+
+      const result = await waitForAllMissionAgentsIdle({
+        registry,
+        client: mockClient as PluginInput["client"],
+        directory: dir,
+        plugin: pluginInput,
+        missionId,
+        scopes: ["inner"],
+        timeoutMs: 500,
+        pollIntervalMs: 20,
+      })
+
+      expect(result.ok).toBe(true)
+      expect(result.waited_ms > 0).toBe(true)
+      expect(polls >= 3).toBe(true)
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
@@ -196,7 +250,24 @@ describe("mission lifecycle tools", () => {
       }
       expect(parsed.ok).toBe(false)
       expect(parsed.error?.code).toBe("RETRO_ROLLUP_PENDING")
-      expect(parsed.error?.details?.pending).toContain("architect_summary_to_lead")
+      expect(parsed.error?.details?.pending).toContain("architect_retro_summary")
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  test("missionEndedOuterMessage states no retro and no action when retro skipped", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-mission-ended-msg-"))
+    try {
+      await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
+      const message = missionEndedOuterMessage("m-no-retro", "done", dir, { retroSkipped: true })
+      expect(message).toContain("无复盘")
+      expect(message).toContain("本轮未进行复盘")
+      expect(message).not.toContain("gatehouse_mission_retro")
+      expect(message).toContain("这只是一个通知，你不需要有任何动作")
+      const afterRetro = missionEndedOuterMessage("m-after-retro", "done", dir, { retroSkipped: false })
+      expect(afterRetro).not.toContain("无复盘")
+      expect(afterRetro).toContain("请勿再分配任务")
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

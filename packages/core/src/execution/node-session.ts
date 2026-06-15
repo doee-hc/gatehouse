@@ -9,7 +9,8 @@ import { innerAgentId } from "../registry/types.ts"
 import { promptSession } from "../session/client.ts"
 import type { TeamSpec } from "../tree/types.ts"
 import { childNodeIdsFromSpec } from "../tree/parse.ts"
-import { skillDomainContextNote, listSkillSlugsInDomain } from "../retro/skill-kickoff.ts"
+import { skillDomainContextNote } from "../retro/skill-kickoff.ts"
+import { selectSkillsForTask, formatRetrievedSkillCatalog } from "../skills/retrieval.ts"
 import type { OuterProfile } from "../names.ts"
 import { formatMissionContextBlock } from "./context.ts"
 import { formatNodeBriefBlock } from "./brief.ts"
@@ -39,7 +40,7 @@ export function buildInnerBootstrapSystem(input: {
   if (input.skillDomainNote?.trim()) parts.push(input.skillDomainNote.trim())
   if (input.coordinatorSubtree?.trim()) parts.push(input.coordinatorSubtree.trim())
   if (input.contract) parts.push(formatMissionContextBlock(input.contract, input.locale))
-  if (input.brief) parts.push(formatNodeBriefBlock(input.brief))
+  if (input.brief) parts.push(formatNodeBriefBlock(input.brief, input.locale))
   return parts.join("\n\n")
 }
 
@@ -55,11 +56,25 @@ export async function buildBootstrapSystemForNode(input: {
   if (!specNode) throw new Error(`TeamSpec missing node ${input.nodeId}`)
 
   const locale = readLocaleSync(input.projectDirectory)
-  const skillSlugs = specNode.skill_domain
-    ? await listSkillSlugsInDomain(input.projectDirectory, specNode.skill_domain)
+  const retrievalQuery = [
+    specNode.description,
+    input.brief?.role,
+    ...(input.brief?.your_work ?? []),
+    ...(input.brief?.acceptance_slice ?? []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+  const skillEntries = specNode.skill_domain
+    ? await selectSkillsForTask({
+        projectDirectory: input.projectDirectory,
+        domain: specNode.skill_domain,
+        query: retrievalQuery,
+        missionId: input.spec.mission_id,
+      })
     : []
+  const skillCatalog = formatRetrievedSkillCatalog(skillEntries, locale === "zh" ? "zh" : "en")
   const skillDomainNote = specNode.skill_domain
-    ? skillDomainContextNote(specNode.skill_domain, input.agentNames, locale, skillSlugs)
+    ? skillDomainContextNote(specNode.skill_domain, input.agentNames, locale, skillCatalog)
     : undefined
 
   const isIntermediateCoordinator =
@@ -96,7 +111,7 @@ export async function deliverNodeBriefSystemPrompt(input: {
     recipient.sessionId,
     {
       profile: recipient.profile,
-      system: formatNodeBriefBlock(input.brief),
+      system: formatNodeBriefBlock(input.brief, locale),
       noReply: true,
     },
     input.plugin,

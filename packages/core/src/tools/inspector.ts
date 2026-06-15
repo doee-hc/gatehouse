@@ -2,6 +2,7 @@ import { tool, type PluginInput } from "@opencode-ai/plugin"
 import { getPermissionArbiter } from "../arbiter/arbiter.ts"
 import { getRegistryStore } from "../registry/context.ts"
 import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
+import { slimInspectorRequester } from "./helpers.ts"
 
 export function inspectorQueueTool(input: PluginInput) {
   return tool({
@@ -21,7 +22,6 @@ export function inspectorQueueTool(input: PluginInput) {
         const pending = await arbiter.listQueueWithStatus()
         return {
           output: toolOk(toolName, {
-            inspector_session_id: context.sessionID,
             pending: pending.map((item) => ({
               request_id: item.requestId,
               session_id: item.sessionId,
@@ -30,7 +30,7 @@ export function inspectorQueueTool(input: PluginInput) {
               metadata: item.metadata,
               asked_at: item.askedAt,
               opencode_pending: item.opencode_pending,
-              requester: registry.bySession(item.sessionId),
+              requester: slimInspectorRequester(registry.bySession(item.sessionId)),
             })),
           }),
           ...toolMetadata(toolName),
@@ -49,7 +49,7 @@ export function inspectorDecideTool(input: PluginInput) {
     args: {
       request_id: tool.schema.string().describe("Pending permission request id"),
       reply: tool.schema.enum(["once", "always", "reject"]).describe("Decision"),
-      reason: tool.schema.string().describe("Audit reason in Chinese"),
+      reason: tool.schema.string().describe("Short audit reason for the decision"),
     },
     async execute(args, context) {
       const toolName = "gatehouse_inspector_decide"
@@ -70,11 +70,7 @@ export function inspectorDecideTool(input: PluginInput) {
           toolDirectory: context.directory,
         })
         return {
-          output: toolOk(toolName, {
-            request_id: args.request_id,
-            reply: args.reply,
-            reason: args.reason.trim(),
-          }),
+          output: toolOk(toolName, { decided: true }),
           ...toolMetadata(toolName),
         }
       } catch (error) {

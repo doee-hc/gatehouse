@@ -15,7 +15,7 @@ export async function uploadBufferToCdn(input: {
     : input.uploadParam
       ? buildCdnUploadUrl(input.cdnBaseUrl, input.uploadParam, input.filekey)
       : undefined
-  if (!cdnUrl) throw new Error("缺少 CDN 上传 URL")
+  if (!cdnUrl) throw new Error("Missing CDN upload URL")
   const response = await fetch(cdnUrl, {
     method: "POST",
     headers: { "Content-Type": "application/octet-stream" },
@@ -23,10 +23,10 @@ export async function uploadBufferToCdn(input: {
   })
   if (!response.ok) {
     const errorMsg = response.headers.get("x-error-message") || `HTTP ${response.status}`
-    throw new Error(`CDN 上传失败: ${errorMsg}`)
+    throw new Error(`CDN upload failed: ${errorMsg}`)
   }
   const downloadParam = response.headers.get("x-encrypted-param")
-  if (!downloadParam) throw new Error("CDN 上传成功但缺少 x-encrypted-param")
+  if (!downloadParam) throw new Error("CDN upload succeeded but missing x-encrypted-param")
   return { downloadParam }
 }
 

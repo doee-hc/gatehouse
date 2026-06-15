@@ -12,28 +12,28 @@ dist
 packages/core/bridges
 .turbo
 
-# 运行时数据（任意包下）
+# Runtime data (any package)
 **/.gatehouse/
 !packages/core/templates/**
 
-# 本地 OpenCode 配置
+# Local OpenCode config
 opencode.jsonc
 packages/*/opencode.jsonc
 
-# 本地 OpenCode 运行时目录
+# Local OpenCode runtime directory
 **/.opencode/
 
-# 本地测试沙箱
+# Local test sandbox
 packages/test/
 
-# 构建产物
+# Build artifacts
 *.tgz
 
 packages/**/test/**/.tmp-*
 oh-my-openagent
 
-# LimeZu 本地合成工具输出（只发布 portal 内成品 sheets）
+# LimeZu local compositing tool output (only publish finished sheets in portal)
 packages/character-assets/assets/
 
-# 角色预览（含本地配方路径，不进仓库）
+# Character preview (includes local recipe paths, not committed)
 packages/portal/public/assets/characters/preview/

@@ -5,11 +5,17 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **Breaking:** rename `gatehouse_bootstrap_tree` → `gatehouse_submit_orchestration` (architect submits/validates `mission.script.ts`; execution tree creation remains in `gatehouse_apply_skill_domains` when skill domains need manual assignment).
+
 ## [0.2.0](https://github.com/doee-hc/gatehouse/releases/tag/v0.2.0) - 2026-06-13
 
 ### Changed
 
-- **Mission execution: TeamSpec → orchestration script** — the biggest change in this release. Architect no longer describes the execution team as a standalone TeamSpec and relies on agents to assign work through `gatehouse_send_message`. Instead, each Mission is driven by `.gatehouse/trees/<mission_id>/mission.script.ts`: `export const team` defines the execution tree, and `export default async function orchestrate(ctx)` defines phase order. After `gatehouse_bootstrap_tree`, a sandbox orchestrator runs the script and **injects node briefs and work-order prompts** via `ctx.setBrief`, `ctx.prompt`, and `ctx.waitFor` / `waitForAll`. The platform owns timing and activation; inner agents start from orchestration-delivered prompts and read scope through `gatehouse_mission_info`. `gatehouse_send_message` is now for peer alignment and small in-flight corrections only — not the primary task-dispatch path.
+- **Mission execution: TeamSpec → orchestration script** — the biggest change in this release. Architect no longer describes the execution team as a standalone TeamSpec and relies on agents to assign work through `gatehouse_send_message`. Instead, each Mission is driven by `.gatehouse/trees/<mission_id>/mission.script.ts`: `export const team` defines the execution tree, and `export default async function orchestrate(ctx)` defines phase order. After `gatehouse_bootstrap_tree`, a sandbox orchestrator runs the script and **injects node briefs and work-order prompts** via `ctx.setBrief`, `ctx.prompt`, and `ctx.waitFor`. The platform owns timing and activation; inner agents start from orchestration-delivered prompts and read scope through `gatehouse_mission_info`. `gatehouse_send_message` is now for peer alignment and small in-flight corrections only — not the primary task-dispatch path.
 - **IM channels merged into `@gatehouse/core`** — channel bridge logic now lives at `@gatehouse/core/channels` (`packages/core/src/channels/`).
 - **OpenCode channels plugin** — `@gatehouse/core/channels/plugin` in project `opencode.jsonc`.
 - **Docs** — unified IM guide: [docs/guide/channels.md](./docs/guide/channels.md) / [docs/guide/channels.zh.md](./docs/guide/channels.zh.md); installation docs list all synced agent files; [PUBLISH.md](./packages/core/docs/PUBLISH.md) recommends `bunx install` over `opencode plug`.

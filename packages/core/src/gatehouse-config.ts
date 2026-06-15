@@ -9,6 +9,20 @@ import {
 } from "./locale.ts"
 import { DEFAULT_AGENT_NAMES, OUTER_PROFILES, type OuterProfile } from "./names.ts"
 import { gatehouseRoot } from "./paths.ts"
+import { ORCHESTRATION_STALL_THRESHOLD_MS } from "./orchestration/stall.ts"
+import {
+  AUTOPILOT_WAKE_POLL_MS,
+  AUTOPILOT_WAKE_THRESHOLD_MS,
+} from "./watchdog/autopilot.ts"
+import {
+  ORCHESTRATION_STALL_NOTIFY_COOLDOWN_MS,
+  ORCHESTRATION_STALL_RESUME_COOLDOWN_MS,
+} from "./watchdog/orchestration-stall.ts"
+import {
+  WATCHDOG_IDLE_THRESHOLD_MS,
+  WATCHDOG_POLL_MS,
+  WATCHDOG_WAKE_COOLDOWN_MS,
+} from "./watchdog/tick.ts"
 
 export const GATEHOUSE_CONFIG_SCHEMA_VERSION = 1
 
@@ -47,6 +61,44 @@ export type PortalOfficeConfig = {
   play_release?: "seat" | "wander"
 }
 
+export type WatchdogPollConfig = {
+  poll_ms?: number
+  idle_threshold_ms?: number
+  wake_cooldown_ms?: number
+}
+
+export type OrchestrationStallWatchdogConfig = {
+  stall_threshold_ms?: number
+  notify_cooldown_ms?: number
+  resume_cooldown_ms?: number
+}
+
+export type GatehouseWatchdogConfigFile = WatchdogPollConfig & {
+  execution?: WatchdogPollConfig
+  record?: WatchdogPollConfig
+  orchestration_stall?: OrchestrationStallWatchdogConfig
+  autopilot?: WatchdogPollConfig
+}
+
+export type ResolvedWatchdogPollTiming = {
+  poll_ms: number
+  idle_threshold_ms: number
+  wake_cooldown_ms: number
+}
+
+export type ResolvedOrchestrationStallWatchdogTiming = {
+  stall_threshold_ms: number
+  notify_cooldown_ms: number
+  resume_cooldown_ms: number
+}
+
+export type ResolvedWatchdogConfig = {
+  execution: ResolvedWatchdogPollTiming
+  record: ResolvedWatchdogPollTiming
+  orchestration_stall: ResolvedOrchestrationStallWatchdogTiming
+  autopilot: ResolvedWatchdogPollTiming
+}
+
 export type GatehouseConfigFile = {
   schema_version?: number
   locale?: string
@@ -63,6 +115,7 @@ export type GatehouseConfigFile = {
     display?: PortalDisplayConfig
     office?: PortalOfficeConfig
   }
+  watchdog?: GatehouseWatchdogConfigFile
   agents?: Partial<Record<OuterProfile, { name?: string }>>
   models?: Partial<Record<GatehouseModelProfile, string>>
 }
@@ -85,6 +138,7 @@ export type ResolvedGatehouseConfig = {
     display?: PortalDisplayConfig
     office?: PortalOfficeConfig
   }
+  watchdog: ResolvedWatchdogConfig
 }
 
 export function gatehouseGlobalConfigDir() {
@@ -210,6 +264,93 @@ function positiveConfigInt(value: unknown) {
   return Math.floor(value)
 }
 
+function applyWatchdogPollLayers(
+  base: ResolvedWatchdogPollTiming,
+  ...layers: (WatchdogPollConfig | GatehouseWatchdogConfigFile | undefined)[]
+): ResolvedWatchdogPollTiming {
+  let next = { ...base }
+  for (const layer of layers) {
+    if (!layer) continue
+    const pollMs = positiveConfigInt(layer.poll_ms)
+    if (pollMs !== undefined) next.poll_ms = pollMs
+    const idleThresholdMs = positiveConfigInt(layer.idle_threshold_ms)
+    if (idleThresholdMs !== undefined) next.idle_threshold_ms = idleThresholdMs
+    const wakeCooldownMs = positiveConfigInt(layer.wake_cooldown_ms)
+    if (wakeCooldownMs !== undefined) next.wake_cooldown_ms = wakeCooldownMs
+  }
+  return next
+}
+
+function applyOrchestrationStallLayers(
+  base: ResolvedOrchestrationStallWatchdogTiming,
+  ...layers: (OrchestrationStallWatchdogConfig | GatehouseWatchdogConfigFile | undefined)[]
+): ResolvedOrchestrationStallWatchdogTiming {
+  let next = { ...base }
+  for (const layer of layers) {
+    if (!layer) continue
+    const stall = layer as OrchestrationStallWatchdogConfig
+    const stallThresholdMs = positiveConfigInt(stall.stall_threshold_ms)
+    if (stallThresholdMs !== undefined) next.stall_threshold_ms = stallThresholdMs
+    const notifyCooldownMs = positiveConfigInt(stall.notify_cooldown_ms)
+    if (notifyCooldownMs !== undefined) next.notify_cooldown_ms = notifyCooldownMs
+    const resumeCooldownMs = positiveConfigInt(stall.resume_cooldown_ms)
+    if (resumeCooldownMs !== undefined) next.resume_cooldown_ms = resumeCooldownMs
+  }
+  return next
+}
+
+export function resolveWatchdogConfig(
+  global?: GatehouseConfigFile,
+  project?: GatehouseConfigFile,
+): ResolvedWatchdogConfig {
+  const executionBase: ResolvedWatchdogPollTiming = {
+    poll_ms: WATCHDOG_POLL_MS,
+    idle_threshold_ms: WATCHDOG_IDLE_THRESHOLD_MS,
+    wake_cooldown_ms: WATCHDOG_WAKE_COOLDOWN_MS,
+  }
+  const autopilotBase: ResolvedWatchdogPollTiming = {
+    poll_ms: AUTOPILOT_WAKE_POLL_MS,
+    idle_threshold_ms: AUTOPILOT_WAKE_THRESHOLD_MS,
+    wake_cooldown_ms: WATCHDOG_WAKE_COOLDOWN_MS,
+  }
+  const orchestrationStallBase: ResolvedOrchestrationStallWatchdogTiming = {
+    stall_threshold_ms: ORCHESTRATION_STALL_THRESHOLD_MS,
+    notify_cooldown_ms: ORCHESTRATION_STALL_NOTIFY_COOLDOWN_MS,
+    resume_cooldown_ms: ORCHESTRATION_STALL_RESUME_COOLDOWN_MS,
+  }
+
+  return {
+    execution: applyWatchdogPollLayers(
+      executionBase,
+      global?.watchdog,
+      project?.watchdog,
+      global?.watchdog?.execution,
+      project?.watchdog?.execution,
+    ),
+    record: applyWatchdogPollLayers(
+      executionBase,
+      global?.watchdog,
+      project?.watchdog,
+      global?.watchdog?.record,
+      project?.watchdog?.record,
+    ),
+    orchestration_stall: applyOrchestrationStallLayers(
+      orchestrationStallBase,
+      global?.watchdog,
+      project?.watchdog,
+      global?.watchdog?.orchestration_stall,
+      project?.watchdog?.orchestration_stall,
+    ),
+    autopilot: applyWatchdogPollLayers(
+      autopilotBase,
+      global?.watchdog,
+      project?.watchdog,
+      global?.watchdog?.autopilot,
+      project?.watchdog?.autopilot,
+    ),
+  }
+}
+
 function mergePortalOffice(
   base: PortalOfficeConfig,
   layer: GatehouseConfigFile | undefined,
@@ -294,6 +435,7 @@ export function loadGatehouseConfig(projectDirectory: string): ResolvedGatehouse
       ...(hasPortalDisplay && { display: portalDisplay }),
       ...(hasPortalOffice && { office: portalOffice }),
     },
+    watchdog: resolveWatchdogConfig(global, project),
   }
 }
 
@@ -305,7 +447,7 @@ export function configYamlTemplate(names = DEFAULT_AGENT_NAMES) {
       admin_key: generatePortalAdminKey(),
       brand: {
         title: "Gatehouse",
-        subtitle: "团队门户",
+        subtitle: "Team Portal",
         logo: "brand/logo.png",
         icp_text: "",
         icp_url: "",

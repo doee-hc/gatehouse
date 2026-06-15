@@ -1,6 +1,17 @@
 import type { TeamSpec } from "../tree/types.ts"
 
-export const ORCHESTRATION_STATE_SCHEMA_VERSION = 2
+export const ORCHESTRATION_STATE_SCHEMA_VERSION = 4
+
+export type OrchestrationSandboxStatus = "stopped" | "running" | "completed" | "failed"
+
+export type OrchestrationSandboxMeta = {
+  status: OrchestrationSandboxStatus
+  script_hash?: string
+  plan_version?: string
+  started_at?: string
+  stopped_at?: string
+  last_error?: string
+}
 
 export type OrchestrationNodeStatus = "pending" | "running" | "done" | "blocked" | "rework"
 
@@ -33,6 +44,15 @@ export type OrchestrationState = {
   updated_at: string
   phase?: string
   nodes: Record<string, OrchestrationNodeState>
+  sandbox?: OrchestrationSandboxMeta
+  /** Index into compiled plan steps for precise replay. */
+  cursor_step_index?: number
+  /** Completed plan step ids (step-0, step-1, …). */
+  completed_step_ids?: string[]
+  /** Frozen baseline snapshot id when continuing from prior work. */
+  baseline_id?: string
+  /** Parent mission when this run is a continuation (e.g. review slice). */
+  continuation_of?: string
 }
 
 export type MissionScriptMeta = {
@@ -78,8 +98,14 @@ export type MissionContext = {
   readMissionContext(): string
   readContract(opts?: { view?: "summary" | "full" }): unknown
   waitFor(nodeId: string, event: "complete", opts?: { timeout?: string }): Promise<void>
-  waitForAll(nodeIds: string[], event: "complete", opts?: { timeout?: string }): Promise<void>
   waitForRollup(rootNodeId: string): Promise<void>
+  /** Run independent orchestration tracks concurrently; barrier waits for all thunks. */
+  parallel<T>(thunks: ReadonlyArray<() => Promise<T>>): Promise<T[]>
+  /** Run each item through stages independently (no barrier between items). */
+  pipeline<T>(
+    items: readonly T[],
+    ...stages: ReadonlyArray<(value: unknown, index: number) => Promise<unknown>>
+  ): Promise<unknown[]>
   phase(title: string): void
   log(message: string): void
   nodeIds(): string[]
@@ -99,4 +125,5 @@ export type LoadedMissionScript = {
   scriptSource: string
   scriptHash: string
   scriptPath: string
+  plan?: import("./plan-types.ts").OrchestrationPlan
 }

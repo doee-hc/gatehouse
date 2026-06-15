@@ -1,6 +1,7 @@
 import type { GatehouseLocale } from "../locale.ts"
 import type { MissionScriptMeta, PromptInput } from "./types.ts"
 import type { TeamSpec } from "../tree/types.ts"
+import type { PlanStep } from "./plan-types.ts"
 
 export type SandboxInitMessage = {
   type: "init"
@@ -10,6 +11,11 @@ export type SandboxInitMessage = {
   team: TeamSpec
   objective?: string
   meta?: MissionScriptMeta
+  plan?: {
+    plan_version: string
+    steps: PlanStep[]
+    cursor_step_index: number
+  }
 }
 
 export type SandboxRpcRequest = {
@@ -21,8 +27,8 @@ export type SandboxRpcRequest = {
     | "readMissionContext"
     | "readContract"
     | "waitFor"
-    | "waitForAll"
     | "waitForRollup"
+    | "planStepComplete"
     | "phase"
     | "log"
   nodeIds?: string[]
@@ -40,6 +46,10 @@ export type SandboxRpcRequest = {
   rootNodeId?: string
   title?: string
   message?: string
+  stepId?: string
+  stepIndex?: number
+  /** When true, host marks the attached plan step completed (linear steps only). */
+  markPlanStepComplete?: boolean
 }
 
 export type SandboxRpcResponse = {

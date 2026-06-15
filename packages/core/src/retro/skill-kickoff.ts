@@ -87,15 +87,18 @@ export function skillDomainContextNote(
   skillDomain: string,
   names: Record<OuterProfile, string> = defaultAgentNames(),
   locale: GatehouseLocale = DEFAULT_GATEHOUSE_LOCALE,
-  skillSlugs: string[] = [],
+  skillCatalog: string | string[] = [],
 ) {
-  const skill_catalog =
-    skillSlugs.length > 0 ? skillSlugs.join(", ") : locale === "zh" ? "（暂无）" : "(none yet)"
+  const catalogText = typeof skillCatalog === "string"
+    ? skillCatalog
+    : skillCatalog.length > 0
+      ? skillCatalog.join(", ")
+      : gatehouseMessage("bulletList.empty", locale)
   return renderGatehouseTemplate(
     gatehouseMessage("skillDomain.contextNote", locale, {
       skill_domain: skillDomain,
       skill_domain_path: skillDomainDir(skillDomain),
-      skill_catalog,
+      skill_catalog: catalogText,
       lead_name: names.lead,
     }),
     names,

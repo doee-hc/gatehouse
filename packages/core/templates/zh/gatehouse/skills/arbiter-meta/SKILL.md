@@ -24,12 +24,12 @@ disable-model-invocation: true
 | profile | 允许的典型 mutate |
 |---------|-------------------|
 | lead | init_team、send_message、mission_start、mission_retro、mission_complete、mission_info、delivery_review、delivery_status |
-| architect | bootstrap_tree、send_message、mission_info、session_snapshot |
-| curator | apply_skill_domains、send_message、mission_info |
-| 任务执行成员 | 读写业务文件、执行团队内 send_message；**无** bootstrap / apply_skill_domains |
+| architect | submit_orchestration、send_message、retro_summary_record、mission_info、session_snapshot |
+| curator | apply_skill_domains、send_message、skill_summary_record、mission_info |
+| 任务执行成员 | 读写业务文件；`gatehouse_execution_complete` / `gatehouse_execution_rework` / `gatehouse_mission_info` |
 | arbiter | 仅 inspector_* |
 
-任务执行成员不得 bootstrap；核心团队不得越权改任务执行团队（除各 profile 规程允许的工具）。
+任务执行成员不得 submit orchestration；核心团队不得越权改任务执行团队（除各 profile 规程允许的工具）。
 
 ## 默认策略
 
@@ -40,4 +40,4 @@ disable-model-invocation: true
 | Gatehouse 协调 mutate | 仅 profile 允许 → `once` |
 | 重复同类只读 | 可考虑 `always` |
 
-审计：`.gatehouse/arbiter/decisions.jsonl`（插件维护）。
+审计：`.gatehouse/arbiter/decisions.jsonl`。

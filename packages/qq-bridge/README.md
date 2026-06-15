@@ -55,3 +55,7 @@ bun run dev:qq-bridge
 
 - `/agent` — list switchable agents
 - `/agent outer:lead` — switch conversation target
+- `/autopilot` — autopilot status (IM)
+- `/autopilot on` / `/autopilot off` — enable or disable autopilot (IM)
+
+OpenCode TUI uses registered slash commands: `/autopilot`, `/autopilot-on`, `/autopilot-off`.

@@ -3,7 +3,6 @@ import { characterAtlasPrefix, type CharacterAtlasPrefix } from "../office/chara
 export type PortalMission = {
   id: string
   status: string
-  priority?: string
   objective?: string
   started_at?: string
   completed_at?: string
@@ -21,6 +20,53 @@ export type PortalTreeNode = {
   skill_domain?: string
   display_name: string
   description?: string
+}
+
+export type PortalOrchestrationNodeStatus = "pending" | "running" | "done" | "blocked" | "rework"
+
+export type PortalOrchestrationNode = {
+  node_id: string
+  display_name: string
+  parent: string | null
+  skill_domain?: string
+  status: PortalOrchestrationNodeStatus
+  round?: number
+}
+
+export type PortalOrchestrationPhase = {
+  title: string
+  state: "done" | "current" | "pending"
+}
+
+export type PortalOrchestrationStep = {
+  id: string
+  op:
+    | "setBrief"
+    | "prompt"
+    | "wait"
+    | "waitRollup"
+    | "parallel"
+    | "pipeline"
+    | "phase"
+    | "log"
+    | "other"
+  state: "done" | "current" | "pending"
+  title?: string
+  node_id?: string
+}
+
+export type PortalOrchestration = {
+  mission_id: string
+  active: boolean
+  phase?: string
+  sandbox_status?: string
+  cursor_step_index: number
+  total_steps: number
+  completed_steps: number
+  phases: PortalOrchestrationPhase[]
+  steps: PortalOrchestrationStep[]
+  nodes: PortalOrchestrationNode[]
+  root_node: string
 }
 
 export type PortalAgent = {
@@ -74,6 +120,7 @@ export type PortalSnapshot = {
     pending_node_ids: string[]
     completed_node_ids: string[]
   }
+  orchestration?: PortalOrchestration
 }
 
 export type BlogPostFormat = "markdown" | "html"

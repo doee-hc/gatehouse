@@ -1,6 +1,8 @@
 import type { Database } from "bun:sqlite"
 import type { OrchestrationState } from "../orchestration/types.ts"
 import type { MissionScriptMeta, MissionScriptRecord } from "../orchestration/types.ts"
+import type { OrchestrationPlan } from "../orchestration/plan-types.ts"
+import type { OrchestrationBaseline } from "../orchestration/plan-types.ts"
 import type { TeamSpec } from "../tree/types.ts"
 
 export const ORCHESTRATION_TABLE_SQL = `
@@ -18,6 +20,21 @@ export const ORCHESTRATION_TABLE_SQL = `
       state_json TEXT NOT NULL,
       phase TEXT,
       updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS registry_orchestration_plan (
+      mission_id TEXT NOT NULL,
+      plan_version TEXT NOT NULL,
+      plan_json TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (mission_id, plan_version)
+    );
+
+    CREATE TABLE IF NOT EXISTS registry_orchestration_baseline (
+      baseline_id TEXT PRIMARY KEY,
+      mission_id TEXT NOT NULL,
+      baseline_json TEXT NOT NULL,
+      created_at TEXT NOT NULL
     );
 `
 
@@ -110,4 +127,91 @@ export function readOrchestrationState(db: Database, missionId: string): Orchest
     .get({ $mission_id: missionId }) as { state_json: string } | undefined
   if (!row) return undefined
   return JSON.parse(row.state_json) as OrchestrationState
+}
+
+export function saveOrchestrationPlan(db: Database, plan: OrchestrationPlan) {
+  const createdAt = new Date().toISOString()
+  db.prepare(
+    `INSERT INTO registry_orchestration_plan (mission_id, plan_version, plan_json, created_at)
+     VALUES ($mission_id, $plan_version, $plan_json, $created_at)
+     ON CONFLICT(mission_id, plan_version) DO UPDATE SET
+       plan_json = excluded.plan_json,
+       created_at = excluded.created_at`,
+  ).run({
+    $mission_id: plan.mission_id,
+    $plan_version: plan.plan_version,
+    $plan_json: JSON.stringify(plan),
+    $created_at: createdAt,
+  })
+}
+
+export function readOrchestrationPlan(
+  db: Database,
+  missionId: string,
+  planVersion: string,
+): OrchestrationPlan | undefined {
+  const row = db
+    .query(
+      "SELECT plan_json FROM registry_orchestration_plan WHERE mission_id = $mission_id AND plan_version = $plan_version",
+    )
+    .get({ $mission_id: missionId, $plan_version: planVersion }) as { plan_json: string } | undefined
+  if (!row) return undefined
+  return JSON.parse(row.plan_json) as OrchestrationPlan
+}
+
+export function readLatestOrchestrationPlan(db: Database, missionId: string): OrchestrationPlan | undefined {
+  const row = db
+    .query(
+      `SELECT plan_json FROM registry_orchestration_plan
+       WHERE mission_id = $mission_id
+       ORDER BY created_at DESC LIMIT 1`,
+    )
+    .get({ $mission_id: missionId }) as { plan_json: string } | undefined
+  if (!row) return undefined
+  return JSON.parse(row.plan_json) as OrchestrationPlan
+}
+
+export function saveOrchestrationBaseline(db: Database, baseline: OrchestrationBaseline) {
+  db.prepare(
+    `INSERT INTO registry_orchestration_baseline (baseline_id, mission_id, baseline_json, created_at)
+     VALUES ($baseline_id, $mission_id, $baseline_json, $created_at)
+     ON CONFLICT(baseline_id) DO UPDATE SET
+       baseline_json = excluded.baseline_json`,
+  ).run({
+    $baseline_id: baseline.baseline_id,
+    $mission_id: baseline.mission_id,
+    $baseline_json: JSON.stringify(baseline),
+    $created_at: baseline.captured_at,
+  })
+}
+
+export function readOrchestrationBaseline(db: Database, baselineId: string): OrchestrationBaseline | undefined {
+  const row = db
+    .query("SELECT baseline_json FROM registry_orchestration_baseline WHERE baseline_id = $baseline_id")
+    .get({ $baseline_id: baselineId }) as { baseline_json: string } | undefined
+  if (!row) return undefined
+  return JSON.parse(row.baseline_json) as OrchestrationBaseline
+}
+
+/** Atomic read-modify-write for concurrent node completions. */
+export function mutateOrchestrationState(
+  db: Database,
+  missionId: string,
+  mutator: (state: OrchestrationState) => void,
+): OrchestrationState | undefined {
+  db.exec("BEGIN IMMEDIATE")
+  try {
+    const state = readOrchestrationState(db, missionId)
+    if (!state) {
+      db.exec("ROLLBACK")
+      return undefined
+    }
+    mutator(state)
+    saveOrchestrationState(db, state)
+    db.exec("COMMIT")
+    return state
+  } catch (error) {
+    db.exec("ROLLBACK")
+    throw error
+  }
 }

@@ -130,7 +130,7 @@ export class PermissionArbiter {
       if (permissionReplyStale(error)) {
         this.queue.remove(input.requestId)
         throw new Error(
-          `permission request ${input.requestId} 未能通过 Gatehouse 路由到 OpenCode pending（workspaces/directories 均已尝试）。若 TUI 仍可手动 Allow，说明请求仍有效，请重启 OpenCode 加载最新 gatehouse 后重试 decide；否则请让请求方 agent 重新发起权限申请。`,
+          `permission request ${input.requestId} could not be routed to OpenCode pending via Gatehouse (workspaces/directories all tried). If TUI still allows manual Allow, the request is still valid — restart OpenCode to load the latest gatehouse and retry decide; otherwise have the requesting agent re-submit the permission request.`,
         )
       }
       throw error

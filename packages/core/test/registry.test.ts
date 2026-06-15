@@ -10,8 +10,9 @@ import { OUTER_ARCHITECT_ID, OUTER_LEAD_ID, OUTER_CURATOR_ID } from "../src/regi
 import type { GatehouseClient } from "../src/session/client.ts"
 import { sendMessageTool } from "../src/tools/send-message.ts"
 import { initTeamTool } from "../src/tools/init-team.ts"
-import { bootstrapTreeTool } from "../src/tools/bootstrap.ts"
+import { submitOrchestrationTool } from "../src/tools/submit-orchestration.ts"
 import { applySkillDomainsTool } from "../src/tools/apply-skill-domains.ts"
+import { stopSandboxOrchestration } from "../src/orchestration/sandbox-runtime.ts"
 import { copyExampleMission, seedActiveMissionRegistry } from "./copy-example-mission.ts"
 import { startPortalInternalEventCapture, withPortalEnv } from "./portal-test-server.ts"
 
@@ -257,28 +258,16 @@ describe("registry harness", () => {
     }
   })
 
-  test("architect send_message to node_id resolves retro after fork", async () => {
-    const dir = await mkdtemp(path.join(tmpdir(), "gh-registry-retro-resolve-"))
+  test("architect cannot send_message to inner execution node", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-registry-architect-inner-deny-"))
     try {
-      const mockClient: GatehouseClient = {
-        session: {
-          async create() {
-            return { id: "ses_unused" }
-          },
-          async promptAsync() {},
-          async messages() {
-            return { data: [] }
-          },
-          async get() {
-            return { data: {} }
-          },
-          async status() {
-            return { data: {} }
-          },
-        },
-      }
-      const pluginInput = { directory: dir, client: mockClient } as unknown as PluginInput
+      const pluginInput = { directory: dir, client: mockClientMinimal() } as unknown as PluginInput
       const store = await getRegistryStore(pluginInput)
+      store.registerOuterSession({
+        profile: "lead",
+        sessionId: "ses_lead",
+        projectRootSessionId: "ses_lead",
+      })
       store.register({
         agentId: OUTER_ARCHITECT_ID,
         scope: "outer",
@@ -292,19 +281,17 @@ describe("registry harness", () => {
         profile: "build-root",
         sessionId: "ses_exec_root",
       })
-      store.registerRetroNode({
-        missionId: "m1",
-        nodeId: "node-root",
-        profile: "build-root",
-        sessionId: "ses_retro_root",
-      })
+      seedActiveMissionRegistry(dir, "m1")
 
-      const resolution = store.resolveRecipient("node-root", {
-        missionId: "m1",
-        sender: store.bySession("ses_architect"),
-      })
-      expect(resolution.status).toBe("resolved")
-      if (resolution.status === "resolved") expect(resolution.recipient.scope).toBe("retro")
+      const send = sendMessageTool(pluginInput)
+      const output = toolOutput(
+        await send.execute(
+          { recipient: "node-root", message: "please hurry" },
+          mockToolContext(dir, "ses_architect", "architect"),
+        ),
+      )
+      expect(output).toContain("SEND_FORBIDDEN")
+      expect(output).toContain("profile architect")
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
@@ -334,8 +321,7 @@ describe("registry harness", () => {
           mockToolContext(dir, "ses_mid", "build-coordinator"),
         ),
       )
-      expect(output).toContain("SEND_FORBIDDEN")
-      expect(output).toContain("build-root")
+      expect(output).toContain("NOT_AUTHORIZED")
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
@@ -365,7 +351,7 @@ describe("registry harness", () => {
           mockToolContext(dir, "ses_doc", "build"),
         ),
       )
-      expect(output).toContain("SEND_FORBIDDEN")
+      expect(output).toContain("NOT_AUTHORIZED")
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
@@ -397,13 +383,13 @@ describe("registry harness", () => {
           mockToolContext(dir, "ses_doc", "build"),
         ),
       )
-      expect(output).toContain("SEND_FORBIDDEN")
+      expect(output).toContain("NOT_AUTHORIZED")
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
   })
 
-  test("solo build-root-solo can send_message to lead", async () => {
+  test("inner structural root cannot use send_message tool", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-registry-solo-root-lead-"))
     try {
       const pluginInput = { directory: dir, client: mockClientMinimal() } as unknown as PluginInput
@@ -426,14 +412,13 @@ describe("registry harness", () => {
           mockToolContext(dir, "ses_root", "build-root-solo"),
         ),
       )
-      expect(output).toContain("ses_lead")
-      expect(output).not.toContain("SEND_FORBIDDEN")
+      expect(output).toContain("NOT_AUTHORIZED")
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
   })
 
-  test("structural root can send_message to hengduan", async () => {
+  test("store.sendMessage delivers structural root notification to lead", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-registry-root-hengduan-"))
     try {
       const mockClient = mockClientMinimal()
@@ -450,21 +435,22 @@ describe("registry harness", () => {
         profile: "build-root",
         sessionId: "ses_root",
       })
-      const send = sendMessageTool(pluginInput)
-      const output = toolOutput(
-        await send.execute(
-          { recipient: "lead", message: "mission done" },
-          mockToolContext(dir, "ses_root", "build-root"),
-        ),
-      )
-      expect(output).toContain("ses_lead")
-      expect(output).toContain("delivery")
+      const result = await store.sendMessage({
+        senderSessionId: "ses_root",
+        senderProfile: "build-root",
+        recipientQuery: "lead",
+        message: "mission done",
+      })
+      expect(result.status).not.toBe("forbidden")
+      if (result.status === "sent" || result.status === "queued") {
+        expect(result.recipient.sessionId).toBe("ses_lead")
+      }
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
   })
 
-  test("inner structural root send_message emits agent.chat with node spawn id", async () => {
+  test("registry sendMessage from inner root emits agent.chat with node spawn id", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-registry-inner-portal-chat-"))
     const token = "registry-test-token"
     const capture = await startPortalInternalEventCapture(token)
@@ -483,11 +469,12 @@ describe("registry harness", () => {
           profile: "build-root",
           sessionId: "ses_root",
         })
-        const send = sendMessageTool(pluginInput)
-        await send.execute(
-          { recipient: "lead", message: "inner portal chat" },
-          mockToolContext(dir, "ses_root", "build-root"),
-        )
+        await store.sendMessage({
+          senderSessionId: "ses_root",
+          senderProfile: "build-root",
+          recipientQuery: "lead",
+          message: "inner portal chat",
+        })
         await capture.waitPosted()
       })
 
@@ -529,7 +516,7 @@ describe("registry harness", () => {
           mockToolContext(dir, "ses_root", "build-root"),
         ),
       )
-      expect(output).toContain("SEND_FORBIDDEN")
+      expect(output).toContain("NOT_AUTHORIZED")
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
@@ -592,22 +579,32 @@ describe("registry harness", () => {
       expect(store.byAgentId("retro:m1:node-root")?.status).toBe("completed")
       expect(promptCalls).toHaveLength(1)
       expect(promptCalls[0]?.sessionId).toBe("ses_architect")
-      expect(promptCalls[0]?.text).toContain("复盘就绪")
+      expect(promptCalls[0]?.text).toContain("Retro ready")
       expect(store.retroStatus("m1").status === "ok" && store.retroStatus("m1").architectNotified).toBe(true)
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
   })
 
-  test("architect send_message to lead records retro rollup lead notified", async () => {
+  test("retro_summary_record notifies lead when rollup is ready", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-registry-retro-lead-notify-"))
     try {
+      const promptCalls: { sessionId: string; text: string }[] = []
       const mockClient: GatehouseClient = {
         session: {
           async create() {
             return { id: "ses_unused" }
           },
-          async promptAsync() {},
+          async promptAsync(input: unknown) {
+            const record = input as {
+              path: { id: string }
+              body: { parts: { text: string }[] }
+            }
+            promptCalls.push({
+              sessionId: record.path.id,
+              text: record.body.parts[0]?.text ?? "",
+            })
+          },
           async messages() {
             return { data: [] }
           },
@@ -642,26 +639,26 @@ describe("registry harness", () => {
         sessionId: "ses_retro_root",
       })
       store.beginRetroRun("m1", ["node-root"])
-      const reportRel = ".gatehouse/trees/m1/reports/nodes/node-root-retro.md"
-      await Bun.write(path.join(dir, reportRel), "# retro\n")
+      const nodeReportRel = ".gatehouse/trees/m1/reports/nodes/node-root-retro.md"
+      await Bun.write(path.join(dir, nodeReportRel), "# retro\n")
       await store.recordRetroCompletion({
         missionId: "m1",
         nodeId: "node-root",
         sessionId: "ses_retro_root",
-        reportPath: reportRel,
+        reportPath: nodeReportRel,
       })
-      expect(store.retroStatus("m1").architectLeadNotified).toBe(false)
+      expect(store.retroStatus("m1").architectSummarySubmitted).toBe(false)
 
-      const send = sendMessageTool(pluginInput)
-      const output = toolOutput(
-        await send.execute(
-          { recipient: "lead", message: "retro summary ready" },
-          mockToolContext(dir, "ses_architect", "architect"),
-        ),
-      )
-      expect(output).toContain('"ok": true')
-      expect(store.retroStatus("m1").architectLeadNotified).toBe(true)
+      const summaryRel = ".gatehouse/trees/m1/reports/architect-summary.md"
+      await Bun.write(path.join(dir, summaryRel), "# architect summary\n")
+      await store.recordArchitectRetroSummary({ missionId: "m1", reportPath: summaryRel })
+
+      expect(store.retroStatus("m1").architectSummarySubmitted).toBe(true)
       expect(store.retroCompleteReadiness("m1").ready).toBe(true)
+      expect(store.retroStatus("m1").leadRollupNotified).toBe(true)
+      const leadPrompts = promptCalls.filter((call) => call.sessionId === "ses_lead")
+      expect(leadPrompts).toHaveLength(1)
+      expect(leadPrompts[0]?.text).toContain("Retro rollup ready")
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
@@ -757,7 +754,7 @@ describe("registry harness", () => {
     }
   })
 
-  test("bootstrap syncs inner nodes into registry.db", async () => {
+  test("submit_orchestration syncs inner nodes into registry.db", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-registry-bootstrap-"))
     try {
       await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
@@ -793,12 +790,12 @@ describe("registry harness", () => {
         displayName: "Curator",
       })
 
-      const bootstrap = bootstrapTreeTool(pluginInput)
+      const bootstrap = submitOrchestrationTool(pluginInput)
       await bootstrap.execute({}, mockToolContext(dir, "ses_architect", "architect"))
 
       const apply = applySkillDomainsTool(pluginInput)
       await apply.execute(
-        { assignments: JSON.stringify({ "node-doc": "docs" }) },
+        { assignments: { "node-doc": "docs" } },
         mockToolContext(dir, "ses_curator", "curator"),
       )
 
@@ -807,6 +804,7 @@ describe("registry harness", () => {
       expect(inner).toHaveLength(2)
       expect(inner.map((item) => item.nodeId).sort()).toEqual(["node-doc", "node-root"])
     } finally {
+      stopSandboxOrchestration("core-example-smoke-v1")
       await rm(dir, { recursive: true, force: true })
     }
   })
@@ -866,14 +864,15 @@ describe("applyGatehouseConfig", () => {
       const permission = agents[profile]?.permission as Record<string, string>
       expect(agents[profile]?.mode).toBe("primary")
       expect(permission.task).toBe("deny")
-      expect(permission.gatehouse_send_message).toBe("allow")
+      expect(permission.gatehouse_send_message).toBe("deny")
       expect(permission.gatehouse_mission_info).toBe("allow")
       const tools = agents[profile]?.tools as Record<string, boolean>
       expect(tools.gatehouse_mission_info).toBeUndefined()
+      expect(tools.gatehouse_send_message).toBe(false)
     }
     const soloPermission = agents["build-root-solo"]?.permission as Record<string, string>
     expect(soloPermission.task).toBe("allow")
-    expect(soloPermission.gatehouse_send_message).toBe("allow")
+    expect(soloPermission.gatehouse_send_message).toBe("deny")
 
     const buildPermission = agents["build"]?.permission as Record<string, string>
     expect(buildPermission.gatehouse_mission_info).toBe("allow")
@@ -881,19 +880,20 @@ describe("applyGatehouseConfig", () => {
     expect(buildTools.gatehouse_mission_info).toBeUndefined()
   })
 
-  test("sets global gatehouse_skill_extract_record for inner build profiles", async () => {
+  test("sets gatehouse_skill_extract_record for build-extract profile only", async () => {
     const { applyGatehouseConfig } = await import("../src/setup/config.ts")
     const cfg = { profile: {} } as Record<string, unknown>
     await applyGatehouseConfig(cfg as never)
-    expect((cfg.permission as Record<string, string>).gatehouse_skill_extract_record).toBe("allow")
-    const leadPermission = (cfg.agent as Record<string, Record<string, unknown>>)["lead"]?.permission as Record<
-      string,
-      string
-    >
+    const agents = cfg.agent as Record<string, Record<string, unknown>>
+    const extractPermission = agents["build-extract"]?.permission as Record<string, string>
+    const buildPermission = agents["build"]?.permission as Record<string, string>
+    expect(extractPermission.gatehouse_skill_extract_record).toBe("allow")
+    expect(buildPermission.gatehouse_skill_extract_record).toBe("deny")
+    const leadPermission = agents["lead"]?.permission as Record<string, string>
     expect(leadPermission.gatehouse_skill_extract_record).toBe("deny")
   })
 
-  test("registers architect with bootstrap permissions", async () => {
+  test("registers architect with submit_orchestration permissions", async () => {
     const { applyGatehouseConfig } = await import("../src/setup/config.ts")
     const cfg = { profile: {} } as Record<string, unknown>
     await applyGatehouseConfig(cfg as never)
@@ -901,7 +901,7 @@ describe("applyGatehouseConfig", () => {
     const permission = agents["architect"]?.permission as Record<string, string>
     expect(agents["architect"]?.mode).toBe("primary")
     expect(permission.task).toBe("deny")
-    expect(permission.gatehouse_bootstrap_tree).toBe("allow")
+    expect(permission.gatehouse_submit_orchestration).toBe("allow")
     expect(permission.gatehouse_send_message).toBe("allow")
   })
 

@@ -175,6 +175,63 @@ test("buildMissionStats aggregates inner node sessions", () => {
   expect(stats.wall_clock_ms).toBe(3 * 60 * 60 * 1000)
 })
 
+test("buildMissionStats includes retro extract and verify sessions", () => {
+  const mission: MissionEntry = {
+    id: "m1",
+    status: "retro",
+    objective: "Retro phase",
+    done_when: [],
+    must_not: [],
+  }
+  const manifest: TreeManifest = {
+    mission_id: "m1",
+    status: "running",
+    root_node: "node-root",
+    created_at: "2026-06-12T00:00:00.000Z",
+    nodes: {
+      "node-root": { session_id: "ses-exec", parent: null, display_name: "m1 · root" },
+    },
+  }
+  const retro = {
+    mission_id: "m1",
+    created_at: "2026-06-12T01:00:00.000Z",
+    retro_order: ["node-root"],
+    nodes: {
+      "node-root": { exec_session_id: "ses-exec", retro_session_id: "ses-retro", child_nodes: [] },
+    },
+  }
+  const extract = {
+    mission_id: "m1",
+    created_at: "2026-06-12T01:00:00.000Z",
+    extract_order: ["node-root"],
+    nodes: {
+      "node-root": { exec_session_id: "ses-exec", extract_session_id: "ses-extract", skill_domain: "demo" },
+    },
+  }
+  const verify = {
+    mission_id: "m1",
+    created_at: "2026-06-12T02:00:00.000Z",
+    verify_order: ["node-root"],
+    nodes: {
+      "node-root": { extract_session_id: "ses-extract", verify_session_id: "ses-verify", skill_domain: "demo" },
+    },
+  }
+  const usage = new Map([
+    ["ses-exec", usageFromSessionDetail({ cost: 0.1, tokens: { input: 100, output: 10, reasoning: 0, cache: { read: 0, write: 0 } } })],
+    ["ses-retro", usageFromSessionDetail({ cost: 0.2, tokens: { input: 50, output: 5, reasoning: 0, cache: { read: 0, write: 0 } } })],
+    ["ses-extract", usageFromSessionDetail({ cost: 0.05, tokens: { input: 20, output: 2, reasoning: 0, cache: { read: 0, write: 0 } } })],
+    ["ses-verify", usageFromSessionDetail({ cost: 0.03, tokens: { input: 10, output: 1, reasoning: 0, cache: { read: 0, write: 0 } } })],
+  ])
+
+  const stats = buildMissionStats(mission, manifest, usage, retro, extract, verify)
+  expect(stats.roles).toHaveLength(4)
+  expect(stats.tokens.total).toBe(198)
+  expect(Math.round(stats.cost * 100)).toBe(38)
+  expect(stats.roles.some((role) => role.session_id === "ses-retro" && role.label.includes("[retro]"))).toBe(true)
+  expect(stats.roles.some((role) => role.session_id === "ses-extract" && role.label.includes("[extract]"))).toBe(true)
+  expect(stats.roles.some((role) => role.session_id === "ses-verify" && role.label.includes("[verify]"))).toBe(true)
+})
+
 test("buildOuterOverview lists active outer agents", () => {
   const now = new Date().toISOString()
   const agents: RegistryAgent[] = [

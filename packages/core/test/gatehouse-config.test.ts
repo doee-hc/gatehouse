@@ -11,7 +11,22 @@ import {
   modelForOuterProfile,
   parseGatehouseModel,
   resolveLogoPath,
+  resolveWatchdogConfig,
 } from "../src/gatehouse-config.ts"
+import {
+  AUTOPILOT_WAKE_POLL_MS,
+  AUTOPILOT_WAKE_THRESHOLD_MS,
+} from "../src/watchdog/autopilot.ts"
+import {
+  ORCHESTRATION_STALL_NOTIFY_COOLDOWN_MS,
+  ORCHESTRATION_STALL_RESUME_COOLDOWN_MS,
+} from "../src/watchdog/orchestration-stall.ts"
+import { ORCHESTRATION_STALL_THRESHOLD_MS } from "../src/orchestration/stall.ts"
+import {
+  WATCHDOG_IDLE_THRESHOLD_MS,
+  WATCHDOG_POLL_MS,
+  WATCHDOG_WAKE_COOLDOWN_MS,
+} from "../src/watchdog/tick.ts"
 import {
   INNER_COORDINATOR_AGENT,
   INNER_EXECUTION_AGENT,
@@ -44,7 +59,7 @@ describe("gatehouse config", () => {
       expect(config.agents.lead).toBe("Global Lead")
       expect(config.agents.architect).toBe("Project Arch")
       expect(config.agents.curator).toBe("Curator")
-      expect(config.locale).toBe("zh")
+      expect(config.locale).toBe("en")
     } finally {
       if (prevGlobal === undefined) delete process.env.GATEHOUSE_GLOBAL_CONFIG_DIR
       else process.env.GATEHOUSE_GLOBAL_CONFIG_DIR = prevGlobal
@@ -107,6 +122,93 @@ describe("gatehouse config", () => {
       await rm(project, { recursive: true, force: true })
       await rm(globalDir, { recursive: true, force: true })
     }
+  })
+
+  test("resolveWatchdogConfig merges global and project overrides", async () => {
+    const project = await mkdtemp(path.join(tmpdir(), "gh-config-watchdog-"))
+    const globalDir = await mkdtemp(path.join(tmpdir(), "gh-global-watchdog-"))
+    const prevGlobal = process.env.GATEHOUSE_GLOBAL_CONFIG_DIR
+    process.env.GATEHOUSE_GLOBAL_CONFIG_DIR = globalDir
+
+    try {
+      await mkdir(path.join(project, ".gatehouse"), { recursive: true })
+      await writeFile(
+        path.join(globalDir, "config.yaml"),
+        `watchdog:
+  poll_ms: 3000
+  idle_threshold_ms: 15000
+  wake_cooldown_ms: 45000
+  autopilot:
+    poll_ms: 60000
+`,
+      )
+      await writeFile(
+        gatehouseProjectConfigPath(project),
+        `watchdog:
+  execution:
+    poll_ms: 2500
+  record:
+    idle_threshold_ms: 12000
+  orchestration_stall:
+    stall_threshold_ms: 240000
+  autopilot:
+    idle_threshold_ms: 900000
+`,
+      )
+
+      const config = loadGatehouseConfig(project)
+
+      expect(config.watchdog.execution).toEqual({
+        poll_ms: 2500,
+        idle_threshold_ms: 15000,
+        wake_cooldown_ms: 45000,
+      })
+      expect(config.watchdog.record).toEqual({
+        poll_ms: 3000,
+        idle_threshold_ms: 12000,
+        wake_cooldown_ms: 45000,
+      })
+      expect(config.watchdog.orchestration_stall).toEqual({
+        stall_threshold_ms: 240000,
+        notify_cooldown_ms: ORCHESTRATION_STALL_NOTIFY_COOLDOWN_MS,
+        resume_cooldown_ms: ORCHESTRATION_STALL_RESUME_COOLDOWN_MS,
+      })
+      expect(config.watchdog.autopilot).toEqual({
+        poll_ms: 60000,
+        idle_threshold_ms: 900000,
+        wake_cooldown_ms: 45000,
+      })
+    } finally {
+      if (prevGlobal === undefined) delete process.env.GATEHOUSE_GLOBAL_CONFIG_DIR
+      else process.env.GATEHOUSE_GLOBAL_CONFIG_DIR = prevGlobal
+      await rm(project, { recursive: true, force: true })
+      await rm(globalDir, { recursive: true, force: true })
+    }
+  })
+
+  test("resolveWatchdogConfig uses built-in defaults", () => {
+    expect(resolveWatchdogConfig()).toEqual({
+      execution: {
+        poll_ms: WATCHDOG_POLL_MS,
+        idle_threshold_ms: WATCHDOG_IDLE_THRESHOLD_MS,
+        wake_cooldown_ms: WATCHDOG_WAKE_COOLDOWN_MS,
+      },
+      record: {
+        poll_ms: WATCHDOG_POLL_MS,
+        idle_threshold_ms: WATCHDOG_IDLE_THRESHOLD_MS,
+        wake_cooldown_ms: WATCHDOG_WAKE_COOLDOWN_MS,
+      },
+      orchestration_stall: {
+        stall_threshold_ms: ORCHESTRATION_STALL_THRESHOLD_MS,
+        notify_cooldown_ms: ORCHESTRATION_STALL_NOTIFY_COOLDOWN_MS,
+        resume_cooldown_ms: ORCHESTRATION_STALL_RESUME_COOLDOWN_MS,
+      },
+      autopilot: {
+        poll_ms: AUTOPILOT_WAKE_POLL_MS,
+        idle_threshold_ms: AUTOPILOT_WAKE_THRESHOLD_MS,
+        wake_cooldown_ms: WATCHDOG_WAKE_COOLDOWN_MS,
+      },
+    })
   })
 
   test("parseGatehouseModel splits provider and model id", () => {

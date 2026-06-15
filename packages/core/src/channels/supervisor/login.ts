@@ -27,7 +27,7 @@ async function spawnBridgeLogin(projectDir: string, channelId: "weixin", searchD
     stdin: "inherit",
   })
   const code = await proc.exited
-  if (code !== 0) throw new Error(`微信登录失败 (exit ${code})`)
+  if (code !== 0) throw new Error(`WeChat login failed (exit ${code})`)
 }
 
 export async function runChannelLogin(
@@ -38,46 +38,46 @@ export async function runChannelLogin(
   if (channelId === "weixin") {
     await spawnBridgeLogin(projectDir, "weixin", searchDirs)
     updateChannelConfig(projectDir, "weixin", { enabled: true })
-    console.log("已启用 channels.weixin")
+    console.log("Enabled channels.weixin")
     return
   }
 
   if (channelId === "feishu") {
-    console.log("飞书 Bot 配置（企业自建应用 App ID / App Secret）")
+    console.log("Feishu Bot setup (enterprise app App ID / App Secret)")
     const appId = await promptLine("App ID: ")
     const appSecret = await promptLine("App Secret: ")
-    if (!appId || !appSecret) throw new Error("App ID 与 App Secret 不能为空")
+    if (!appId || !appSecret) throw new Error("App ID and App Secret are required")
     updateChannelConfig(projectDir, "feishu", { appId, appSecret })
-    console.log("已保存飞书凭证到 .gatehouse/channels.yaml")
-    console.log("提示: 先运行 bunx @gatehouse/core channels serve，再在飞书控制台配置事件订阅长连接。")
+    console.log("Saved Feishu credentials to .gatehouse/channels.yaml")
+    console.log("Tip: run bunx @gatehouse/core channels serve, then configure event subscription long connection in Feishu console.")
     return
   }
 
   if (channelId === "qq-onebot") {
-    console.log("QQ 群聊 OneBot 配置（NapCat 正向 WebSocket）")
+    console.log("QQ group OneBot setup (NapCat forward WebSocket)")
     const wsUrl = (await promptLine("WebSocket URL [ws://127.0.0.1:3001]: ")) || "ws://127.0.0.1:3001"
-    const accessToken = await promptLine("Access Token（可选，直接回车跳过）: ")
-    const requireAtAnswer = (await promptLine("仅在被 @ 时回复? [Y/n]: ")).toLowerCase()
+    const accessToken = await promptLine("Access Token (optional, press Enter to skip): ")
+    const requireAtAnswer = (await promptLine("Reply only when @mentioned? [Y/n]: ")).toLowerCase()
     const requireAt = requireAtAnswer !== "n" && requireAtAnswer !== "no"
-    const allowListRaw = await promptLine("群号白名单（逗号分隔，留空表示全部群）: ")
+    const allowListRaw = await promptLine("Group allowlist (comma-separated, empty for all groups): ")
     const groupAllowList = allowListRaw
       .split(",")
       .map((item) => item.trim())
       .filter(Boolean)
     updateChannelConfig(projectDir, "qq-onebot", { wsUrl, accessToken, requireAt, groupAllowList })
-    console.log("已保存 QQ OneBot 配置到 .gatehouse/channels.yaml")
-    console.log("提示: 请确保 NapCat 已登录并开启正向 WebSocket，然后运行 channels serve。")
+    console.log("Saved QQ OneBot config to .gatehouse/channels.yaml")
+    console.log("Tip: ensure NapCat is logged in with forward WebSocket enabled, then run channels serve.")
     return
   }
 
   if (channelId === "qq") {
-    console.log("QQ 官方 Bot 配置")
+    console.log("QQ official Bot setup")
     const appId = await promptLine("App ID: ")
     const secret = await promptLine("Client Secret: ")
-    if (!appId || !secret) throw new Error("App ID 与 Client Secret 不能为空")
-    const sandboxAnswer = (await promptLine("使用沙箱环境? [Y/n]: ")).toLowerCase()
+    if (!appId || !secret) throw new Error("App ID and Client Secret are required")
+    const sandboxAnswer = (await promptLine("Use sandbox environment? [Y/n]: ")).toLowerCase()
     const sandbox = sandboxAnswer !== "n" && sandboxAnswer !== "no"
     updateChannelConfig(projectDir, "qq", { appId, secret, sandbox })
-    console.log("已保存 QQ 凭证到 .gatehouse/channels.yaml")
+    console.log("Saved QQ credentials to .gatehouse/channels.yaml")
   }
 }

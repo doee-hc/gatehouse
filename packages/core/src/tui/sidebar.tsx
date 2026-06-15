@@ -71,6 +71,35 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
             </text>
           )}
         </Show>
+        <Show when={state()?.autopilot}>
+          {(autopilot) => {
+            const enabled = () => autopilot().enabled
+            const directionOk = () => autopilot().directionConfirmed
+            const lampColor = () => {
+              if (!enabled()) return theme().textMuted
+              return directionOk() ? theme().success : theme().warning
+            }
+            return (
+              <box marginTop={1}>
+                <text>
+                  <span style={{ fg: lampColor() }}>{enabled() ? "●" : "○"}</span>
+                  <span style={{ fg: theme().text }}>
+                    {" "}
+                    <b>Autopilot</b>{" "}
+                  </span>
+                  <span style={{ fg: enabled() ? lampColor() : theme().textMuted }}>
+                    <b>{enabled() ? "ON" : "OFF"}</b>
+                  </span>
+                  <span style={{ fg: theme().textMuted }}>
+                    {" "}
+                    · direction {directionOk() ? "confirmed" : "draft"}
+                  </span>
+                </text>
+                <text fg={theme().textMuted}>/autopilot to toggle</text>
+              </box>
+            )
+          }}
+        </Show>
         <Show when={error()}>
           {(message) => <text fg={theme().error}>Failed to load: {message()}</text>}
         </Show>

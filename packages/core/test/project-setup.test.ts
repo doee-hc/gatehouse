@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
 process.env.GATEHOUSE_LOCAL_PLUGIN = "1"
+import { lstatSync } from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { mkdtemp, rm } from "node:fs/promises"
@@ -13,6 +14,7 @@ import {
 } from "../src/setup/project.ts"
 import { globalOpencodeAgentPath } from "../src/setup/global-opencode.ts"
 import { syncManagedTemplates } from "../src/setup/sync-templates.ts"
+import { GATEHOUSE_META_SKILL_NAMES } from "../src/skills/constants.ts"
 import { parseYaml, isRecord } from "../src/yaml.ts"
 
 async function withIsolatedGlobalOpencode<T>(run: (globalDir: string) => Promise<T>) {
@@ -38,6 +40,11 @@ describe("project setup", () => {
 
         expect(await Bun.file(path.join(dir, ".gatehouse/zh/skills/lead-meta/SKILL.md")).exists()).toBe(true)
         expect(await Bun.file(path.join(dir, ".gatehouse/en/skills/lead-meta/SKILL.md")).exists()).toBe(true)
+        for (const name of GATEHOUSE_META_SKILL_NAMES) {
+          const copyPath = path.join(dir, ".gatehouse/skills", name)
+          expect(lstatSync(copyPath).isSymbolicLink()).toBe(false)
+          expect(await Bun.file(path.join(copyPath, "SKILL.md")).exists()).toBe(true)
+        }
         expect(await Bun.file(path.join(dir, ".gatehouse/lead/missions.yaml")).exists()).toBe(true)
         expect(await Bun.file(path.join(dir, ".gatehouse/brand/logo.png")).exists()).toBe(true)
         expect(await Bun.file(path.join(dir, ".opencode/agent/lead.md")).exists()).toBe(false)

@@ -77,7 +77,6 @@ export async function handleOuterChatMessage(
     registeredLead,
   )
 
-  const existing = registry.bySession(input.sessionID)
   registry.registerOuterSession({
     profile: agent,
     sessionId: input.sessionID,
@@ -86,8 +85,4 @@ export async function handleOuterChatMessage(
   })
   registry.syncOuterDisplayNames()
   await registry.syncOuterSessionTitle(input.sessionID, agent)
-
-  if (agent === LEAD_OPENCODE && !existing) {
-    await registry.ensureLeadSystemPrompt(input.sessionID)
-  }
 }

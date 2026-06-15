@@ -15,7 +15,7 @@ function registryDirectory(recipients: { agentId: string; sessionId: string; dis
 export function sendMessageTool(input: PluginInput) {
   return tool({
     description:
-      "Send a message to another Gatehouse agent. Does NOT change orchestration state. Use for peer/outer conversation, in-flight alignment, or small course corrections while the peer is still running and has not completed. recipient: outer profile (lead|architect|curator|arbiter), execution-tree node_id, OpenCode session_id, or registry agent_id. Busy recipients queue delivery automatically — no need to resend. Do not use for phase completion — gatehouse_execution_complete. Do not use when orchestration must wait for a correction — gatehouse_execution_rework with a narrow reason.",
+      "Outer-team messaging (lead, architect, curator). Does not change orchestration state. Inner execution nodes must use gatehouse_execution_complete / gatehouse_execution_rework instead.",
     args: {
       recipient: tool.schema
         .string()
@@ -37,6 +37,17 @@ export function sendMessageTool(input: PluginInput) {
           }
         }
         const store = await getRegistryStore(input)
+        const sender = store.bySession(context.sessionID)
+        if (sender?.scope === "inner" || sender?.scope === "retro" || sender?.scope === "extract" || sender?.scope === "verify") {
+          return {
+            output: toolFail(
+              toolName,
+              "NOT_AUTHORIZED",
+              "This tool is not available to execution or pipeline sessions; use gatehouse_execution_complete or gatehouse_execution_rework",
+            ),
+            ...toolMetadata(toolName),
+          }
+        }
         const result = await store.sendMessage({
           senderSessionId: context.sessionID,
           senderProfile: context.agent,
@@ -98,8 +109,7 @@ export function sendMessageTool(input: PluginInput) {
             recipient_agent_id: result.recipient.agentId,
             recipient_profile: result.recipient.profile,
             session_id: result.sessionId,
-            created_session: result.createdSession,
-            registry_db: store.dbPath,
+            ...(result.createdSession && { created_session: result.createdSession }),
           }),
           ...toolMetadata(toolName),
         }

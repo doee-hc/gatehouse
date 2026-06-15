@@ -31,18 +31,18 @@ export function compareSemver(left: string, right: string) {
 export function satisfiesOpencodeVersion(version: string) {
   const parsed = parseSemver(version)
   if (!parsed) {
-    return { ok: false as const, reason: `无法解析 OpenCode 版本: ${version}` }
+    return { ok: false as const, reason: `Could not parse OpenCode version: ${version}` }
   }
   if (compareSemver(version, MIN_OPENCODE_VERSION) < 0) {
     return {
       ok: false as const,
-      reason: `OpenCode ${version} 过低，需要 >= ${MIN_OPENCODE_VERSION}`,
+      reason: `OpenCode ${version} is too old — requires >= ${MIN_OPENCODE_VERSION}`,
     }
   }
   if (compareSemver(version, MAX_OPENCODE_VERSION_EXCLUSIVE) >= 0) {
     return {
       ok: false as const,
-      reason: `OpenCode ${version} 尚未验证，Gatehouse 当前支持 < ${MAX_OPENCODE_VERSION_EXCLUSIVE}`,
+      reason: `OpenCode ${version} is not yet verified — Gatehouse currently supports < ${MAX_OPENCODE_VERSION_EXCLUSIVE}`,
     }
   }
   return { ok: true as const, version }

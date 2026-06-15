@@ -4,7 +4,7 @@ export type GatehouseLocale = "zh" | "en"
 
 export const GATEHOUSE_LOCALES: GatehouseLocale[] = ["zh", "en"]
 
-export const DEFAULT_GATEHOUSE_LOCALE: GatehouseLocale = "zh"
+export const DEFAULT_GATEHOUSE_LOCALE: GatehouseLocale = "en"
 
 export function normalizeGatehouseLocale(value: unknown): GatehouseLocale | undefined {
   if (value === "zh" || value === "en") return value

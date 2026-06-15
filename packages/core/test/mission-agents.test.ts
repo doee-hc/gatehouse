@@ -51,6 +51,8 @@ describe("mission inner agent lifecycle", () => {
       retroCompletions: [],
       skillExtractRuns: [],
       skillExtractCompletions: [],
+      skillVerifyRuns: [],
+      skillVerifyCompletions: [],
     })
 
     expect(deactivateInnerAgentsForMissions(dir, ["m-a"])).toBe(1)
@@ -105,6 +107,8 @@ describe("mission inner agent lifecycle", () => {
       retroCompletions: [],
       skillExtractRuns: [],
       skillExtractCompletions: [],
+      skillVerifyRuns: [],
+      skillVerifyCompletions: [],
     })
 
     await setMissionStatus(dir, "m-a", "done")
@@ -143,6 +147,8 @@ describe("mission inner agent lifecycle", () => {
       retroCompletions: [],
       skillExtractRuns: [],
       skillExtractCompletions: [],
+      skillVerifyRuns: [],
+      skillVerifyCompletions: [],
     })
 
     const count = reconcileInactiveMissionInnerAgents(dir, {
@@ -185,6 +191,8 @@ describe("mission inner agent lifecycle", () => {
       ],
       skillExtractRuns: [],
       skillExtractCompletions: [],
+      skillVerifyRuns: [],
+      skillVerifyCompletions: [],
     })
 
     expect(reconcileCompletedRetroAgents(dir)).toBe(1)
@@ -237,6 +245,8 @@ describe("mission inner agent lifecycle", () => {
       ],
       skillExtractRuns: [],
       skillExtractCompletions: [],
+      skillVerifyRuns: [],
+      skillVerifyCompletions: [],
     })
 
     expect(reconcileCompletedRetroAgents(dir)).toBe(1)

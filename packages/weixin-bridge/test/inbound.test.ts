@@ -44,6 +44,6 @@ describe("inbound", () => {
       unsupportedMediaReply({
         item_list: [{ type: MessageItemType.FILE }],
       }),
-    ).toContain("文件")
+    ).toContain("Files")
   })
 })

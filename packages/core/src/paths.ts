@@ -84,6 +84,14 @@ export function retroManifestExportPath(projectDirectory: string, missionId: str
   return path.join(internalExportsDir(projectDirectory), "trees", missionId, "retro-manifest.yaml")
 }
 
+export function extractManifestExportPath(projectDirectory: string, missionId: string) {
+  return path.join(internalExportsDir(projectDirectory), "trees", missionId, "extract-manifest.yaml")
+}
+
+export function verifyManifestExportPath(projectDirectory: string, missionId: string) {
+  return path.join(internalExportsDir(projectDirectory), "trees", missionId, "verify-manifest.yaml")
+}
+
 /** Pre-internal-layout path; import fallback only. */
 export function legacyManifestPath(projectDirectory: string, missionId: string) {
   return path.join(treeDir(projectDirectory, missionId), "manifest.yaml")
@@ -135,12 +143,20 @@ export function watchdogSkillRecordWakePromptPath(projectDirectory: string) {
   return resolveGatehouseContentPath(projectDirectory, "prompts/architect/watchdog-skill-record-wake.md")
 }
 
-export function watchdogLeadUserBusyWakePromptPath(projectDirectory: string) {
-  return resolveGatehouseContentPath(projectDirectory, "prompts/lead/watchdog-user-busy-wake.md")
+export function watchdogSkillVerifyRecordWakePromptPath(projectDirectory: string) {
+  return resolveGatehouseContentPath(projectDirectory, "prompts/architect/watchdog-skill-verify-record-wake.md")
 }
 
-export function rootDeliveryPath(projectDirectory: string, missionId: string) {
-  return path.join(treeDir(projectDirectory, missionId), "reports", "root-delivery.md")
+export function autopilotWakePromptPath(projectDirectory: string) {
+  return resolveGatehouseContentPath(projectDirectory, "prompts/lead/autopilot-wake.md")
+}
+
+export function autopilotEnabledPromptPath(projectDirectory: string) {
+  return resolveGatehouseContentPath(projectDirectory, "prompts/lead/autopilot-enabled.md")
+}
+
+export function watchdogOrchestratorStallPromptPath(projectDirectory: string) {
+  return resolveGatehouseContentPath(projectDirectory, "prompts/architect/watchdog-orchestrator-stall.md")
 }
 
 export function treesIndexPath(projectDirectory: string) {
@@ -165,12 +181,12 @@ export function retroSessionTitle(missionId: string, nodeId: string) {
   return sessionTitle(missionId, nodeId, true)
 }
 
-export function nodeDeliveryRelPath(missionId: string, nodeId: string) {
-  return path.join(treeRelDir(missionId), "reports", "nodes", `${nodeId}-delivery.md`)
+export function extractSessionTitle(missionId: string, nodeId: string) {
+  return `[extract] ${nodeDisplayLabel(nodeId)}`
 }
 
-export function nodeDeliveryReportPath(projectDirectory: string, missionId: string, nodeId: string) {
-  return path.join(projectDirectory, nodeDeliveryRelPath(missionId, nodeId))
+export function verifySessionTitle(missionId: string, nodeId: string) {
+  return `[verify] ${nodeDisplayLabel(nodeId)}`
 }
 
 export function retroNodeReportRelPath(missionId: string, nodeId: string) {
@@ -205,6 +221,14 @@ export function domainSkillExtractPromptPath(projectDirectory: string) {
   return resolveGatehouseContentPath(projectDirectory, "prompts/architect/domain-skill-extract.md")
 }
 
+export function domainSkillVerifyPromptPath(projectDirectory: string) {
+  return resolveGatehouseContentPath(projectDirectory, "prompts/architect/domain-skill-verify.md")
+}
+
+export function skillVerifyReportRelPath(missionId: string, nodeId: string) {
+  return path.join(treeRelDir(missionId), "reports", "skills", `${nodeId}-verify.md`)
+}
+
 export function skillDomainDir(domainId: string) {
   return path.join(".gatehouse", "skills", "by-domain", domainId)
 }
@@ -229,8 +253,8 @@ export function architectSummaryRelPath(missionId: string) {
   return path.join(treeRelDir(missionId), "reports", "architect-summary.md")
 }
 
-export function rootDeliveryRelPath(missionId: string) {
-  return path.join(treeRelDir(missionId), "reports", "root-delivery.md")
+export function curatorSummaryRelPath(missionId: string) {
+  return path.join(treeRelDir(missionId), "reports", "curator-summary.md")
 }
 
 export function deliveryDocumentPath(projectDirectory: string, missionId: string) {

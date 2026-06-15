@@ -43,7 +43,7 @@ export function readPortalAdminKeyFromConfig(projectDir: string) {
   if (!fs.existsSync(configPath)) return ""
 
   const raw = parseYaml(fs.readFileSync(configPath, "utf-8"))
-  if (!isRecord(raw)) throw new Error(`${configPath} 必须是 YAML mapping`)
+  if (!isRecord(raw)) throw new Error(`${configPath} must be a YAML mapping`)
 
   const portal = raw.portal
   if (!isRecord(portal)) return ""
@@ -63,7 +63,7 @@ export function loadPortalFileConfig(projectDir: string): PortalFileConfig {
   if (!fs.existsSync(configPath)) return {}
 
   const raw = parseYaml(fs.readFileSync(configPath, "utf-8"))
-  if (!isRecord(raw)) throw new Error(`${configPath} 必须是 YAML mapping`)
+  if (!isRecord(raw)) throw new Error(`${configPath} must be a YAML mapping`)
 
   const adminKey = typeof raw.adminKey === "string" ? raw.adminKey.trim() : ""
   return adminKey ? { adminKey } : {}
@@ -102,7 +102,7 @@ export function ensurePortalAdminKey(projectDir: string) {
   }
 
   const raw = parseYaml(fs.readFileSync(configPath, "utf-8"))
-  if (!isRecord(raw)) throw new Error(`${configPath} 必须是 YAML mapping`)
+  if (!isRecord(raw)) throw new Error(`${configPath} must be a YAML mapping`)
 
   const portal = isRecord(raw.portal) ? { ...raw.portal } : {}
   portal.admin_key = key

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { beforeEach, describe, expect, test } from "bun:test"
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
@@ -10,12 +10,20 @@ import { RegistryStore } from "../src/registry/store.ts"
 import { OUTER_ARCHITECT_ID } from "../src/registry/types.ts"
 import type { GatehouseClient } from "../src/session/client.ts"
 import {
+  AWAITING_SKILL_DOMAINS_PHASE,
+  ensureOrchestrationNodesInitialized,
   hasOrchestrationRuntime,
+  initAwaitingSkillDomainsState,
   initOrchestrationState,
   markNodeRunning,
+  mutateOrchestrationState,
+  orchestrationNeedsResume,
+  orchestrationStateNeedsNodeInit,
   readOrchestrationState,
   writeOrchestrationState,
 } from "../src/orchestration/state.ts"
+import { prepareOrchestrationRuntime } from "../src/orchestration/runtime.ts"
+import { createMissionContext } from "../src/orchestration/ctx-host.ts"
 import { saveMissionScriptRecord } from "../src/orchestration/context.ts"
 import { validateReworkRequest } from "../src/orchestration/rework.ts"
 import { notifyOrchestrationWaiters } from "../src/orchestration/wait.ts"
@@ -49,6 +57,136 @@ describe("orchestration state", () => {
     markNodeRunning(state, "a")
     expect(state.nodes.a?.status).toBe("running")
     expect(state.nodes.a?.round).toBe(2)
+  })
+
+  test("orchestrationNeedsResume when sandbox stopped and nodes incomplete", () => {
+    const state = initOrchestrationState("m1", ["a", "b"])
+    state.nodes.a = { status: "done" }
+    expect(orchestrationNeedsResume(state, false)).toBe(true)
+    expect(orchestrationNeedsResume(state, true)).toBe(false)
+    state.nodes.b = { status: "done" }
+    expect(orchestrationNeedsResume(state, false)).toBe(false)
+  })
+
+  test("ensureOrchestrationNodesInitialized seeds nodes after awaiting_skill_domains", () => {
+    const awaiting = initAwaitingSkillDomainsState("m1", "abc123")
+    expect(orchestrationStateNeedsNodeInit(awaiting, ["a", "b"])).toBe(true)
+
+    const initialized = ensureOrchestrationNodesInitialized(awaiting, ["a", "b"])
+    expect(initialized.nodes.a?.status).toBe("pending")
+    expect(initialized.nodes.b?.status).toBe("pending")
+    expect(initialized.phase).toBeUndefined()
+    expect(initialized.sandbox?.script_hash).toBe("abc123")
+  })
+
+  test("ensureOrchestrationNodesInitialized preserves done nodes and fills missing", () => {
+    const partial = initOrchestrationState("m1", ["a"])
+    partial.nodes.a = { status: "done", completed_at: "2026-01-01T00:00:00.000Z" }
+    const merged = ensureOrchestrationNodesInitialized(partial, ["a", "b"])
+    expect(merged.nodes.a?.status).toBe("done")
+    expect(merged.nodes.b?.status).toBe("pending")
+  })
+
+  test("mutateOrchestrationState preserves concurrent markNodeRunning", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-orch-race-"))
+    try {
+      writeOrchestrationState(dir, initOrchestrationState("race-m1", ["a", "b"]))
+      await Promise.all([
+        Promise.resolve().then(() =>
+          mutateOrchestrationState(dir, "race-m1", (state) => markNodeRunning(state, "a")),
+        ),
+        Promise.resolve().then(() =>
+          mutateOrchestrationState(dir, "race-m1", (state) => markNodeRunning(state, "b")),
+        ),
+      ])
+      const loaded = readOrchestrationState(dir, "race-m1")
+      expect(loaded?.nodes.a?.status).toBe("running")
+      expect(loaded?.nodes.b?.status).toBe("running")
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  test("prepareOrchestrationRuntime initializes nodes after awaiting_skill_domains", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-orch-prepare-"))
+    try {
+      writeOrchestrationState(dir, initAwaitingSkillDomainsState("orch-m1", "hash123"))
+      const manifest = {
+        mission_id: "orch-m1",
+        status: "running" as const,
+        root_node: "root",
+        created_at: new Date().toISOString(),
+        nodes: {
+          root: { session_id: "ses_root", parent: null },
+          a: { session_id: "ses_a", parent: "root" },
+          b: { session_id: "ses_b", parent: "root" },
+        },
+      }
+      const prepared = await prepareOrchestrationRuntime(dir, manifest, {
+        team: sampleTeam,
+        scriptPath: ".gatehouse/trees/orch-m1/mission.script.ts",
+        scriptHash: "hash123",
+        scriptSource: "export default async function orchestrate(ctx) {}",
+        orchestrateSource: "export default async function orchestrate(ctx) {}",
+      })
+      expect(prepared.status).toBe("prepared")
+      if (prepared.status !== "prepared") return
+      expect(prepared.state.nodes.root?.status).toBe("pending")
+      expect(prepared.state.nodes.a?.status).toBe("pending")
+      expect(prepared.state.nodes.b?.status).toBe("pending")
+      expect(prepared.state.phase).not.toBe(AWAITING_SKILL_DOMAINS_PHASE)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  test("prompt(reply:true) marks parallel siblings without clobbering state", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-orch-parallel-prompt-"))
+    try {
+      writeOrchestrationState(dir, initOrchestrationState("parallel-m1", ["a", "b"]))
+      const mockClient: GatehouseClient = {
+        session: {
+          async create() {
+            return { id: "ses_unused" }
+          },
+          async promptAsync() {},
+          async messages() {
+            return { data: [] }
+          },
+          async get() {
+            return { data: {} }
+          },
+          async status() {
+            return { data: {} }
+          },
+        },
+      }
+      const pluginInput = { directory: dir, client: mockClient } as unknown as PluginInput
+      const store = await RegistryStore.create({ directory: dir, client: mockClient })
+      store.registerInnerNode({ missionId: "parallel-m1", nodeId: "a", profile: "build", sessionId: "ses_a" })
+      store.registerInnerNode({ missionId: "parallel-m1", nodeId: "b", profile: "build", sessionId: "ses_b" })
+
+      const parallelTeam: TeamSpec = {
+        mission_id: "parallel-m1",
+        root: "a",
+        nodes: {
+          a: { parent: null, description: "worker a" },
+          b: { parent: null, description: "worker b" },
+        },
+      }
+      const ctx = createMissionContext({ plugin: pluginInput, store, team: parallelTeam })
+
+      await Promise.all([
+        ctx.prompt("a", { text: "work a", reply: true }),
+        ctx.prompt("b", { text: "work b", reply: true }),
+      ])
+
+      const loaded = readOrchestrationState(dir, "parallel-m1")
+      expect(loaded?.nodes.a?.status).toBe("running")
+      expect(loaded?.nodes.b?.status).toBe("running")
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
   })
 
   test("registry persists mission script and orchestration state", async () => {
@@ -262,17 +400,36 @@ describe("orchestration prompt portal", () => {
 })
 
 describe("orchestration wait", () => {
+  beforeEach(async () => {
+    const { clearMissionWaits } = await import("../src/orchestration/wait.ts")
+    for (const missionId of ["wait-m1", "race-m1"]) clearMissionWaits(missionId)
+  })
+
   test("notifyOrchestrationWaiters resolves complete wait", async () => {
     const { waitForOrchestration } = await import("../src/orchestration/wait.ts")
     const missionId = "wait-m1"
     const state = initOrchestrationState(missionId, ["a"])
     state.nodes.a = { status: "pending" }
 
-    const waitPromise = waitForOrchestration(missionId, ["a"], "complete")
+    const waitPromise = waitForOrchestration(missionId, "a", "complete", { readState: () => state })
 
     state.nodes.a = { status: "done", completed_at: new Date().toISOString() }
     notifyOrchestrationWaiters(missionId, state)
 
+    await waitPromise
+  })
+
+  test("readState poll resolves when notify happened before register", async () => {
+    const { waitForOrchestration } = await import("../src/orchestration/wait.ts")
+    const missionId = "race-m1"
+    const state = initOrchestrationState(missionId, ["a"])
+    state.nodes.a = { status: "done", completed_at: new Date().toISOString() }
+
+    notifyOrchestrationWaiters(missionId, state)
+
+    const waitPromise = waitForOrchestration(missionId, "a", "complete", {
+      readState: () => state,
+    })
     await waitPromise
   })
 })

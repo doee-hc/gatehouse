@@ -10,7 +10,7 @@ export function parseAesKey(aesKeyBase64: string) {
     return Buffer.from(decoded.toString("ascii"), "hex")
   }
   throw new Error(
-    `aes_key 必须是 16 字节 raw 或 32 字符 hex 的 base64 编码，实际解码 ${decoded.length} 字节`,
+    `aes_key must be base64-encoded 16-byte raw or 32-char hex, got ${decoded.length} bytes after decode`,
   )
 }
 
@@ -18,7 +18,7 @@ async function fetchCdnBytes(url: string) {
   const response = await fetch(url)
   if (!response.ok) {
     const body = await response.text().catch(() => "")
-    throw new Error(`CDN 下载失败 ${response.status}: ${body.slice(0, 200)}`)
+    throw new Error(`CDN download failed ${response.status}: ${body.slice(0, 200)}`)
   }
   return Buffer.from(await response.arrayBuffer())
 }
@@ -28,7 +28,7 @@ function resolveDownloadUrl(encryptedQueryParam: string, cdnBaseUrl: string, ful
   if (CDN_URL_FALLBACK && encryptedQueryParam) {
     return buildCdnDownloadUrl(encryptedQueryParam, cdnBaseUrl)
   }
-  throw new Error("缺少 CDN full_url 或 encrypt_query_param")
+  throw new Error("Missing CDN full_url or encrypt_query_param")
 }
 
 export async function downloadAndDecryptBuffer(input: {

@@ -38,7 +38,7 @@ export async function startMissionFromYaml(input: {
   registry: RegistryStore
 }) {
   const doc = await readMissionsDocument(input.projectDirectory)
-  assertCanStartRunning(doc)
+  assertCanStartRunning(doc, input.registry)
   const entry = doc.missions.find((mission) => mission.id === input.missionId)
   if (!entry) throw new Error(`Mission not found in missions.yaml: ${input.missionId}`)
   validateMissionStartEntry(entry)

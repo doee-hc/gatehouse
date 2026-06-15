@@ -6,6 +6,7 @@ import {
   checkExecutionWatchdogMission,
 } from "../src/watchdog/execution-tree.ts"
 import { WATCHDOG_IDLE_THRESHOLD_MS, WATCHDOG_WAKE_COOLDOWN_MS } from "../src/watchdog/prompt.ts"
+import { WATCHDOG_POLL_MS } from "../src/watchdog/tick.ts"
 import {
   isInnerNotifyingLead,
   isSendToTreeMember,
@@ -22,6 +23,11 @@ import {
   setMissionWatchState,
 } from "../src/watchdog/state-store.ts"
 import { ExecutionTreeWatchdog } from "../src/watchdog/execution-tree.ts"
+import { ORCHESTRATION_STALL_THRESHOLD_MS } from "../src/orchestration/stall.ts"
+import {
+  ORCHESTRATION_STALL_NOTIFY_COOLDOWN_MS,
+  ORCHESTRATION_STALL_RESUME_COOLDOWN_MS,
+} from "../src/watchdog/orchestration-stall.ts"
 import { watchdogIdleTickDecision, watchdogNodeIdleTickDecision } from "../src/watchdog/tick.ts"
 import type { RegistryAgent } from "../src/registry/types.ts"
 import { RegistryDatabase } from "../src/registry/db.ts"
@@ -259,7 +265,20 @@ describe("execution watchdog integration", () => {
   test("recordSendMessage pauses using sender mission id when tool mission_id differs", () => {
     const dir = `/tmp/gh-watchdog-pause-${Date.now()}`
     const registry = { byAgentId: () => undefined } as unknown as import("../src/registry/store.ts").RegistryStore
-    const watchdog = new ExecutionTreeWatchdog({ directory: dir, client: {} } as import("@opencode-ai/plugin").PluginInput, registry)
+    const watchdog = new ExecutionTreeWatchdog(
+      { directory: dir, client: {} } as import("@opencode-ai/plugin").PluginInput,
+      registry,
+      {
+        poll_ms: WATCHDOG_POLL_MS,
+        idle_threshold_ms: WATCHDOG_IDLE_THRESHOLD_MS,
+        wake_cooldown_ms: WATCHDOG_WAKE_COOLDOWN_MS,
+      },
+      {
+        stall_threshold_ms: ORCHESTRATION_STALL_THRESHOLD_MS,
+        notify_cooldown_ms: ORCHESTRATION_STALL_NOTIFY_COOLDOWN_MS,
+        resume_cooldown_ms: ORCHESTRATION_STALL_RESUME_COOLDOWN_MS,
+      },
+    )
     const root = { ...innerAgent("root"), missionId }
     watchdog.recordSendMessage({
       missionId: "wrong-mission",

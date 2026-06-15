@@ -13,7 +13,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
     const arg = args[i]!
     if (arg === "-C" || arg === "--project") {
       const next = args[++i]
-      if (!next) throw new Error(`${arg} 需要项目路径`)
+      if (!next) throw new Error(`${arg} requires a project path`)
       options.set("project", next)
       continue
     }

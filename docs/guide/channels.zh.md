@@ -56,6 +56,7 @@ Portal 通道管理（可选）：`http://127.0.0.1:18472/admin` — 使用 `.ga
 ## Agent 与 IM 互通
 
 - 入站消息转发到用户绑定的 registry agent（默认 `outer:lead`）；在 IM 中可用 `/agent` 切换对象。
+- `/autopilot on|off` 开关项目 autopilot 模式（用户沉默 10 分钟后 Lead 收到全权负责提醒；须 direction 已确认）。OpenCode TUI 内用 `/autopilot`、`/autopilot-on`、`/autopilot-off`。
 - 绑定 session idle 后，助手回复会自动推送到 IM。
 - Agent 调用 `gatehouse_channels_send_file` 并传入项目内相对路径，可将图片/文件加入 IM 出站队列。
 

@@ -7,6 +7,8 @@ import {
   isMessageKeyProcessed,
   mimeFromContentType,
   parseAgentCommand,
+  parseAutopilotCommand,
+  handleAutopilotCommand,
   promptSession,
   rememberMessageKey,
   resolveActiveAgentTarget,
@@ -103,11 +105,26 @@ export class FeishuLeadBridge {
         return
       }
 
+      const autopilotCommand = text ? parseAutopilotCommand(text) : undefined
+      if (autopilotCommand) {
+        const { text: reply } = await handleAutopilotCommand({
+          projectDirectory: this.config.projectDir,
+          command: autopilotCommand,
+          enabledBy: "channel",
+          deliverLeadNotice: { client: client as never },
+        })
+        for (const chunk of chunkText(reply, 3500)) {
+          await feishu.replyText(message.messageId, chunk)
+        }
+        rememberMessageKey(this.config.stateDir, message.userId, message.eventId)
+        return
+      }
+
       const files: ChannelPromptFile[] = []
       if (message.messageType === "image") {
         const imageKey = parseImageKey(message.content)
         if (!imageKey) {
-          await feishu.replyText(message.messageId, "无法解析图片消息，请重试或改用文字描述。")
+          await feishu.replyText(message.messageId, "Could not parse image message. Please retry or describe your request in text.")
           rememberMessageKey(this.config.stateDir, message.userId, message.eventId)
           return
         }
@@ -128,7 +145,7 @@ export class FeishuLeadBridge {
 
       const target = await resolveActiveAgentTarget(client, this.config, message.userId)
       const promptText =
-        text || (files.length ? "用户发送了一张图片，请查看并根据图片内容回复。" : unsupportedMediaReply(message.messageType))
+        text || (files.length ? "The user sent an image. Please review it and reply based on the image content." : unsupportedMediaReply(message.messageType))
       const reply = await promptSession(client, this.config, {
         sessionId: target.sessionId,
         opencodeAgent: target.opencodeAgent,
@@ -149,7 +166,7 @@ export class FeishuLeadBridge {
           onUnsupported: async (attachment) => {
             await feishu.replyText(
               message.messageId,
-              `暂不支持发送该文件类型（${attachment.mime}）：${attachment.filename}`,
+              `Unsupported file type (${attachment.mime}): ${attachment.filename}`,
             )
           },
         },
@@ -157,7 +174,7 @@ export class FeishuLeadBridge {
       rememberMessageKey(this.config.stateDir, message.userId, message.eventId)
     } catch (error) {
       const messageText = error instanceof Error ? error.message : String(error)
-      await feishu.replyText(message.messageId, `处理失败：${messageText}`).catch(() => undefined)
+      await feishu.replyText(message.messageId, `Processing failed: ${messageText}`).catch(() => undefined)
     }
   }
 }

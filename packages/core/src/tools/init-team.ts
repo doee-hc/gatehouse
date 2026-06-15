@@ -29,11 +29,10 @@ export function initTeamTool(input: PluginInput) {
             sessionId: context.sessionID,
             projectRootSessionId: context.sessionID,
           })
-          await store.ensureLeadSystemPrompt(context.sessionID)
         }
         const team = await store.initOuterTeam(context.sessionID)
         return {
-          output: toolOk(toolName, { registry_db: store.dbPath, ...team }),
+          output: toolOk(toolName, team),
           ...toolMetadata(toolName),
         }
       } catch (error) {

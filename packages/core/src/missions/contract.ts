@@ -6,7 +6,6 @@ import { normalizeMissionOverrideFields } from "./normalize.ts"
 export type MissionContract = {
   mission_id: string
   status: string
-  priority?: string
   objective?: string
   done_when: string[]
   must_not: string[]
@@ -32,7 +31,6 @@ export function missionEntryToRecord(
     isActive: input.isActive,
     lockedAt: input.lockedAt,
     updatedAt: now,
-    ...(entry.priority && { priority: entry.priority }),
     ...(entry.objective && { objective: entry.objective }),
     ...(entry.notes && { notes: entry.notes }),
     ...(entry.user_topology && { userTopology: entry.user_topology }),
@@ -55,7 +53,6 @@ export function registryMissionToContract(record: RegistryMissionRecord): Missio
     must_not: [...record.mustNot],
     locked_at: record.lockedAt,
     is_active: record.isActive,
-    ...(record.priority && { priority: record.priority }),
     ...(record.objective && { objective: record.objective }),
     ...overrides,
     ...(record.startedAt && { started_at: record.startedAt }),

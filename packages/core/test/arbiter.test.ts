@@ -300,7 +300,7 @@ describe("permission arbiter", () => {
         .catch((err) => {
           error = err
         })
-      expect(error instanceof Error && error.message.includes("未能通过 Gatehouse 路由")).toBe(true)
+      expect(error instanceof Error && error.message.includes("could not be routed to OpenCode pending via Gatehouse")).toBe(true)
       expect(arbiter.queue.get("per_stale")).toBeUndefined()
     } finally {
       await rm(dir, { recursive: true, force: true })
@@ -556,7 +556,7 @@ describe("permission arbiter", () => {
         always: [],
       })
 
-      expect(promptCalls.filter((call) => call.text.includes("[Gatehouse 权限案卷]"))).toHaveLength(1)
+      expect(promptCalls.filter((call) => call.text.includes("[Gatehouse permission case]"))).toHaveLength(1)
       expect(promptCalls.at(-1)?.sessionId).toBe("ses_arbiter")
       expect(promptCalls.at(-1)?.text).toContain("per_1")
 
@@ -658,7 +658,7 @@ describe("permission arbiter", () => {
           mockToolContext(dir, "ses_arbiter", ARBITER_OPENCODE),
         ),
       )
-      expect(decided).toContain("per_2")
+      expect(decided).toContain('"decided": true')
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

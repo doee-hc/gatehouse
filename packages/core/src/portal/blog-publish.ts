@@ -4,7 +4,7 @@ import { blogPostFormatFromPath, extractBlogPostTitle } from "./blog-content.ts"
 
 export const BLOG_PUBLISHER_SYSTEM = "system"
 export const BLOG_PUBLISHER_LEAD = "lead"
-import { architectSummaryRelPath, gatehouseRoot, retroNodeReportRelPath, rootDeliveryRelPath } from "../paths.ts"
+import { architectSummaryRelPath, gatehouseRoot, retroNodeReportRelPath } from "../paths.ts"
 import { isRecord, parseYaml, readString, stringifyYaml } from "../yaml.ts"
 import { requestPortalBlogCacheRefresh } from "./blog-cache-sync.ts"
 import { emitPortalEvent } from "./events.ts"
@@ -46,10 +46,6 @@ export function architectBlogSummaryRel(missionId: string) {
   return architectSummaryRelPath(missionId)
 }
 
-export function rootBlogDeliveryRel(missionId: string) {
-  return rootDeliveryRelPath(missionId)
-}
-
 export function retroBlogNodeRel(missionId: string, nodeId: string) {
   return retroNodeReportRelPath(missionId, nodeId)
 }
@@ -80,10 +76,6 @@ export function blogMissionIdFromPostId(postId: string) {
     const missionId = postId.slice(0, -":architect:summary".length)
     return missionId || undefined
   }
-  if (postId.endsWith(":root:delivery")) {
-    const missionId = postId.slice(0, -":root:delivery".length)
-    return missionId || undefined
-  }
   const retroPrefix = ":retro:"
   const retroAt = postId.indexOf(retroPrefix)
   if (retroAt > 0) return postId.slice(0, retroAt)
@@ -96,9 +88,6 @@ export function blogPostRelPath(postId: string) {
   }
   if (postId.endsWith(":architect:summary")) {
     return architectBlogSummaryRel(postId.slice(0, -":architect:summary".length))
-  }
-  if (postId.endsWith(":root:delivery")) {
-    return rootBlogDeliveryRel(postId.slice(0, -":root:delivery".length))
   }
   const retroPrefix = ":retro:"
   const retroAt = postId.indexOf(retroPrefix)

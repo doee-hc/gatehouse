@@ -56,6 +56,7 @@ Portal channel admin (optional): `http://127.0.0.1:18472/admin` — unlock with 
 ## Agent ↔ IM
 
 - Inbound messages route to the user's bound registry agent (default `outer:lead`); use `/agent` in IM to switch targets.
+- `/autopilot on|off` toggles project autopilot (10-minute silence → Lead full-delegation reminder; requires confirmed direction). In OpenCode TUI use `/autopilot`, `/autopilot-on`, or `/autopilot-off`.
 - Outbound assistant text is relayed when the bound OpenCode session goes idle.
 - Agents call `gatehouse_channels_send_file` with a project-relative path to queue an image/file for IM delivery.
 

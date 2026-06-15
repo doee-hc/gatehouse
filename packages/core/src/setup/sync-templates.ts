@@ -6,6 +6,7 @@ import { readAgentNamesSync, renderGatehouseTemplate } from "../names.ts"
 import { bundledGatehouseTemplateRoot } from "../paths.ts"
 import { syncGlobalOpencodeAgents } from "./global-opencode.ts"
 import { writeTemplateFile } from "./template-copy.ts"
+import { ensureMetaSkillCopies } from "../skills/meta-skill-copies.ts"
 import { gatehouseTemplateDest, isLocaleSpecificGatehouseRelative } from "../template-paths.ts"
 
 /** Project-owned under .gatehouse/ — sync must not clobber agent/user edits (same as scaffold). */
@@ -101,4 +102,5 @@ export async function syncManagedTemplates(projectRoot: string) {
   }
 
   await syncGlobalOpencodeAgents(locale, names)
+  ensureMetaSkillCopies(root, locale)
 }

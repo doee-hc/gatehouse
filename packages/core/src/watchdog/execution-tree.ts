@@ -3,6 +3,10 @@ import type { RegistryStore } from "../registry/store.ts"
 import type { RegistryAgent } from "../registry/types.ts"
 import { innerAgentId } from "../registry/types.ts"
 import { gatehouseLog } from "../log.ts"
+import type {
+  ResolvedOrchestrationStallWatchdogTiming,
+  ResolvedWatchdogPollTiming,
+} from "../gatehouse-config.ts"
 import { sessionRuntimeStatus, sessionStatusById, type SessionRuntimeStatus } from "../session/status.ts"
 import { orchestrationProblemNodeIds, readOrchestrationState } from "../orchestration/state.ts"
 import type { OrchestrationState } from "../orchestration/types.ts"
@@ -13,7 +17,6 @@ import {
   loadWatchdogNodeWakePrompt,
   listRunningMissionIds,
   WATCHDOG_IDLE_THRESHOLD_MS,
-  WATCHDOG_POLL_MS,
 } from "./prompt.ts"
 import {
   mergeWatchdogTickState,
@@ -29,6 +32,7 @@ import {
   pruneWatchdogStates,
   setMissionWatchState,
 } from "./state-store.ts"
+import { checkOrchestrationStallWatchdog } from "./orchestration-stall.ts"
 import { watchdogNodeIdleTickDecision } from "./tick.ts"
 
 function logWatchdogTickError(directory: string, label: string, error: unknown) {
@@ -66,9 +70,10 @@ export async function checkExecutionWatchdogMission(input: {
   orchState: OrchestrationState
   statusMap: Map<string, SessionRuntimeStatus>
   now: number
+  timing?: ResolvedWatchdogPollTiming
   loadWakePrompt?: (
     projectDirectory: string,
-    params: { missionId: string; nodeId: string; idleSeconds: number; rootNodeId: string },
+    params: { missionId: string; nodeId: string; idleSeconds: number },
   ) => Promise<string>
 }) {
   const {
@@ -79,6 +84,7 @@ export async function checkExecutionWatchdogMission(input: {
     orchState,
     statusMap,
     now,
+    timing,
     loadWakePrompt = loadWatchdogNodeWakePrompt,
   } = input
   const { directory } = pluginInput
@@ -107,7 +113,13 @@ export async function checkExecutionWatchdogMission(input: {
     if (!sessionId) continue
     const sessionIdle = sessionRuntimeStatus(statusMap, sessionId) === "idle"
     const prevNode = missionState.nodes?.[nodeId]
-    const decision = watchdogNodeIdleTickDecision({ now, sessionIdle, nodeState: prevNode })
+    const decision = watchdogNodeIdleTickDecision({
+      now,
+      sessionIdle,
+      nodeState: prevNode,
+      idleThresholdMs: timing?.idle_threshold_ms,
+      wakeCooldownMs: timing?.wake_cooldown_ms,
+    })
 
     if (decision.action === "wake") {
       if (getMissionWatchState(directory, missionId)?.paused) return { action: "paused" as const }
@@ -116,12 +128,13 @@ export async function checkExecutionWatchdogMission(input: {
         nodeUpdates[nodeId] = decision.nextNodeState
         continue
       }
-      const idleSeconds = Math.round((decision.idleDurationMs ?? WATCHDOG_IDLE_THRESHOLD_MS) / 1000)
+      const idleSeconds = Math.round(
+        (decision.idleDurationMs ?? timing?.idle_threshold_ms ?? WATCHDOG_IDLE_THRESHOLD_MS) / 1000,
+      )
       const content = await loadWakePrompt(directory, {
         missionId,
         nodeId,
         idleSeconds,
-        rootNodeId: manifest.root_node,
       })
       if (getMissionWatchState(directory, missionId)?.paused) return { action: "paused" as const }
       const delivered = await registry.deliverSystemMessage(agent, content, agent.profile)
@@ -151,9 +164,11 @@ export class ExecutionTreeWatchdog {
   constructor(
     private input: PluginInput,
     private registry: RegistryStore,
+    private executionTiming: ResolvedWatchdogPollTiming,
+    private orchestrationStallTiming: ResolvedOrchestrationStallWatchdogTiming,
   ) {}
 
-  start(pollMs = WATCHDOG_POLL_MS) {
+  start(pollMs = this.executionTiming.poll_ms) {
     const unregisterSend = registerWatchdogSendHandler(this.input.directory, (event) => {
       this.recordSendMessage(event)
     })
@@ -237,13 +252,43 @@ export class ExecutionTreeWatchdog {
       orchState,
       statusMap,
       now,
+      timing: this.executionTiming,
     })
+
+    const missionState = getMissionWatchState(this.input.directory, missionId) ?? {}
+    const stallResult = await checkOrchestrationStallWatchdog({
+      pluginInput: this.input,
+      registry: this.registry,
+      missionId,
+      orchState,
+      missionWatchState: missionState,
+      now,
+      timing: this.orchestrationStallTiming,
+    })
+    if (stallResult.orchestratorStall) {
+      setMissionWatchState(this.input.directory, missionId, {
+        ...missionState,
+        orchestratorStall: stallResult.orchestratorStall,
+      })
+    }
   }
 }
 
-export function startExecutionTreeWatchdog(input: PluginInput, registry: RegistryStore) {
+export function startExecutionTreeWatchdog(
+  input: PluginInput,
+  registry: RegistryStore,
+  timing: {
+    execution: ResolvedWatchdogPollTiming
+    orchestration_stall: ResolvedOrchestrationStallWatchdogTiming
+  },
+) {
   stopByDirectory.get(input.directory)?.()
-  const stop = new ExecutionTreeWatchdog(input, registry).start()
+  const stop = new ExecutionTreeWatchdog(
+    input,
+    registry,
+    timing.execution,
+    timing.orchestration_stall,
+  ).start()
   stopByDirectory.set(input.directory, stop)
   return stop
 }

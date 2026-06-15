@@ -95,14 +95,14 @@ describe("gatehouse_mission_start", () => {
         data?: {
           mission_id: string
           role_view: string
-          contract?: { objective?: string; done_when: string[]; must_not: string[] }
+          markdown: string
         }
       }
       expect(infoOut.ok).toBe(true)
       expect(infoOut.data?.mission_id).toBe("core-example-smoke-v1")
       expect(infoOut.data?.role_view).toBe("architect")
-      expect((infoOut.data?.contract?.done_when.length ?? 0) > 0).toBe(true)
-      expect((infoOut.data?.contract?.must_not.length ?? 0) > 0).toBe(true)
+      expect((infoOut.data?.markdown.length ?? 0) > 0).toBe(true)
+      expect(infoOut.data?.markdown).toContain("must_not")
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

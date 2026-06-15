@@ -11,6 +11,8 @@ import {
   latestAssistantText,
   loadSyncBuf,
   parseAgentCommand,
+  parseAutopilotCommand,
+  handleAutopilotCommand,
   promptSession,
   rememberContextToken,
   rememberLastMessage,
@@ -140,7 +142,7 @@ export class WeixinLeadBridge {
               await sendTextChunks(
                 opts,
                 userId,
-                `暂不支持发送该文件类型（${attachment.mime}）：${attachment.filename}`,
+                `Unsupported file type (${attachment.mime}): ${attachment.filename}`,
                 contextToken,
               )
             },
@@ -243,6 +245,22 @@ export class WeixinLeadBridge {
         return
       }
 
+      const autopilotCommand = text ? parseAutopilotCommand(text) : undefined
+      if (autopilotCommand) {
+        const { text: reply } = await handleAutopilotCommand({
+          projectDirectory: this.config.projectDir,
+          command: autopilotCommand,
+          enabledBy: "channel",
+          deliverLeadNotice: { client: client as never },
+        })
+        await cancelTyping(opts, userId, msg.context_token)
+        await sendTextChunks(opts, userId, reply, msg.context_token)
+        if (msg.message_id !== undefined) {
+          rememberLastMessage(this.config.stateDir, userId, msg.message_id)
+        }
+        return
+      }
+
       const files: ChannelPromptFile[] = []
       for (const item of imageItems(msg)) {
         const data = await downloadImageItem(item, this.config.cdnBaseUrl)
@@ -267,7 +285,7 @@ export class WeixinLeadBridge {
       const target = await resolveActiveAgentTarget(client, this.config, userId)
       await syncAgentDeliveryWatermark(client, this.config, userId, target.sessionId)
       const promptText =
-        text || (files.length ? "用户发送了一张图片，请查看并根据图片内容回复。" : unsupportedMediaReply(msg))
+        text || (files.length ? "The user sent an image. Please review it and reply based on the image content." : unsupportedMediaReply(msg))
       await promptSession(client, this.config, {
         sessionId: target.sessionId,
         opencodeAgent: target.opencodeAgent,
@@ -285,7 +303,7 @@ export class WeixinLeadBridge {
       if (delivered === 0) {
         const assistantText = await latestAssistantText(client, this.config, target.sessionId)
         if (!assistantText) {
-          await sendTextChunks(opts, userId, "已收到，但没有返回文本回复。", msg.context_token)
+          await sendTextChunks(opts, userId, "Received, but no text reply was returned.", msg.context_token)
         }
       }
       if (msg.message_id !== undefined) {
@@ -294,7 +312,7 @@ export class WeixinLeadBridge {
     } catch (error) {
       await cancelTyping(opts, userId, msg.context_token).catch(() => undefined)
       const message = error instanceof Error ? error.message : String(error)
-      await sendTextChunks(opts, userId, `处理失败：${message}`, msg.context_token).catch(() => undefined)
+      await sendTextChunks(opts, userId, `Processing failed: ${message}`, msg.context_token).catch(() => undefined)
     }
   }
 }

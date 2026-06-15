@@ -101,6 +101,8 @@ export const SYNCED_GLOBAL_AGENT_FILES = [
   "build-root.md",
   "build-root-solo.md",
   "build-coordinator.md",
+  "build-extract.md",
+  "build-verify.md",
   "build.md",
 ] as const
 

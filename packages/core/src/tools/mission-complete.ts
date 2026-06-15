@@ -13,20 +13,21 @@ import {
 } from "../missions/lifecycle.ts"
 import { ensureMissionContextDumped } from "../session/context-dump.ts"
 import type { GatehouseClient } from "../session/client.ts"
-import { readManifest, readRetroManifest } from "../tree/store.ts"
+import { readManifest, readRetroManifest, readExtractManifest, readVerifyManifest } from "../tree/store.ts"
 import { finalizeDeliveryOnMissionComplete } from "../delivery/store.ts"
 import { publishAllSkillBlogPosts } from "../delivery/publish-artifacts.ts"
 import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
-import { clearLeadAwaitUserState } from "../watchdog/lead-user-await.ts"
+import { clearAutopilotWatchState } from "../lead/autopilot-watch.ts"
+import { resolveMissionIdArg } from "../missions/scope.ts"
 
 const COMPLETABLE_MISSION_STATUSES = new Set(["queued", "running", "retro"])
 
 export function missionCompleteTool(input: PluginInput) {
   return tool({
     description:
-      "profile lead only: end a mission (done or cancelled). On done, finalizes submitted delivery (records acceptance). Pass publish_deliverables=true when the user confirmed Portal publish in chat — publishes done_when path_exists deliverables whose files exist at finalize time. When status is retro, waits until architect and curator (if any skill_domain nodes) both send_message to lead before completing. Check delivery_finalize.published_artifacts and publish_warnings in the response; do not tell the user deliverables are on Portal when published_artifacts is empty. Skill posts still auto-publish on done. Use instead of hand-editing cancelled/done.",
+      "profile lead only: end a mission (done or cancelled). On done, pass publish_deliverables=true only when the user confirmed Portal publish. See lead-meta for retro rollup and publish rules.",
     args: {
-      mission_id: tool.schema.string().min(1),
+      mission_id: tool.schema.string().optional().describe("Mission id; default active mission"),
       status: tool.schema
         .enum(["done", "cancelled"])
         .default("done")
@@ -54,18 +55,20 @@ export function missionCompleteTool(input: PluginInput) {
         }
 
         const terminal = args.status as MissionTerminalStatus
+        const missionId = resolveMissionIdArg(args.mission_id, lead.registry)
         const doc = await readMissionsDocument(input.directory)
-        const mission = findMission(doc, args.mission_id)
+        const mission = findMission(doc, missionId)
+        const retroSkipped = mission?.status !== "retro"
         if (!mission) {
           return {
-            output: toolFail(toolName, "MISSION_NOT_FOUND", `Mission not found in missions.yaml: ${args.mission_id}`),
+            output: toolFail(toolName, "MISSION_NOT_FOUND", `Mission not found in missions.yaml: ${missionId}`),
             ...toolMetadata(toolName),
           }
         }
         if (mission.status === terminal) {
           return {
             output: toolOk(toolName, {
-              mission_id: args.mission_id,
+              mission_id: missionId,
               status: terminal,
               note: "Mission already at target status",
             }),
@@ -77,7 +80,7 @@ export function missionCompleteTool(input: PluginInput) {
             output: toolFail(
               toolName,
               "MISSION_NOT_ACTIVE",
-              `Mission ${args.mission_id} cannot complete from status ${mission.status}`,
+              `Mission ${missionId} cannot complete from status ${mission.status}`,
             ),
             ...toolMetadata(toolName),
           }
@@ -85,10 +88,10 @@ export function missionCompleteTool(input: PluginInput) {
 
         if (terminal === "done" && mission.status === "retro") {
           try {
-            assertRetroReadyForComplete(lead.registry, args.mission_id)
+            assertRetroReadyForComplete(lead.registry, missionId)
           } catch (error) {
             const message = error instanceof Error ? error.message : String(error)
-            const readiness = lead.registry.retroCompleteReadiness(args.mission_id)
+            const readiness = lead.registry.retroCompleteReadiness(missionId)
             return {
               output: toolFail(toolName, "RETRO_ROLLUP_PENDING", message, {
                 pending: readiness.pending,
@@ -104,31 +107,33 @@ export function missionCompleteTool(input: PluginInput) {
         if (terminal === "done") {
           delivery_finalize = await finalizeDeliveryOnMissionComplete({
             projectDirectory: input.directory,
-            missionId: args.mission_id,
+            missionId,
             missionEntry: mission,
             userFeedback: args.user_feedback,
             publishDeliverables: terminal === "done" && args.publish_deliverables === true,
           })
         }
 
-        const manifest = await readManifest(input.directory, args.mission_id)
-        const retro = await readRetroManifest(input.directory, args.mission_id)
-        const sessionIds = manifest ? collectManifestSessionIds(manifest, retro) : []
+        const manifest = await readManifest(input.directory, missionId)
+        const retro = await readRetroManifest(input.directory, missionId)
+        const extract = await readExtractManifest(input.directory, missionId)
+        const verify = await readVerifyManifest(input.directory, missionId)
+        const sessionIds = manifest ? collectManifestSessionIds(manifest, retro, extract, verify) : []
 
-        const context_dump = manifest
-          ? await ensureMissionContextDumped({
-              client: input.client as GatehouseClient,
-              projectDirectory: input.directory,
-              manifest,
-            })
-          : undefined
-        lead.registry.purgePendingDeliveriesForMission(args.mission_id)
-        const aborts = await abortMissionSessions(input, sessionIds)
-        const deletes = await deleteMissionSessions(input, sessionIds)
+        if (manifest) {
+          await ensureMissionContextDumped({
+            client: input.client as GatehouseClient,
+            projectDirectory: input.directory,
+            manifest,
+          })
+        }
+        lead.registry.purgePendingDeliveriesForMission(missionId)
+        await abortMissionSessions(input, sessionIds)
+        await deleteMissionSessions(input, sessionIds)
 
-        const finalized = await finalizeMissionComplete({
+        await finalizeMissionComplete({
           projectDirectory: input.directory,
-          missionId: args.mission_id,
+          missionId,
           status: terminal,
           registry: lead.registry,
         })
@@ -136,26 +141,31 @@ export function missionCompleteTool(input: PluginInput) {
         const published_skill_posts =
           terminal === "done" ? await publishAllSkillBlogPosts(input.directory) : []
 
-        const outer_notifications = await notifyMissionEndedToOuter(lead.registry, {
-          missionId: args.mission_id,
+        await notifyMissionEndedToOuter(lead.registry, {
+          missionId,
           status: terminal,
           projectDirectory: input.directory,
+          retroSkipped,
         })
 
-        await clearLeadAwaitUserState(input.directory)
+        await clearAutopilotWatchState(input.directory)
 
         return {
           output: toolOk(toolName, {
-            mission_id: args.mission_id,
+            mission_id: missionId,
             status: terminal,
-            context_dump,
-            sessions_aborted: aborts,
-            sessions_deleted: deletes,
-            outer_notifications,
-            manifest_archived: Boolean(finalized.manifest),
-            had_retro_manifest: Boolean(finalized.retro),
-            ...(published_skill_posts.length > 0 && { published_skill_posts }),
-            ...(delivery_finalize && { delivery_finalize }),
+            ...(delivery_finalize && {
+              delivery: delivery_finalize.skipped
+                ? { skipped: true, reason: delivery_finalize.reason }
+                : {
+                    delivery_version: delivery_finalize.delivery_version,
+                    published_artifacts: delivery_finalize.published_artifacts,
+                    ...(delivery_finalize.publish_warnings?.length && {
+                      publish_warnings: delivery_finalize.publish_warnings,
+                    }),
+                  },
+            }),
+            ...(published_skill_posts.length > 0 && { skill_posts_published: published_skill_posts.length }),
           }),
           ...toolMetadata(toolName),
         }

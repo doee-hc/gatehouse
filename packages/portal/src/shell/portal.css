@@ -862,6 +862,217 @@ body {
   color: #cbd5e1;
 }
 
+.panel-orchestration {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: min(320px, 38vh);
+}
+
+.orchestration-host {
+  flex: 1;
+  min-height: 120px;
+  max-height: min(280px, 34vh);
+  overflow: auto;
+  background: rgba(0, 0, 0, 0.25);
+  border: 2px solid var(--esc-wall-dark);
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.orch-empty {
+  margin: 0;
+  padding: 0.35rem 0.15rem;
+  font-size: 0.68rem;
+}
+
+.orch-phase-strip {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.15rem;
+  overflow-x: auto;
+  padding-bottom: 0.15rem;
+  scrollbar-width: thin;
+}
+
+.orch-phase-strip-single {
+  padding: 0.1rem 0;
+}
+
+.orch-phase-current {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.orch-phase-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  min-width: 2.4rem;
+  flex-shrink: 0;
+}
+
+.orch-phase-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  border: 2px solid var(--esc-wall-top);
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.orch-phase-done .orch-phase-dot {
+  background: rgba(134, 239, 172, 0.85);
+  border-color: rgba(134, 239, 172, 0.55);
+}
+
+.orch-phase-current .orch-phase-dot {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(252, 211, 77, 0.25);
+}
+
+.orch-phase-label {
+  font-size: 0.58rem;
+  line-height: 1.1;
+  color: rgba(232, 212, 139, 0.72);
+  text-align: center;
+  max-width: 3.2rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orch-phase-current .orch-phase-label {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.orch-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+}
+
+.orch-node {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.18rem 0.35rem;
+  margin-left: calc(var(--orch-depth, 0) * 0.75rem);
+  border-left: 2px solid rgba(107, 90, 72, 0.55);
+  background: rgba(0, 0, 0, 0.18);
+  font-size: 0.68rem;
+  line-height: 1.25;
+}
+
+.orch-node-root {
+  border-left-color: var(--architect);
+  background: rgba(196, 181, 253, 0.08);
+}
+
+.orch-node-badge {
+  width: 0.85rem;
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.orch-status-pending .orch-node-badge {
+  color: rgba(232, 212, 139, 0.45);
+}
+
+.orch-status-running .orch-node-badge {
+  color: #fbbf24;
+}
+
+.orch-status-done .orch-node-badge {
+  color: #86efac;
+}
+
+.orch-status-blocked .orch-node-badge,
+.orch-status-rework .orch-node-badge {
+  color: #fb7185;
+}
+
+.orch-status-running {
+  box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.25);
+}
+
+.orch-node-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(232, 212, 139, 0.92);
+}
+
+.orch-node-domain {
+  font-size: 0.58rem;
+  color: var(--curator);
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+.orch-node-round {
+  font-size: 0.58rem;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.orch-step-timeline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.orch-step {
+  width: 1.15rem;
+  height: 1.15rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.58rem;
+  font-weight: 700;
+  border: 1px solid var(--esc-wall-dark);
+  background: rgba(0, 0, 0, 0.35);
+  color: rgba(232, 212, 139, 0.55);
+}
+
+.orch-step-done {
+  color: #86efac;
+  border-color: rgba(134, 239, 172, 0.35);
+}
+
+.orch-step-current {
+  color: var(--accent);
+  border-color: rgba(252, 211, 77, 0.55);
+  box-shadow: 0 0 0 1px rgba(252, 211, 77, 0.25);
+}
+
+.orch-step-more {
+  width: auto;
+  min-width: 1.15rem;
+  padding: 0 0.2rem;
+  font-size: 0.52rem;
+}
+
+.orch-footer {
+  font-size: 0.62rem;
+  color: var(--muted);
+  border-top: 1px dashed rgba(107, 90, 72, 0.55);
+  padding-top: 0.35rem;
+}
+
 .mini-tree {
   font-family: ui-monospace, var(--font), monospace;
   font-size: 0.68rem;
@@ -881,26 +1092,6 @@ body {
 
 .mini-tree .leaf {
   color: var(--accent);
-}
-
-.skill-list {
-  list-style: none;
-}
-
-.skill-list li {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.72rem;
-  padding: 0.35rem 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.3);
-}
-
-.skill-domain {
-  font-size: 0.55rem;
-  color: var(--esc-hud-text);
-  background: rgba(0, 0, 0, 0.3);
-  padding: 1px 4px;
-  border: 1px solid var(--esc-wall-dark);
 }
 
 .event-log {

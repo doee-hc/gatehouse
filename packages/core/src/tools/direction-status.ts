@@ -1,12 +1,13 @@
 import { tool, type PluginInput } from "@opencode-ai/plugin"
 import { requireLeadCaller } from "../missions/lifecycle.ts"
 import { readDirectionDocument, directionIsConfirmed } from "../lead/direction.ts"
+import { readAutopilotDocument, autopilotIsEnabled } from "../lead/autopilot.ts"
 import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
 
 export function directionStatusTool(input: PluginInput) {
   return tool({
     description:
-      "profile lead only: read long-term direction status from .gatehouse/lead/direction.yaml. Autonomous watchdog decisions require status confirmed.",
+      "profile lead only: read direction.yaml and whether autopilot is enabled.",
     args: {},
     async execute(_args, context) {
       const toolName = "gatehouse_direction_status"
@@ -20,11 +21,12 @@ export function directionStatusTool(input: PluginInput) {
         }
 
         const direction = await readDirectionDocument(input.directory)
+        const autopilot = await readAutopilotDocument(input.directory)
         return {
           output: toolOk(toolName, {
-            path: ".gatehouse/lead/direction.yaml",
             status: direction.status,
             confirmed: directionIsConfirmed(direction),
+            autopilot_enabled: autopilotIsEnabled(autopilot),
             summary: direction.summary ?? "",
             constraints: direction.constraints,
             confirmed_at: direction.confirmed_at,

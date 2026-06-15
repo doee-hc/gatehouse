@@ -7,10 +7,12 @@ import {
   legacyRetroManifestPath,
   manifestExportPath,
   retroManifestExportPath,
+  extractManifestExportPath,
+  verifyManifestExportPath,
   treeDir,
   treesIndexPath,
 } from "../paths.ts"
-import type { RetroManifest, TeamSpec, TreeManifest, TreesIndex, TreesIndexEntry } from "./types.ts"
+import type { ExtractManifest, RetroManifest, TeamSpec, TreeManifest, TreesIndex, TreesIndexEntry, VerifyManifest } from "./types.ts"
 import { parseTreeManifest } from "./parse.ts"
 import { isRecord, parseYaml, readString, stringifyYaml } from "../yaml.ts"
 
@@ -77,6 +79,18 @@ export async function exportRetroManifestYaml(projectDirectory: string, retro: R
   const filePath = retroManifestExportPath(projectDirectory, retro.mission_id)
   await Bun.$`mkdir -p ${path.dirname(filePath)}`.quiet()
   await writeText(filePath, stringifyYaml(retro))
+}
+
+export async function exportExtractManifestYaml(projectDirectory: string, extract: ExtractManifest) {
+  const filePath = extractManifestExportPath(projectDirectory, extract.mission_id)
+  await Bun.$`mkdir -p ${path.dirname(filePath)}`.quiet()
+  await writeText(filePath, stringifyYaml(extract))
+}
+
+export async function exportVerifyManifestYaml(projectDirectory: string, verify: VerifyManifest) {
+  const filePath = verifyManifestExportPath(projectDirectory, verify.mission_id)
+  await Bun.$`mkdir -p ${path.dirname(filePath)}`.quiet()
+  await writeText(filePath, stringifyYaml(verify))
 }
 
 
@@ -147,6 +161,78 @@ export async function readRetroManifest(projectDirectory: string, missionId: str
 export async function writeRetroManifest(projectDirectory: string, retro: RetroManifest) {
   treeRegistry(projectDirectory).saveRetroManifest(retro)
   await exportRetroManifestYaml(projectDirectory, retro)
+}
+
+async function readExtractManifestYamlExport(projectDirectory: string, missionId: string) {
+  const text = await readText(extractManifestExportPath(projectDirectory, missionId))
+  if (!text) return undefined
+  const raw = parseYaml(text)
+  if (!isRecord(raw)) throw new Error("extract-manifest must be a mapping")
+  const mission_id = readString(raw.mission_id)
+  const created_at = readString(raw.created_at)
+  if (!mission_id || !created_at) throw new Error("extract-manifest missing mission_id or created_at")
+  const extract_order = Array.isArray(raw.extract_order)
+    ? raw.extract_order.filter((item): item is string => typeof item === "string")
+    : []
+  const nodes: ExtractManifest["nodes"] = {}
+  if (isRecord(raw.nodes)) {
+    for (const [nodeId, value] of Object.entries(raw.nodes)) {
+      if (!isRecord(value)) continue
+      const exec_session_id = readString(value.exec_session_id)
+      const extract_session_id = readString(value.extract_session_id)
+      const skill_domain = readString(value.skill_domain)
+      if (!exec_session_id || !extract_session_id || !skill_domain) continue
+      nodes[nodeId] = { exec_session_id, extract_session_id, skill_domain }
+    }
+  }
+  return { mission_id, created_at, nodes, extract_order } satisfies ExtractManifest
+}
+
+export async function readExtractManifest(projectDirectory: string, missionId: string) {
+  const extract = treeRegistry(projectDirectory, true).getExtractManifest(missionId)
+  if (extract) return extract
+  return readExtractManifestYamlExport(projectDirectory, missionId)
+}
+
+export async function writeExtractManifest(projectDirectory: string, extract: ExtractManifest) {
+  treeRegistry(projectDirectory).saveExtractManifest(extract)
+  await exportExtractManifestYaml(projectDirectory, extract)
+}
+
+async function readVerifyManifestYamlExport(projectDirectory: string, missionId: string) {
+  const text = await readText(verifyManifestExportPath(projectDirectory, missionId))
+  if (!text) return undefined
+  const raw = parseYaml(text)
+  if (!isRecord(raw)) throw new Error("verify-manifest must be a mapping")
+  const mission_id = readString(raw.mission_id)
+  const created_at = readString(raw.created_at)
+  if (!mission_id || !created_at) throw new Error("verify-manifest missing mission_id or created_at")
+  const verify_order = Array.isArray(raw.verify_order)
+    ? raw.verify_order.filter((item): item is string => typeof item === "string")
+    : []
+  const nodes: VerifyManifest["nodes"] = {}
+  if (isRecord(raw.nodes)) {
+    for (const [nodeId, value] of Object.entries(raw.nodes)) {
+      if (!isRecord(value)) continue
+      const extract_session_id = readString(value.extract_session_id)
+      const verify_session_id = readString(value.verify_session_id)
+      const skill_domain = readString(value.skill_domain)
+      if (!extract_session_id || !verify_session_id || !skill_domain) continue
+      nodes[nodeId] = { extract_session_id, verify_session_id, skill_domain }
+    }
+  }
+  return { mission_id, created_at, nodes, verify_order } satisfies VerifyManifest
+}
+
+export async function readVerifyManifest(projectDirectory: string, missionId: string) {
+  const verify = treeRegistry(projectDirectory, true).getVerifyManifest(missionId)
+  if (verify) return verify
+  return readVerifyManifestYamlExport(projectDirectory, missionId)
+}
+
+export async function writeVerifyManifest(projectDirectory: string, verify: VerifyManifest) {
+  treeRegistry(projectDirectory).saveVerifyManifest(verify)
+  await exportVerifyManifestYaml(projectDirectory, verify)
 }
 
 function parseTreesIndex(text: string): TreesIndex {
@@ -228,4 +314,4 @@ export async function resolveRecipientSession(
   throw new Error("recipient requires session_id or node_id")
 }
 
-export type { TeamSpec, TreeManifest, RetroManifest }
+export type { TeamSpec, TreeManifest, RetroManifest, ExtractManifest, VerifyManifest }

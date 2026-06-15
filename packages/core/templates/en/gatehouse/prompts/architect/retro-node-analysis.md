@@ -1,8 +1,8 @@
 # Retro task · node {{node_id}}
 
-You are in a **retro fork session** analyzing your execution branch — **do not** mix analysis into the original execution session.
+You are in a **retro session** (empty context) analyzing your execution branch. Use dumped `context/` as the sole source of truth — do not rely on execution-session conversation memory.
 
-Do not wait for {{architect_name}} to `send_message` each step. **Discover issues yourself** — do not rely on Gatehouse precomputed semantic features.
+Discover issues yourself.
 
 {{retro_context_snapshot}}
 
@@ -21,21 +21,14 @@ skill({ name: "retro-toolkit" })     # methodology (or read .gatehouse/<locale>/
 .gatehouse/skills/retro-toolkit/tools/<verb-noun>/SKILL.md + scripts
 ```
 
-**Precomputed API-level metrics** (read files directly, no tool calls):
-
-- Subtree rollup: `.gatehouse/trees/{{mission_id}}/context/subtree-metrics.json` → `retro_nodes["{{node_id}}"]`
-- Per-node detail: `.gatehouse/trees/{{mission_id}}/context/<node_id>/metrics.json`
-
-These **do not** replace semantic features you derive from messages/timeline (compaction count, todo-phase tokens, send_message patterns, etc.).
-
 ### Recommended steps (sample → tools → conclusions)
 
 1. Use the kickoff snapshot above to scope your branch; read **`retro-toolkit/SKILL.md`**, list nodes, reuse `tools/` scripts.
 2. **Do not read** all of `messages.json`. Grep `timeline.md` first (table below).
-3. For suspicious patterns: **write or extend Python scripts** for features (compaction, todo tokens, send_message sequences, etc.).
+3. For suspicious patterns: **write or extend Python scripts** for features (compaction, todo tokens, complete/rework sequences, etc.).
 4. If a new tool is reusable: add `.gatehouse/skills/retro-toolkit/tools/<verb-noun>/` with `SKILL.md`.
-5. Cross-check `.gatehouse/trees/{{mission_id}}/context/subtree-metrics.json` with script output.
-6. Write `.gatehouse/trees/{{mission_id}}/reports/nodes/{{node_id}}-retro.md` (include "Tool contribution" section) → `gatehouse_retro_record` (internal — do not publish).
+5. Cross-check `subtree-metrics.json` with script output.
+6. Write `.gatehouse/trees/{{mission_id}}/reports/nodes/{{node_id}}-retro.md` (include "Tool contribution" section) → `gatehouse_retro_record()`.
 
 **Grep guide (timeline.md):**
 
@@ -45,7 +38,7 @@ These **do not** replace semantic features you derive from messages/timeline (co
 | Gatehouse system delivery | `grep 'kind=gatehouse'` |
 | Context compaction | `grep 'kind=compaction_marker'` |
 | Compaction summary | `grep 'kind=summary'` |
-| Reports upstream/peers | `grep 'tool=gatehouse_send_message'` |
+| Node completion / rework | `grep 'tool=gatehouse_execution_'` |
 | Todo changes | `grep 'tool=todowrite'` |
 | High-token turns | `grep 'tokens='` |
 
@@ -55,7 +48,7 @@ These **do not** replace semantic features you derive from messages/timeline (co
 
 Write: `.gatehouse/trees/{{mission_id}}/reports/nodes/{{node_id}}-retro.md`
 
-**Report is for {{architect_name}} (assignment & prompt constraints), not domain skills or business implementation detail.**
+**Focus on assignment and prompt constraints — not domain skills or business implementation detail.**
 
 Suggested structure:
 
@@ -75,10 +68,10 @@ Suggested structure:
 - Node `gatehouse_mission_info` effective, too loose/tight:
 - Child prompts causing duplicate work or overlap:
 
-## Coordination & topology (for {{architect_name}} architect-meta)
-- send_message / wait / topology suggestions:
+## Coordination & topology suggestions
+- Orchestration wait / rework / topology suggestions:
 
-## Actionable recommendations for {{architect_name}} (3–5)
+## Actionable recommendations (3–5)
 (assignment, topology, prompt templates, constraint wording only)
 
 ## Tool contribution (required)
@@ -86,7 +79,7 @@ Suggested structure:
 |------|---------|
 | New/improved retro tool | yes / no |
 | Tool path | `.gatehouse/skills/retro-toolkit/tools/...` or "none" |
-| Promote to toolkit? | yes / no / n/a |
+| Add to retro-toolkit? | yes / no / n/a |
 | Brief note | |
 ```
 
@@ -94,7 +87,4 @@ Suggested structure:
 
 ```
 gatehouse_retro_record()
-# retro reports are internal — do not publish manually
 ```
-
-**Do not** `gatehouse_send_message` {{architect_name}} — Gatehouse auto-notifies {{architect_name}} after all nodes record (with retro reports and retro-toolkit curation tasks).

@@ -397,7 +397,7 @@ export async function dumpMissionContext(input: {
       {
         mission_id: input.manifest.mission_id,
         dumped_at: new Date().toISOString(),
-        note: "执行上下文快照：messages/timeline/metrics 已落盘；语义特征提取请 retro coord 自制脚本或复用 skills/retro-toolkit/",
+        note: "Execution context snapshot: messages/timeline/metrics persisted; use retro coord custom scripts or skills/retro-toolkit/ for semantic feature extraction",
         subtree_metrics_path: subtreeMetricsRel,
         retro_order: retroOrder,
         nodes: nodeEntries,

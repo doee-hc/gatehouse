@@ -7,6 +7,8 @@ import {
   isMessageKeyProcessed,
   downloadUrlAttachment,
   parseAgentCommand,
+  parseAutopilotCommand,
+  handleAutopilotCommand,
   promptSession,
   rememberMessageKey,
   resolveActiveAgentTarget,
@@ -113,6 +115,21 @@ export class QqLeadBridge {
         return
       }
 
+      const autopilotCommand = text ? parseAutopilotCommand(text) : undefined
+      if (autopilotCommand) {
+        const { text: reply } = await handleAutopilotCommand({
+          projectDirectory: this.config.projectDir,
+          command: autopilotCommand,
+          enabledBy: "channel",
+          deliverLeadNotice: { client: client as never },
+        })
+        for (const chunk of chunkText(reply, 3000)) {
+          await bot.messageService.sendPrivateMessage(message.userId, [segment.text(chunk)])
+        }
+        rememberMessageKey(this.config.stateDir, message.userId, message.eventId)
+        return
+      }
+
       if (message.messageType === "media") {
         await bot.messageService.sendPrivateMessage(message.userId, [segment.text(unsupportedMediaReply())])
         rememberMessageKey(this.config.stateDir, message.userId, message.eventId)
@@ -137,7 +154,7 @@ export class QqLeadBridge {
 
       const target = await resolveActiveAgentTarget(client, this.config, message.userId)
       const promptText =
-        text || (files.length ? "用户发送了一张图片，请查看并根据图片内容回复。" : unsupportedMediaReply())
+        text || (files.length ? "The user sent an image. Please review it and reply based on the image content." : unsupportedMediaReply())
       const reply = await promptSession(client, this.config, {
         sessionId: target.sessionId,
         opencodeAgent: target.opencodeAgent,
@@ -157,7 +174,7 @@ export class QqLeadBridge {
           },
           onUnsupported: async (attachment) => {
             await bot.messageService.sendPrivateMessage(message.userId, [
-              segment.text(`暂不支持发送该文件类型（${attachment.mime}）：${attachment.filename}`),
+              segment.text(`Unsupported file type (${attachment.mime}): ${attachment.filename}`),
             ])
           },
         },
@@ -166,7 +183,7 @@ export class QqLeadBridge {
     } catch (error) {
       const messageText = error instanceof Error ? error.message : String(error)
       await bot.messageService
-        .sendPrivateMessage(message.userId, [segment.text(`处理失败：${messageText}`)])
+        .sendPrivateMessage(message.userId, [segment.text(`Processing failed: ${messageText}`)])
         .catch(() => undefined)
     }
   }

@@ -32,6 +32,32 @@ export type RetroManifest = {
   retro_order: string[]
 }
 
+export type ExtractManifestNode = {
+  exec_session_id: string
+  extract_session_id: string
+  skill_domain: string
+}
+
+export type ExtractManifest = {
+  mission_id: string
+  created_at: string
+  nodes: Record<string, ExtractManifestNode>
+  extract_order: string[]
+}
+
+export type VerifyManifestNode = {
+  extract_session_id: string
+  verify_session_id: string
+  skill_domain: string
+}
+
+export type VerifyManifest = {
+  mission_id: string
+  created_at: string
+  nodes: Record<string, VerifyManifestNode>
+  verify_order: string[]
+}
+
 export type TeamSpecNode = {
   parent: string | null
   /** One-line role summary; copied into manifest at bootstrap */

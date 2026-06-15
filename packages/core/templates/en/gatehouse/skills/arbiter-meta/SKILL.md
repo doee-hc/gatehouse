@@ -24,12 +24,12 @@ Sole permission arbiter for the core team; does not participate in Mission execu
 | profile | Typical allowed mutate |
 |---------|------------------------|
 | lead | init_team, send_message, mission_start, mission_retro, mission_complete, mission_info, delivery_review, delivery_status |
-| architect | bootstrap_tree, send_message, mission_info, session_snapshot |
-| curator | apply_skill_domains, send_message, mission_info |
-| Execution members | Business file R/W, in-team send_message; **no** bootstrap / apply_skill_domains |
+| architect | submit_orchestration, send_message, retro_summary_record, mission_info, session_snapshot |
+| curator | apply_skill_domains, send_message, skill_summary_record, mission_info |
+| Execution members | Business file R/W; `gatehouse_execution_complete` / `gatehouse_execution_rework` / `gatehouse_mission_info` |
 | arbiter | inspector_* only |
 
-Execution members must not bootstrap; core team must not override execution team except via each profile's allowed tools.
+Execution members must not submit orchestration; core team must not override execution team except via each profile's allowed tools.
 
 ## Default policy
 
@@ -40,4 +40,4 @@ Execution members must not bootstrap; core team must not override execution team
 | Gatehouse coordination mutate | `once` only if profile allows |
 | Repeated same read-only | Consider `always` |
 
-Audit trail: `.gatehouse/arbiter/decisions.jsonl` (maintained by plugin).
+Audit trail: `.gatehouse/arbiter/decisions.jsonl`.

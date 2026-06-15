@@ -34,7 +34,7 @@ export function gatehouseCorePackageRoot(fromDir: string) {
     if (parent === dir) break
     dir = parent
   }
-  throw new Error("无法定位 @gatehouse/core 包根目录")
+  throw new Error("Cannot locate @gatehouse/core package root")
 }
 
 export function useLocalChannelsPlugin() {

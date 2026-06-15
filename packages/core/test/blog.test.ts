@@ -83,7 +83,6 @@ nodes:
 
   await write(".gatehouse/lead/reports/mission-old/report.md", "# 旧任务验收\n\nlead 汇报。")
   await write(".gatehouse/trees/mission-old/reports/architect-summary.md", "# 旧任务复盘\n\narchitect 汇总。")
-  await write(".gatehouse/trees/mission-old/reports/root-delivery.md", "# 任务协调者交付\n\n交付完成。")
   await write(
     ".gatehouse/trees/mission-old/reports/nodes/leaf-a-retro.md",
     "# leaf-a 复盘\n\n叶子 retro。",
@@ -110,10 +109,6 @@ nodes:
     reportPath: ".gatehouse/trees/mission-old/reports/architect-summary.md",
   })
   await publishBlogPost(dir, {
-    postId: "mission-old:root:delivery",
-    reportPath: ".gatehouse/trees/mission-old/reports/root-delivery.md",
-  })
-  await publishBlogPost(dir, {
     postId: "mission-old:retro:leaf-a",
     reportPath: ".gatehouse/trees/mission-old/reports/nodes/leaf-a-retro.md",
   })
@@ -134,7 +129,6 @@ nodes:
 
   const old = blog.groups.find((group) => group.id === "mission-old")
   expect(old?.posts.map((post) => post.title)).toEqual([
-    "任务协调者交付",
     "旧任务验收",
     "旧任务复盘",
     "leaf-a 复盘",

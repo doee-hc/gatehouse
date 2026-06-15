@@ -12,12 +12,16 @@ import {
   type RegistryRetroRun,
   type RegistrySkillExtractCompletion,
   type RegistrySkillExtractRun,
+  type RegistrySkillVerifyCompletion,
+  type RegistrySkillVerifyRun,
   type RegistrySnapshot,
 } from "./types.ts"
 import {
   findTreeManifestByExecSession,
   findTreeManifestByRetroSession,
   getRetroManifest,
+  getExtractManifest,
+  getVerifyManifest,
   getTreeManifest,
   listTreeMissionIds,
   listTreesIndex,
@@ -25,6 +29,8 @@ import {
   migrateTreeManifestProfileColumn,
   migrateTreeManifestDescriptionColumn,
   saveRetroManifest,
+  saveExtractManifest,
+  saveVerifyManifest,
   saveTreeManifest,
   TREE_MANIFEST_SCHEMA_SQL,
 } from "./tree-manifest-db.ts"
@@ -38,10 +44,16 @@ import {
 } from "./mission-artifacts-db.ts"
 import {
   migrateOrchestrationTables,
+  mutateOrchestrationState as persistMutateOrchestrationState,
   readMissionScript,
   readOrchestrationState,
+  readOrchestrationPlan,
+  readLatestOrchestrationPlan,
+  readOrchestrationBaseline,
   saveMissionScript as persistMissionScript,
   saveOrchestrationState as persistOrchestrationState,
+  saveOrchestrationPlan as persistOrchestrationPlan,
+  saveOrchestrationBaseline as persistOrchestrationBaseline,
 } from "./orchestration-db.ts"
 import type { OrchestrationState } from "../orchestration/types.ts"
 import type { MissionScriptMeta } from "../orchestration/types.ts"
@@ -146,10 +158,36 @@ export function migrateRetroRollupLeadNotifiedColumns(db: Database) {
   if (retroCols.size > 0 && !retroCols.has("architect_lead_notified_at")) {
     db.exec("ALTER TABLE registry_retro_run ADD COLUMN architect_lead_notified_at TEXT")
   }
+  if (retroCols.size > 0 && !retroCols.has("lead_rollup_notified_at")) {
+    db.exec("ALTER TABLE registry_retro_run ADD COLUMN lead_rollup_notified_at TEXT")
+  }
   const skillCols = tableColumns(db, "registry_skill_extract_run")
   if (skillCols.size > 0 && !skillCols.has("curator_lead_notified_at")) {
     db.exec("ALTER TABLE registry_skill_extract_run ADD COLUMN curator_lead_notified_at TEXT")
   }
+  if (skillCols.size > 0 && !skillCols.has("verify_started_at")) {
+    db.exec("ALTER TABLE registry_skill_extract_run ADD COLUMN verify_started_at TEXT")
+  }
+}
+
+export function migrateSkillPipelineTables(db: Database) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS registry_skill_verify_run (
+      mission_id TEXT PRIMARY KEY,
+      expected_node_ids TEXT NOT NULL,
+      started_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS registry_skill_verify_completion (
+      mission_id TEXT NOT NULL,
+      node_id TEXT NOT NULL,
+      session_id TEXT NOT NULL,
+      completed_at TEXT NOT NULL,
+      passed INTEGER NOT NULL,
+      report_path TEXT,
+      PRIMARY KEY (mission_id, node_id)
+    );
+  `)
 }
 
 export function migrateRegistryProfileOnly(db: Database) {
@@ -180,6 +218,7 @@ function applySchema(db: Database) {
   migrateTreeManifestDescriptionColumn(db)
   migrateRegistryProfileOnly(db)
   migrateRetroRollupLeadNotifiedColumns(db)
+  migrateSkillPipelineTables(db)
   migrateWatchdogStateTable(db)
   migrateMissionArtifactsTables(db)
   migrateOrchestrationTables(db)
@@ -225,7 +264,8 @@ function applySchema(db: Database) {
       expected_node_ids TEXT NOT NULL,
       started_at TEXT NOT NULL,
       architect_notified_at TEXT,
-      architect_lead_notified_at TEXT
+      architect_lead_notified_at TEXT,
+      lead_rollup_notified_at TEXT
     );
 
     CREATE TABLE IF NOT EXISTS registry_retro_completion (
@@ -241,6 +281,7 @@ function applySchema(db: Database) {
       mission_id TEXT PRIMARY KEY,
       expected_node_ids TEXT NOT NULL,
       started_at TEXT NOT NULL,
+      verify_started_at TEXT,
       curator_notified_at TEXT,
       curator_lead_notified_at TEXT
     );
@@ -254,10 +295,25 @@ function applySchema(db: Database) {
       PRIMARY KEY (mission_id, node_id)
     );
 
+    CREATE TABLE IF NOT EXISTS registry_skill_verify_run (
+      mission_id TEXT PRIMARY KEY,
+      expected_node_ids TEXT NOT NULL,
+      started_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS registry_skill_verify_completion (
+      mission_id TEXT NOT NULL,
+      node_id TEXT NOT NULL,
+      session_id TEXT NOT NULL,
+      completed_at TEXT NOT NULL,
+      passed INTEGER NOT NULL,
+      report_path TEXT,
+      PRIMARY KEY (mission_id, node_id)
+    );
+
     CREATE TABLE IF NOT EXISTS registry_mission (
       mission_id TEXT PRIMARY KEY,
       status TEXT NOT NULL,
-      priority TEXT,
       objective TEXT,
       done_when_json TEXT NOT NULL,
       must_not_json TEXT NOT NULL,
@@ -283,7 +339,6 @@ function applySchema(db: Database) {
 type MissionRow = {
   mission_id: string
   status: string
-  priority: string | null
   objective: string | null
   done_when_json: string
   must_not_json: string
@@ -307,7 +362,6 @@ function rowToMission(row: MissionRow): RegistryMissionRecord {
     isActive: row.is_active === 1,
     lockedAt: row.locked_at,
     updatedAt: row.updated_at,
-    ...(row.priority && { priority: row.priority }),
     ...(row.objective && { objective: row.objective }),
     ...(row.notes && { notes: row.notes }),
     ...(row.user_topology && { userTopology: row.user_topology }),
@@ -350,6 +404,7 @@ export class RegistryDatabase {
           started_at: string
           architect_notified_at: string | null
           architect_lead_notified_at: string | null
+          lead_rollup_notified_at: string | null
         }
         const expectedNodeIds = JSON.parse(record.expected_node_ids) as string[]
         return {
@@ -358,6 +413,7 @@ export class RegistryDatabase {
           startedAt: record.started_at,
           ...(record.architect_notified_at && { architectNotifiedAt: record.architect_notified_at }),
           ...(record.architect_lead_notified_at && { architectLeadNotifiedAt: record.architect_lead_notified_at }),
+          ...(record.lead_rollup_notified_at && { leadRollupNotifiedAt: record.lead_rollup_notified_at }),
         } satisfies RegistryRetroRun
       })
     const retroCompletions = this.db
@@ -387,6 +443,7 @@ export class RegistryDatabase {
           mission_id: string
           expected_node_ids: string
           started_at: string
+          verify_started_at: string | null
           curator_notified_at: string | null
           curator_lead_notified_at: string | null
         }
@@ -394,9 +451,46 @@ export class RegistryDatabase {
           missionId: record.mission_id,
           expectedNodeIds: JSON.parse(record.expected_node_ids) as string[],
           startedAt: record.started_at,
+          ...(record.verify_started_at && { verifyStartedAt: record.verify_started_at }),
           ...(record.curator_notified_at && { curatorNotifiedAt: record.curator_notified_at }),
           ...(record.curator_lead_notified_at && { curatorLeadNotifiedAt: record.curator_lead_notified_at }),
         } satisfies RegistrySkillExtractRun
+      })
+    const skillVerifyRuns = this.db
+      .query("SELECT * FROM registry_skill_verify_run ORDER BY started_at, mission_id")
+      .all()
+      .map((row) => {
+        const record = row as {
+          mission_id: string
+          expected_node_ids: string
+          started_at: string
+        }
+        return {
+          missionId: record.mission_id,
+          expectedNodeIds: JSON.parse(record.expected_node_ids) as string[],
+          startedAt: record.started_at,
+        } satisfies RegistrySkillVerifyRun
+      })
+    const skillVerifyCompletions = this.db
+      .query("SELECT * FROM registry_skill_verify_completion ORDER BY completed_at, mission_id, node_id")
+      .all()
+      .map((row) => {
+        const record = row as {
+          mission_id: string
+          node_id: string
+          session_id: string
+          completed_at: string
+          passed: number
+          report_path: string | null
+        }
+        return {
+          missionId: record.mission_id,
+          nodeId: record.node_id,
+          sessionId: record.session_id,
+          completedAt: record.completed_at,
+          passed: record.passed === 1,
+          ...(record.report_path && { reportPath: record.report_path }),
+        } satisfies RegistrySkillVerifyCompletion
       })
     const skillExtractCompletions = this.db
       .query("SELECT * FROM registry_skill_extract_completion ORDER BY completed_at, mission_id, node_id")
@@ -426,6 +520,8 @@ export class RegistryDatabase {
       retroCompletions,
       skillExtractRuns,
       skillExtractCompletions,
+      skillVerifyRuns,
+      skillVerifyCompletions,
     }
   }
 
@@ -438,6 +534,8 @@ export class RegistryDatabase {
       this.db.exec("DELETE FROM registry_retro_completion")
       this.db.exec("DELETE FROM registry_skill_extract_run")
       this.db.exec("DELETE FROM registry_skill_extract_completion")
+      this.db.exec("DELETE FROM registry_skill_verify_run")
+      this.db.exec("DELETE FROM registry_skill_verify_completion")
       const insertAgent = this.db.prepare(`
         INSERT INTO registry_agent (
           agent_id, scope, profile, session_id, display_name,
@@ -491,8 +589,8 @@ export class RegistryDatabase {
       }
       const insertRetroRun = this.db.prepare(`
         INSERT INTO registry_retro_run (
-          mission_id, expected_node_ids, started_at, architect_notified_at, architect_lead_notified_at
-        ) VALUES ($mission_id, $expected_node_ids, $started_at, $architect_notified_at, $architect_lead_notified_at)
+          mission_id, expected_node_ids, started_at, architect_notified_at, architect_lead_notified_at, lead_rollup_notified_at
+        ) VALUES ($mission_id, $expected_node_ids, $started_at, $architect_notified_at, $architect_lead_notified_at, $lead_rollup_notified_at)
       `)
       for (const run of snapshot.retroRuns) {
         insertRetroRun.run({
@@ -501,6 +599,7 @@ export class RegistryDatabase {
           $started_at: run.startedAt,
           $architect_notified_at: run.architectNotifiedAt ?? null,
           $architect_lead_notified_at: run.architectLeadNotifiedAt ?? null,
+          $lead_rollup_notified_at: run.leadRollupNotifiedAt ?? null,
         })
       }
       const insertRetroCompletion = this.db.prepare(`
@@ -519,14 +618,15 @@ export class RegistryDatabase {
       }
       const insertSkillExtractRun = this.db.prepare(`
         INSERT INTO registry_skill_extract_run (
-          mission_id, expected_node_ids, started_at, curator_notified_at, curator_lead_notified_at
-        ) VALUES ($mission_id, $expected_node_ids, $started_at, $curator_notified_at, $curator_lead_notified_at)
+          mission_id, expected_node_ids, started_at, verify_started_at, curator_notified_at, curator_lead_notified_at
+        ) VALUES ($mission_id, $expected_node_ids, $started_at, $verify_started_at, $curator_notified_at, $curator_lead_notified_at)
       `)
       for (const run of snapshot.skillExtractRuns) {
         insertSkillExtractRun.run({
           $mission_id: run.missionId,
           $expected_node_ids: JSON.stringify(run.expectedNodeIds),
           $started_at: run.startedAt,
+          $verify_started_at: run.verifyStartedAt ?? null,
           $curator_notified_at: run.curatorNotifiedAt ?? null,
           $curator_lead_notified_at: run.curatorLeadNotifiedAt ?? null,
         })
@@ -543,6 +643,33 @@ export class RegistryDatabase {
           $summary_path: item.summaryPath ?? null,
           $session_id: item.sessionId,
           $completed_at: item.completedAt,
+        })
+      }
+      const insertSkillVerifyRun = this.db.prepare(`
+        INSERT INTO registry_skill_verify_run (
+          mission_id, expected_node_ids, started_at
+        ) VALUES ($mission_id, $expected_node_ids, $started_at)
+      `)
+      for (const run of snapshot.skillVerifyRuns) {
+        insertSkillVerifyRun.run({
+          $mission_id: run.missionId,
+          $expected_node_ids: JSON.stringify(run.expectedNodeIds),
+          $started_at: run.startedAt,
+        })
+      }
+      const insertSkillVerifyCompletion = this.db.prepare(`
+        INSERT INTO registry_skill_verify_completion (
+          mission_id, node_id, session_id, completed_at, passed, report_path
+        ) VALUES ($mission_id, $node_id, $session_id, $completed_at, $passed, $report_path)
+      `)
+      for (const item of snapshot.skillVerifyCompletions) {
+        insertSkillVerifyCompletion.run({
+          $mission_id: item.missionId,
+          $node_id: item.nodeId,
+          $session_id: item.sessionId,
+          $completed_at: item.completedAt,
+          $passed: item.passed ? 1 : 0,
+          $report_path: item.reportPath ?? null,
         })
       }
       this.db.exec("COMMIT")
@@ -572,15 +699,14 @@ export class RegistryDatabase {
       this.db.run("UPDATE registry_mission SET is_active = 0 WHERE is_active = 1")
       const upsert = this.db.prepare(
         `INSERT INTO registry_mission (
-          mission_id, status, priority, objective, done_when_json, must_not_json, contract_raw_json, notes,
+          mission_id, status, objective, done_when_json, must_not_json, contract_raw_json, notes,
           user_topology, user_skill, started_at, completed_at, is_active, locked_at, updated_at
         ) VALUES (
-          $mission_id, $status, $priority, $objective, $done_when_json, $must_not_json, $contract_raw_json, $notes,
+          $mission_id, $status, $objective, $done_when_json, $must_not_json, $contract_raw_json, $notes,
           $user_topology, $user_skill, $started_at, $completed_at, 1, $locked_at, $updated_at
         )
         ON CONFLICT(mission_id) DO UPDATE SET
           status = excluded.status,
-          priority = excluded.priority,
           objective = excluded.objective,
           done_when_json = excluded.done_when_json,
           must_not_json = excluded.must_not_json,
@@ -597,7 +723,6 @@ export class RegistryDatabase {
       upsert.run({
         $mission_id: record.missionId,
         $status: record.status,
-        $priority: record.priority ?? null,
         $objective: record.objective ?? null,
         $done_when_json: JSON.stringify(record.doneWhen),
         $must_not_json: JSON.stringify(record.mustNot),
@@ -670,6 +795,22 @@ export class RegistryDatabase {
     return saveRetroManifest(this.db, retro)
   }
 
+  getExtractManifest(missionId: string) {
+    return getExtractManifest(this.db, missionId)
+  }
+
+  saveExtractManifest(extract: import("../tree/types.ts").ExtractManifest) {
+    return saveExtractManifest(this.db, extract)
+  }
+
+  getVerifyManifest(missionId: string) {
+    return getVerifyManifest(this.db, missionId)
+  }
+
+  saveVerifyManifest(verify: import("../tree/types.ts").VerifyManifest) {
+    return saveVerifyManifest(this.db, verify)
+  }
+
   findTreeManifestByRetroSession(sessionId: string) {
     return findTreeManifestByRetroSession(this.db, sessionId)
   }
@@ -726,6 +867,30 @@ export class RegistryDatabase {
 
   getOrchestrationState(missionId: string) {
     return readOrchestrationState(this.db, missionId)
+  }
+
+  mutateOrchestrationState(missionId: string, mutator: (state: OrchestrationState) => void) {
+    return persistMutateOrchestrationState(this.db, missionId, mutator)
+  }
+
+  saveOrchestrationPlan(plan: import("../orchestration/plan-types.ts").OrchestrationPlan) {
+    persistOrchestrationPlan(this.db, plan)
+  }
+
+  getOrchestrationPlan(missionId: string, planVersion: string) {
+    return readOrchestrationPlan(this.db, missionId, planVersion)
+  }
+
+  getLatestOrchestrationPlan(missionId: string) {
+    return readLatestOrchestrationPlan(this.db, missionId)
+  }
+
+  saveOrchestrationBaseline(baseline: import("../orchestration/plan-types.ts").OrchestrationBaseline) {
+    persistOrchestrationBaseline(this.db, baseline)
+  }
+
+  getOrchestrationBaseline(baselineId: string) {
+    return readOrchestrationBaseline(this.db, baselineId)
   }
 
   getDeliveryDocument(missionId: string) {

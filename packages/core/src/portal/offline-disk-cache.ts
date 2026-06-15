@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto"
 import { mkdir, rename } from "node:fs/promises"
 import path from "node:path"
 import type { PortalBrandingResponse } from "./branding.ts"
@@ -81,6 +82,7 @@ const inflightContentRefresh = new Map<string, Promise<void>>()
 const latestScheduledSkills = new Map<string, PortalSkill[]>()
 const scheduledStaticExport = new Map<string, ReturnType<typeof setTimeout>>()
 const inflightStaticExport = new Map<string, Promise<void>>()
+const mergeDiskCacheLocks = new Map<string, Promise<void>>()
 
 function envPositiveInt(key: string) {
   const raw = process.env[key]?.trim()
@@ -158,9 +160,23 @@ async function readJsonFile<T>(filePath: string): Promise<T | undefined> {
 async function writeJsonFile(filePath: string, data: unknown) {
   const dir = path.dirname(filePath)
   await mkdir(dir, { recursive: true })
-  const tmp = `${filePath}.${process.pid}.${Date.now()}.tmp`
+  const tmp = `${filePath}.${process.pid}.${randomUUID()}.tmp`
   await Bun.write(tmp, JSON.stringify(data))
   await rename(tmp, filePath)
+}
+
+function withPortalOfflineDiskCacheLock<T>(projectDirectory: string, fn: () => Promise<T>) {
+  const key = projectKey(projectDirectory)
+  const prev = mergeDiskCacheLocks.get(key) ?? Promise.resolve()
+  const result = prev.then(fn, fn)
+  mergeDiskCacheLocks.set(
+    key,
+    result.then(
+      () => undefined,
+      () => undefined,
+    ),
+  )
+  return result
 }
 
 function skillIndex(skills: PortalSkill[]) {
@@ -296,7 +312,7 @@ export async function buildPortalOfflineSkillsCache(
   return merged
 }
 
-export async function mergePortalOfflineDiskCache(
+async function mergePortalOfflineDiskCacheUnlocked(
   projectDirectory: string,
   patch: PortalOfflineDiskPatch,
 ) {
@@ -345,6 +361,15 @@ export async function mergePortalOfflineDiskCache(
 
   await writePortalOfflineManifest(projectDirectory, files, prevManifest?.content)
   schedulePortalOfflineStaticCacheExport(projectDirectory)
+}
+
+export async function mergePortalOfflineDiskCache(
+  projectDirectory: string,
+  patch: PortalOfflineDiskPatch,
+) {
+  return withPortalOfflineDiskCacheLock(projectDirectory, () =>
+    mergePortalOfflineDiskCacheUnlocked(projectDirectory, patch),
+  )
 }
 
 export async function refreshPortalOfflineSkillsCache(
@@ -402,15 +427,17 @@ export async function refreshPortalOfflineContentCache(
   }
   if (Object.keys(patch).length === 0 && !skillMerge.changed) return
 
-  await mergePortalOfflineDiskCache(projectDirectory, patch)
+  await withPortalOfflineDiskCacheLock(projectDirectory, async () => {
+    await mergePortalOfflineDiskCacheUnlocked(projectDirectory, patch)
 
-  const files = (await readPortalOfflineDiskManifest(projectDirectory))?.files ?? manifest?.files ?? {}
-  await writePortalOfflineManifest(projectDirectory, files, {
-    refreshedAt: new Date().toISOString(),
-    blogRevision,
-    skillFingerprints: skillMerge.fingerprints,
+    const files = (await readPortalOfflineDiskManifest(projectDirectory))?.files ?? manifest?.files ?? {}
+    await writePortalOfflineManifest(projectDirectory, files, {
+      refreshedAt: new Date().toISOString(),
+      blogRevision,
+      skillFingerprints: skillMerge.fingerprints,
+    })
+    schedulePortalOfflineStaticCacheExport(projectDirectory)
   })
-  schedulePortalOfflineStaticCacheExport(projectDirectory)
 }
 
 export function schedulePortalOfflineContentRefresh(projectDirectory: string, skills: PortalSkill[]) {
@@ -461,6 +488,7 @@ export function clearPortalOfflineRefreshStateForTests() {
   for (const timer of scheduledStaticExport.values()) clearTimeout(timer)
   scheduledStaticExport.clear()
   inflightStaticExport.clear()
+  mergeDiskCacheLocks.clear()
 }
 
 export async function ensurePortalOfflineDiskContent(

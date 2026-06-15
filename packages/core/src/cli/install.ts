@@ -132,9 +132,7 @@ export async function registerGatehouseGlobal(rawArgs: string[] = []) {
     console.log(formatDoctorReport(report.issues))
     if (report.exitCode !== 0) {
       console.log(
-        wizardLang === "zh"
-          ? "\n全局安装已完成，但 doctor 报告存在问题 — 请按上方提示修复。"
-          : "\nGlobal install finished, but doctor reported issues — fix them before starting OpenCode.",
+        "\nGlobal install finished, but doctor reported issues — fix them before starting OpenCode.",
       )
     }
   }

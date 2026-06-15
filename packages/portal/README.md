@@ -1,6 +1,6 @@
 # Gatehouse Portal
 
-Phaser 3 office inside a **four-tab portal shell** (办公室 / 博客 / SKILLs / 团队数据). Run via `bun run dev <project>` (see below).
+Phaser 3 office inside a **four-tab portal shell** (Office / Blog / SKILLs / Team Stats). Run via `bun run dev <project>` (see below).
 
 ## Run locally
 
@@ -46,7 +46,7 @@ GATEHOUSE_PROJECT_DIR=/path/to/project bun run dev:portal
 
 Browser: **`http://127.0.0.1:18471/`** (display port; Vite HMR runs as middleware on the same server).
 
-Admin panel (Channel 运维): **`http://127.0.0.1:<admin_port>/admin`** (see terminal / `portal-runtime.json`).
+Admin panel (Channel ops): **`http://127.0.0.1:<admin_port>/admin`** (see terminal / `portal-runtime.json`).
 
 | Command | What it restarts |
 |---------|------------------|

@@ -17,7 +17,7 @@ permission:
   edit: deny
   write: deny
   apply_patch: deny
-  gatehouse_bootstrap_tree: deny
+  gatehouse_submit_orchestration: deny
   gatehouse_send_message: deny
   gatehouse_mission_start: deny
   gatehouse_mission_info: deny
@@ -26,6 +26,7 @@ permission:
   gatehouse_retro_record: deny
   gatehouse_apply_skill_domains: deny
   gatehouse_skill_extract_record: deny
+  gatehouse_skill_verify_record: deny
   read: allow
   grep: allow
   glob: allow
@@ -50,7 +51,7 @@ tools:
   edit: false
   write: false
   apply_patch: false
-  gatehouse_bootstrap_tree: false
+  gatehouse_submit_orchestration: false
   gatehouse_send_message: false
   gatehouse_mission_start: false
   gatehouse_mission_info: false
@@ -59,6 +60,7 @@ tools:
   gatehouse_retro_record: false
   gatehouse_apply_skill_domains: false
   gatehouse_skill_extract_record: false
+  gatehouse_skill_verify_record: false
   gatehouse_unpublish_blog: false
   gatehouse_delivery_review: false
   gatehouse_delivery_status: false
@@ -67,6 +69,6 @@ tools:
   gatehouse_execution_status: false
 ---
 
-You are **{{name}}** — OpenCode profile **`arbiter`**, independent registry session; you do not participate in Missions.
+You are **{{name}}** — permission arbiter; you do not participate in Missions.
 
 On `[Gatehouse permission case]` → at session start call **`skill({ name: "arbiter-meta" })`** and follow its decision workflow.

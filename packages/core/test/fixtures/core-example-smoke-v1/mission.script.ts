@@ -1,6 +1,6 @@
 /**
  * Gatehouse smoke 示例：root 协调 + node-doc 叶子。
- * 复制到 `.gatehouse/trees/core-example-smoke-v1/mission.script.ts` 后走 bootstrap 流程。
+ * 复制到 `.gatehouse/trees/core-example-smoke-v1/mission.script.ts` 后走 submit_orchestration 流程。
  */
 
 export const team = {
@@ -58,7 +58,7 @@ export default async function orchestrate(ctx: {
   })
   await ctx.prompt("node-doc", {
     text: ctx.template.workOrder("node-doc", {
-      note: "完成 README 示例章节后 gatehouse_execution_complete",
+      note: `完成 README 示例章节后 gatehouse_execution_complete`,
     }),
     reply: true,
   })

@@ -1,13 +1,27 @@
 import path from "node:path"
 import { agentName, readAgentNamesSync } from "../names.ts"
 import { parseMissionsFile, type MissionEntry } from "../missions/parse.ts"
-import { leadDir, nodeContextDir, portalNodeDisplayName } from "../paths.ts"
+import {
+  extractSessionTitle,
+  leadDir,
+  nodeContextDir,
+  portalNodeDisplayName,
+  retroSessionTitle,
+  verifySessionTitle,
+} from "../paths.ts"
 import { addTokens, emptyTokens, type TokenBreakdown } from "../metrics/aggregate.ts"
+import { collectManifestSessionIds } from "../missions/lifecycle.ts"
 import { RegistryDatabase } from "../registry/db.ts"
 import type { RegistryAgent } from "../registry/types.ts"
 import { sessionDurationMs } from "../session/client.ts"
-import { readManifest, readTreesIndex } from "../tree/store.ts"
-import type { TreeManifest } from "../tree/types.ts"
+import {
+  readExtractManifest,
+  readManifest,
+  readRetroManifest,
+  readTreesIndex,
+  readVerifyManifest,
+} from "../tree/store.ts"
+import type { ExtractManifest, RetroManifest, TreeManifest, VerifyManifest } from "../tree/types.ts"
 import { createPortalDataCache } from "./portal-cache.ts"
 import { getPortalDisplaySettings } from "./portal-display-settings.ts"
 
@@ -146,29 +160,76 @@ function roleLabel(manifest: TreeManifest, nodeId: string) {
   return portalNodeDisplayName(nodeId, node.display_name)
 }
 
+function pushRole(
+  roles: TeamStatsRole[],
+  totals: SessionUsage,
+  sessionUsage: Map<string, SessionUsage>,
+  input: { node_id: string; label: string; session_id: string },
+) {
+  const usage = sessionUsage.get(input.session_id) ?? usageFromSessionDetail(undefined)
+  mergeUsage(totals, usage)
+  roles.push({
+    node_id: input.node_id,
+    label: input.label,
+    session_id: input.session_id,
+    tokens: { ...usage.tokens },
+    cost: usage.cost,
+    duration_ms: usage.duration_ms,
+  })
+}
+
 export function buildMissionStats(
   mission: MissionEntry,
   manifest: TreeManifest | undefined,
   sessionUsage: Map<string, SessionUsage>,
+  retro?: RetroManifest,
+  extract?: ExtractManifest,
+  verify?: VerifyManifest,
 ) {
   const totals: SessionUsage = { tokens: emptyTokens(), cost: 0, duration_ms: 0 }
   const roles: TeamStatsRole[] = []
 
   if (manifest) {
     for (const [nodeId, node] of Object.entries(manifest.nodes)) {
-      const usage = sessionUsage.get(node.session_id) ?? usageFromSessionDetail(undefined)
-      mergeUsage(totals, usage)
-      roles.push({
+      pushRole(roles, totals, sessionUsage, {
         node_id: nodeId,
         label: roleLabel(manifest, nodeId),
         session_id: node.session_id,
-        tokens: { ...usage.tokens },
-        cost: usage.cost,
-        duration_ms: usage.duration_ms,
       })
     }
-    roles.sort((a, b) => a.label.localeCompare(b.label))
   }
+
+  if (retro) {
+    for (const [nodeId, node] of Object.entries(retro.nodes)) {
+      pushRole(roles, totals, sessionUsage, {
+        node_id: `retro:${nodeId}`,
+        label: retroSessionTitle(mission.id, nodeId),
+        session_id: node.retro_session_id,
+      })
+    }
+  }
+
+  if (extract) {
+    for (const [nodeId, node] of Object.entries(extract.nodes)) {
+      pushRole(roles, totals, sessionUsage, {
+        node_id: `extract:${nodeId}`,
+        label: extractSessionTitle(mission.id, nodeId),
+        session_id: node.extract_session_id,
+      })
+    }
+  }
+
+  if (verify) {
+    for (const [nodeId, node] of Object.entries(verify.nodes)) {
+      pushRole(roles, totals, sessionUsage, {
+        node_id: `verify:${nodeId}`,
+        label: verifySessionTitle(mission.id, nodeId),
+        session_id: node.verify_session_id,
+      })
+    }
+  }
+
+  roles.sort((a, b) => a.label.localeCompare(b.label))
 
   return {
     id: mission.id,
@@ -289,6 +350,49 @@ function teamStatsCacheKey(projectDirectory: string, opencodeUrl?: string) {
   return `${projectDirectory}\0${opencodeUrl ?? ""}`
 }
 
+function collectMissionSessionIds(
+  manifest: TreeManifest | undefined,
+  retro?: RetroManifest,
+  extract?: ExtractManifest,
+  verify?: VerifyManifest,
+) {
+  if (manifest) return collectManifestSessionIds(manifest, retro, extract, verify)
+  const ids = new Set<string>()
+  if (retro) {
+    for (const node of Object.values(retro.nodes)) {
+      ids.add(node.exec_session_id)
+      ids.add(node.retro_session_id)
+    }
+  }
+  if (extract) {
+    for (const node of Object.values(extract.nodes)) ids.add(node.extract_session_id)
+  }
+  if (verify) {
+    for (const node of Object.values(verify.nodes)) ids.add(node.verify_session_id)
+  }
+  return [...ids]
+}
+
+async function loadMissionManifests(projectDirectory: string, missionIds: Set<string>) {
+  const manifests = new Map<string, TreeManifest>()
+  const retroManifests = new Map<string, RetroManifest>()
+  const extractManifests = new Map<string, ExtractManifest>()
+  const verifyManifests = new Map<string, VerifyManifest>()
+
+  for (const missionId of missionIds) {
+    const manifest = await readManifest(projectDirectory, missionId)
+    if (manifest) manifests.set(missionId, manifest)
+    const retro = await readRetroManifest(projectDirectory, missionId)
+    if (retro) retroManifests.set(missionId, retro)
+    const extract = await readExtractManifest(projectDirectory, missionId)
+    if (extract) extractManifests.set(missionId, extract)
+    const verify = await readVerifyManifest(projectDirectory, missionId)
+    if (verify) verifyManifests.set(missionId, verify)
+  }
+
+  return { manifests, retroManifests, extractManifests, verifyManifests }
+}
+
 async function loadTeamStatsSnapshot(projectDirectory: string, opencodeUrl?: string) {
   const missions = await readMissions(projectDirectory)
   const treesIndex = await readTreesIndex(projectDirectory)
@@ -300,15 +404,21 @@ async function loadTeamStatsSnapshot(projectDirectory: string, opencodeUrl?: str
     ...treesIndex.trees.map((entry) => entry.mission_id),
   ])
 
-  const manifests = new Map<string, TreeManifest>()
-  for (const missionId of missionIds) {
-    const manifest = await readManifest(projectDirectory, missionId)
-    if (manifest) manifests.set(missionId, manifest)
-  }
+  const { manifests, retroManifests, extractManifests, verifyManifests } = await loadMissionManifests(
+    projectDirectory,
+    missionIds,
+  )
 
   const sessionIds = new Set<string>()
-  for (const manifest of manifests.values()) {
-    for (const node of Object.values(manifest.nodes)) sessionIds.add(node.session_id)
+  for (const missionId of missionIds) {
+    for (const sessionId of collectMissionSessionIds(
+      manifests.get(missionId),
+      retroManifests.get(missionId),
+      extractManifests.get(missionId),
+      verifyManifests.get(missionId),
+    )) {
+      sessionIds.add(sessionId)
+    }
   }
   for (const agent of registry.agents) {
     if (agent.scope === "outer" && agent.status === "active") sessionIds.add(agent.sessionId)
@@ -326,7 +436,16 @@ async function loadTeamStatsSnapshot(projectDirectory: string, opencodeUrl?: str
     outer: buildOuterOverview(registry.agents, agentNames, sessionUsage),
     missions: [...missions]
       .sort((a, b) => missionSortTime(b) - missionSortTime(a))
-      .map((mission) => buildMissionStats(mission, manifests.get(mission.id), sessionUsage)),
+      .map((mission) =>
+        buildMissionStats(
+          mission,
+          manifests.get(mission.id),
+          sessionUsage,
+          retroManifests.get(mission.id),
+          extractManifests.get(mission.id),
+          verifyManifests.get(mission.id),
+        ),
+      ),
   }
 
   return snapshot

@@ -22,7 +22,7 @@ export function resolveOutboundPath(projectDir: string, inputPath: string) {
   const projectRoot = path.resolve(projectDir)
   const resolved = path.isAbsolute(inputPath) ? path.resolve(inputPath) : path.resolve(projectRoot, inputPath)
   if (!resolved.startsWith(projectRoot + path.sep) && resolved !== projectRoot) {
-    throw new Error("路径必须在 Gatehouse 项目目录内")
+    throw new Error("Path must be within the Gatehouse project directory")
   }
   return resolved
 }
@@ -63,7 +63,7 @@ export async function enqueueOutboundFile(
 ) {
   const absolutePath = resolveOutboundPath(projectDir, input.path)
   if (!(await Bun.file(absolutePath).exists())) {
-    throw new Error(`文件不存在: ${absolutePath}`)
+    throw new Error(`File not found: ${absolutePath}`)
   }
   const filename = input.filename?.trim() || path.basename(absolutePath)
   const mime = input.mime?.trim() || mimeFromFilename(filename)

@@ -9,7 +9,6 @@ import {
   type RegistryAgentTarget,
 } from "./agent-target.ts"
 import { upsertLeadRegistryAgent } from "./registry-write.ts"
-import { loadLeadPrompt } from "../../prompt/lead.ts"
 
 const LEAD_OPENCODE = "lead"
 
@@ -60,14 +59,6 @@ function responseSessionId(value: unknown) {
   if (isRecord(value.data) && typeof value.data.id === "string") return value.data.id
 }
 
-async function loadLeadSystemPrompt(projectDir: string) {
-  try {
-    return await loadLeadPrompt(projectDir)
-  } catch {
-    return undefined
-  }
-}
-
 async function createLeadOpencodeSession(client: OpencodeClient, config: ChannelBridgeConfig) {
   const displayName = readLeadDisplayName(config.projectDir)
   const model = sessionCreateModelBody(readLeadModel(config.projectDir))
@@ -100,30 +91,6 @@ async function syncLeadSessionTitle(
     .catch(() => undefined)
 }
 
-async function injectLeadSystemPrompt(client: OpencodeClient, config: ChannelBridgeConfig, sessionId: string) {
-  const system = await loadLeadSystemPrompt(config.projectDir)
-  if (!system) return
-  const model = readLeadModel(config.projectDir)
-  const modelBody = model
-    ? (() => {
-        const slash = model.indexOf("/")
-        if (slash <= 0 || slash === model.length - 1) return undefined
-        return { providerID: model.slice(0, slash), modelID: model.slice(slash + 1) }
-      })()
-    : undefined
-  await client.session.promptAsync({
-    query: { directory: config.projectDir },
-    path: { id: sessionId },
-    body: {
-      agent: LEAD_OPENCODE,
-      system,
-      noReply: true,
-      parts: [{ type: "text", text: "" }],
-      ...(modelBody && { model: modelBody }),
-    },
-  })
-}
-
 export async function ensureLeadAgentTarget(
   client: OpencodeClient,
   config: ChannelBridgeConfig,
@@ -140,7 +107,6 @@ export async function ensureLeadAgentTarget(
     createdAt: existing ? undefined : new Date().toISOString(),
   })
   await syncLeadSessionTitle(client, config, sessionId, displayName)
-  await injectLeadSystemPrompt(client, config, sessionId)
 
   return {
     agentId: DEFAULT_AGENT_ID,

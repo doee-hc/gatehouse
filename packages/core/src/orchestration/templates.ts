@@ -13,17 +13,17 @@ export function formatWorkOrderTextWithLocale(
 ) {
   const header = gatehouseMessage("execution.workOrder.activateHeader", locale, { node_id: input.nodeId })
   const lines = [header, "", `**Mission ID：** ${input.missionId}`, `**Node：** ${input.nodeId}`]
-  if (input.note) lines.push("", `**说明：** ${input.note}`)
-  if (input.wave !== undefined) lines.push("", `**波次：** ${input.wave}`)
-  if (input.context) lines.push("", "**上下文：**", input.context.trim())
+  if (input.note) lines.push("", gatehouseMessage("execution.workOrder.note", locale, { note: input.note }))
+  if (input.wave !== undefined) {
+    lines.push("", gatehouseMessage("execution.workOrder.wave", locale, { wave: String(input.wave) }))
+  }
+  if (input.context) lines.push("", gatehouseMessage("execution.workOrder.contextHeader", locale), input.context.trim())
   lines.push(
     "",
     gatehouseMessage("execution.workOrder.missionInfoRef", locale),
     gatehouseMessage("execution.workOrder.completeHint", locale),
     "",
-    gatehouseMessage("execution.workOrder.peerMessageHint", locale),
     gatehouseMessage("execution.workOrder.reworkHint", locale),
-    gatehouseMessage("execution.workOrder.reworkNotSendMessage", locale),
   )
   return lines.join("\n")
 }
@@ -83,9 +83,11 @@ export function formatReworkResumeTextWithLocale(
     "",
     `**Mission ID：** ${input.missionId}`,
     `**Node：** ${input.nodeId}`,
-    `**依赖节点 ${input.blocker} 已再次完成。**`,
+    gatehouseMessage("execution.workOrder.blockerDone", locale, { blocker: input.blocker }),
   ]
-  if (input.reason) lines.push(`**返工原因（回顾）：** ${input.reason}`)
+  if (input.reason) {
+    lines.push(gatehouseMessage("execution.workOrder.reworkReasonReview", locale, { reason: input.reason }))
+  }
   lines.push("", gatehouseMessage("execution.workOrder.completeHint", locale))
   return lines.join("\n")
 }

@@ -107,7 +107,7 @@ describe("handleAgentCommand switch", () => {
       kind: "switch",
       agentId: "outer:lead",
     })
-    expect(result.text).toContain("已切换到 outer:lead")
+    expect(result.text).toContain("Switched to outer:lead")
     expect(result.switchedSessionId).toBe("ses_lead")
     expect(getLastDeliveredAssistantMessageId(stateDir, "wx-user", "ses_lead")).toBe("m1")
   })

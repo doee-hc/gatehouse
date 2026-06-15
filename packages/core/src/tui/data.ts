@@ -7,6 +7,8 @@ import { readPortalRuntimeSync, type PortalRuntimeInfo } from "../portal/runtime
 import { gatehouseRoot } from "../paths.ts"
 import { readManifestSync, readTreesIndexSync } from "../tree/store.ts"
 import type { TreeManifest } from "../tree/types.ts"
+import { readAutopilotDocumentSync, autopilotIsEnabled } from "../lead/autopilot.ts"
+import { readDirectionDocumentSync, directionIsConfirmed } from "../lead/direction.ts"
 
 export type GatehouseOuterAgentRow = {
   displayName: string
@@ -32,6 +34,10 @@ export type GatehouseSidebarState = {
   trees: GatehouseTreePanel[]
   sessionOwner?: GatehouseOuterAgentRow
   portal?: PortalRuntimeInfo
+  autopilot?: {
+    enabled: boolean
+    directionConfirmed: boolean
+  }
 }
 
 function outerRow(agent: RegistryAgent): GatehouseOuterAgentRow {
@@ -113,6 +119,8 @@ export function loadGatehouseSidebarStateSync(
     : undefined
 
   const portal = readPortalRuntimeSync(directory)
+  const autopilotDoc = readAutopilotDocumentSync(directory)
+  const directionDoc = readDirectionDocumentSync(directory)
 
   return {
     outerAgents,
@@ -120,6 +128,10 @@ export function loadGatehouseSidebarStateSync(
     trees,
     ...(owner && { sessionOwner: outerRow(owner) }),
     ...(portal && { portal }),
+    autopilot: {
+      enabled: autopilotIsEnabled(autopilotDoc),
+      directionConfirmed: directionIsConfirmed(directionDoc),
+    },
   }
 }
 

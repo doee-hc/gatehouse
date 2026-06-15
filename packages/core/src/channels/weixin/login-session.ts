@@ -124,7 +124,7 @@ export class WeixinLoginSessionManager {
         if (current.phase === "cancelled") return
         if (Date.now() > current.deadline) {
           current.phase = "failed"
-          current.message = "登录超时"
+          current.message = "Login timed out"
           current.updatedAt = Date.now()
           return
         }
@@ -139,7 +139,7 @@ export class WeixinLoginSessionManager {
         }
         if (status.status === "scaned") {
           current.phase = "scaned"
-          current.message = "已扫码，请在微信中确认"
+          current.message = "QR code scanned — confirm in WeChat"
           await Bun.sleep(1000)
           continue
         }
@@ -147,7 +147,7 @@ export class WeixinLoginSessionManager {
           current.refreshCount += 1
           if (current.refreshCount > MAX_QR_REFRESH) {
             current.phase = "failed"
-            current.message = "二维码多次过期，请重新开始登录"
+            current.message = "QR code expired too many times — restart login"
             return
           }
           const next = await fetchWeixinQrCode(current.ilinkBaseUrl, current.botType)
@@ -155,7 +155,7 @@ export class WeixinLoginSessionManager {
           current.qrContent = next.qrcode_img_content
           current.qrToken = next.qrcode
           current.phase = "expired"
-          current.message = "二维码已过期，已自动刷新"
+          current.message = "QR code expired — refreshed automatically"
           await Bun.sleep(500)
           current.phase = "wait"
           continue
@@ -163,7 +163,7 @@ export class WeixinLoginSessionManager {
         if (status.status === "confirmed") {
           if (!status.bot_token) {
             current.phase = "failed"
-            current.message = "登录成功但未返回 bot_token"
+            current.message = "Login succeeded but bot_token was not returned"
             return
           }
           saveWeixinCredentials(current.projectDir, {
@@ -174,7 +174,7 @@ export class WeixinLoginSessionManager {
           })
           updateChannelConfig(current.projectDir, "weixin", { enabled: true })
           current.phase = "confirmed"
-          current.message = "微信登录成功"
+          current.message = "WeChat login successful"
           return
         }
       }

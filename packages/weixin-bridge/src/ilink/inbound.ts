@@ -46,15 +46,15 @@ export function isUserTextMessage(msg: WeixinMessage) {
 }
 
 export function mediaNotice(item: MessageItem) {
-  if (item.type === MessageItemType.FILE) return "暂不支持文件，请发送文字描述你的需求。"
-  if (item.type === MessageItemType.VIDEO) return "暂不支持视频，请发送文字描述你的需求。"
-  if (item.type === MessageItemType.VOICE) return "暂不支持语音，请发送文字描述你的需求。"
-  if (item.type === MessageItemType.IMAGE) return "无法解析图片消息，请重试或改用文字描述。"
-  return "暂不支持该消息类型，请发送文字。"
+  if (item.type === MessageItemType.FILE) return "Files are not supported. Please describe your request in text."
+  if (item.type === MessageItemType.VIDEO) return "Videos are not supported. Please describe your request in text."
+  if (item.type === MessageItemType.VOICE) return "Voice messages are not supported. Please describe your request in text."
+  if (item.type === MessageItemType.IMAGE) return "Could not parse image message. Please retry or describe your request in text."
+  return "Unsupported message type. Please send text."
 }
 
 export function unsupportedMediaReply(msg: WeixinMessage) {
-  if (!msg.item_list?.length) return "收到空消息，请发送文字。"
+  if (!msg.item_list?.length) return "Received an empty message. Please send text."
   for (const item of msg.item_list) {
     if (
       item.type === MessageItemType.FILE ||
@@ -65,6 +65,6 @@ export function unsupportedMediaReply(msg: WeixinMessage) {
       return mediaNotice(item)
     }
   }
-  return "请发送文字消息。"
+  return "Please send a text message."
 }
 

@@ -51,11 +51,11 @@ export async function stopSupervisorProcess(
   const state = readSupervisorState(projectDir)
   if (!state?.pid) {
     clearSupervisorState(projectDir)
-    return { stopped: false, reason: "supervisor 未运行" }
+    return { stopped: false, reason: "Supervisor is not running" }
   }
   if (!isProcessAlive(state.pid)) {
     clearSupervisorState(projectDir)
-    return { stopped: false, reason: "supervisor 已退出（已清理状态）" }
+    return { stopped: false, reason: "Supervisor has exited (state cleared)" }
   }
 
   const pid = state.pid

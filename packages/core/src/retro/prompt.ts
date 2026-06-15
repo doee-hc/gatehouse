@@ -42,3 +42,32 @@ export function architectRetroBatchReadyMessage(
     names,
   )
 }
+
+export function leadRetroRollupReadyMessage(
+  missionId: string,
+  input: {
+    architectSummaryPath: string
+    curatorSummaryPath?: string
+    locale?: GatehouseLocale
+    leadName?: string
+  },
+  names: Record<OuterProfile, string> = defaultAgentNames(),
+) {
+  const locale = input.locale ?? DEFAULT_GATEHOUSE_LOCALE
+  const curatorLine = input.curatorSummaryPath
+    ? gatehouseMessage("retro.rollupReady.curatorLine", locale, { curator_summary_path: input.curatorSummaryPath })
+    : ""
+  const curatorSuffix = input.curatorSummaryPath
+    ? gatehouseMessage("retro.rollupReady.curatorSuffix", locale)
+    : ""
+  return renderGatehouseTemplate(
+    gatehouseMessage("retro.rollupReady", locale, {
+      mission_id: missionId,
+      architect_summary_path: input.architectSummaryPath,
+      curator_line: curatorLine,
+      curator_suffix: curatorSuffix,
+      lead_name: input.leadName ?? names.lead,
+    }),
+    names,
+  )
+}

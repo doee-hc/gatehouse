@@ -20,27 +20,27 @@ export async function runChannelsDoctor(projectDir: string, probe = false): Prom
   const issues: DoctorIssue[] = []
 
   if (!fs.existsSync(projectDir)) {
-    issues.push({ level: "error", message: `项目目录不存在: ${projectDir}` })
+    issues.push({ level: "error", message: `Project directory does not exist: ${projectDir}` })
     return issues
   }
   if (!fs.existsSync(`${projectDir}/.gatehouse`)) {
-    issues.push({ level: "error", message: "缺少 .gatehouse/，请先启动 OpenCode 完成 scaffold" })
+    issues.push({ level: "error", message: "Missing .gatehouse/ — start OpenCode to scaffold first" })
     return issues
   }
 
   if (!channelsConfigExists(projectDir)) {
     issues.push({
       level: "warn",
-      message: "缺少 .gatehouse/channels.yaml，可运行: bunx @gatehouse/core channels init",
+      message: "Missing .gatehouse/channels.yaml — run: bunx @gatehouse/core channels init",
     })
   }
 
   const config = loadChannelsConfig(projectDir)
   const supervisor = readLiveSupervisorState(projectDir)
   if (supervisor) {
-    issues.push({ level: "ok", message: `supervisor 运行中 (pid ${supervisor.pid})` })
+    issues.push({ level: "ok", message: `supervisor running (pid ${supervisor.pid})` })
   } else {
-    issues.push({ level: "warn", message: "supervisor 未运行，可运行: bunx @gatehouse/core channels serve" })
+    issues.push({ level: "warn", message: "supervisor not running — run: bunx @gatehouse/core channels serve" })
   }
 
   if (probe) {
@@ -51,19 +51,19 @@ export async function runChannelsDoctor(projectDir: string, probe = false): Prom
         leadReplyTimeoutMs: config.leadReplyTimeoutMs ?? 600_000,
         stateDir: `${projectDir}/.gatehouse/channels/doctor`,
       })
-      issues.push({ level: "ok", message: `OpenCode 可达 (${config.opencodeUrl})` })
+      issues.push({ level: "ok", message: `OpenCode reachable (${config.opencodeUrl})` })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       issues.push({ level: "error", message })
     }
   } else {
-    issues.push({ level: "warn", message: `OpenCode 探测未执行，可加 --probe（目标 ${config.opencodeUrl}）` })
+    issues.push({ level: "warn", message: `OpenCode probe skipped — pass --probe (target ${config.opencodeUrl})` })
   }
 
   for (const channelId of CHANNEL_IDS) {
     const channel = config.channels[channelId]
     if (!channel.enabled) {
-      issues.push({ level: "ok", channel: channelId, message: "未启用" })
+      issues.push({ level: "ok", channel: channelId, message: "Not enabled" })
       continue
     }
 
@@ -77,22 +77,22 @@ export async function runChannelsDoctor(projectDir: string, probe = false): Prom
       issues.push({
         level: "ok",
         channel: channelId,
-        message: `凭证已就绪 (${weixinCredentialsPath(projectDir)})`,
+        message: `Credentials ready (${weixinCredentialsPath(projectDir)})`,
       })
     } else if (channelId === "feishu") {
-      issues.push({ level: "ok", channel: channelId, message: "App ID / Secret 已配置" })
+      issues.push({ level: "ok", channel: channelId, message: "App ID / Secret configured" })
     } else if (channelId === "qq-onebot") {
       const onebot = config.channels["qq-onebot"]
       issues.push({
         level: "ok",
         channel: channelId,
-        message: `OneBot WS 已配置（${onebot.wsUrl?.trim() || "ws://127.0.0.1:3001"}，requireAt=${onebot.requireAt !== false}）`,
+        message: `OneBot WS configured (${onebot.wsUrl?.trim() || "ws://127.0.0.1:3001"}, requireAt=${onebot.requireAt !== false})`,
       })
     } else {
       issues.push({
         level: "ok",
         channel: channelId,
-        message: `AppID / Secret 已配置（sandbox=${config.channels.qq.sandbox !== false}）`,
+        message: `AppID / Secret configured (sandbox=${config.channels.qq.sandbox !== false})`,
       })
     }
   }

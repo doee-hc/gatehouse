@@ -5,12 +5,12 @@ import { startMissionFromYaml } from "../missions/start.ts"
 import { formatMissionStartedMessage } from "../messaging/delivery-notify.ts"
 import { readAgentNamesSync, renderGatehouseTemplate } from "../names.ts"
 import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
-import { clearLeadAwaitUserState } from "../watchdog/lead-user-await.ts"
+import { clearAutopilotWatchState } from "../lead/autopilot-watch.ts"
 
 export function missionStartTool(input: PluginInput) {
   return tool({
     description:
-      "profile lead only: start a queued mission from .gatehouse/lead/missions.yaml. Validates fields, asserts serial policy, freezes mission snapshot (gatehouse_mission_info), sets status running, and auto-notifies architect. Do not hand-edit running status or duplicate the kickoff via send_message.",
+      "profile lead only: start a queued mission (validates, freezes snapshot, sets running, auto-notifies architect). Do not hand-edit running status.",
     args: {
       mission_id: tool.schema.string().min(1),
     },
@@ -58,7 +58,7 @@ export function missionStartTool(input: PluginInput) {
           message,
         })
         await lead.registry.flushPendingDeliveries()
-        await clearLeadAwaitUserState(input.directory)
+        await clearAutopilotWatchState(input.directory)
 
         return {
           output: toolOk(toolName, {
