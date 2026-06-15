@@ -5,7 +5,7 @@ For Gatehouse repository contributors and plugin developers. User installation a
 ## Prerequisites
 
 - [Bun](https://bun.sh) >= 1.1
-- [OpenCode](https://opencode.ai) >= 1.14.40 (global CLI, or point `OPENCODE_ROOT` at source)
+- [OpenCode](https://opencode.ai) >= 1.14.40 and < 1.18.0 (global CLI, or point `OPENCODE_ROOT` at source)
 
 ## Package Layout
 
@@ -13,7 +13,13 @@ For Gatehouse repository contributors and plugin developers. User installation a
 |---|---|---|
 | `packages/core` | `@gatehouse/core` | Main plugin (server + TUI + CLI + Portal API + IM **channels** at `src/channels/`) |
 | `packages/portal` | `@gatehouse/portal` | Portal UI (build output merged into core `dist/portal/`) |
-| `packages/*-bridge` | `@gatehouse/*-bridge` | WeChat / Feishu / QQ bridges (depend on `@gatehouse/core`, import `@gatehouse/core/channels`) |
+| `packages/character-assets` | `@gatehouse/character-assets` | Character sheet generation (local dev only) |
+| `packages/weixin-bridge` | `@gatehouse/weixin-bridge` | WeChat iLink bridge |
+| `packages/feishu-bridge` | `@gatehouse/feishu-bridge` | Feishu app bridge |
+| `packages/qq-bridge` | `@gatehouse/qq-bridge` | QQ official private-DM bridge |
+| `packages/qq-onebot-bridge` | `@gatehouse/qq-onebot-bridge` | QQ group bridge (NapCat / OneBot V11) |
+
+All bridge packages depend on `@gatehouse/core` and import `@gatehouse/core/channels`. Bridge sources are also copied into `@gatehouse/core` at build time for bundled installs.
 
 IM channels user guide: [guide/channels.md](./guide/channels.md) · [guide/channels.zh.md](./guide/channels.zh.md). Source: `packages/core/src/channels/`.
 
@@ -52,15 +58,33 @@ Browser: `http://127.0.0.1:18471/` (Vite dev middleware is embedded in the Porta
 
 See [packages/portal/README.md](../packages/portal/README.md).
 
+## Portal Offline Cache & Static Export
+
+While OpenCode is running, the Portal API incrementally persists snapshots, blog posts, skills, branding, display config, and team stats to disk under `.gatehouse/internal/portal-offline-cache/`. The Portal UI reads this cache when the backend is unreachable.
+
+After visiting the Portal online at least once (or while the API is running), you can export the cache into the built static bundle:
+
+```bash
+GATEHOUSE_PROJECT_DIR=/path/to/project bun run --cwd packages/core script/sync-portal-static-cache.ts
+```
+
+This copies `bundle.json` into `packages/core/dist/portal/offline-cache/` (or a custom target path passed as the first CLI argument). Use this for read-only Portal hosting on a VPS without a live OpenCode process.
+
+Implementation: `packages/core/src/portal/offline-disk-cache.ts`, `packages/portal/src/portal/offline-cache.ts`.
+
 ## Common Commands
 
 | Command | Description |
 |---------|-------------|
 | `bun run typecheck` | Typecheck entire monorepo |
-| `bun run test` | Run core and all three bridge tests |
+| `bun run test` | Run core and all four bridge package tests |
 | `bun run build` | Build core (includes Portal static assets) |
 | `bun run --cwd packages/core pack` | Pack before publish |
 | `bun run channels --help` | IM channels CLI |
+| `bun run dev:weixin-bridge` | WeChat bridge dev server |
+| `bun run dev:feishu-bridge` | Feishu bridge dev server |
+| `bun run dev:qq-bridge` | QQ official DM bridge dev server |
+| `bun run dev:qq-onebot-bridge` | QQ group (OneBot) bridge dev server |
 
 ## Publishing
 

@@ -44,16 +44,32 @@ GATEHOUSE_PORTAL=0 bun run dev /path/to/project
 GATEHOUSE_PROJECT_DIR=/path/to/project bun run dev:portal
 ```
 
-Browser: **`http://127.0.0.1:18471/`** (display port; Vite HMR runs as middleware on the same server).
+Browser: `**http://127.0.0.1:18471/**` (display port; Vite HMR runs as middleware on the same server).
 
-Admin panel (Channel ops): **`http://127.0.0.1:<admin_port>/admin`** (see terminal / `portal-runtime.json`).
+Admin panel (Channel ops): `**http://127.0.0.1:<admin_port>/admin**` (see terminal / `portal-runtime.json`).
 
-| Command | What it restarts |
-|---------|------------------|
+
+| Command               | What it restarts                      |
+| --------------------- | ------------------------------------- |
 | `bun run dev:restart` | Portal server (API + Vite middleware) |
-| `bun run dev:stop` | stop Portal |
+| `bun run dev:stop`    | stop Portal                           |
+
 
 Most UI edits hot-reload via Vite. Restart after Portal API (`packages/core`) code changes.
+
+### Offline cache & static export
+
+The Portal API writes an incremental disk cache under `.gatehouse/internal/portal-offline-cache/`. The UI falls back to this cache when OpenCode or the Portal server is offline.
+
+To bake the cache into the production static bundle (for read-only VPS hosting):
+
+```bash
+GATEHOUSE_PROJECT_DIR=/path/to/project bun run --cwd packages/core script/sync-portal-static-cache.ts
+# Optional custom output dir:
+GATEHOUSE_PROJECT_DIR=/path/to/project bun run --cwd packages/core script/sync-portal-static-cache.ts /var/www/portal/offline-cache
+```
+
+Visit the Portal online at least once before exporting so the cache is seeded.
 
 Or from this package:
 
@@ -66,12 +82,14 @@ If the default port is busy, set `GATEHOUSE_PORTAL_PORT` / `GATEHOUSE_PORTAL_ADM
 
 ### Security-related env (before exposing HTTPS)
 
-| Variable | Purpose |
-|----------|---------|
-| `GATEHOUSE_PORTAL_CORS_ORIGINS` | Comma-separated allowed browser origins (default: localhost dev only) |
-| `GATEHOUSE_PORTAL_PROJECT_DIRS` | Extra allowed `directory` roots besides `GATEHOUSE_PROJECT_DIR` |
-| `GATEHOUSE_PORTAL_INTERNAL_TOKEN` | Shared secret for cross-process portal event injection |
-| `GATEHOUSE_PORTAL_ADMIN_PORT` | Admin/control plane port (default `18472`, loopback only) |
+
+| Variable                          | Purpose                                                               |
+| --------------------------------- | --------------------------------------------------------------------- |
+| `GATEHOUSE_PORTAL_CORS_ORIGINS`   | Comma-separated allowed browser origins (default: localhost dev only) |
+| `GATEHOUSE_PORTAL_PROJECT_DIRS`   | Extra allowed `directory` roots besides `GATEHOUSE_PROJECT_DIR`       |
+| `GATEHOUSE_PORTAL_INTERNAL_TOKEN` | Shared secret for cross-process portal event injection                |
+| `GATEHOUSE_PORTAL_ADMIN_PORT`     | Admin/control plane port (default `18472`, loopback only)             |
+
 
 ### Status sync demo (Portal API ↔ UI only)
 
@@ -97,15 +115,17 @@ Simulates an **execution tree** (lead + 3 inner workers) plus four outer roles. 
 
 ## Scripts
 
-| Script | Description |
-|--------|-------------|
-| `bun run dev` | Ensure assets exist + Vite dev server |
-| `bun run build` | Production build to `dist/` |
-| `bun run typecheck` | TypeScript check |
-| `bun run import:office-layout` | Generate dynamic office layout (requires `GATEHOUSE_PROJECT_DIR`) |
-| `bun run build:character-sheet-json` | Regenerate `sheets/{role}-1x1.json` from fixed grid layout |
+
+| Script                                                 | Description                                                                                     |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `bun run dev`                                          | Ensure assets exist + Vite dev server                                                           |
+| `bun run build`                                        | Production build to `dist/`                                                                     |
+| `bun run typecheck`                                    | TypeScript check                                                                                |
+| `bun run import:office-layout`                         | Generate dynamic office layout (requires `GATEHOUSE_PROJECT_DIR`)                               |
+| `bun run build:character-sheet-json`                   | Regenerate `sheets/{role}-1x1.json` from fixed grid layout                                      |
 | `bun run --cwd packages/character-assets generate:all` | **Local only**: synthesize 4 outer + 32 pool from LimeZu Character Generator, sync to `sheets/` |
-| `bun run demo:status-sync` | Synthetic Portal API for status/UI sync debugging (no OpenCode) |
+| `bun run demo:status-sync`                             | Synthetic Portal API for status/UI sync debugging (no OpenCode)                                 |
+
 
 ## Structure
 
@@ -125,3 +145,6 @@ public/assets/
 
 - Assets & licenses: [ASSETS.md](./ASSETS.md)
 - Portal BFF: `packages/core/src/portal/`
+- Offline disk cache: `packages/core/src/portal/offline-disk-cache.ts`
+- Static cache export: `packages/core/script/sync-portal-static-cache.ts`
+

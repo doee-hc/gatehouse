@@ -69,7 +69,7 @@ The Portal has four tabs:
 
 | Tab | Description |
 |-----|-------------|
-| **Office** | Pixel-art scene reflecting each agent's status (busy, researching, chatting, idle wandering) |
+| **Office** | Pixel-art scene reflecting each agent's status (busy, researching, chatting, idle wandering), plus a live orchestration sidebar during active Missions |
 | **Blog** | Mission retrospective reports and other Markdown content (visible after agents publish) |
 | **Skill** | Team skill catalog — browse and search domain skills distilled from retrospectives |
 | **Team Data** | Per-Mission token, cost, duration, and role distribution |
@@ -142,7 +142,7 @@ To chat with Lead via WeChat, Feishu, or QQ:
 
 ```bash
 bunx @gatehouse/core channels init
-bunx @gatehouse/core channels login weixin   # or feishu / qq
+bunx @gatehouse/core channels login weixin   # or feishu / qq / qq-onebot
 bunx @gatehouse/core channels serve
 ```
 
@@ -152,7 +152,8 @@ Platform-specific setup:
 
 - [WeChat](../packages/weixin-bridge/README.md)
 - [Feishu](../packages/feishu-bridge/README.md)
-- [QQ](../packages/qq-bridge/README.md)
+- [QQ (official DM)](../packages/qq-bridge/README.md)
+- [QQ group (OneBot)](../packages/qq-onebot-bridge/README.md)
 
 ## Next Steps
 
