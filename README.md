@@ -12,6 +12,11 @@ Built on [OpenCode](https://opencode.ai) — role-based collaboration, Mission l
 > **Early Development Notice:** Gatehouse is in early development and is not yet ready for production use. Features may change, break, or be incomplete. Use at your own risk.
 
 
+<p align="center">
+  <img src="./docs/assets/portal-preview-en.gif" alt="Gatehouse Portal office preview" width="800">
+</p>
+
+
 
 Run the plugin locally and visit `http://127.0.0.1:18471/` to explore the office UI. Portal keeps a local cache so you can still browse past snapshots when OpenCode is offline. A standalone public hub is planned.
 

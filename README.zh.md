@@ -9,6 +9,11 @@
 > [!WARNING]
 > **早期开发提示：** Gatehouse 仍处于早期开发阶段，尚未适合生产环境。功能可能变更、中断或不完整，请自行评估风险。
 
+
+<p align="center">
+  <img src="./docs/assets/portal-preview-zh.gif" alt="Gatehouse Portal 办公室预览" width="800">
+</p>
+
 本地运行插件后访问 `http://127.0.0.1:18471/` 可查看办公室 UI；Portal 会缓存本地快照，OpenCode 离线时仍可浏览历史内容。对外独立门户站点仍在规划中。
 
 ---
