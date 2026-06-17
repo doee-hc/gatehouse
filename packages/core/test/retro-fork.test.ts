@@ -169,13 +169,14 @@ describe("retro_batch skill kickoffs", () => {
 }
 
 export default async function orchestrate(ctx) {
-  await ctx.setBrief("node-root", {
-    role: "任务协调者兼执行者",
-    your_work: ["执行并汇总交付"],
-    acceptance_slice: ["交付已提交"],
+  await ctx.run("node-root", {
+    brief: {
+      role: "任务协调者兼执行者",
+      your_work: ["执行并汇总交付"],
+      acceptance_slice: ["交付已提交"],
+    },
+    text: "执行",
   })
-  await ctx.prompt("node-root", { text: "执行", reply: true })
-  await ctx.waitFor("node-root", "complete")
 }
 `,
       )

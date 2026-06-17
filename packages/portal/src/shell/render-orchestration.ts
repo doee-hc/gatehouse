@@ -143,22 +143,12 @@ function renderStepTimeline(orch: PortalOrchestration) {
 
 function stepIcon(step: PortalOrchestrationStep) {
   switch (step.op) {
-    case "phase":
-      return "◆"
-    case "setBrief":
-      return "B"
-    case "prompt":
-      return "→"
-    case "wait":
+    case "run":
+      return "▶"
+    case "join":
       return "⏳"
-    case "waitRollup":
-      return "↥"
-    case "parallel":
+    case "fork":
       return "∥"
-    case "pipeline":
-      return "⇢"
-    case "log":
-      return "…"
     default:
       return "·"
   }
@@ -166,8 +156,7 @@ function stepIcon(step: PortalOrchestrationStep) {
 
 function stepDetail(step: PortalOrchestrationStep) {
   const op = t(`orch.stepOp.${step.op}`)
-  const target = step.title ?? step.node_id
-  return target ? `${op} · ${target}` : op
+  return step.node_id ? `${op} · ${step.node_id}` : op
 }
 
 function renderOrchestrationFooter(orch: PortalOrchestration) {

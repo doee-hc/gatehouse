@@ -16,6 +16,8 @@ import {
   writeOrchestrationState,
 } from "../orchestration/state.ts"
 import { loadMissionScript } from "../orchestration/script-load.ts"
+import { MissionScriptParseError } from "../orchestration/script-parse.ts"
+import { missionScriptErrorHint } from "../orchestration/script-error-hints.ts"
 import { runBootstrapTree } from "../tree/bootstrap-run.ts"
 import { readSkillDomainsRegistry } from "../skills/domains.ts"
 import {
@@ -29,7 +31,7 @@ import { readActiveMissionContract } from "../missions/contract.ts"
 import { readMissionsDocument } from "../missions/store.ts"
 import { assertMissionRunning } from "../missions/parse.ts"
 import { requireActiveMissionId } from "../missions/scope.ts"
-import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
+import { toolFail, toolErrorMetadata, toolMetadata, toolOk } from "./envelope.ts"
 
 export function submitOrchestrationTool(input: PluginInput) {
   return tool({
@@ -261,9 +263,21 @@ export function submitOrchestrationTool(input: PluginInput) {
           ...toolMetadata(toolName),
         }
       } catch (error) {
+        if (error instanceof MissionScriptParseError) {
+          const hint = missionScriptErrorHint(error.code)
+          return {
+            output: toolFail(
+              toolName,
+              error.code,
+              error.message,
+              hint ? { hint } : undefined,
+            ),
+            ...toolErrorMetadata(toolName),
+          }
+        }
         const message = error instanceof Error ? error.message : String(error)
         const code = message.includes("gatehouse_mission_start") ? "NO_ACTIVE_MISSION" : "SUBMIT_ORCHESTRATION_FAILED"
-        return { output: toolFail(toolName, code, message), ...toolMetadata(toolName) }
+        return { output: toolFail(toolName, code, message), ...toolErrorMetadata(toolName) }
       }
     },
   })

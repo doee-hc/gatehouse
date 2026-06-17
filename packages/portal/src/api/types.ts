@@ -38,20 +38,12 @@ export type PortalOrchestrationPhase = {
   state: "done" | "current" | "pending"
 }
 
+export type PlanStepOp = "run" | "join" | "fork" | "other"
+
 export type PortalOrchestrationStep = {
   id: string
-  op:
-    | "setBrief"
-    | "prompt"
-    | "wait"
-    | "waitRollup"
-    | "parallel"
-    | "pipeline"
-    | "phase"
-    | "log"
-    | "other"
+  op: PlanStepOp
   state: "done" | "current" | "pending"
-  title?: string
   node_id?: string
 }
 

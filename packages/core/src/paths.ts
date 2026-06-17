@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs"
+import { existsSync, statSync } from "node:fs"
 import path from "node:path"
 import { readLocaleSync, type GatehouseLocale } from "./locale.ts"
 
@@ -28,6 +28,26 @@ export function resolveGatehouseContentPath(projectDirectory: string, relative: 
 
 export function resolveProjectPath(projectDirectory: string, value: string) {
   return path.isAbsolute(value) ? value : path.join(projectDirectory, value)
+}
+
+export type ProjectPathKind = "file" | "directory"
+
+/** Whether a project-relative path exists as a file or directory (not only Bun.file). */
+export function projectPathKind(projectDirectory: string, relPath: string): ProjectPathKind | undefined {
+  const abs = resolveProjectPath(projectDirectory, relPath)
+  if (!existsSync(abs)) return undefined
+  try {
+    const stat = statSync(abs)
+    if (stat.isFile()) return "file"
+    if (stat.isDirectory()) return "directory"
+  } catch {
+    return undefined
+  }
+  return undefined
+}
+
+export function projectPathExists(projectDirectory: string, relPath: string) {
+  return projectPathKind(projectDirectory, relPath) !== undefined
 }
 
 export function gatehouseRoot(projectDirectory: string) {

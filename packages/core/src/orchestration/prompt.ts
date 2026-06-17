@@ -57,7 +57,7 @@ export async function deliverOrchestrationPrompt(input: {
     if (!brief) {
       gatehouseLog(
         "warn",
-        `[orchestration:${input.missionId}] activating ${input.nodeId} without node brief (ctx.setBrief not called)`,
+        `[orchestration:${input.missionId}] activating ${input.nodeId} without node brief (ctx.run brief not set)`,
       )
       const leadName = readAgentNamesSync(input.plugin.directory).lead
       activationText = [

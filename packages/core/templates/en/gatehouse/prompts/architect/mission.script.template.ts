@@ -28,41 +28,37 @@ export const meta = {
 }
 
 export default async function orchestrate(ctx) {
-  ctx.phase("Parallel phase")
-
-  await ctx.setBrief("<leaf-a>", {
-    your_work: ["…"],
-    not_your_job: ["Out of scope for this node (avoid sibling overlap)"],
-    acceptance_slice: ["path: reports/<leaf-a>.md", "…"],
-  })
-  await ctx.setBrief("<leaf-b>", {
-    your_work: ["…"],
-    not_your_job: ["Out of scope for this node (avoid sibling overlap)"],
-    acceptance_slice: ["path: reports/<leaf-b>.md", "…"],
-  })
-
-  await ctx.parallel([
+  await ctx.fork([
     async () => {
-      await ctx.prompt("<leaf-a>", { text: ctx.template.workOrder("<leaf-a>"), reply: true })
-      await ctx.waitFor("<leaf-a>", "complete")
+      await ctx.run("<leaf-a>", {
+        brief: {
+          your_work: ["…"],
+          not_your_job: ["Out of scope for this node (avoid sibling overlap)"],
+          acceptance_slice: ["path: reports/<leaf-a>.md", "…"],
+        },
+        text: ctx.template.workOrder("<leaf-a>"),
+      })
     },
     async () => {
-      await ctx.prompt("<leaf-b>", { text: ctx.template.workOrder("<leaf-b>"), reply: true })
-      await ctx.waitFor("<leaf-b>", "complete")
+      await ctx.run("<leaf-b>", {
+        brief: {
+          your_work: ["…"],
+          not_your_job: ["Out of scope for this node (avoid sibling overlap)"],
+          acceptance_slice: ["path: reports/<leaf-b>.md", "…"],
+        },
+        text: ctx.template.workOrder("<leaf-b>"),
+      })
     },
   ])
 
-  ctx.phase("Rollup phase")
-  await ctx.setBrief("<root-node-id>", {
-    your_work: ["Roll up child deliveries and verify acceptance"],
-    acceptance_slice: ["path: …", "…"],
-  })
-  await ctx.prompt("<root-node-id>", {
+  await ctx.run("<root-node-id>", {
+    brief: {
+      your_work: ["Roll up child deliveries and verify acceptance"],
+      acceptance_slice: ["path: …", "…"],
+    },
     text: ctx.template.workOrder("<root-node-id>", {
       context: `Child nodes are done. Read reports/<leaf-a>.md and reports/<leaf-b>.md, then verify acceptance.`,
     }),
-    reply: true,
     rollupFrom: ["<leaf-a>", "<leaf-b>"],
   })
-  await ctx.waitFor("<root-node-id>", "complete")
 }

@@ -12,6 +12,7 @@ import {
   writeOrchestrationState,
 } from "./state.ts"
 import { saveOrchestrationPlanRecord } from "./plan-store.ts"
+import { replayNextStepIndex } from "./replay-cursor.ts"
 import { clearMissionWaits } from "./wait.ts"
 import type {
   SandboxHostInbound,
@@ -85,7 +86,7 @@ export async function startSandboxOrchestration(input: {
       plan: {
         plan_version: input.script.plan.plan_version,
         steps: input.script.plan.steps,
-        cursor_step_index: state?.cursor_step_index ?? 0,
+        cursor_step_index: replayNextStepIndex(state),
       },
     }),
   }

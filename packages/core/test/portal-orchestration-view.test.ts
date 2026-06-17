@@ -36,13 +36,8 @@ describe("portal orchestration view", () => {
       }
 
       const orchestrateSource = `
-await ctx.phase("阶段一")
-await ctx.setBrief("leaf", { your_work: ["w"], acceptance_slice: ["done"] })
-await ctx.prompt("leaf", { text: "go", reply: true })
-await ctx.waitFor("leaf", "complete")
-await ctx.setBrief("root", { your_work: ["r"], acceptance_slice: ["done"] })
-await ctx.prompt("root", { text: "rollup", reply: true })
-await ctx.waitFor("root", "complete")
+await ctx.run("leaf", { brief: { your_work: ["w"], acceptance_slice: ["done"] }, text: "go" })
+await ctx.run("root", { brief: { your_work: ["r"], acceptance_slice: ["done"] }, text: "rollup" })
 `
 
       const plan = compileOrchestrationPlan({
@@ -62,8 +57,8 @@ await ctx.waitFor("root", "complete")
 
       const state = initOrchestrationState(missionId, ["root", "leaf"])
       state.phase = "阶段一"
-      state.completed_step_ids = ["step-0", "step-1"]
-      state.cursor_step_index = 2
+      state.completed_step_ids = ["step-0"]
+      state.cursor_step_index = 1
       markNodeRunning(state, "leaf")
       writeOrchestrationState(dir, state)
 
@@ -72,8 +67,8 @@ await ctx.waitFor("root", "complete")
       expect(view?.nodes.find((node) => node.node_id === "leaf")?.status).toBe("running")
       expect(view?.nodes.find((node) => node.node_id === "root")?.status).toBe("pending")
       expect(view?.phases.some((phase) => phase.title === "阶段一" && phase.state === "current")).toBe(true)
-      expect(view?.steps.find((step) => step.id === "step-2")?.state).toBe("current")
-      expect(view?.completed_steps).toBe(2)
+      expect(view?.steps.find((step) => step.id === "step-1")?.state).toBe("current")
+      expect(view?.completed_steps).toBe(1)
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

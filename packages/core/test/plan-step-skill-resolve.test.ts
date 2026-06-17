@@ -10,13 +10,13 @@ import type { TeamSpec } from "../src/tree/types.ts"
 
 describe("plan step compile", () => {
   test("wrapPlanStepStatement keeps replay wrapper valid when chunk ends with // comment", () => {
-    const chunk = 'ctx.phase("x")\n\n  // trailing comment'
+    const chunk = 'await ctx.run("a", { text: "go" })\n\n  // trailing comment'
     expect(validatePlanStepStatement(chunk).ok).toBe(true)
   })
 
   test("trimPlanStatementChunk removes trailing // lines from split chunks", () => {
-    const chunk = 'ctx.phase("x")\n\n  // trailing comment'
-    expect(trimPlanStatementChunk(chunk)).toBe('ctx.phase("x")')
+    const chunk = 'await ctx.run("a", { text: "go" })\n\n  // trailing comment'
+    expect(trimPlanStatementChunk(chunk)).toBe('await ctx.run("a", { text: "go" })')
   })
 })
 

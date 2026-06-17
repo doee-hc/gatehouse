@@ -48,17 +48,20 @@ Task body includes objective / done_when / must_not / notes / user_topology / us
 |--------|---------|
 | `export const team` | Execution team: each node's `node_id`, `parent` report line, one-line `description` |
 | `export const meta` | Optional: progress `phases`, rework policy `rework` |
-| `export default async function orchestrate(ctx)` | Orchestration: `prompt` / `setBrief` / `waitFor` |
+| `export default async function orchestrate(ctx)` | Orchestration: `ctx.run` / `ctx.join` / `ctx.fork` |
 
-Each inner node **must** have `description` (one-line role). Put detailed tasks and boundaries in `ctx.setBrief`.
+Each inner node **must** have `description` (one-line role). Put detailed tasks and boundaries in `ctx.run({ brief: … })`.
 
-**`setBrief` constraints:** each leaf needs concrete `your_work`, explicit `acceptance_slice` with a project `path:`, and sibling scope boundaries when needed. When done, call `gatehouse_execution_complete(summary=..., artifacts=[{path,description}], risks=?)`.
+**Brief constraints:** each leaf needs concrete `your_work`, explicit `acceptance_slice` with a project `path:` (file or directory, e.g. `path: reports/foo.md` or `path: reports/template/`), and sibling scope boundaries when needed. When done, call `gatehouse_execution_complete(summary=..., artifacts=[{path,description}], risks=?)`.
 
 ```typescript
-await ctx.setBrief("researcher-a", {
-  your_work: ["…"],
-  not_your_job: ["… (sibling scope — do not duplicate)"],
-  acceptance_slice: ["path: reports/researcher-a.md", "…"],
+await ctx.run("researcher-a", {
+  brief: {
+    your_work: ["…"],
+    not_your_job: ["… (sibling scope — do not duplicate)"],
+    acceptance_slice: ["path: reports/researcher-a.md", "…"],
+  },
+  text: ctx.template.workOrder("researcher-a"),
 })
 ```
 
@@ -91,99 +94,78 @@ export const meta = {
 }
 
 export default async function orchestrate(ctx) {
-  ctx.phase("Phase A")
-  await ctx.setBrief("<leaf-id>", {
-    your_work: ["…"],
-    acceptance_slice: ["path: reports/<leaf-id>.md", "…"],
-  })
-  await ctx.prompt("<leaf-id>", {
+  await ctx.run("<leaf-id>", {
+    brief: {
+      your_work: ["…"],
+      acceptance_slice: ["path: reports/<leaf-id>.md", "…"],
+    },
     text: ctx.template.workOrder("<leaf-id>"),
-    reply: true,
   })
-  await ctx.waitFor("<leaf-id>", "complete")
 
-  ctx.phase("Phase B")
-  await ctx.setBrief("<root-node-id>", {
-    your_work: ["Roll up child deliveries and verify acceptance"],
-    acceptance_slice: ["path: …", "…"],
-  })
-  await ctx.prompt("<root-node-id>", {
+  await ctx.run("<root-node-id>", {
+    brief: {
+      your_work: ["Roll up child deliveries and verify acceptance"],
+      acceptance_slice: ["path: …", "…"],
+    },
     text: ctx.template.workOrder("<root-node-id>", { context: "…" }),
-    reply: true,
     rollupFrom: ["<leaf-id>"],
   })
-  await ctx.waitFor("<root-node-id>", "complete")
 }
 ```
 
-**Multi-level team** (root → intermediate → leaves): express the report tree with `team.nodes.parent`; use `waitForRollup` or sequential `waitFor` in `orchestrate`. Coordinator subtree scope goes in `setBrief`. Coordinator rollup format: `subtree-delivery-index.template.md`. Intermediate coordinators usually do not get `skill_domain`.
+**Multi-level team** (root → intermediate → leaves): express the report tree with `team.nodes.parent`; use `ctx.join(coordinator, { subtree: true })` or sequential `ctx.run` in `orchestrate`. Coordinator subtree scope goes in `run` brief. Coordinator rollup format: `subtree-delivery-index.template.md`. Intermediate coordinators usually do not get `skill_domain`.
 
 **Orchestration primitives (`ctx.*` only):**
 
 | API | Purpose |
 |-----|---------|
-| `ctx.prompt(nodeId, { text?, system?, reply?, rollupFrom? })` | Send a work order; `reply: true` to start work; `rollupFrom` lists child node_ids to attach |
-| `ctx.setBrief(nodeId, partial)` | Write the node brief (call before `prompt`) |
-| `ctx.waitFor(nodeId, "complete")` | Wait until the node calls `gatehouse_execution_complete` |
-| `ctx.waitForRollup` | Wait for all descendant leaves to complete (sequential `waitFor` internally) |
-| `ctx.parallel(thunks)` | **Barrier parallel tracks**: run thunks concurrently; continue after all finish |
-| `ctx.pipeline(items, ...stages)` | **Streaming stages**: each item flows through stages independently |
+| `ctx.run(nodeId \| nodeIds[], { brief?, text?, rollupFrom?, reply?, wait? })` | Activate node(s): brief + work order; default `wait: true` (fan-out then fan-in for arrays) |
+| `ctx.join(nodeId \| nodeIds[], { subtree?, timeout? })` | Wait until node(s) call `gatehouse_execution_complete`; `subtree: true` waits all descendants |
+| `ctx.fork(tracks)` | **Barrier parallel tracks**: run thunks concurrently; continue after all finish |
 | `ctx.template.workOrder` / `rework` / `reworkResume` | Standard work-order text |
-| `ctx.phase(title)` | Update mission progress display |
 | `ctx.objective` | Frozen mission objective string (safe to embed in work orders) |
 
-Do **not** simulate peer coordination in the script — drive timing only with `ctx.prompt` / `waitFor`.
+Do **not** simulate peer coordination in the script — drive timing only with `ctx.run` / `ctx.join`.
 
 **`rollupFrom` rules:**
 
-- Use only on **parent / coordinator** nodes: `prompt(..., { rollupFrom: [...] })` lists **descendant** node_ids whose delivery summaries attach to that work order.
+- Use only on **parent / coordinator** nodes inside `ctx.run(..., { rollupFrom: [...] })` — lists **descendant** node_ids whose delivery summaries attach to that work order.
 - **Do not** put sibling node_ids in `rollupFrom` on a leaf (`SCRIPT_INVALID_ROLLUP`). For leaves that need upstream output, pass paths via `ctx.template.workOrder(..., { context: \`…\` })`.
 
-**Every node needs `prompt` + `waitFor`:**
+**Every node needs dispatch + join:**
 
-- **Each** node_id in `team.nodes` (including root) must go through `setBrief` → `prompt(reply:true)` → `waitFor('complete')`, or dry-run fails with `SCRIPT_SIMULATION_INCOMPLETE`.
+- **Each** node_id in `team.nodes` (including root) must be activated and completed via `ctx.run` (or `ctx.run(..., { wait: false })` then `ctx.join`), or dry-run fails with `SCRIPT_SIMULATION_INCOMPLETE`.
 
-**Parallel orchestration:** for independent subtrees (e.g. track A: a1/a2/a3 + coordinator a, track B: b1/b2/b3 + coordinator b), use `ctx.parallel` so both tracks advance **without blocking each other**:
+**Parallel orchestration:** for independent subtrees (e.g. track A: a1/a2/a3 + coordinator a, track B: b1/b2/b3 + coordinator b), use `ctx.fork` so both tracks advance **without blocking each other**:
 
 ```typescript
-ctx.phase("Parallel tracks A & B")
-await ctx.parallel([
+await ctx.fork([
   async () => {
-    for (const id of ["a1", "a2", "a3"]) {
-      await ctx.setBrief(id, { your_work: ["…"], acceptance_slice: ["…"] })
-      await ctx.prompt(id, { text: ctx.template.workOrder(id), reply: true })
-    }
-    for (const id of ["a1", "a2", "a3"]) {
-      await ctx.waitFor(id, "complete")
-    }
-    await ctx.setBrief("a", { your_work: ["rollup A"], acceptance_slice: ["…"] })
-    await ctx.prompt("a", {
+    await ctx.run(["a1", "a2", "a3"], {
+      brief: (id) => ({ your_work: ["…"], acceptance_slice: ["…"] }),
+      text: (id) => ctx.template.workOrder(id),
+    })
+    await ctx.run("a", {
+      brief: { your_work: ["rollup A"], acceptance_slice: ["…"] },
       text: ctx.template.workOrder("a"),
-      reply: true,
       rollupFrom: ["a1", "a2", "a3"],
     })
-    await ctx.waitFor("a", "complete")
   },
   async () => {
-    for (const id of ["b1", "b2", "b3"]) {
-      await ctx.setBrief(id, { your_work: ["…"], acceptance_slice: ["…"] })
-      await ctx.prompt(id, { text: ctx.template.workOrder(id), reply: true })
-    }
-    for (const id of ["b1", "b2", "b3"]) {
-      await ctx.waitFor(id, "complete")
-    }
-    await ctx.setBrief("b", { your_work: ["rollup B"], acceptance_slice: ["…"] })
-    await ctx.prompt("b", {
+    await ctx.run(["b1", "b2", "b3"], {
+      brief: (id) => ({ your_work: ["…"], acceptance_slice: ["…"] }),
+      text: (id) => ctx.template.workOrder(id),
+    })
+    await ctx.run("b", {
+      brief: { your_work: ["rollup B"], acceptance_slice: ["…"] },
       text: ctx.template.workOrder("b"),
-      reply: true,
       rollupFrom: ["b1", "b2", "b3"],
     })
-    await ctx.waitFor("b", "complete")
   },
 ])
 ```
 
-For sibling leaves only (no separate subtrees), `prompt` all siblings then `waitFor` each is still fine.
+For sibling leaves only (no separate subtrees), `ctx.run([...])` fan-out is enough.
 
 **Script writing limits:**
 
@@ -191,13 +173,13 @@ For sibling leaves only (no separate subtrees), `prompt` all siblings then `wait
 2. Drive the mission **only** through `ctx.*`; no top-level code that runs on load.
 3. `team` / `meta` must be object literals.
 4. Prefer string literals for `nodeId` so node names stay correct.
-5. Do not paste the full contract into the script — put boundaries in `setBrief` or `prompt.text`.
-6. Recommended flow: `setBrief` → `prompt(reply:true)` → `waitFor`; use `meta.phases` + `ctx.phase` for multi-stage missions (**call `ctx.phase` for each `meta.phases` entry**).
+5. Do not paste the full contract into the script — put boundaries in `run` brief or work-order text.
+6. Recommended flow: `ctx.run(nodeId, { brief, text })`; use `wait: false` + `ctx.join` when you need split dispatch/wait control.
 7. Use documented `ctx.*` only (`ctx.objective` is available).
-8. **Strings:** in `orchestrate`, prefer template literals or single quotes for `context` / `note`. **`SCRIPT_RISKY_STRING_LITERAL` applies only** when `context:` / `note:` use double quotes **and** the value contains `gatehouse_` (`setBrief` text and `team`/`meta` literals are exempt). Fix only the line the error cites — do not bulk-convert quote styles.
-9. **Validation & recovery:** save the script, then call `gatehouse_submit_orchestration` — the system validates and starts or resumes automatically. **Dry-run failures return errors in the tool response only**; no separate Gatehouse system message (runtime sandbox failures still notify you). Dry-run checks cross-track false serialization (`SCRIPT_SERIAL_TRACK_BLOCK`), `rollupFrom` subtree validity, `setBrief` coverage, unreferenced nodes, `ctx.parallel` hints, and more; warnings are returned in `warnings`. After rewriting mid-mission: **`gatehouse_submit_orchestration(mode=continue)`**. Do not edit `mission.script.ts` during active orchestration.
+8. **Strings:** in `orchestrate`, prefer template literals or single quotes for `context` / `note`. **`SCRIPT_RISKY_STRING_LITERAL` applies only** when `context:` / `note:` use double quotes **and** the value contains `gatehouse_` (`run` brief and `team`/`meta` literals are exempt). Fix only the line the error cites — do not bulk-convert quote styles.
+9. **Validation & recovery:** save the script, then call `gatehouse_submit_orchestration` — the system validates and starts or resumes automatically. **Dry-run failures return errors in the tool response only**; no separate Gatehouse system message (runtime sandbox failures still notify you). Dry-run checks cross-track false serialization (`SCRIPT_SERIAL_TRACK_BLOCK`), `rollupFrom` subtree validity, brief coverage, unreferenced nodes, `ctx.fork` hints, and more; warnings are returned in `warnings`. After rewriting mid-mission: **`gatehouse_submit_orchestration(mode=continue)`**. Do not edit `mission.script.ts` during active orchestration.
 
-The script drives timing and work orders. When waking a parent/coordinator, use `prompt(..., { rollupFrom: [...] })` to **list** child node_ids whose reports belong in that order. Structural root auto-notifies {{lead_name}} via `gatehouse_execution_complete` when all nodes are done. **Portal publish happens on Lead `mission_complete(done)`** — never put “publish to Portal” or any publish tool name in `setBrief` or work orders.
+The script drives timing and work orders. When waking a parent/coordinator, use `run(..., { rollupFrom: [...] })` to **list** child node_ids whose reports belong in that order. Structural root auto-notifies {{lead_name}} via `gatehouse_execution_complete` when all nodes are done. **Portal publish happens on Lead `mission_complete(done)`** — never put “publish to Portal” or any publish tool name in `setBrief` or work orders.
 
 1. `gatehouse_submit_orchestration(objective=...)` → wait for execution to start after skill domains are resolved.
 2. **Exit the execution loop** — do not offer `gatehouse_execution_status` tracking or progress polling.

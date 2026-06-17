@@ -11,7 +11,7 @@ function parseTeamSpecNode(value: unknown, nodeId: string): TeamSpecNode | undef
   if (!isRecord(value)) return
   if (value.constraints !== undefined) {
     throw new Error(
-      `TeamSpec node ${nodeId} must not include constraints; use ctx.setBrief in mission.script.ts orchestrate()`,
+      `TeamSpec node ${nodeId} must not include constraints; use ctx.run({ brief: ... }) in mission.script.ts orchestrate()`,
     )
   }
   const parentRaw = value.parent
@@ -167,7 +167,7 @@ export function validateTeamSpec(spec: TeamSpec) {
     const raw = node as TeamSpecNode & { constraints?: unknown }
     if (raw.constraints !== undefined) {
       throw new Error(
-        `TeamSpec node ${nodeId} must not include constraints; use ctx.setBrief in mission.script.ts orchestrate()`,
+        `TeamSpec node ${nodeId} must not include constraints; use ctx.run({ brief: ... }) in mission.script.ts orchestrate()`,
       )
     }
     if (!node.description.trim()) throw new Error(`TeamSpec node ${nodeId} requires a non-empty description`)

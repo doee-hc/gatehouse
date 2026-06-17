@@ -60,7 +60,7 @@ This is a notification only — no action is required from you.`,
 **错误：** {error}
 
 **下一步：**
-1. 修复 \`{script_path}\`（常见原因：双引号字符串内嵌未转义的 \`"\`；\`ctx.phase\` / \`await ctx.*\` 之间的 \`//\` 行注释会导致 plan-step 重放失败）
+1. 修复 \`{script_path}\`（常见原因：双引号字符串内嵌未转义的 \`"\`；\`await ctx.*\` 步骤之间的 \`//\` 行注释会导致 plan-step 重放失败）
 2. 保存后调用 **gatehouse_submit_orchestration(mode=continue)**（若已改脚本）或 **gatehouse_submit_orchestration**（submit，仅 resume 同一脚本时）
 
 执行树 session 已保留；仅编排未启动或已中断。`,
@@ -71,7 +71,7 @@ The \`orchestrate()\` body in \`{script_path}\` could not run.
 **Error:** {error}
 
 **Next:**
-1. Fix \`{script_path}\` (common causes: unescaped \`"\` inside double-quoted strings; \`//\` line comments between \`ctx.phase\` / \`await ctx.*\` steps break plan-step replay)
+1. Fix \`{script_path}\` (common causes: unescaped \`"\` inside double-quoted strings; \`//\` line comments between \`await ctx.*\` steps break plan-step replay)
 2. Save, then call **gatehouse_submit_orchestration(mode=continue)** after rewriting the script, or **gatehouse_submit_orchestration** (submit) to resume the same script
 
 Execution-tree sessions are kept; only orchestration failed to start or stalled.`,
@@ -261,8 +261,8 @@ All nodes with skill_domain finished extract + verify and registration. Review \
     en: "**Role:** {description}",
   },
   "execution.nodeRole.briefHint": {
-    zh: "**任务与边界：** `gatehouse_mission_info`（编排器通过 `setBrief` 写入本节点任务书）。",
-    en: "**Mission scope:** `gatehouse_mission_info` (orchestrator writes your node brief via `setBrief`).",
+    zh: "**任务与边界：** `gatehouse_mission_info`（编排器通过 `ctx.run` 写入本节点任务书）。",
+    en: "**Mission scope:** `gatehouse_mission_info` (orchestrator writes your node brief via `ctx.run`).",
   },
   "execution.workOrder.activateHeader": {
     zh: "[Gatehouse · 执行激活 · {node_id}]",

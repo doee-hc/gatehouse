@@ -1,5 +1,5 @@
 import path from "node:path"
-import { resolveProjectPath } from "../paths.ts"
+import { projectPathKind, resolveProjectPath } from "../paths.ts"
 import { isRecord, parseYaml, readString } from "../yaml.ts"
 import type { MissionEntry } from "../missions/parse.ts"
 import { readMissionRawDoneWhen as readMissionRawDoneWhenFromRegistry } from "../execution/artifacts.ts"
@@ -151,12 +151,11 @@ export async function runDeliveryPrecheck(
   const results: DeliveryPrecheck[] = []
   for (const criterion of criteria) {
     if (criterion.check.kind === "path_exists") {
-      const abs = resolveProjectPath(projectDirectory, criterion.check.path)
-      const exists = await Bun.file(abs).exists()
+      const kind = projectPathKind(projectDirectory, criterion.check.path)
       results.push({
         criterion_id: criterion.id,
-        status: exists ? "met" : "unmet",
-        detail: exists ? "file exists" : `missing: ${criterion.check.path}`,
+        status: kind ? "met" : "unmet",
+        detail: kind ? `${kind} exists` : `missing: ${criterion.check.path}`,
       })
       continue
     }

@@ -5,7 +5,7 @@ import type { OrchestrationPlan } from "./plan-types.ts"
 import { validatePlanStepStatement } from "./plan-step-compile.ts"
 import { simulateOrchestration } from "./simulate-orchestration.ts"
 import { validateOrchestrateSyntax } from "./syntax.ts"
-import { lintOrchestrationScript } from "./orchestration-lint.ts"
+import { lintOrchestrationScript, extractReferencedNodeIds } from "./orchestration-lint.ts"
 import type { TeamSpec } from "../tree/types.ts"
 
 export type DryRunMissionScriptResult =
@@ -72,7 +72,7 @@ export function validatePlanStepsCompile(plan: OrchestrationPlan) {
     throw new MissionScriptParseError(
       "SCRIPT_INVALID_PLAN_STEP",
       `orchestrate plan step ${step.id} (${step.op}) is not valid JavaScript for sandbox replay: ${checked.message}. ` +
-        "Avoid // line comments between ctx.phase / await ctx.* steps (they break per-step replay).",
+        "Avoid // line comments between await ctx.* steps (they break per-step replay).",
     )
   }
 }
@@ -111,46 +111,14 @@ function validateNoPortalPublishReferences(orchestrateSource?: string) {
   }
 }
 
-function extractRollupFromNodes(orchestrateSource: string) {
-  const nodes = new Set<string>()
-  const pattern = /rollupFrom\s*:\s*\[([^\]]*)\]/g
-  for (const match of orchestrateSource.matchAll(pattern)) {
-    const body = match[1] ?? ""
-    for (const idMatch of body.matchAll(/["'`]([^"'`]+)["'`]/g)) {
-      if (idMatch[1]) nodes.add(idMatch[1])
-    }
-  }
-  return nodes
-}
-
 function validateOrchestrateStaticNodes(team: TeamSpec, orchestrateSource?: string) {
   if (!orchestrateSource) return
   const nodeIds = new Set(Object.keys(team.nodes))
-  const patterns = [
-    /ctx\.prompt\s*\(\s*["'`]([^"'`]+)["'`]/g,
-    /ctx\.setBrief\s*\(\s*["'`]([^"'`]+)["'`]/g,
-    /ctx\.waitFor\s*\(\s*["'`]([^"'`]+)["'`]/g,
-    /ctx\.waitForRollup\s*\(\s*["'`]([^"'`]+)["'`]/g,
-    /ctx\.template\.workOrder\s*\(\s*["'`]([^"'`]+)["'`]/g,
-    /ctx\.template\.rework\s*\(\s*["'`]([^"'`]+)["'`]/g,
-    /ctx\.template\.reworkResume\s*\(\s*["'`]([^"'`]+)["'`]/g,
-  ]
-  for (const pattern of patterns) {
-    for (const match of orchestrateSource.matchAll(pattern)) {
-      const nodeId = match[1]
-      if (nodeId && !nodeIds.has(nodeId)) {
-        throw new MissionScriptParseError(
-          "SCRIPT_UNKNOWN_NODE",
-          `orchestrate references unknown node_id: ${nodeId}`,
-        )
-      }
-    }
-  }
-  for (const nodeId of extractRollupFromNodes(orchestrateSource)) {
+  for (const nodeId of extractReferencedNodeIds(orchestrateSource)) {
     if (!nodeIds.has(nodeId)) {
       throw new MissionScriptParseError(
         "SCRIPT_UNKNOWN_NODE",
-        `orchestrate rollupFrom references unknown node_id: ${nodeId}`,
+        `orchestrate references unknown node_id: ${nodeId}`,
       )
     }
   }

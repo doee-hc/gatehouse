@@ -23,14 +23,12 @@ export const team = {
   nodes: { leaf: { parent: null, description: "leaf" } },
 }
 export default async function orchestrate(ctx) {
-  await ctx.setBrief("leaf", { your_work: ["work"], not_your_job: [], acceptance_slice: ["done"] })
-  await ctx.prompt("leaf", {
+  await ctx.run("leaf", {
+    brief: { your_work: ["work"], not_your_job: [], acceptance_slice: ["done"] },
     text: ctx.template.workOrder("leaf", {
       note: "bad gatehouse_send_message(recipient="ai-writer", message="done")",
     }),
-    reply: true,
   })
-  await ctx.waitFor("leaf", "complete")
 }
 `
 
@@ -161,9 +159,10 @@ export const team = {
   nodes: { leaf: { parent: null, description: "leaf" } },
 }
 export default async function orchestrate(ctx) {
-  await ctx.setBrief("leaf", { your_work: ["work"], acceptance_slice: ["done"] })
-  await ctx.prompt("leaf", { text: ctx.template.workOrder("leaf"), reply: true })
-  await ctx.waitFor("leaf", "complete")
+  await ctx.run("leaf", {
+    brief: { your_work: ["work"], acceptance_slice: ["done"] },
+    text: ctx.template.workOrder("leaf"),
+  })
 }
 `
       await Bun.write(path.join(dest, "mission.script.ts"), fixedScript)
@@ -210,8 +209,9 @@ export default async function orchestrate(ctx) {
 
       const parsed = JSON.parse(
         toolOutput(await submitOrchestrationTool(pluginInput).execute({}, mockToolContext(dir, "architect"))),
-      ) as { ok: boolean; error?: { message?: string } }
+      ) as { ok: boolean; error?: { code?: string; message?: string } }
       expect(parsed.ok).toBe(false)
+      expect(parsed.error?.code).toBe("SCRIPT_INVALID_ORCHESTRATE_SYNTAX")
       expect(parsed.error?.message).toContain("Unexpected identifier")
       expect(delivered).toHaveLength(0)
     } finally {

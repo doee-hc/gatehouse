@@ -1,6 +1,6 @@
-import { existsSync } from "node:fs"
+import { existsSync, readdirSync, statSync } from "node:fs"
 import path from "node:path"
-import { gatehouseRoot, resolveProjectPath } from "../paths.ts"
+import { gatehouseRoot, projectPathKind, resolveProjectPath } from "../paths.ts"
 import { runDeliveryPrecheck } from "./criteria.ts"
 import { BLOG_PUBLISHER_SYSTEM, publishBlogPost } from "../portal/blog-publish.ts"
 import {
@@ -8,9 +8,36 @@ import {
   deliverableBlogPostId,
   deliverablePathsFromCriteria,
   deliverablesReadyToPublish,
+  normalizeProjectRelPath,
   resolveSkillBlogPostId,
 } from "./publish-policy.ts"
 import type { DoneWhenCriterion, DeliveryPrecheck } from "./types.ts"
+
+/** Expand a deliverable path to publishable file paths (directory → recursive files). */
+export function expandDeliverablePublishPaths(projectDirectory: string, relPath: string): string[] {
+  const normalized = normalizeProjectRelPath(relPath)
+  const kind = projectPathKind(projectDirectory, normalized)
+  if (!kind) return []
+  if (kind === "file") return [normalized]
+
+  const abs = resolveProjectPath(projectDirectory, normalized)
+  const files: string[] = []
+  const walk = (dirAbs: string, dirRel: string) => {
+    for (const name of readdirSync(dirAbs)) {
+      const childAbs = path.join(dirAbs, name)
+      const childRel = dirRel ? `${dirRel}/${name}` : name
+      try {
+        const stat = statSync(childAbs)
+        if (stat.isFile()) files.push(normalizeProjectRelPath(childRel))
+        else if (stat.isDirectory()) walk(childAbs, childRel)
+      } catch {
+        continue
+      }
+    }
+  }
+  walk(abs, normalized.replace(/\/$/, ""))
+  return files
+}
 
 export async function publishDeliverablePaths(input: {
   projectDirectory: string
@@ -20,15 +47,17 @@ export async function publishDeliverablePaths(input: {
 }) {
   const published: string[] = []
   for (const relPath of input.paths) {
-    const abs = resolveProjectPath(input.projectDirectory, relPath)
-    if (!(await Bun.file(abs).exists())) continue
-    if (!(await Bun.file(abs).text()).trim()) continue
-    await publishBlogPost(input.projectDirectory, {
-      postId: deliverableBlogPostId(input.missionId, relPath),
-      reportPath: relPath,
-      publishedBy: input.publishedBy ?? BLOG_PUBLISHER_SYSTEM,
-    })
-    published.push(relPath)
+    for (const filePath of expandDeliverablePublishPaths(input.projectDirectory, relPath)) {
+      const abs = resolveProjectPath(input.projectDirectory, filePath)
+      if (!(await Bun.file(abs).exists())) continue
+      if (!(await Bun.file(abs).text()).trim()) continue
+      await publishBlogPost(input.projectDirectory, {
+        postId: deliverableBlogPostId(input.missionId, filePath),
+        reportPath: filePath,
+        publishedBy: input.publishedBy ?? BLOG_PUBLISHER_SYSTEM,
+      })
+      published.push(filePath)
+    }
   }
   return published
 }

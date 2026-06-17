@@ -10,13 +10,13 @@ import {
   orchestrationAllDone,
   orchestrationProblemNodeIds,
 } from "./state.ts"
-import type { MissionContext, OrchestrationState } from "./types.ts"
+import type { MissionContext, OrchestrationEngine, OrchestrationState } from "./types.ts"
 import {
   formatReworkResumeTextWithLocale,
   formatReworkTextWithLocale,
   formatWorkOrderTextWithLocale,
 } from "./templates.ts"
-import { orchestrationParallel, orchestrationPipeline } from "./primitives.ts"
+import { orchestrationFork, orchestrationJoin, orchestrationRun } from "./run-join-fork.ts"
 
 export const ORCHESTRATION_SIMULATION_TIMEOUT_MS = 5_000
 export const ORCHESTRATION_SIMULATION_MAX_STEPS = 500
@@ -37,16 +37,6 @@ function markNodeDone(state: OrchestrationState, nodeId: string) {
   }
 }
 
-function collectDescendants(team: TeamSpec, rootNodeId: string) {
-  const ids: string[] = []
-  const walk = (nodeId: string) => {
-    ids.push(nodeId)
-    for (const child of childNodeIdsFromSpec(team, nodeId)) walk(child)
-  }
-  walk(rootNodeId)
-  return ids
-}
-
 function bumpStep(stepCount: { value: number }, maxSteps: number) {
   stepCount.value += 1
   if (stepCount.value > maxSteps) {
@@ -63,17 +53,14 @@ function createSimulatedMissionContext(input: {
   team: TeamSpec
   objective: string
   state: OrchestrationState
-  promptedReply: Set<string>
+  dispatchedReply: Set<string>
   briefedNodes: Set<string>
-  phasesCalled: string[]
   stepCount: { value: number }
   maxSteps: number
 }): MissionContext {
   const { missionId, locale, team, state } = input
 
-  return {
-    objective: input.objective,
-
+  const engine: OrchestrationEngine = {
     async prompt(nodeIds, promptInput) {
       bumpStep(input.stepCount, input.maxSteps)
       const ids = Array.isArray(nodeIds) ? nodeIds : [nodeIds]
@@ -88,16 +75,16 @@ function createSimulatedMissionContext(input: {
           if (!input.briefedNodes.has(nodeId)) {
             throw new MissionScriptParseError(
               "SCRIPT_MISSING_BRIEF",
-              `orchestrate prompts node "${nodeId}" with reply:true but never calls ctx.setBrief for that node`,
+              `orchestrate run dispatches node "${nodeId}" but never provides brief in ctx.run`,
             )
           }
           if (!promptInput.text?.trim()) {
             throw new MissionScriptParseError(
               "SCRIPT_SIMULATION_RUNTIME_ERROR",
-              `prompt(reply:true) requires non-empty text for node ${nodeId}`,
+              `run requires non-empty text for node ${nodeId}`,
             )
           }
-          input.promptedReply.add(nodeId)
+          input.dispatchedReply.add(nodeId)
           markNodeRunning(state, nodeId)
         }
       }
@@ -114,15 +101,7 @@ function createSimulatedMissionContext(input: {
       input.briefedNodes.add(nodeId)
     },
 
-    readMissionContext() {
-      return ""
-    },
-
-    readContract() {
-      return { objective: input.objective, view: "summary" }
-    },
-
-    async waitFor(nodeId, _event) {
+    async waitFor(nodeId) {
       bumpStep(input.stepCount, input.maxSteps)
       if (!team.nodes[nodeId]) {
         throw new MissionScriptParseError(
@@ -131,47 +110,52 @@ function createSimulatedMissionContext(input: {
         )
       }
       if (state.nodes[nodeId]?.status === "done") return
-      if (!input.promptedReply.has(nodeId)) {
+      if (!input.dispatchedReply.has(nodeId)) {
         throw new MissionScriptParseError(
           "SCRIPT_SIMULATION_UNPROMPTED_WAIT",
-          `waitFor("${nodeId}") before prompt(reply:true) for that node`,
+          `join("${nodeId}") before run for that node`,
         )
       }
       markNodeDone(state, nodeId)
     },
+  }
 
-    async waitForRollup(rootNodeId) {
+  const defaultWorkOrder = (nodeId: string) =>
+    formatWorkOrderTextWithLocale(locale, {
+      missionId,
+      nodeId,
+    })
+
+  return {
+    objective: input.objective,
+
+    async run(target, opts) {
       bumpStep(input.stepCount, input.maxSteps)
-      if (!team.nodes[rootNodeId]) {
-        throw new MissionScriptParseError(
-          "SCRIPT_UNKNOWN_NODE",
-          `orchestrate references unknown rootNodeId: ${rootNodeId}`,
-        )
-      }
-      const descendants = collectDescendants(team, rootNodeId).filter((id) => id !== rootNodeId)
-      for (const nodeId of descendants) {
-        await this.waitFor(nodeId, "complete")
-      }
+      await orchestrationRun(engine, target, opts, { defaultWorkOrder })
     },
 
-    async parallel(thunks) {
+    async join(target, opts) {
       bumpStep(input.stepCount, input.maxSteps)
-      return orchestrationParallel(thunks)
+      await orchestrationJoin(engine, target, opts, team)
     },
 
-    async pipeline(items, ...stages) {
+    async fork(tracks) {
       bumpStep(input.stepCount, input.maxSteps)
-      return orchestrationPipeline(items, ...stages)
+      return orchestrationFork(tracks)
     },
 
-    phase(title) {
-      bumpStep(input.stepCount, input.maxSteps)
-      state.phase = title
-      input.phasesCalled.push(title)
+    readMissionContext() {
+      throw new MissionScriptParseError(
+        "SCRIPT_FORBIDDEN_CTX_READ",
+        "readMissionContext() is not available in orchestration sandbox; inline static context in run brief or work-order text",
+      )
     },
 
-    log(_message) {
-      bumpStep(input.stepCount, input.maxSteps)
+    readContract() {
+      throw new MissionScriptParseError(
+        "SCRIPT_FORBIDDEN_CTX_READ",
+        "readContract() is not available in orchestration sandbox; inline static context in run brief or work-order text",
+      )
     },
 
     nodeIds() {
@@ -259,9 +243,8 @@ export async function simulateOrchestration(input: {
   const team = input.parsed.team
   const missionId = team.mission_id
   const state = initOrchestrationState(missionId, Object.keys(team.nodes))
-  const promptedReply = new Set<string>()
+  const dispatchedReply = new Set<string>()
   const briefedNodes = new Set<string>()
-  const phasesCalled: string[] = []
   const stepCount = { value: 0 }
   const maxSteps = Math.max(ORCHESTRATION_SIMULATION_MAX_STEPS, input.plan.steps.length * 10)
 
@@ -271,9 +254,8 @@ export async function simulateOrchestration(input: {
     team,
     objective: input.objective ?? "simulation",
     state,
-    promptedReply,
+    dispatchedReply,
     briefedNodes,
-    phasesCalled,
     stepCount,
     maxSteps,
   })
@@ -310,20 +292,9 @@ export async function simulateOrchestration(input: {
       code: "SCRIPT_SIMULATION_INCOMPLETE",
       message:
         `orchestrate simulation finished but mission is incomplete (${incompleteSimulationMessage(state)}). ` +
-        "Every team node must reach done via prompt(reply:true) and waitFor.",
+        "Every team node must reach done via ctx.run or dispatch+join.",
     }
   }
 
-  const warnings = [...input.plan.warnings]
-  if (input.parsed.meta?.phases) {
-    for (const phase of input.parsed.meta.phases) {
-      if (!phasesCalled.includes(phase)) {
-        warnings.push(
-          `meta.phases includes "${phase}" but ctx.phase was never called with that title during simulation`,
-        )
-      }
-    }
-  }
-
-  return { ok: true, warnings }
+  return { ok: true, warnings: [...input.plan.warnings] }
 }

@@ -100,7 +100,7 @@ export async function resolveMissionInfo(input: {
       const brief = await readNodeBriefRegistry(input.projectDirectory, input.missionId, nodeId)
       if (!brief) {
         markdownParts.push(
-          `## Node brief · ${nodeId}\n\nNo node brief in registry for this node. The orchestrator must call ctx.setBrief(...) before prompt(reply:true) for this node.`,
+          `## Node brief · ${nodeId}\n\nNo node brief in registry for this node. The orchestrator must call ctx.run(..., { brief: ... }) before activating this node.`,
         )
       } else {
         markdownParts.push(formatNodeBriefBlock(brief, locale))

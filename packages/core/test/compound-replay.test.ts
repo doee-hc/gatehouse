@@ -5,31 +5,98 @@ import path from "node:path"
 import type { PluginInput } from "@opencode-ai/plugin"
 import { createMissionContext } from "../src/orchestration/ctx-host.ts"
 import {
-  shouldSkipCompoundReplyPrompt,
-  shouldSkipCompoundSetBriefDeliver,
-} from "../src/orchestration/compound-replay.ts"
+  decideReplyPrompt,
+  decideSetBriefDeliver,
+  planStepKind,
+} from "../src/orchestration/replay-policy.ts"
+import { saveOrchestrationPlanRecord } from "../src/orchestration/plan-store.ts"
+import type { OrchestrationPlan } from "../src/orchestration/plan-types.ts"
 import { initOrchestrationState, readOrchestrationState, writeOrchestrationState } from "../src/orchestration/state.ts"
 import { RegistryStore } from "../src/registry/store.ts"
 import type { GatehouseClient } from "../src/session/client.ts"
 import type { TeamSpec } from "../src/tree/types.ts"
 
-describe("compound replay helpers", () => {
-  test("skips duplicate reply prompt for done nodes without reactivation latch", () => {
+function samplePlan(steps: OrchestrationPlan["steps"]): OrchestrationPlan {
+  return {
+    schema_version: 1,
+    mission_id: "compound-m1",
+    plan_version: "test-plan-v1",
+    script_hash: "test-hash",
+    steps,
+    warnings: [],
+  }
+}
+
+describe("replay policy", () => {
+  test("skips duplicate reply prompt for done nodes in compound steps", () => {
     const state = initOrchestrationState("m1", ["a"])
     state.nodes.a = { status: "done", completed_at: new Date().toISOString() }
-    expect(shouldSkipCompoundReplyPrompt(state, "a", new Set())).toBe(true)
-    expect(shouldSkipCompoundReplyPrompt(state, "a", new Set(["a"]))).toBe(false)
+    expect(
+      decideReplyPrompt({
+        state,
+        nodeId: "a",
+        hasPlanStep: true,
+        stepIndex: 1,
+        stepKind: "compound",
+        reactivated: new Set(),
+      }),
+    ).toBe("skip")
+    expect(
+      decideReplyPrompt({
+        state,
+        nodeId: "a",
+        hasPlanStep: true,
+        stepIndex: 1,
+        stepKind: "compound",
+        reactivated: new Set(["a"]),
+      }),
+    ).toBe("deliver")
   })
 
-  test("skips unchanged setBrief deliver for done nodes", () => {
+  test("skips unchanged setBrief deliver for done nodes in compound steps", () => {
     const state = initOrchestrationState("m1", ["a"])
     state.nodes.a = { status: "done", completed_at: new Date().toISOString() }
-    expect(shouldSkipCompoundSetBriefDeliver(state, "a", false)).toBe(true)
-    expect(shouldSkipCompoundSetBriefDeliver(state, "a", true)).toBe(false)
+    expect(
+      decideSetBriefDeliver({
+        state,
+        nodeId: "a",
+        hasPlanStep: true,
+        stepIndex: 1,
+        stepKind: "compound",
+        briefChanged: false,
+      }),
+    ).toBe(false)
+    expect(
+      decideSetBriefDeliver({
+        state,
+        nodeId: "a",
+        hasPlanStep: true,
+        stepIndex: 1,
+        stepKind: "compound",
+        briefChanged: true,
+      }),
+    ).toBe(true)
+  })
+
+  test("linear plan steps still deliver to done nodes", () => {
+    const state = initOrchestrationState("m1", ["a"])
+    state.nodes.a = { status: "done", completed_at: new Date().toISOString() }
+    expect(
+      decideReplyPrompt({
+        state,
+        nodeId: "a",
+        hasPlanStep: true,
+        stepIndex: 3,
+        stepKind: "linear",
+        reactivated: new Set(),
+      }),
+    ).toBe("deliver")
+    expect(planStepKind("run")).toBe("linear")
+    expect(planStepKind("fork")).toBe("compound")
   })
 })
 
-describe("compound replay in mission context", () => {
+describe("replay policy in mission context", () => {
   const team: TeamSpec = {
     mission_id: "compound-m1",
     root: "a",
@@ -41,10 +108,23 @@ describe("compound replay in mission context", () => {
   async function makeCtx(input: {
     planStep?: { id: string; index: number }
     compoundActive: boolean
-    latch?: Set<string>
   }) {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-compound-replay-"))
     writeOrchestrationState(dir, initOrchestrationState("compound-m1", ["a"]))
+
+    if (input.compoundActive && input.planStep) {
+      saveOrchestrationPlanRecord(
+        dir,
+        samplePlan([
+          { id: "step-0", op: "run", statement: 'await ctx.run("a")' },
+          {
+            id: input.planStep.id,
+            op: "fork",
+            statement: "await ctx.fork([])",
+          },
+        ]),
+      )
+    }
 
     const promptTexts: string[] = []
     const mockClient: GatehouseClient = {
@@ -70,23 +150,18 @@ describe("compound replay in mission context", () => {
     const store = await RegistryStore.create({ directory: dir, client: mockClient })
     store.registerInnerNode({ missionId: "compound-m1", nodeId: "a", profile: "build", sessionId: "ses_a" })
 
-    const latch = input.latch ?? new Set<string>()
-    const ctx = createMissionContext({
+    const { ctx, engine } = createMissionContext({
       plugin: pluginInput,
       store,
       team,
       ...(input.planStep && { planStep: () => input.planStep }),
-      compoundReplay: () => ({
-        active: input.compoundActive,
-        latch,
-      }),
     })
 
-    return { dir, ctx, promptTexts, latch }
+    return { dir, ctx, engine, promptTexts }
   }
 
   test("linear multi-round still prompts done nodes on a new plan step", async () => {
-    const { dir, ctx, promptTexts } = await makeCtx({
+    const { dir, engine, promptTexts } = await makeCtx({
       planStep: { id: "step-3", index: 3 },
       compoundActive: false,
     })
@@ -95,7 +170,7 @@ describe("compound replay in mission context", () => {
       state.nodes.a = { status: "done", completed_at: new Date().toISOString(), round: 1 }
       writeOrchestrationState(dir, state)
 
-      await ctx.prompt("a", { text: "wave2", reply: true })
+      await engine.prompt("a", { text: "wave2", reply: true })
 
       expect(promptTexts.some((text) => text.includes("wave2"))).toBe(true)
       const loaded = readOrchestrationState(dir, "compound-m1")
@@ -107,7 +182,7 @@ describe("compound replay in mission context", () => {
   })
 
   test("compound replay skips duplicate prompt for done nodes", async () => {
-    const { dir, ctx, promptTexts } = await makeCtx({
+    const { dir, engine, promptTexts } = await makeCtx({
       planStep: { id: "step-1", index: 1 },
       compoundActive: true,
     })
@@ -116,7 +191,7 @@ describe("compound replay in mission context", () => {
       state.nodes.a = { status: "done", completed_at: new Date().toISOString() }
       writeOrchestrationState(dir, state)
 
-      await ctx.prompt("a", { text: "wave1", reply: true })
+      await engine.prompt("a", { text: "wave1", reply: true })
 
       expect(promptTexts).toEqual([])
       expect(readOrchestrationState(dir, "compound-m1")?.nodes.a?.status).toBe("done")
@@ -126,24 +201,22 @@ describe("compound replay in mission context", () => {
   })
 
   test("compound multi-round prompts after revised setBrief", async () => {
-    const latch = new Set<string>()
-    const { dir, ctx, promptTexts, latch: sharedLatch } = await makeCtx({
+    const { dir, engine, promptTexts } = await makeCtx({
       planStep: { id: "step-1", index: 1 },
       compoundActive: true,
-      latch,
     })
     try {
       const state = initOrchestrationState("compound-m1", ["a"])
       state.nodes.a = { status: "done", completed_at: new Date().toISOString(), round: 1 }
       writeOrchestrationState(dir, state)
 
-      await ctx.setBrief("a", { your_work: ["round 2"], acceptance_slice: ["done"] })
-      expect(sharedLatch.has("a")).toBe(true)
+      await engine.setBrief("a", { your_work: ["round 2"], acceptance_slice: ["done"] })
+      expect(readOrchestrationState(dir, "compound-m1")?.compound_replay?.reactivated).toContain("a")
 
-      await ctx.prompt("a", { text: "wave2", reply: true })
+      await engine.prompt("a", { text: "wave2", reply: true })
 
       expect(promptTexts.some((text) => text.includes("wave2"))).toBe(true)
-      expect(sharedLatch.has("a")).toBe(false)
+      expect(readOrchestrationState(dir, "compound-m1")?.compound_replay?.reactivated ?? []).not.toContain("a")
       expect(readOrchestrationState(dir, "compound-m1")?.nodes.a?.status).toBe("running")
       expect(readOrchestrationState(dir, "compound-m1")?.nodes.a?.round).toBe(2)
     } finally {

@@ -1,4 +1,5 @@
 import { RegistryDatabase } from "../registry/db.ts"
+import { replayNextStepIndex } from "./replay-cursor.ts"
 import type { OrchestrationState } from "./types.ts"
 import {
   ORCHESTRATION_STATE_SCHEMA_VERSION,
@@ -41,16 +42,15 @@ function normalizeOrchestrationState(state: OrchestrationState): OrchestrationSt
   return state
 }
 
-export function isPlanStepCompleted(state: OrchestrationState, stepId: string) {
+export function isPlanStepCompleted(state: OrchestrationState, stepIndex: number) {
+  return stepIndex < replayNextStepIndex(state)
+}
+
+export function isPlanStepIdCompleted(state: OrchestrationState, stepId: string) {
   return state.completed_step_ids?.includes(stepId) ?? false
 }
 
-export function markPlanStepCompleted(state: OrchestrationState, stepId: string, stepIndex: number) {
-  const completed = new Set(state.completed_step_ids ?? [])
-  completed.add(stepId)
-  state.completed_step_ids = [...completed]
-  state.cursor_step_index = Math.max(state.cursor_step_index ?? 0, stepIndex + 1)
-}
+export { resetReplayCursor } from "./replay-cursor.ts"
 
 export function assertOrchestrationPlanVersion(
   state: OrchestrationState | undefined,
@@ -162,10 +162,10 @@ export function nodeAlreadyActivated(state: OrchestrationState, nodeId: string) 
   )
 }
 
-/** Plan-aware: skip reply prompt only when this plan step already completed. */
-export function shouldSkipReplyPromptStep(state: OrchestrationState, stepId?: string) {
-  if (stepId) return isPlanStepCompleted(state, stepId)
-  return false
+/** Plan-aware: skip reply prompt when this plan step index is already complete. */
+export function shouldSkipReplyPromptStep(state: OrchestrationState, stepIndex?: number) {
+  if (stepIndex === undefined) return false
+  return isPlanStepCompleted(state, stepIndex)
 }
 
 export const AWAITING_SKILL_DOMAINS_PHASE = "awaiting_skill_domains"
@@ -191,6 +191,7 @@ export function ensureOrchestrationNodesInitialized(
   }
   next.cursor_step_index = existing.cursor_step_index ?? 0
   next.completed_step_ids = existing.completed_step_ids ?? []
+  next.compound_replay = existing.compound_replay
   next.sandbox = existing.sandbox ?? next.sandbox
   if (existing.baseline_id) next.baseline_id = existing.baseline_id
   if (existing.phase && existing.phase !== AWAITING_SKILL_DOMAINS_PHASE) {

@@ -1,9 +1,8 @@
-import { compilePlanStepStatement } from "./plan-step-compile.ts"
-import { orchestrationParallel, orchestrationPipeline } from "./primitives.ts"
+import type { TeamSpec } from "../tree/types.ts"
 import { createSandboxMissionContext } from "./sandbox-ctx.ts"
+import { replayPlanSteps } from "./plan-replay-runner.ts"
 import type { SandboxInitMessage, SandboxRpcRequest, SandboxRpcResponse, SandboxWorkerOutbound } from "./sandbox-protocol.ts"
 import type { MissionContext } from "./types.ts"
-import type { PlanStep } from "./plan-types.ts"
 
 declare const self: Worker
 
@@ -18,75 +17,6 @@ function sendRpc(request: Omit<SandboxRpcRequest, "type" | "id">) {
     pendingRpc.set(id, { resolve, reject })
     self.postMessage({ type: "rpc", id, ...request } satisfies SandboxWorkerOutbound)
   })
-}
-
-function wrapCtxWithStep(ctx: MissionContext, stepId: string, stepIndex: number): MissionContext {
-  const nest = { depth: 0 }
-  const withStep = <T extends Omit<SandboxRpcRequest, "type" | "id" | "stepId" | "stepIndex" | "markPlanStepComplete">>(
-    request: T,
-    markPlanStepComplete: boolean,
-  ) =>
-    sendRpc({
-      ...request,
-      stepId,
-      stepIndex,
-      ...(markPlanStepComplete && { markPlanStepComplete: true }),
-    })
-
-  const markLinearPlanStepComplete = () => nest.depth === 0
-
-  return {
-    ...ctx,
-    async prompt(nodeIds, promptInput) {
-      const ids = Array.isArray(nodeIds) ? nodeIds : [nodeIds]
-      await withStep({ op: "prompt", nodeIds: ids, input: promptInput }, markLinearPlanStepComplete())
-    },
-    async setBrief(nodeId, partial) {
-      await withStep({ op: "setBrief", nodeId, partial }, markLinearPlanStepComplete())
-    },
-    async waitFor(nodeId, _event, opts) {
-      await withStep(
-        {
-          op: "waitFor",
-          nodeId,
-          event: "complete",
-          ...(opts?.timeout && { timeout: opts.timeout }),
-        },
-        markLinearPlanStepComplete(),
-      )
-    },
-    async waitForRollup(rootNodeId) {
-      await withStep({ op: "waitForRollup", rootNodeId }, markLinearPlanStepComplete())
-    },
-    async parallel(thunks) {
-      nest.depth += 1
-      try {
-        return await orchestrationParallel(thunks)
-      } finally {
-        nest.depth -= 1
-        if (nest.depth === 0) {
-          await withStep({ op: "planStepComplete" }, true)
-        }
-      }
-    },
-    async pipeline(items, ...stages) {
-      nest.depth += 1
-      try {
-        return await orchestrationPipeline(items, ...stages)
-      } finally {
-        nest.depth -= 1
-        if (nest.depth === 0) {
-          await withStep({ op: "planStepComplete" }, true)
-        }
-      }
-    },
-    phase(title) {
-      void withStep({ op: "phase", title }, markLinearPlanStepComplete())
-    },
-    log(message) {
-      void withStep({ op: "log", message }, markLinearPlanStepComplete())
-    },
-  }
 }
 
 self.onmessage = (event: MessageEvent<SandboxInitMessage | SandboxRpcResponse>) => {
@@ -105,14 +35,9 @@ self.onmessage = (event: MessageEvent<SandboxInitMessage | SandboxRpcResponse>) 
   }
 }
 
-async function runStatement(ctx: MissionContext, statement: string) {
-  const runner = compilePlanStepStatement(statement) as (ctx: MissionContext) => Promise<unknown>
-  await runner(ctx)
-}
-
 async function runOrchestrate(init: SandboxInitMessage) {
   try {
-    const baseCtx = createSandboxMissionContext({
+    const runtime = createSandboxMissionContext({
       missionId: init.missionId,
       locale: init.locale,
       team: init.team,
@@ -121,7 +46,13 @@ async function runOrchestrate(init: SandboxInitMessage) {
     })
 
     if (init.plan?.steps.length) {
-      await runPlanSteps(baseCtx, init.plan.steps, init.plan.cursor_step_index ?? 0)
+      await replayPlanSteps({
+        baseCtx: runtime.ctx,
+        team: init.team,
+        steps: init.plan.steps,
+        startIndex: init.plan.cursor_step_index ?? 0,
+        sendRpc,
+      })
       self.postMessage({ type: "done" })
       return
     }
@@ -131,18 +62,10 @@ async function runOrchestrate(init: SandboxInitMessage) {
     ) => (ctx: MissionContext) => Promise<void>
 
     const orchestrate = new AsyncFunction("ctx", init.orchestrateSource)
-    await orchestrate(baseCtx)
+    await orchestrate(runtime.ctx)
     self.postMessage({ type: "done" })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     self.postMessage({ type: "error", message })
-  }
-}
-
-async function runPlanSteps(ctx: MissionContext, steps: PlanStep[], startIndex: number) {
-  for (let index = startIndex; index < steps.length; index += 1) {
-    const step = steps[index]!
-    const stepCtx = wrapCtxWithStep(ctx, step.id, index)
-    await runStatement(stepCtx, step.statement)
   }
 }

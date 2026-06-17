@@ -6,6 +6,7 @@ import type { PluginInput } from "@opencode-ai/plugin"
 import type { ToolContext } from "@opencode-ai/plugin/tool"
 import {
   criteriaFromMissionEntry,
+  criteriaFromStringList,
   parseDoneWhenCriteriaFromRaw,
   runDeliveryPrecheck,
 } from "../src/delivery/criteria.ts"
@@ -141,6 +142,17 @@ test("runDeliveryPrecheck checks path_exists", async () => {
   const criteria = criteriaFromMissionEntry(mission, [{ path: rel }])
   const precheck = await runDeliveryPrecheck(dir, criteria)
   expect(precheck[0]?.status).toBe("met")
+  expect(precheck[0]?.detail).toBe("file exists")
+})
+
+test("runDeliveryPrecheck checks directory path_exists", async () => {
+  const relDir = "reports/2026-llm/template/"
+  await mkdir(path.join(dir, "reports", "2026-llm", "template"), { recursive: true })
+  await Bun.write(path.join(dir, "reports", "2026-llm", "template", "index.html"), "<html></html>")
+  const criteria = criteriaFromStringList([`path: ${relDir}`, "manual ok"])
+  const precheck = await runDeliveryPrecheck(dir, criteria)
+  expect(precheck[0]?.status).toBe("met")
+  expect(precheck[0]?.detail).toBe("directory exists")
 })
 
 test("submitDeliveryRecord blocks when precheck fails without force_reason", async () => {

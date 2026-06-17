@@ -3,16 +3,7 @@ import type { TeamSpec } from "../tree/types.ts"
 
 export const ORCHESTRATION_PLAN_SCHEMA_VERSION = 1
 
-export type PlanStepOp =
-  | "setBrief"
-  | "prompt"
-  | "wait"
-  | "waitRollup"
-  | "parallel"
-  | "pipeline"
-  | "phase"
-  | "log"
-  | "other"
+export type PlanStepOp = "run" | "join" | "fork" | "other"
 
 export type PlanStep = {
   id: string
@@ -20,9 +11,7 @@ export type PlanStep = {
   /** Original await statement source (for dynamic execution). */
   statement: string
   nodeId?: string
-  reply?: boolean
   rootNodeId?: string
-  title?: string
 }
 
 export type OrchestrationPlan = {

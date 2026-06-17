@@ -45,4 +45,20 @@ describe("acceptance slice precheck", () => {
       await rm(dir, { recursive: true, force: true })
     }
   })
+
+  test("runAcceptanceSlicePrecheck passes for directory path_exists", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-acceptance-precheck-dir-"))
+    const relDir = "out/template/"
+    try {
+      await Bun.write(path.join(dir, "out", "template", "index.html"), "<html></html>")
+      const result = await runAcceptanceSlicePrecheck(dir, [`path: ${relDir}`, "manual ok"])
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.precheck[0]?.status).toBe("met")
+        expect(result.precheck[0]?.detail).toBe("directory exists")
+      }
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
 })

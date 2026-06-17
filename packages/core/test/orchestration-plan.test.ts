@@ -12,18 +12,19 @@ import { initOrchestrationState } from "../src/orchestration/state.ts"
 const smokeFixture = path.join(import.meta.dir, "fixtures/core-example-smoke-v1/mission.script.ts")
 
 describe("orchestration plan compile", () => {
-  test("smoke fixture compiles plan with phase and wait steps", async () => {
+  test("smoke fixture compiles plan with run steps", async () => {
     const source = readFileSync(smokeFixture, "utf8")
     const dryRun = await dryRunMissionScriptSource(source, "core-example-smoke-v1")
     expect(dryRun.ok).toBe(true)
     if (!dryRun.ok) return
-    expect(dryRun.plan.steps.length).toBeGreaterThanOrEqual(6)
-    expect(dryRun.plan.steps.some((step) => step.op === "phase")).toBe(true)
-    expect(dryRun.plan.steps.some((step) => step.op === "wait" && step.nodeId === "node-doc")).toBe(true)
+    expect(dryRun.plan.steps.length).toBe(2)
+    expect(dryRun.plan.steps.every((step) => step.op === "run")).toBe(true)
+    expect(dryRun.plan.steps.some((step) => step.nodeId === "node-doc")).toBe(true)
+    expect(dryRun.plan.steps.some((step) => step.nodeId === "node-root")).toBe(true)
     expect(dryRun.plan.plan_version.length).toBe(16)
   })
 
-  test("rejects waitFor before prompt", async () => {
+  test("rejects join before run", async () => {
     const source = `
 export const team = {
   mission_id: "plan-m1",
@@ -34,10 +35,8 @@ export const team = {
   },
 }
 export default async function orchestrate(ctx) {
-  await ctx.waitFor("b", "complete")
-  await ctx.setBrief("b", { your_work: ["w"], acceptance_slice: ["done"] })
-  await ctx.prompt("b", { text: "go", reply: true })
-  await ctx.waitFor("b", "complete")
+  await ctx.join("b")
+  await ctx.run("b", { brief: { your_work: ["w"], acceptance_slice: ["done"] }, text: "go" })
 }
 `
     const result = await dryRunMissionScriptSource(source, "plan-m1")
@@ -46,7 +45,7 @@ export default async function orchestrate(ctx) {
     expect(result.code).toBe("SCRIPT_UNPROMPTED_WAIT")
   })
 
-  test("warns on multi-round prompt for same node", async () => {
+  test("warns on multi-round run for same node", async () => {
     const source = `
 export const team = {
   mission_id: "plan-m1",
@@ -54,19 +53,15 @@ export const team = {
   nodes: { a: { parent: null, description: "a" } },
 }
 export default async function orchestrate(ctx) {
-  await ctx.setBrief("a", { your_work: ["1"], acceptance_slice: ["done"] })
-  await ctx.prompt("a", { text: "wave1", reply: true })
-  await ctx.waitFor("a", "complete")
-  await ctx.setBrief("a", { your_work: ["2"], acceptance_slice: ["done"] })
-  await ctx.prompt("a", { text: "wave2", reply: true })
-  await ctx.waitFor("a", "complete")
+  await ctx.run("a", { brief: { your_work: ["1"], acceptance_slice: ["done"] }, text: "wave1" })
+  await ctx.run("a", { brief: { your_work: ["2"], acceptance_slice: ["done"] }, text: "wave2" })
 }
 `
     const result = await dryRunMissionScriptSource(source, "plan-m1")
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.warnings.some((w) => w.includes("a"))).toBe(true)
-    expect(result.plan.steps.filter((s) => s.op === "prompt" && s.reply).length).toBe(2)
+    expect(result.plan.steps.filter((s) => s.op === "run" && s.nodeId === "a").length).toBe(2)
   })
 
   test("rejects unreachable team node", async () => {
@@ -80,9 +75,7 @@ export const team = {
   },
 }
 export default async function orchestrate(ctx) {
-  await ctx.setBrief("root", { your_work: ["w"], acceptance_slice: ["done"] })
-  await ctx.prompt("root", { text: "go", reply: true })
-  await ctx.waitFor("root", "complete")
+  await ctx.run("root", { brief: { your_work: ["w"], acceptance_slice: ["done"] }, text: "go" })
 }
 `
     const result = await dryRunMissionScriptSource(source, "plan-m1")
@@ -91,15 +84,15 @@ export default async function orchestrate(ctx) {
     expect(result.code).toBe("SCRIPT_UNREACHABLE_NODE")
   })
 
-  test("splitOrchestrateStatements captures sync ctx.phase", () => {
+  test("splitOrchestrateStatements splits top-level run steps", () => {
     const body = `
-ctx.phase("阶段一")
-await ctx.setBrief("a", { your_work: ["w"], acceptance_slice: ["done"] })
-await ctx.prompt("a", { text: "go", reply: true })
+await ctx.run("a", { brief: { your_work: ["w"], acceptance_slice: ["done"] }, text: "go" })
+await ctx.run("b", { brief: { your_work: ["w"], acceptance_slice: ["done"] }, text: "go" })
 `
     const statements = splitOrchestrateStatements(body)
-    expect(statements.length).toBe(3)
-    expect(statements[0]).toContain('ctx.phase("阶段一")')
+    expect(statements.length).toBe(2)
+    expect(statements[0]).toContain('ctx.run("a"')
+    expect(statements[1]).toContain('ctx.run("b"')
   })
 
   test("baseline capture preserves done nodes for continuation", () => {
@@ -119,7 +112,7 @@ await ctx.prompt("a", { text: "go", reply: true })
     expect(state.completed_step_ids).toEqual([])
   })
 
-  test("parallel prompt then wait compiles for linear team", async () => {
+  test("parallel run fan-out compiles for linear team", async () => {
     const source = `
 export const team = {
   mission_id: "plan-m1",
@@ -131,21 +124,24 @@ export const team = {
   },
 }
 export default async function orchestrate(ctx) {
-  await ctx.setBrief("a", { your_work: ["a"], acceptance_slice: ["done"] })
-  await ctx.setBrief("b", { your_work: ["b"], acceptance_slice: ["done"] })
-  await ctx.prompt("a", { text: "go", reply: true })
-  await ctx.prompt("b", { text: "go", reply: true })
-  await ctx.waitFor("a", "complete")
-  await ctx.waitFor("b", "complete")
-  await ctx.setBrief("root", { your_work: ["rollup"], acceptance_slice: ["done"] })
-  await ctx.prompt("root", { text: "rollup", reply: true, rollupFrom: ["a", "b"] })
-  await ctx.waitFor("root", "complete")
+  await ctx.run(["a", "b"], {
+    brief: (id) => ({ your_work: [id], acceptance_slice: ["done"] }),
+    text: "go",
+    wait: false,
+  })
+  await ctx.join(["a", "b"])
+  await ctx.run("root", {
+    brief: { your_work: ["rollup"], acceptance_slice: ["done"] },
+    text: "rollup",
+    rollupFrom: ["a", "b"],
+  })
 }
 `
     const dryRun = await dryRunMissionScriptSource(source, "plan-m1")
     expect(dryRun.ok).toBe(true)
     if (!dryRun.ok) return
-    expect(dryRun.plan.steps.filter((s) => s.op === "wait").length).toBe(3)
+    expect(dryRun.plan.steps.filter((s) => s.op === "run").length).toBe(2)
+    expect(dryRun.plan.steps.some((s) => s.op === "join")).toBe(true)
   })
 
   test("parallel tracks compile and simulate independently", async () => {
@@ -164,43 +160,30 @@ export const team = {
   },
 }
 export default async function orchestrate(ctx) {
-  ctx.phase("parallel tracks")
-  await ctx.parallel([
+  await ctx.fork([
     async () => {
       for (const id of ["a1", "a2"]) {
-        await ctx.setBrief(id, { your_work: [id], acceptance_slice: ["done"] })
-        await ctx.prompt(id, { text: "go", reply: true })
+        await ctx.run(id, { brief: { your_work: [id], acceptance_slice: ["done"] }, text: "go" })
       }
-      await ctx.waitFor("a1", "complete")
-      await ctx.waitFor("a2", "complete")
-      await ctx.setBrief("a", { your_work: ["rollup a"], acceptance_slice: ["done"] })
-      await ctx.prompt("a", { text: "rollup", reply: true, rollupFrom: ["a1", "a2"] })
-      await ctx.waitFor("a", "complete")
+      await ctx.run("a", { brief: { your_work: ["rollup a"], acceptance_slice: ["done"] }, text: "rollup", rollupFrom: ["a1", "a2"] })
     },
     async () => {
       for (const id of ["b1", "b2"]) {
-        await ctx.setBrief(id, { your_work: [id], acceptance_slice: ["done"] })
-        await ctx.prompt(id, { text: "go", reply: true })
+        await ctx.run(id, { brief: { your_work: [id], acceptance_slice: ["done"] }, text: "go" })
       }
-      await ctx.waitFor("b1", "complete")
-      await ctx.waitFor("b2", "complete")
-      await ctx.setBrief("b", { your_work: ["rollup b"], acceptance_slice: ["done"] })
-      await ctx.prompt("b", { text: "rollup", reply: true, rollupFrom: ["b1", "b2"] })
-      await ctx.waitFor("b", "complete")
+      await ctx.run("b", { brief: { your_work: ["rollup b"], acceptance_slice: ["done"] }, text: "rollup", rollupFrom: ["b1", "b2"] })
     },
   ])
-  await ctx.setBrief("root", { your_work: ["final"], acceptance_slice: ["done"] })
-  await ctx.prompt("root", { text: "final", reply: true, rollupFrom: ["a", "b"] })
-  await ctx.waitFor("root", "complete")
+  await ctx.run("root", { brief: { your_work: ["final"], acceptance_slice: ["done"] }, text: "final", rollupFrom: ["a", "b"] })
 }
 `
     const dryRun = await dryRunMissionScriptSource(source, "plan-m1")
     expect(dryRun.ok).toBe(true)
     if (!dryRun.ok) return
-    expect(dryRun.plan.steps.some((s) => s.op === "parallel")).toBe(true)
+    expect(dryRun.plan.steps.some((s) => s.op === "fork")).toBe(true)
   })
 
-  test("pipeline compiles as compound plan step", async () => {
+  test("rejects legacy ctx.pipeline", async () => {
     const source = `
 export const team = {
   mission_id: "plan-m1",
@@ -215,42 +198,37 @@ export default async function orchestrate(ctx) {
   await ctx.pipeline(
     ["a", "b"],
     async (nodeId) => {
-      await ctx.setBrief(nodeId, { your_work: [nodeId], acceptance_slice: ["done"] })
-      await ctx.prompt(nodeId, { text: "go", reply: true })
+      await ctx.run(nodeId, { brief: { your_work: [nodeId], acceptance_slice: ["done"] }, text: "go" })
       return nodeId
     },
     async (nodeId) => {
-      await ctx.waitFor(nodeId, "complete")
+      await ctx.join(nodeId)
       return nodeId
     },
   )
-  await ctx.setBrief("root", { your_work: ["rollup"], acceptance_slice: ["done"] })
-  await ctx.prompt("root", { text: "rollup", reply: true, rollupFrom: ["a", "b"] })
-  await ctx.waitFor("root", "complete")
+  await ctx.run("root", { brief: { your_work: ["rollup"], acceptance_slice: ["done"] }, text: "rollup", rollupFrom: ["a", "b"] })
 }
 `
     const dryRun = await dryRunMissionScriptSource(source, "plan-m1")
-    expect(dryRun.ok).toBe(true)
-    if (!dryRun.ok) return
-    expect(dryRun.plan.steps.some((s) => s.op === "pipeline")).toBe(true)
+    expect(dryRun.ok).toBe(false)
+    if (dryRun.ok) return
+    expect(dryRun.code).toBe("SCRIPT_LEGACY_API")
   })
 
-  test("splitOrchestrateStatements keeps parallel body as one step", () => {
+  test("splitOrchestrateStatements keeps fork body as one step", () => {
     const body = `
-await ctx.parallel([
+await ctx.fork([
   async () => {
-    await ctx.setBrief("a1", { your_work: ["a1"], acceptance_slice: ["done"] })
-    await ctx.prompt("a1", { text: "go", reply: true })
-    await ctx.waitFor("a1", "complete")
+    await ctx.run("a1", { brief: { your_work: ["a1"], acceptance_slice: ["done"] }, text: "go" })
   },
 ])
-await ctx.waitFor("root", "complete")
+await ctx.join("root")
 `
     const statements = splitOrchestrateStatements(body)
     expect(statements.length).toBe(2)
-    expect(statements[0]).toContain("ctx.parallel")
-    expect(statements[0]).toContain('ctx.waitFor("a1"')
-    expect(statements[1]).toContain('ctx.waitFor("root"')
+    expect(statements[0]).toContain("ctx.fork")
+    expect(statements[0]).toContain('ctx.run("a1"')
+    expect(statements[1]).toContain('ctx.join("root"')
   })
 
   test("allows // comments between orchestrate steps after plan-step trim", async () => {
@@ -261,12 +239,8 @@ export const team = {
   nodes: { a: { parent: null, description: "a" } },
 }
 export default async function orchestrate(ctx) {
-  ctx.phase("阶段一")
-
   // section divider
-  await ctx.setBrief("a", { your_work: ["w"], acceptance_slice: ["done"] })
-  await ctx.prompt("a", { text: "go", reply: true })
-  await ctx.waitFor("a", "complete")
+  await ctx.run("a", { brief: { your_work: ["w"], acceptance_slice: ["done"] }, text: "go" })
 }
 `
     const result = await dryRunMissionScriptSource(source, "plan-m1")

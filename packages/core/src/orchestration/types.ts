@@ -38,6 +38,12 @@ export type OrchestrationNodeState = {
   completion?: NodeCompletion
 }
 
+/** Persisted compound-step replay latch (survives sandbox restart). */
+export type CompoundReplayState = {
+  step_id: string
+  reactivated: string[]
+}
+
 export type OrchestrationState = {
   schema_version: number
   mission_id: string
@@ -45,10 +51,12 @@ export type OrchestrationState = {
   phase?: string
   nodes: Record<string, OrchestrationNodeState>
   sandbox?: OrchestrationSandboxMeta
-  /** Index into compiled plan steps for precise replay. */
+  /** Next plan step index to execute; steps before this are complete. */
   cursor_step_index?: number
-  /** Completed plan step ids (step-0, step-1, …). */
+  /** Derived from cursor_step_index for legacy readers; do not write directly. */
   completed_step_ids?: string[]
+  /** Nodes re-armed for prompt inside an in-progress compound (fork) step. */
+  compound_replay?: CompoundReplayState
   /** Frozen baseline snapshot id when continuing from prior work. */
   baseline_id?: string
   /** Parent mission when this run is a continuation (e.g. review slice). */
@@ -78,36 +86,43 @@ export type PromptInput = {
   text?: string
   system?: string
   reply?: boolean
-  /** Node ids whose structured completion (from gatehouse_execution_complete) is injected into the work order. */
   rollupFrom?: string[]
 }
 
-export type MissionContext = {
-  /** Frozen mission objective (from registry at orchestration start). */
-  objective: string
+export type NodeBriefPartial = {
+  your_work?: string[]
+  not_your_job?: string[]
+  acceptance_slice?: string[]
+  role?: string
+}
+
+export type RunOpts = {
+  brief?: NodeBriefPartial | ((nodeId: string) => NodeBriefPartial)
+  text?: string | ((nodeId: string) => string)
+  rollupFrom?: string[]
+  reply?: boolean
+  wait?: boolean
+}
+
+export type JoinOpts = {
+  subtree?: boolean
+  timeout?: string
+}
+
+/** Host/runtime dispatch surface used internally by run/join. Not available in mission scripts. */
+export type OrchestrationEngine = {
+  setBrief(nodeId: string, partial: NodeBriefPartial): Promise<void>
   prompt(nodeId: string | string[], input: PromptInput): Promise<void>
-  setBrief(
-    nodeId: string,
-    partial: {
-      your_work?: string[]
-      not_your_job?: string[]
-      acceptance_slice?: string[]
-      role?: string
-    },
-  ): Promise<void>
+  waitFor(nodeId: string, event: "complete", opts?: { timeout?: string }): Promise<void>
+}
+
+export type MissionContext = {
+  objective: string
+  run(target: string | readonly string[], opts?: RunOpts): Promise<void>
+  join(target: string | readonly string[], opts?: JoinOpts): Promise<void>
+  fork<T>(tracks: ReadonlyArray<() => Promise<T>>): Promise<T[]>
   readMissionContext(): string
   readContract(opts?: { view?: "summary" | "full" }): unknown
-  waitFor(nodeId: string, event: "complete", opts?: { timeout?: string }): Promise<void>
-  waitForRollup(rootNodeId: string): Promise<void>
-  /** Run independent orchestration tracks concurrently; barrier waits for all thunks. */
-  parallel<T>(thunks: ReadonlyArray<() => Promise<T>>): Promise<T[]>
-  /** Run each item through stages independently (no barrier between items). */
-  pipeline<T>(
-    items: readonly T[],
-    ...stages: ReadonlyArray<(value: unknown, index: number) => Promise<unknown>>
-  ): Promise<unknown[]>
-  phase(title: string): void
-  log(message: string): void
   nodeIds(): string[]
   leaves(): string[]
   children(nodeId: string): string[]

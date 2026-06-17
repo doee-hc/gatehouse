@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto"
+import { resetReplayCursor } from "./replay-cursor.ts"
 import type { OrchestrationState } from "./types.ts"
 import type { OrchestrationBaseline, OrchestrationBaselineNode } from "./plan-types.ts"
 
@@ -75,8 +76,7 @@ export function resetOrchestrationForContinuation(state: OrchestrationState, bas
     if (frozen.has(nodeId)) continue
     state.nodes[nodeId] = { status: "pending" }
   }
-  state.cursor_step_index = 0
-  state.completed_step_ids = []
+  resetReplayCursor(state)
   state.sandbox = {
     ...(state.sandbox ?? { status: "stopped" as const }),
     status: "stopped",

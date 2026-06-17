@@ -174,11 +174,11 @@ describe("orchestration state", () => {
           b: { parent: null, description: "worker b" },
         },
       }
-      const ctx = createMissionContext({ plugin: pluginInput, store, team: parallelTeam })
+      const { engine } = createMissionContext({ plugin: pluginInput, store, team: parallelTeam })
 
       await Promise.all([
-        ctx.prompt("a", { text: "work a", reply: true }),
-        ctx.prompt("b", { text: "work b", reply: true }),
+        engine.prompt("a", { text: "work a", reply: true }),
+        engine.prompt("b", { text: "work b", reply: true }),
       ])
 
       const loaded = readOrchestrationState(dir, "parallel-m1")

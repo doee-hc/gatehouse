@@ -21,16 +21,7 @@ export type SandboxInitMessage = {
 export type SandboxRpcRequest = {
   type: "rpc"
   id: string
-  op:
-    | "prompt"
-    | "setBrief"
-    | "readMissionContext"
-    | "readContract"
-    | "waitFor"
-    | "waitForRollup"
-    | "planStepComplete"
-    | "phase"
-    | "log"
+  op: "prompt" | "setBrief" | "readMissionContext" | "readContract" | "waitFor" | "stepComplete"
   nodeIds?: string[]
   nodeId?: string
   input?: PromptInput
@@ -43,13 +34,8 @@ export type SandboxRpcRequest = {
   view?: "summary" | "full"
   event?: "complete"
   timeout?: string
-  rootNodeId?: string
-  title?: string
-  message?: string
   stepId?: string
   stepIndex?: number
-  /** When true, host marks the attached plan step completed (linear steps only). */
-  markPlanStepComplete?: boolean
 }
 
 export type SandboxRpcResponse = {

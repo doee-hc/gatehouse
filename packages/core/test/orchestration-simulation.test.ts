@@ -28,9 +28,7 @@ export const team = {
   },
 }
 export default async function orchestrate(ctx) {
-  await ctx.setBrief("leaf", { your_work: ["w"], acceptance_slice: ["done"] })
-  await ctx.prompt("leaf", { text: "go", reply: true })
-  await ctx.waitFor("leaf", "complete")
+  await ctx.run("leaf", { brief: { your_work: ["w"], acceptance_slice: ["done"] }, text: "go" })
 }
 `
     const result = await dryRunMissionScriptSource(source, "sim-m1")
@@ -40,7 +38,7 @@ export default async function orchestrate(ctx) {
     expect(result.message).toContain("root")
   })
 
-  test("simulation rejects waitFor without prior prompt on dynamic path", async () => {
+  test("simulation rejects join without prior run on dynamic path", async () => {
     const source = `
 export const team = {
   mission_id: "sim-m1",
@@ -52,11 +50,9 @@ export const team = {
 }
 export default async function orchestrate(ctx) {
   const target = "leaf"
-  await ctx.setBrief(target, { your_work: ["w"], acceptance_slice: ["done"] })
-  await ctx.waitFor(target, "complete")
-  await ctx.setBrief("root", { your_work: ["r"], acceptance_slice: ["done"] })
-  await ctx.prompt("root", { text: "go", reply: true })
-  await ctx.waitFor("root", "complete")
+  await ctx.run(target, { brief: { your_work: ["w"], acceptance_slice: ["done"] }, reply: false })
+  await ctx.join(target)
+  await ctx.run("root", { brief: { your_work: ["r"], acceptance_slice: ["done"] }, text: "go" })
 }
 `
     const parsed = parseMissionScriptSource(source, "sim-m1")
@@ -85,22 +81,24 @@ export const team = {
   },
 }
 export default async function orchestrate(ctx) {
-  await ctx.setBrief("a", { your_work: ["a"], acceptance_slice: ["done"] })
-  await ctx.setBrief("b", { your_work: ["b"], acceptance_slice: ["done"] })
-  await ctx.prompt("a", { text: "go", reply: true })
-  await ctx.prompt("b", { text: "go", reply: true })
-  await ctx.waitFor("a", "complete")
-  await ctx.waitFor("b", "complete")
-  await ctx.setBrief("root", { your_work: ["rollup"], acceptance_slice: ["done"] })
-  await ctx.prompt("root", { text: "rollup", reply: true, rollupFrom: ["a", "b"] })
-  await ctx.waitFor("root", "complete")
+  await ctx.run(["a", "b"], {
+    brief: (id) => ({ your_work: [id], acceptance_slice: ["done"] }),
+    text: "go",
+    wait: false,
+  })
+  await ctx.join(["a", "b"])
+  await ctx.run("root", {
+    brief: { your_work: ["rollup"], acceptance_slice: ["done"] },
+    text: "rollup",
+    rollupFrom: ["a", "b"],
+  })
 }
 `
     const result = await dryRunMissionScriptSource(source, "sim-m1")
     expect(result.ok).toBe(true)
   })
 
-  test("simulation warns when meta.phases titles are never called", async () => {
+  test("rejects legacy ctx.phase in orchestrate", async () => {
     const source = `
 export const team = {
   mission_id: "sim-m1",
@@ -110,14 +108,12 @@ export const team = {
 export const meta = { phases: ["阶段一", "阶段二"] }
 export default async function orchestrate(ctx) {
   ctx.phase("阶段一")
-  await ctx.setBrief("a", { your_work: ["w"], acceptance_slice: ["done"] })
-  await ctx.prompt("a", { text: "go", reply: true })
-  await ctx.waitFor("a", "complete")
+  await ctx.run("a", { brief: { your_work: ["w"], acceptance_slice: ["done"] }, text: "go" })
 }
 `
     const result = await dryRunMissionScriptSource(source, "sim-m1")
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    expect(result.warnings.some((w) => w.includes("阶段二"))).toBe(true)
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.code).toBe("SCRIPT_LEGACY_API")
   })
 })

@@ -15,11 +15,11 @@ describe("mission script sandbox parse", () => {
     const parsed = parseMissionScriptSource(source, "core-example-smoke-v1")
     expect(parsed.team.root).toBe("node-root")
     expect(parsed.meta?.name).toBe("core-example-smoke-v1")
-    expect(parsed.orchestrateSource).toContain("ctx.waitFor(\"node-doc\"")
+    expect(parsed.orchestrateSource).toContain('ctx.run("node-doc"')
     expect(parsed.scriptHash.length).toBe(64)
   })
 
-  test("dryRun rejects prompt(reply:true) without setBrief for the same node", async () => {
+  test("dryRun rejects run without brief for the same node", async () => {
     const source = `
 export const team = {
   mission_id: "m1",
@@ -30,14 +30,10 @@ export const team = {
   },
 }
 export default async function orchestrate(ctx) {
-  await ctx.setBrief("leaf", { your_work: ["work"], not_your_job: [], acceptance_slice: ["done"] })
-  await ctx.prompt("leaf", { text: "go", reply: true })
-  await ctx.waitFor("leaf", "complete")
-  await ctx.prompt("coord", {
+  await ctx.run("leaf", { brief: { your_work: ["work"], not_your_job: [], acceptance_slice: ["done"] }, text: "go" })
+  await ctx.run("coord", {
     text: ctx.template.workOrder("coord", { context: "review" }),
-    reply: true,
   })
-  await ctx.waitFor("coord", "complete")
 }
 `
     const result = await dryRunMissionScriptSource(source, "m1")
@@ -55,12 +51,13 @@ export const team = {
   nodes: { maker: { parent: null, description: "make report" } },
 }
 export default async function orchestrate(ctx) {
-  await ctx.setBrief("maker", {
-    your_work: ["publish via gatehouse_publish_blog"],
-    acceptance_slice: ["done"],
+  await ctx.run("maker", {
+    brief: {
+      your_work: ["publish via gatehouse_publish_blog"],
+      acceptance_slice: ["done"],
+    },
+    text: "go",
   })
-  await ctx.prompt("maker", { text: "go", reply: true })
-  await ctx.waitFor("maker", "complete")
 }
 `
     const result = await dryRunMissionScriptSource(source, "m1")
@@ -77,14 +74,12 @@ export const team = {
   nodes: { leaf: { parent: null, description: "leaf" } },
 }
 export default async function orchestrate(ctx) {
-  await ctx.setBrief("leaf", { your_work: ["work"], not_your_job: [], acceptance_slice: ["done"] })
-  await ctx.prompt("leaf", {
+  await ctx.run("leaf", {
+    brief: { your_work: ["work"], not_your_job: [], acceptance_slice: ["done"] },
     text: ctx.template.workOrder("leaf", {
       note: "call gatehouse_send_message(recipient="ai-writer", message="done")",
     }),
-    reply: true,
   })
-  await ctx.waitFor("leaf", "complete")
 }
 `
     const result = await dryRunMissionScriptSource(source, "m1")

@@ -5,7 +5,7 @@ import { RegistryDatabase } from "../registry/db.ts"
 import type { TeamSpec } from "../tree/types.ts"
 import type { MissionScriptMeta } from "./types.ts"
 
-export { createMissionContext, createMissionHostHandlers } from "./ctx-host.ts"
+export { createMissionContext, createMissionHostHandlers, type MissionRuntime } from "./ctx-host.ts"
 
 export function orchestrationDbExists(projectDirectory: string) {
   return existsSync(path.join(gatehouseRoot(projectDirectory), "registry.db"))

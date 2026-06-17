@@ -49,18 +49,21 @@ disable-model-invocation: true
 | ------------------------------------------------ | --------------------------------------------------------------------------- |
 | `export const team`                              | 执行团队结构：每个节点的 `node_id`、`parent` 汇报关系、`description` 一句话职责 |
 | `export const meta`                              | 可选：进度 `phases`、返工策略 `rework`                                                |
-| `export default async function orchestrate(ctx)` | 编排时序：`prompt` / `setBrief` / `waitFor`                                      |
+| `export default async function orchestrate(ctx)` | 编排时序：`ctx.run` / `ctx.join` / `ctx.fork` |
 
 
-每个 inner 节点必填 `description`：一句话职责。详细任务与边界写在 `ctx.setBrief`。
+每个 inner 节点必填 `description`：一句话职责。详细任务与边界写在 `ctx.run({ brief: … })`。
 
-**`setBrief` 约束：** 每个叶子需具体 `your_work`、含项目 `path:` 的 `acceptance_slice`，并列节点写清 scope 边界。完成后调用 `gatehouse_execution_complete(summary=..., artifacts=[{path,description}], risks=?)`。
+**Brief 约束：** 每个叶子需具体 `your_work`、含项目 `path:` 的 `acceptance_slice`（文件或目录路径均可，如 `path: reports/foo.md` 或 `path: reports/template/`），并列节点写清 scope 边界。完成后调用 `gatehouse_execution_complete(summary=..., artifacts=[{path,description}], risks=?)`。
 
 ```typescript
-await ctx.setBrief("researcher-a", {
-  your_work: ["…"],
-  not_your_job: ["…（sibling 节点职责，勿重复）"],
-  acceptance_slice: ["path: reports/researcher-a.md", "…"],
+await ctx.run("researcher-a", {
+  brief: {
+    your_work: ["…"],
+    not_your_job: ["…（sibling 节点职责，勿重复）"],
+    acceptance_slice: ["path: reports/researcher-a.md", "…"],
+  },
+  text: ctx.template.workOrder("researcher-a"),
 })
 ```
 
@@ -93,101 +96,80 @@ export const meta = {
 }
 
 export default async function orchestrate(ctx) {
-  ctx.phase("阶段一")
-  await ctx.setBrief("<leaf-id>", {
-    your_work: ["…"],
-    acceptance_slice: ["path: reports/<leaf-id>.md", "…"],
-  })
-  await ctx.prompt("<leaf-id>", {
+  await ctx.run("<leaf-id>", {
+    brief: {
+      your_work: ["…"],
+      acceptance_slice: ["path: reports/<leaf-id>.md", "…"],
+    },
     text: ctx.template.workOrder("<leaf-id>"),
-    reply: true,
   })
-  await ctx.waitFor("<leaf-id>", "complete")
 
-  ctx.phase("阶段二")
-  await ctx.setBrief("<root-node-id>", {
-    your_work: ["汇总子节点交付并验收"],
-    acceptance_slice: ["path: …", "…"],
-  })
-  await ctx.prompt("<root-node-id>", {
+  await ctx.run("<root-node-id>", {
+    brief: {
+      your_work: ["汇总子节点交付并验收"],
+      acceptance_slice: ["path: …", "…"],
+    },
     text: ctx.template.workOrder("<root-node-id>", { context: "…" }),
-    reply: true,
     rollupFrom: ["<leaf-id>"],
   })
-  await ctx.waitFor("<root-node-id>", "complete")
 }
 ```
 
-**多级团队**（root → 中间协调层 → 叶子）：`team.nodes` 里用 `parent` 表达汇报树；`orchestrate` 里用 `waitForRollup` 或逐个 `waitFor` 等子树完成。协调层在 `setBrief` 写清所辖子树边界。协调层汇总格式见 `subtree-delivery-index.template.md`。中间协调节点通常不分配 `skill_domain`。
+**多级团队**（root → 中间协调层 → 叶子）：`team.nodes` 里用 `parent` 表达汇报树；`orchestrate` 里用 `ctx.join(coordinator, { subtree: true })` 或顺序 `ctx.run` 等子树完成。协调层在 `run` 的 `brief` 写清所辖子树边界。协调层汇总格式见 `subtree-delivery-index.template.md`。中间协调节点通常不分配 `skill_domain`。
 
 **编排原语（只能用 `ctx.*`）：**
 
 
 | API                                                  | 用途                                     |
 | ---------------------------------------------------- | -------------------------------------- |
-| `ctx.prompt(nodeId, { text?, system?, reply?, rollupFrom? })` | 向节点发工单；`reply: true` 开工；`rollupFrom` 列出要附带的下属 node_id |
-| `ctx.setBrief(nodeId, partial)`                      | 写入节点任务书（在 `prompt` 前调用）                |
-| `ctx.waitFor(nodeId, "complete")`                    | 等待该节点调用 `gatehouse_execution_complete` |
-| `ctx.waitForRollup`                                  | 等待子树全部叶子 `complete`（内部逐个 `waitFor`） |
-| `ctx.parallel(thunks)`                               | **屏障式并行轨道**：各 thunk 同时执行，全部完成后继续 |
-| `ctx.pipeline(items, ...stages)`                     | **流式多阶段**：各项独立流过各 stage，项间无全局屏障 |
+| `ctx.run(nodeId \| nodeIds[], { brief?, text?, rollupFrom?, reply?, wait? })` | 激活节点：brief + 工单；默认 `wait: true`（数组时扇出激活再扇入等待） |
+| `ctx.join(nodeId \| nodeIds[], { subtree?, timeout? })` | 等待节点 `complete`；`subtree: true` 等待全部子孙 |
+| `ctx.fork(tracks)`                                   | **屏障式并行轨道**：各 track 同时执行，全部完成后继续 |
 | `ctx.template.workOrder` / `rework` / `reworkResume` | 生成标准工单文案                               |
-| `ctx.phase(title)`                                   | 更新 Mission 进度展示                        |
 | `ctx.objective`                                      | 冻结的 mission 目标（字符串；编排脚本内可嵌入工单）   |
 
 
-节点间协作**勿在脚本中模拟**；脚本侧仅用 `ctx.prompt` / `waitFor` 驱动时序。
+节点间协作**勿在脚本中模拟**；脚本侧仅用 `ctx.run` / `ctx.join` 驱动时序。
 
 **`rollupFrom` 规则：**
 
-- 仅用于 **父节点 / 协调节点** 的 `prompt(..., { rollupFrom: [...] })`，列出其**子孙** node_id，把下属交付摘要附进工单。
+- 仅用于 **父节点 / 协调节点** 的 `ctx.run(..., { rollupFrom: [...] })`，列出其**子孙** node_id，把下属交付摘要附进工单。
 - **勿**在叶子节点上对兄弟节点使用 `rollupFrom`（会报 `SCRIPT_INVALID_ROLLUP`）；叶子需要上游产出时，用 `ctx.template.workOrder(..., { context: \`…路径…\` })` 传说明即可。
 
-**每个节点必须 `prompt` + `waitFor`：**
+**每个节点必须激活并完成：**
 
-- `team.nodes` 中的**每个** node_id（含 root）都须 `setBrief` → `prompt(reply:true)` → `waitFor('complete')`，否则 dry-run 报 `SCRIPT_SIMULATION_INCOMPLETE`。
+- `team.nodes` 中的**每个** node_id（含 root）都须通过 `ctx.run`（或 `ctx.run(..., { wait: false })` 后 `ctx.join`）完成，否则 dry-run 报 `SCRIPT_SIMULATION_INCOMPLETE`。
 
-**并行编排**：无依赖的兄弟叶子应并行 `prompt`；若各组有独立子树（如 A 组 a1/a2/a3 + 协调者 a，B 组 b1/b2/b3 + 协调者 b），用 `ctx.parallel` 让两组**同时推进**，互不阻塞：
+**并行编排**：无依赖的兄弟叶子用 `ctx.run([...])` 扇出；若各组有独立子树（如 A 组 a1/a2/a3 + 协调者 a，B 组 b1/b2/b3 + 协调者 b），用 `ctx.fork` 让两组**同时推进**，互不阻塞：
 
 ```typescript
-ctx.phase("A/B 并行轨道")
-await ctx.parallel([
+await ctx.fork([
   async () => {
-    for (const id of ["a1", "a2", "a3"]) {
-      await ctx.setBrief(id, { your_work: ["…"], acceptance_slice: ["…"] })
-      await ctx.prompt(id, { text: ctx.template.workOrder(id), reply: true })
-    }
-    for (const id of ["a1", "a2", "a3"]) {
-      await ctx.waitFor(id, "complete")
-    }
-    await ctx.setBrief("a", { your_work: ["汇总 A 组"], acceptance_slice: ["…"] })
-    await ctx.prompt("a", {
+    await ctx.run(["a1", "a2", "a3"], {
+      brief: (id) => ({ your_work: ["…"], acceptance_slice: ["…"] }),
+      text: (id) => ctx.template.workOrder(id),
+    })
+    await ctx.run("a", {
+      brief: { your_work: ["汇总 A 组"], acceptance_slice: ["…"] },
       text: ctx.template.workOrder("a"),
-      reply: true,
       rollupFrom: ["a1", "a2", "a3"],
     })
-    await ctx.waitFor("a", "complete")
   },
   async () => {
-    for (const id of ["b1", "b2", "b3"]) {
-      await ctx.setBrief(id, { your_work: ["…"], acceptance_slice: ["…"] })
-      await ctx.prompt(id, { text: ctx.template.workOrder(id), reply: true })
-    }
-    for (const id of ["b1", "b2", "b3"]) {
-      await ctx.waitFor(id, "complete")
-    }
-    await ctx.setBrief("b", { your_work: ["汇总 B 组"], acceptance_slice: ["…"] })
-    await ctx.prompt("b", {
+    await ctx.run(["b1", "b2", "b3"], {
+      brief: (id) => ({ your_work: ["…"], acceptance_slice: ["…"] }),
+      text: (id) => ctx.template.workOrder(id),
+    })
+    await ctx.run("b", {
+      brief: { your_work: ["汇总 B 组"], acceptance_slice: ["…"] },
       text: ctx.template.workOrder("b"),
-      reply: true,
       rollupFrom: ["b1", "b2", "b3"],
     })
-    await ctx.waitFor("b", "complete")
   },
 ])
 ```
 
-仅兄弟叶子并行、无独立子树时，可先 `prompt` 全部再逐个 `waitFor`。
+仅兄弟叶子并行、无独立子树时，`ctx.run([...])` 即可。
 
 **脚本写作限制：**
 
@@ -195,13 +177,13 @@ await ctx.parallel([
 2. **只能**通过 `ctx.*` 驱动 Mission；不要在文件顶层写会立即执行的代码。
 3. `team` / `meta` 必须是字面量对象。
 4. `nodeId` 优先用字符串字面量，避免写错节点名。
-5. 不要把合同全文塞进脚本 — 边界写进 `setBrief` 或 `prompt.text`。
-6. 推荐顺序：`setBrief` → `prompt(reply:true)` → `waitFor`；复杂任务用 `meta.phases` + `ctx.phase` 分段（**每个 `meta.phases` 条目至少调用一次 `ctx.phase`**）。
+5. 不要把合同全文塞进脚本 — 边界写进 `run` 的 `brief` 或工单文本。
+6. 推荐：`ctx.run(nodeId, { brief, text })`；需要分步控制时用 `wait: false` + `ctx.join`。
 7. `ctx.objective` 可用；勿用未文档化的 `ctx.*` 属性。
-8. **字符串**：`orchestrate` 内 `context` / `note` 优先用模板字面量 `` `...` `` 或单引号。**仅**当 `context:` / `note:` 使用双引号且内容含 `gatehouse_` 时会报 `SCRIPT_RISKY_STRING_LITERAL`（`setBrief` 与 `team`/`meta` 字面量不受此限）。修复时只改报错指出的那一处，勿批量改引号风格。
-9. **校验与恢复**：保存脚本后 `gatehouse_submit_orchestration` — 系统自动校验并启动或恢复。**dry-run 失败时错误仅在 tool 返回中**，不会另发 Gatehouse 系统消息（运行时 sandbox 失败才会通知你）。`dry-run` 会检查：轨道间假串行（`SCRIPT_SERIAL_TRACK_BLOCK`）、`rollupFrom` 子树合法性、`setBrief` 覆盖、未引用节点、`ctx.parallel` 建议等；警告在 `warnings` 中返回。编排中途重写脚本：**`gatehouse_submit_orchestration(mode=continue)`**。编排进行中勿改 `mission.script.ts`。
+8. **字符串**：`orchestrate` 内 `context` / `note` 优先用模板字面量 `` `...` `` 或单引号。**仅**当 `context:` / `note:` 使用双引号且内容含 `gatehouse_` 时会报 `SCRIPT_RISKY_STRING_LITERAL`（`run` brief 与 `team`/`meta` 字面量不受此限）。修复时只改报错指出的那一处，勿批量改引号风格。
+9. **校验与恢复**：保存脚本后 `gatehouse_submit_orchestration` — 系统自动校验并启动或恢复。**dry-run 失败时错误仅在 tool 返回中**，不会另发 Gatehouse 系统消息（运行时 sandbox 失败才会通知你）。`dry-run` 会检查：轨道间假串行（`SCRIPT_SERIAL_TRACK_BLOCK`）、`rollupFrom` 子树合法性、brief 覆盖、未引用节点、`ctx.fork` 建议等；警告在 `warnings` 中返回。编排中途重写脚本：**`gatehouse_submit_orchestration(mode=continue)`**。编排进行中勿改 `mission.script.ts`。
 
-编排脚本负责时序与工单。唤醒父/协调节点时，用 `prompt(..., { rollupFrom: [...] })` **列出**本次工单要附带的下属 node_id。structural root 在全树 done 时 `gatehouse_execution_complete` 自动通知 {{lead_name}}。**Portal 发布由 Lead `mission_complete(done)` 完成** — `setBrief` / 工单中**禁止**写「发布到 Portal」或任何 publish 工具名。
+编排脚本负责时序与工单。唤醒父/协调节点时，用 `run(..., { rollupFrom: [...] })` **列出**本次工单要附带的下属 node_id。structural root 在全树 done 时 `gatehouse_execution_complete` 自动通知 {{lead_name}}。**Portal 发布由 Lead `mission_complete(done)` 完成** — `setBrief` / 工单中**禁止**写「发布到 Portal」或任何 publish 工具名。
 
 1. `gatehouse_submit_orchestration(objective=...)` → skill domain 就绪后等待执行自动启动。
 2. **退出执行环** — 勿向用户提供 `gatehouse_execution_status` 跟踪、勿轮询进度。

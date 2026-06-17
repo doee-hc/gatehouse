@@ -1,14 +1,15 @@
 import { childNodeIdsFromSpec } from "../tree/parse.ts"
 import type { GatehouseLocale } from "../locale.ts"
 import type { TeamSpec } from "../tree/types.ts"
-import { orchestrationParallel, orchestrationPipeline } from "./primitives.ts"
-import type { MissionContext } from "./types.ts"
+import { orchestrationFork, orchestrationJoin, orchestrationRun } from "./run-join-fork.ts"
+import type { MissionContext, OrchestrationEngine, PromptInput } from "./types.ts"
 import type { SandboxRpcRequest } from "./sandbox-protocol.ts"
 import {
   formatReworkResumeTextWithLocale,
   formatReworkTextWithLocale,
   formatWorkOrderTextWithLocale,
 } from "./templates.ts"
+import type { NodeBriefPartial } from "./types.ts"
 
 type RpcSender = (request: Omit<SandboxRpcRequest, "type" | "id">) => Promise<unknown>
 
@@ -18,29 +19,17 @@ export function createSandboxMissionContext(input: {
   team: TeamSpec
   objective?: string
   sendRpc: RpcSender
-}): MissionContext {
+}) {
   const { missionId, locale, team, sendRpc } = input
 
-  return {
-    objective: input.objective ?? "",
-
-    async prompt(nodeIds, promptInput) {
+  const engine: OrchestrationEngine = {
+    async setBrief(nodeId, partial: NodeBriefPartial) {
+      await sendRpc({ op: "setBrief", nodeId, partial })
+    },
+    async prompt(nodeIds, promptInput: PromptInput) {
       const ids = Array.isArray(nodeIds) ? nodeIds : [nodeIds]
       await sendRpc({ op: "prompt", nodeIds: ids, input: promptInput })
     },
-
-    async setBrief(nodeId, partial) {
-      await sendRpc({ op: "setBrief", nodeId, partial })
-    },
-
-    readMissionContext() {
-      throw new Error("readMissionContext() is not available synchronously in sandbox; inline static context in prompt text")
-    },
-
-    readContract() {
-      throw new Error("readContract() is not available synchronously in sandbox")
-    },
-
     async waitFor(nodeId, _event, opts) {
       await sendRpc({
         op: "waitFor",
@@ -49,25 +38,35 @@ export function createSandboxMissionContext(input: {
         ...(opts?.timeout && { timeout: opts.timeout }),
       })
     },
+  }
 
-    async waitForRollup(rootNodeId) {
-      await sendRpc({ op: "waitForRollup", rootNodeId })
+  const defaultWorkOrder = (nodeId: string) =>
+    formatWorkOrderTextWithLocale(locale, {
+      missionId,
+      nodeId,
+    })
+
+  const ctx: MissionContext = {
+    objective: input.objective ?? "",
+
+    async run(target, opts) {
+      await orchestrationRun(engine, target, opts, { defaultWorkOrder })
     },
 
-    async parallel(thunks) {
-      return orchestrationParallel(thunks)
+    async join(target, opts) {
+      await orchestrationJoin(engine, target, opts, team)
     },
 
-    async pipeline(items, ...stages) {
-      return orchestrationPipeline(items, ...stages)
+    async fork(tracks) {
+      return orchestrationFork(tracks)
     },
 
-    phase(title) {
-      void sendRpc({ op: "phase", title })
+    readMissionContext() {
+      throw new Error("readMissionContext() is not available synchronously in sandbox; inline static context in prompt text")
     },
 
-    log(message) {
-      void sendRpc({ op: "log", message })
+    readContract() {
+      throw new Error("readContract() is not available synchronously in sandbox")
     },
 
     nodeIds() {
@@ -111,4 +110,6 @@ export function createSandboxMissionContext(input: {
       },
     },
   }
+
+  return { ctx, engine }
 }

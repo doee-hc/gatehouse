@@ -11,38 +11,46 @@ import {
   readMissionContextForScript,
 } from "./events.ts"
 import { deliverOrchestrationPrompt } from "./prompt.ts"
-import {
-  armCompoundReactivation,
-  consumeCompoundReactivation,
-  isCompoundPlanStepOp,
-  shouldSkipCompoundReplyPrompt,
-  shouldSkipCompoundSetBriefDeliver,
-} from "./compound-replay.ts"
 import { readLatestOrchestrationPlanRecord } from "./plan-store.ts"
 import type { PlanStep } from "./plan-types.ts"
 import {
-  isPlanStepCompleted,
+  advanceReplayCursor,
+  isReplayStepComplete,
+} from "./replay-cursor.ts"
+import {
+  armCompoundReactivation,
+  compoundReactivatedNodes,
+  consumeCompoundReactivation,
+  decideReplyPrompt,
+  decideSetBriefDeliver,
+  planStepKind,
+  shouldArmCompoundReactivation,
+} from "./replay-policy.ts"
+import {
   markNodeRunning,
-  markPlanStepCompleted,
   mutateOrchestrationState,
   nodeAlreadyActivated,
   nodeIsCompleteForWait,
   readOrchestrationState,
-  shouldSkipReplyPromptStep,
 } from "./state.ts"
 import type { SandboxRpcRequest } from "./sandbox-protocol.ts"
-import type { MissionContext, MissionScriptMeta, PromptInput } from "./types.ts"
+import type { MissionContext, MissionScriptMeta, OrchestrationEngine, PromptInput } from "./types.ts"
 import { waitForOrchestration } from "./wait.ts"
 import {
   formatReworkResumeText,
   formatReworkText,
   formatWorkOrderText,
 } from "./templates.ts"
-import { orchestrationParallel, orchestrationPipeline } from "./primitives.ts"
+import { orchestrationFork, orchestrationJoin, orchestrationRun } from "./run-join-fork.ts"
 import { RegistryDatabase } from "../registry/db.ts"
 
 const PROMPT_TEXT_MAX = 32_768
 const MAX_REPLY_PROMPTS_PER_MISSION = 500
+
+export type MissionRuntime = {
+  ctx: MissionContext
+  engine: OrchestrationEngine
+}
 
 export function createMissionHostHandlers(input: {
   plugin: PluginInput
@@ -54,28 +62,11 @@ export function createMissionHostHandlers(input: {
   let replyPromptCount = 0
   let activePlanStep: { id: string; index: number } | undefined
   let activePlanStepMeta: PlanStep | undefined
-  let compoundReactivationLatch = new Set<string>()
-  let compoundLatchStepId: string | undefined
 
-  const ctx = createMissionContext({
+  const runtime = createMissionContext({
     ...input,
     planStep: () => activePlanStep,
-    compoundReplay: () => ({
-      active: isCompoundPlanStepOp(activePlanStepMeta?.op),
-      latch: compoundReactivationLatch,
-    }),
   })
-
-  function syncCompoundLatch(step: PlanStep | undefined) {
-    if (!step || !isCompoundPlanStepOp(step.op)) {
-      compoundLatchStepId = undefined
-      return
-    }
-    if (compoundLatchStepId !== step.id) {
-      compoundLatchStepId = step.id
-      compoundReactivationLatch = new Set()
-    }
-  }
 
   function resolveActivePlanStepMeta(step: { id: string; index: number } | undefined) {
     if (!step) return undefined
@@ -86,14 +77,10 @@ export function createMissionHostHandlers(input: {
   function finishPlanStep() {
     if (!activePlanStep) return
     const step = activePlanStep
+    const plan = readLatestOrchestrationPlanRecord(input.plugin.directory, missionId)
     mutateOrchestrationState(input.plugin.directory, missionId, (state) => {
-      markPlanStepCompleted(state, step.id, step.index)
+      advanceReplayCursor(state, step.id, step.index, plan?.steps ?? [])
     })
-  }
-
-  function finishPlanStepIfAttached(request: SandboxRpcRequest) {
-    if (!activePlanStep || !request.markPlanStepComplete) return
-    finishPlanStep()
   }
 
   async function handleRpc(request: SandboxRpcRequest): Promise<unknown> {
@@ -102,11 +89,10 @@ export function createMissionHostHandlers(input: {
         ? { id: request.stepId, index: request.stepIndex }
         : undefined
     activePlanStepMeta = resolveActivePlanStepMeta(activePlanStep)
-    syncCompoundLatch(activePlanStepMeta)
 
     try {
       const state = readOrchestrationState(input.plugin.directory, missionId)
-      if (activePlanStep && state && isPlanStepCompleted(state, activePlanStep.id)) {
+      if (activePlanStep && state && isReplayStepComplete(state, activePlanStep.index)) {
         gatehouseLog(
           "info",
           `[orchestration:${missionId}] skip completed plan step ${activePlanStep.id}`,
@@ -120,48 +106,33 @@ export function createMissionHostHandlers(input: {
           const promptInput = request.input ?? {}
           assertPromptAllowed(input.team, nodeIds, promptInput, replyPromptCount)
           if (promptInput.reply) replyPromptCount += 1
-          await ctx.prompt(nodeIds.length === 1 ? nodeIds[0]! : nodeIds, promptInput)
-          finishPlanStepIfAttached(request)
+          await runtime.engine.prompt(nodeIds.length === 1 ? nodeIds[0]! : nodeIds, promptInput)
           return undefined
         }
         case "setBrief": {
           if (!request.nodeId) throw new Error("setBrief requires nodeId")
           assertNodeInTeam(input.team, request.nodeId)
-          await ctx.setBrief(request.nodeId, request.partial ?? {})
-          finishPlanStepIfAttached(request)
+          await runtime.engine.setBrief(request.nodeId, request.partial ?? {})
           return undefined
         }
         case "readMissionContext":
-          return ctx.readMissionContext()
+          return runtime.ctx.readMissionContext()
         case "readContract":
-          return ctx.readContract(request.view ? { view: request.view } : undefined)
+          return runtime.ctx.readContract(request.view ? { view: request.view } : undefined)
         case "waitFor": {
           if (!request.nodeId) throw new Error("waitFor requires nodeId")
           assertNodeInTeam(input.team, request.nodeId)
-          await ctx.waitFor(request.nodeId, "complete", request.timeout ? { timeout: request.timeout } : undefined)
-          finishPlanStepIfAttached(request)
+          await runtime.engine.waitFor(
+            request.nodeId,
+            "complete",
+            request.timeout ? { timeout: request.timeout } : undefined,
+          )
           return undefined
         }
-        case "waitForRollup": {
-          if (!request.rootNodeId) throw new Error("waitForRollup requires rootNodeId")
-          assertNodeInTeam(input.team, request.rootNodeId)
-          await ctx.waitForRollup(request.rootNodeId)
-          finishPlanStepIfAttached(request)
+        case "stepComplete": {
+          finishPlanStep()
           return undefined
         }
-        case "planStepComplete": {
-          finishPlanStepIfAttached(request)
-          return undefined
-        }
-        case "phase": {
-          if (!request.title?.trim()) throw new Error("phase requires title")
-          ctx.phase(request.title.slice(0, 128))
-          finishPlanStepIfAttached(request)
-          return undefined
-        }
-        case "log":
-          ctx.log(request.message ?? "")
-          return undefined
         default:
           throw new Error(`unsupported sandbox rpc op: ${(request as SandboxRpcRequest).op}`)
       }
@@ -171,7 +142,7 @@ export function createMissionHostHandlers(input: {
     }
   }
 
-  return { ctx, handleRpc, missionId }
+  return { ctx: runtime.ctx, engine: runtime.engine, handleRpc, missionId }
 }
 
 function assertNodeInTeam(team: TeamSpec, nodeId: string) {
@@ -203,21 +174,28 @@ export function createMissionContext(input: {
   team: TeamSpec
   meta?: MissionScriptMeta
   planStep?: () => { id: string; index: number } | undefined
-  compoundReplay?: () => { active: boolean; latch: Set<string> }
-}): MissionContext {
+}): MissionRuntime {
   const { plugin, store, team } = input
   const missionId = team.mission_id
   const contract = readActiveMissionContract(plugin.directory, missionId)
 
-  const ctx: MissionContext = {
-    objective: contract?.objective ?? "",
+  function resolveStepMeta(planStep: { id: string; index: number } | undefined) {
+    if (!planStep) return undefined
+    const plan = readLatestOrchestrationPlanRecord(plugin.directory, missionId)
+    return plan?.steps[planStep.index]?.id === planStep.id
+      ? plan.steps[planStep.index]
+      : plan?.steps.find((s) => s.id === planStep.id)
+  }
 
+  const engine: OrchestrationEngine = {
     async prompt(nodeIds, promptInput) {
       const ids = Array.isArray(nodeIds) ? nodeIds : [nodeIds]
       const state = readOrchestrationState(plugin.directory, missionId)
       if (!state) throw new Error(`orchestration state missing for ${missionId}`)
       const planStep = input.planStep?.()
-      const compoundReplay = input.compoundReplay?.()
+      const stepMeta = resolveStepMeta(planStep)
+      const stepKind = planStepKind(stepMeta?.op)
+      const reactivated = compoundReactivatedNodes(state.compound_replay, planStep?.id)
 
       const toMarkRunning: string[] = []
       const toDeliver: string[] = []
@@ -227,28 +205,18 @@ export function createMissionContext(input: {
           if (!promptInput.text?.trim()) {
             throw new Error(`prompt(reply:true) requires text for node ${nodeId}`)
           }
-          if (planStep) {
-            if (shouldSkipReplyPromptStep(state, planStep.id)) {
-              gatehouseLog(
-                "info",
-                `[orchestration:${missionId}] skip plan step ${planStep.id} prompt for ${nodeId}`,
-              )
-              continue
-            }
-            if (
-              compoundReplay?.active &&
-              shouldSkipCompoundReplyPrompt(state, nodeId, compoundReplay.latch)
-            ) {
-              gatehouseLog(
-                "info",
-                `[orchestration:${missionId}] skip compound replay prompt for done node ${nodeId}`,
-              )
-              continue
-            }
-          } else if (nodeAlreadyActivated(state, nodeId)) {
+          const decision = decideReplyPrompt({
+            state,
+            nodeId,
+            hasPlanStep: Boolean(planStep),
+            stepIndex: planStep?.index,
+            stepKind,
+            reactivated,
+          })
+          if (decision === "skip") {
             gatehouseLog(
               "info",
-              `[orchestration:${missionId}] skip re-prompt for ${nodeId} (${state.nodes[nodeId]?.status})`,
+              `[orchestration:${missionId}] skip replay prompt for ${nodeId} (step=${planStep?.id ?? "none"})`,
             )
             continue
           }
@@ -260,14 +228,15 @@ export function createMissionContext(input: {
       if (toMarkRunning.length > 0) {
         mutateOrchestrationState(plugin.directory, missionId, (fresh) => {
           for (const nodeId of toMarkRunning) {
-            if (planStep && shouldSkipReplyPromptStep(fresh, planStep.id)) continue
-            if (
-              planStep &&
-              compoundReplay?.active &&
-              shouldSkipCompoundReplyPrompt(fresh, nodeId, compoundReplay.latch)
-            ) {
-              continue
-            }
+            const decision = decideReplyPrompt({
+              state: fresh,
+              nodeId,
+              hasPlanStep: Boolean(planStep),
+              stepIndex: planStep?.index,
+              stepKind,
+              reactivated: compoundReactivatedNodes(fresh.compound_replay, planStep?.id),
+            })
+            if (decision === "skip") continue
             if (!planStep && nodeAlreadyActivated(fresh, nodeId)) continue
             markNodeRunning(fresh, nodeId)
           }
@@ -275,14 +244,15 @@ export function createMissionContext(input: {
       }
 
       for (const nodeId of toDeliver) {
-        if (
-          promptInput.reply &&
-          planStep &&
-          compoundReplay?.active &&
-          shouldSkipCompoundReplyPrompt(state, nodeId, compoundReplay.latch)
-        ) {
-          continue
-        }
+        const decision = decideReplyPrompt({
+          state,
+          nodeId,
+          hasPlanStep: Boolean(planStep),
+          stepIndex: planStep?.index,
+          stepKind,
+          reactivated,
+        })
+        if (promptInput.reply && decision === "skip") continue
         await deliverOrchestrationPrompt({
           plugin,
           store,
@@ -291,8 +261,10 @@ export function createMissionContext(input: {
           prompt: promptInput,
           team,
         })
-        if (promptInput.reply && compoundReplay?.active) {
-          consumeCompoundReactivation(nodeId, compoundReplay.latch)
+        if (promptInput.reply && stepKind === "compound" && planStep) {
+          mutateOrchestrationState(plugin.directory, missionId, (fresh) => {
+            consumeCompoundReactivation(fresh, planStep.id, nodeId)
+          })
         }
       }
     },
@@ -305,30 +277,34 @@ export function createMissionContext(input: {
       const merged = await mergeAndSaveBrief(plugin.directory, missionId, nodeId, partial)
       const briefChanged = JSON.stringify(existingBrief ?? null) !== JSON.stringify(merged)
       const state = readOrchestrationState(plugin.directory, missionId)
+      if (!state) throw new Error(`orchestration state missing for ${missionId}`)
       const planStep = input.planStep?.()
-      const compoundReplay = input.compoundReplay?.()
+      const stepMeta = resolveStepMeta(planStep)
+      const stepKind = planStepKind(stepMeta?.op)
 
-      if (compoundReplay?.active && state && briefChanged && state.nodes[nodeId]?.status === "done") {
-        armCompoundReactivation(nodeId, compoundReplay.latch)
+      if (planStep && shouldArmCompoundReactivation({ stepKind, briefChanged, state, nodeId })) {
+        mutateOrchestrationState(plugin.directory, missionId, (fresh) => {
+          armCompoundReactivation(fresh, planStep.id, nodeId)
+        })
       }
 
-      if (compoundReplay?.active && state && shouldSkipCompoundSetBriefDeliver(state, nodeId, briefChanged)) {
+      if (
+        !decideSetBriefDeliver({
+          state,
+          nodeId,
+          hasPlanStep: Boolean(planStep),
+          stepIndex: planStep?.index,
+          stepKind,
+          briefChanged,
+        })
+      ) {
         gatehouseLog(
           "info",
-          `[orchestration:${missionId}] skip compound replay setBrief deliver for done node ${nodeId}`,
+          `[orchestration:${missionId}] skip replay setBrief deliver for ${nodeId}`,
         )
         return
       }
-      if (state && !planStep && nodeAlreadyActivated(state, nodeId)) {
-        gatehouseLog(
-          "info",
-          `[orchestration:${missionId}] skip setBrief deliver for ${nodeId} (${state.nodes[nodeId]?.status})`,
-        )
-        return
-      }
-      if (state && planStep && isPlanStepCompleted(state, planStep.id)) {
-        return
-      }
+
       await deliverNodeBriefSystemPrompt({
         plugin,
         store,
@@ -336,14 +312,6 @@ export function createMissionContext(input: {
         nodeId,
         brief: merged,
       })
-    },
-
-    readMissionContext() {
-      return readMissionContextForScript(plugin.directory, missionId)
-    },
-
-    readContract(opts) {
-      return readContractForScript(plugin.directory, missionId, opts?.view)
     },
 
     async waitFor(nodeId, _event, opts) {
@@ -355,30 +323,35 @@ export function createMissionContext(input: {
         ...(opts?.timeout && { timeout: opts.timeout }),
       })
     },
+  }
 
-    async waitForRollup(rootNodeId) {
-      const descendants = collectDescendants(team, rootNodeId).filter((id) => id !== rootNodeId)
-      for (const nodeId of descendants) {
-        await ctx.waitFor(nodeId, "complete")
-      }
-    },
+  const ctx: MissionContext = {
+    objective: contract?.objective ?? "",
 
-    async parallel(thunks) {
-      return orchestrationParallel(thunks)
-    },
-
-    async pipeline(items, ...stages) {
-      return orchestrationPipeline(items, ...stages)
-    },
-
-    phase(title) {
-      mutateOrchestrationState(plugin.directory, missionId, (state) => {
-        state.phase = title
+    async run(target, opts) {
+      await orchestrationRun(engine, target, opts, {
+        defaultWorkOrder: (nodeId) =>
+          formatWorkOrderText(plugin.directory, {
+            missionId,
+            nodeId,
+          }),
       })
     },
 
-    log(message) {
-      gatehouseLog("info", `[orchestration:${missionId}] ${message}`)
+    async join(target, opts) {
+      await orchestrationJoin(engine, target, opts, team)
+    },
+
+    async fork(tracks) {
+      return orchestrationFork(tracks)
+    },
+
+    readMissionContext() {
+      return readMissionContextForScript(plugin.directory, missionId)
+    },
+
+    readContract(opts) {
+      return readContractForScript(plugin.directory, missionId, opts?.view)
     },
 
     nodeIds() {
@@ -423,15 +396,5 @@ export function createMissionContext(input: {
     },
   }
 
-  return ctx
-}
-
-function collectDescendants(team: TeamSpec, rootNodeId: string) {
-  const ids: string[] = []
-  const walk = (nodeId: string) => {
-    ids.push(nodeId)
-    for (const child of childNodeIdsFromSpec(team, nodeId)) walk(child)
-  }
-  walk(rootNodeId)
-  return ids
+  return { ctx, engine }
 }

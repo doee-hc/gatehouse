@@ -40,8 +40,7 @@ export type PortalOrchestration = {
   root_node: string
 }
 
-function stepLabel(step: { op: PlanStepOp; title?: string; node_id?: string }) {
-  if (step.title) return step.title
+function stepLabel(step: { op: PlanStepOp; node_id?: string }) {
   if (step.node_id) return `${step.op}:${step.node_id}`
   return step.op
 }
@@ -107,8 +106,7 @@ export function buildPortalOrchestration(
     }
   })
 
-  const planPhaseTitles =
-    plan?.steps.filter((step) => step.op === "phase" && step.title).map((step) => step.title!) ?? []
+  const planPhaseTitles: string[] = []
   const declaredPhases = script?.meta?.phases ?? []
   const phases = buildPhaseStrip({
     declaredPhases,
@@ -116,17 +114,15 @@ export function buildPortalOrchestration(
     ...(orchState?.phase && { currentPhase: orchState.phase }),
   })
 
-  const completedIds = new Set(orchState?.completed_step_ids ?? [])
   const cursorIndex = orchState?.cursor_step_index ?? 0
   const planSteps = plan?.steps ?? []
   const steps: PortalOrchestrationStep[] = planSteps.map((step, index) => {
-    const done = completedIds.has(step.id)
+    const done = index < cursorIndex
     const current = !done && index === cursorIndex
     return {
       id: step.id,
       op: step.op,
       state: done ? ("done" as const) : current ? ("current" as const) : ("pending" as const),
-      ...(step.title && { title: step.title }),
       ...(step.nodeId && { node_id: step.nodeId }),
     }
   })
@@ -141,7 +137,7 @@ export function buildPortalOrchestration(
     ...(orchState?.sandbox?.status && { sandbox_status: orchState.sandbox.status }),
     cursor_step_index: cursorIndex,
     total_steps: planSteps.length,
-    completed_steps: completedIds.size,
+    completed_steps: cursorIndex,
     phases,
     steps,
     nodes,
