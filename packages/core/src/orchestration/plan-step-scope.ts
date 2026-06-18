@@ -1,7 +1,7 @@
 import type { TeamSpec } from "../tree/types.ts"
 import { compilePlanStepStatement } from "./plan-step-compile.ts"
 import type { PlanStep } from "./plan-types.ts"
-import { orchestrationFork, orchestrationJoin, orchestrationRun } from "./run-join-fork.ts"
+import { orchestrationFork, orchestrationRun } from "./run-fork.ts"
 import type { SandboxRpcRequest } from "./sandbox-protocol.ts"
 import type { MissionContext, OrchestrationEngine } from "./types.ts"
 
@@ -21,7 +21,7 @@ export function createPlanStepScope(input: {
   index: number
   sendRpc: RpcSender
 }): PlanStepScope {
-  const { baseCtx, team, step, index, sendRpc } = input
+  const { baseCtx, step, index, sendRpc } = input
 
   const withStep = (request: Omit<SandboxRpcRequest, "type" | "id" | "stepId" | "stepIndex">) =>
     sendRpc({ ...request, stepId: step.id, stepIndex: index }) as Promise<void>
@@ -44,13 +44,10 @@ export function createPlanStepScope(input: {
 
   const stepCtx: MissionContext = {
     ...baseCtx,
-    async run(target, opts) {
-      await orchestrationRun(engine, target, opts, {
+    async run(nodeId, opts) {
+      await orchestrationRun(engine, nodeId, opts, {
         defaultWorkOrder: (nodeId) => baseCtx.template.workOrder(nodeId),
       })
-    },
-    async join(target, opts) {
-      await orchestrationJoin(engine, target, opts, team)
     },
     async fork(tracks) {
       return orchestrationFork(tracks)

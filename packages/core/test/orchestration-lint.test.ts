@@ -36,9 +36,9 @@ describe("orchestration lint", () => {
 export default async function orchestrate(ctx) {
   await ctx.run("a1", { brief: { your_work: ["a1"], acceptance_slice: ["done"] }, text: "go" })
   await ctx.run("b1", { brief: { your_work: ["b1"], acceptance_slice: ["done"] }, text: "go" })
-  await ctx.run("a", { brief: { your_work: ["a"], acceptance_slice: ["done"] }, text: "rollup", rollupFrom: ["a1"] })
-  await ctx.run("b", { brief: { your_work: ["b"], acceptance_slice: ["done"] }, text: "rollup", rollupFrom: ["b1"] })
-  await ctx.run("root", { brief: { your_work: ["root"], acceptance_slice: ["done"] }, text: "final", rollupFrom: ["a", "b"] })
+  await ctx.run("a", { brief: { your_work: ["a"], acceptance_slice: ["done"] }, text: "rollup", dependsOn: [{ node: "a1", summary: true }] })
+  await ctx.run("b", { brief: { your_work: ["b"], acceptance_slice: ["done"] }, text: "rollup", dependsOn: [{ node: "b1", summary: true }] })
+  await ctx.run("root", { brief: { your_work: ["root"], acceptance_slice: ["done"] }, text: "final", dependsOn: [{ node: "a", summary: true }, { node: "b", summary: true }] })
 }
 `
     const result = await dryRunMissionScriptSource(source, "lint-m1")
@@ -54,50 +54,18 @@ export default async function orchestrate(ctx) {
   await ctx.fork([
     async () => {
       await ctx.run("a1", { brief: { your_work: ["a1"], acceptance_slice: ["done"] }, text: "go" })
-      await ctx.run("a", { brief: { your_work: ["a"], acceptance_slice: ["done"] }, text: "rollup", rollupFrom: ["a1"] })
+      await ctx.run("a", { brief: { your_work: ["a"], acceptance_slice: ["done"] }, text: "rollup", dependsOn: [{ node: "a1", summary: true }] })
     },
     async () => {
       await ctx.run("b1", { brief: { your_work: ["b1"], acceptance_slice: ["done"] }, text: "go" })
-      await ctx.run("b", { brief: { your_work: ["b"], acceptance_slice: ["done"] }, text: "rollup", rollupFrom: ["b1"] })
+      await ctx.run("b", { brief: { your_work: ["b"], acceptance_slice: ["done"] }, text: "rollup", dependsOn: [{ node: "b1", summary: true }] })
     },
   ])
-  await ctx.run("root", { brief: { your_work: ["root"], acceptance_slice: ["done"] }, text: "final", rollupFrom: ["a", "b"] })
+  await ctx.run("root", { brief: { your_work: ["root"], acceptance_slice: ["done"] }, text: "final", dependsOn: [{ node: "a", summary: true }, { node: "b", summary: true }] })
 }
 `
     const result = await dryRunMissionScriptSource(source, "lint-m1")
     expect(result.ok).toBe(true)
-  })
-
-  test("rejects legacy ctx.pipeline", async () => {
-    const source = `
-export const team = {
-  mission_id: "lint-m1",
-  root: "root",
-  nodes: {
-    root: { parent: null, description: "root" },
-    a: { parent: "root", description: "a" },
-    b: { parent: "root", description: "b" },
-  },
-}
-export default async function orchestrate(ctx) {
-  await ctx.pipeline(
-    ["a", "b"],
-    async (nodeId) => {
-      await ctx.run(nodeId, { brief: { your_work: [nodeId], acceptance_slice: ["done"] }, text: "go" })
-      return nodeId
-    },
-    async (nodeId) => {
-      await ctx.join(nodeId)
-      return nodeId
-    },
-  )
-  await ctx.run("root", { brief: { your_work: ["root"], acceptance_slice: ["done"] }, text: "rollup", rollupFrom: ["a", "b"] })
-}
-`
-    const result = await dryRunMissionScriptSource(source, "lint-m1")
-    expect(result.ok).toBe(false)
-    if (result.ok) return
-    expect(result.code).toBe("SCRIPT_LEGACY_API")
   })
 
   test("rejects run dispatch without brief", async () => {
@@ -112,7 +80,7 @@ export const team = {
 }
 export default async function orchestrate(ctx) {
   await ctx.run("a", { text: "go" })
-  await ctx.run("root", { brief: { your_work: ["root"], acceptance_slice: ["done"] }, text: "rollup", rollupFrom: ["a"] })
+  await ctx.run("root", { brief: { your_work: ["root"], acceptance_slice: ["done"] }, text: "rollup", dependsOn: [{ node: "a", summary: true }] })
 }
 `
     const result = await dryRunMissionScriptSource(source, "lint-m1")
@@ -121,7 +89,7 @@ export default async function orchestrate(ctx) {
     expect(result.code).toBe("SCRIPT_MISSING_BRIEF")
   })
 
-  test("rejects invalid rollupFrom subtree", () => {
+  test("warns on cross-subtree dependsOn summary without blocking", () => {
     const team = {
       mission_id: "lint-m1",
       root: "root",
@@ -131,13 +99,22 @@ export default async function orchestrate(ctx) {
         b: { parent: "root", description: "b" },
       },
     }
-    const lint = lintOrchestrationScript(
+    const crossRollup = lintOrchestrationScript(
       team,
       `
-await ctx.run("a", { brief: { your_work: ["a"], acceptance_slice: ["done"] }, text: "rollup", rollupFrom: ["b"] })
+await ctx.run("a", { brief: { your_work: ["a"], acceptance_slice: ["done"] }, text: "go", dependsOn: [{ node: "b", summary: true }] })
 `,
     )
-    expect(lint.errors.some((e) => e.code === "SCRIPT_INVALID_ROLLUP")).toBe(true)
+    expect(crossRollup.errors.some((e) => e.code === "SCRIPT_UNKNOWN_NODE")).toBe(false)
+    expect(crossRollup.warnings.some((w) => w.includes("cross-subtree"))).toBe(false)
+
+    const crossAfter = lintOrchestrationScript(
+      team,
+      `
+await ctx.run("b", { brief: { your_work: ["b"], acceptance_slice: ["done"] }, text: "go", dependsOn: ["a"] })
+`,
+    )
+    expect(crossAfter.errors).toHaveLength(0)
   })
 
   test("warns when sibling tracks lack ctx.fork", () => {
@@ -175,64 +152,13 @@ export default async function orchestrate(ctx) {
   for (const id of ["a", "b"]) {
     await ctx.run(id, { brief: { your_work: [id], acceptance_slice: ["path: reports/" + id + ".md"] }, text: "go" })
   }
-  await ctx.run("root", { brief: { your_work: ["rollup"], acceptance_slice: ["done"] }, text: "rollup", rollupFrom: ["a", "b"] })
+  await ctx.run("root", { brief: { your_work: ["rollup"], acceptance_slice: ["done"] }, text: "rollup", dependsOn: [{ node: "a", summary: true }, { node: "b", summary: true }] })
 }
 `
     const result = await dryRunMissionScriptSource(source, "lint-m1")
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.code).toBe("SCRIPT_PLAN_DYNAMIC_TOP_LEVEL")
-  })
-
-  test("rejects rollupFrom on ctx.run fan-out", async () => {
-    const source = `
-export const team = {
-  mission_id: "lint-m1",
-  root: "root",
-  nodes: {
-    root: { parent: null, description: "root" },
-    a: { parent: "root", description: "a" },
-    b: { parent: "root", description: "b" },
-  },
-}
-export default async function orchestrate(ctx) {
-  await ctx.run(["a", "b"], {
-    brief: (id) => ({ your_work: [id], acceptance_slice: ["path: reports/" + id + ".md"] }),
-    text: "go",
-    rollupFrom: ["a", "b"],
-  })
-  await ctx.run("root", { brief: { your_work: ["rollup"], acceptance_slice: ["done"] }, text: "rollup", rollupFrom: ["a", "b"] })
-}
-`
-    const result = await dryRunMissionScriptSource(source, "lint-m1")
-    expect(result.ok).toBe(false)
-    if (result.ok) return
-    expect(result.code).toBe("SCRIPT_ROLLUP_ON_FANOUT")
-  })
-
-  test("rejects unknown node in ctx.run array early", async () => {
-    const source = `
-export const team = {
-  mission_id: "lint-m1",
-  root: "root",
-  nodes: {
-    root: { parent: null, description: "root" },
-    a: { parent: "root", description: "a" },
-  },
-}
-export default async function orchestrate(ctx) {
-  await ctx.run(["a", "missing"], {
-    brief: (id) => ({ your_work: [id], acceptance_slice: ["path: reports/" + id + ".md"] }),
-    text: "go",
-  })
-  await ctx.run("root", { brief: { your_work: ["rollup"], acceptance_slice: ["done"] }, text: "rollup", rollupFrom: ["a"] })
-}
-`
-    const result = await dryRunMissionScriptSource(source, "lint-m1")
-    expect(result.ok).toBe(false)
-    if (result.ok) return
-    expect(result.code).toBe("SCRIPT_UNKNOWN_NODE")
-    expect(result.message).toContain("missing")
   })
 
   test("rejects ctx.readMissionContext in orchestrate", async () => {
@@ -265,7 +191,7 @@ export const team = {
 }
 export default async function orchestrate(ctx) {
   await ctx.run("a", { brief: { your_work: ["w"], acceptance_slice: ["path: reports/a.md"] } })
-  await ctx.run("root", { brief: { your_work: ["r"], acceptance_slice: ["done"] }, rollupFrom: ["a"] })
+  await ctx.run("root", { brief: { your_work: ["r"], acceptance_slice: ["done"] }, dependsOn: [{ node: "a", summary: true }] })
 }
 `
     const result = await dryRunMissionScriptSource(source, "lint-m1")
@@ -285,29 +211,10 @@ export default async function orchestrate(ctx) {
       team,
       `
 await ctx.run("a", { brief: { your_work: ["w"], acceptance_slice: ["done"] }, text: "go" })
-await ctx.run("root", { brief: { your_work: ["r"], acceptance_slice: ["done"] }, text: "rollup", rollupFrom: ["a"] })
+await ctx.run("root", { brief: { your_work: ["r"], acceptance_slice: ["done"] }, text: "rollup", dependsOn: [{ node: "a", summary: true }] })
 `,
     )
     expect(lint.warnings.some((w) => w.includes("path:"))).toBe(true)
-  })
-
-  test("warns when wait false has no join", () => {
-    const team = {
-      mission_id: "lint-m1",
-      root: "root",
-      nodes: {
-        root: { parent: null, description: "root" },
-        a: { parent: "root", description: "a" },
-      },
-    }
-    const lint = lintOrchestrationScript(
-      team,
-      `
-await ctx.run("a", { brief: { your_work: ["w"], acceptance_slice: ["path: reports/a.md"] }, text: "go", wait: false })
-await ctx.run("root", { brief: { your_work: ["r"], acceptance_slice: ["done"] }, text: "rollup", rollupFrom: ["a"] })
-`,
-    )
-    expect(lint.warnings.some((w) => w.includes("wait: false"))).toBe(true)
   })
 
   test("warns on non-literal node id", () => {
@@ -324,7 +231,7 @@ await ctx.run("root", { brief: { your_work: ["r"], acceptance_slice: ["done"] },
       `
 const target = "a"
 await ctx.run(target, { brief: { your_work: ["w"], acceptance_slice: ["path: reports/a.md"] }, text: "go" })
-await ctx.run("root", { brief: { your_work: ["r"], acceptance_slice: ["done"] }, text: "rollup", rollupFrom: ["a"] })
+await ctx.run("root", { brief: { your_work: ["r"], acceptance_slice: ["done"] }, text: "rollup", dependsOn: [{ node: "a", summary: true }] })
 `,
     )
     expect(lint.warnings.some((w) => w.includes("non-literal"))).toBe(true)

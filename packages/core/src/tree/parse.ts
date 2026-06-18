@@ -1,9 +1,4 @@
-import {
-  INNER_COORDINATOR_AGENT,
-  INNER_EXECUTION_AGENT,
-  INNER_ROOT_AGENT,
-  INNER_ROOT_SOLO_AGENT,
-} from "../registry/types.ts"
+import { INNER_EXECUTION_AGENT } from "../registry/types.ts"
 import type { TeamSpec, TeamSpecNode, TreeManifest, TreeNode } from "./types.ts"
 import { isRecord, parseYaml, readString } from "../yaml.ts"
 
@@ -37,7 +32,7 @@ export function parseTeamSpec(text: string): TeamSpec {
   for (const [nodeId, nodeValue] of Object.entries(raw.nodes)) {
     if (isRecord(nodeValue) && nodeValue.profile !== undefined) {
       throw new Error(
-        `TeamSpec node ${nodeId} must not include profile (bootstrap assigns build-root-solo / build-root / build-coordinator / build from topology)`,
+        `TeamSpec node ${nodeId} must not include profile (bootstrap assigns build from topology)`,
       )
     }
     const node = parseTeamSpecNode(nodeValue, nodeId)
@@ -101,7 +96,7 @@ export function childNodeIds(manifest: TreeManifest, nodeId: string) {
     .map(([id]) => id)
 }
 
-/** True when the execution tree has only the structural root (no delegates). */
+/** True when the execution tree has only one node (solo execution). */
 export function isSoloExecutionTeam(manifest: TreeManifest) {
   return Object.keys(manifest.nodes).length === 1
 }
@@ -112,21 +107,35 @@ export function childNodeIdsFromSpec(spec: TeamSpec, nodeId: string) {
     .map(([id]) => id)
 }
 
-export function expectedInnerProfile(spec: TeamSpec, nodeId: string) {
+export function isStructuralRootNode(spec: TeamSpec, nodeId: string) {
   const node = spec.nodes[nodeId]
-  if (!node) throw new Error(`TeamSpec missing node ${nodeId}`)
-  const isStructuralRoot = node.parent === null && spec.root === nodeId
-  if (isStructuralRoot) {
-    return childNodeIdsFromSpec(spec, nodeId).length === 0 ? INNER_ROOT_SOLO_AGENT : INNER_ROOT_AGENT
-  }
-  if (childNodeIdsFromSpec(spec, nodeId).length > 0) return INNER_COORDINATOR_AGENT
-  return INNER_EXECUTION_AGENT
+  return Boolean(node && node.parent === null && spec.root === nodeId)
 }
 
-export function resolveInnerProfile(spec: TeamSpec, nodeId: string) {
-  const node = spec.nodes[nodeId]
-  if (!node) throw new Error(`TeamSpec missing node ${nodeId}`)
-  return expectedInnerProfile(spec, nodeId)
+export function innerNodeHasChildren(spec: TeamSpec, nodeId: string) {
+  return childNodeIdsFromSpec(spec, nodeId).length > 0
+}
+
+/** Terminal node and nodes with child delegates see mission contract in mission_info. */
+export function innerNodeShowsMissionContract(spec: TeamSpec, nodeId: string) {
+  return isStructuralRootNode(spec, nodeId) || innerNodeHasChildren(spec, nodeId)
+}
+
+export function innerNodeShowsMissionContractFromManifest(manifest: TreeManifest, nodeId: string) {
+  return manifest.root_node === nodeId || childNodeIds(manifest, nodeId).length > 0
+}
+
+export function modelForInnerNode(
+  models: { executor?: string; coordinator?: string },
+  spec: TeamSpec,
+  nodeId: string,
+) {
+  return innerNodeHasChildren(spec, nodeId) ? models.coordinator : models.executor
+}
+
+/** All inner execution nodes use the build profile; topology drives model and mission_info. */
+export function resolveInnerProfile(_spec: TeamSpec, _nodeId: string) {
+  return INNER_EXECUTION_AGENT
 }
 
 export function nodeDepth(manifest: TreeManifest, nodeId: string) {
@@ -138,16 +147,6 @@ export function nodeDepth(manifest: TreeManifest, nodeId: string) {
     if (depth > 64) break
   }
   return depth
-}
-
-/** Bottom-up order among manager nodes; solo structural root with no children is included. */
-export function managerRetroOrder(manifest: TreeManifest) {
-  const managers = Object.keys(manifest.nodes).filter((nodeId) => childNodeIds(manifest, nodeId).length > 0)
-  if (managers.length > 0) {
-    return managers.sort((a, b) => nodeDepth(manifest, b) - nodeDepth(manifest, a))
-  }
-  if (manifest.nodes[manifest.root_node]) return [manifest.root_node]
-  return []
 }
 
 export function manifestMembers(manifest: TreeManifest): import("./types.ts").TreeMember[] {

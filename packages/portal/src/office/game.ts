@@ -160,6 +160,12 @@ function createOfficeGame() {
       autoCenter: Phaser.Scale.NO_CENTER,
       autoRound: true,
     },
+    input: {
+      mouse: {
+        // Allow browser zoom (Ctrl+wheel) and page scroll over the canvas.
+        preventDefaultWheel: false,
+      },
+    },
     scene: [OfficeScene],
   })
 

@@ -23,7 +23,7 @@ Sole permission arbiter for the core team; does not participate in Mission execu
 
 | profile | Typical allowed mutate |
 |---------|------------------------|
-| lead | init_team, send_message, mission_start, mission_retro, mission_complete, mission_info, delivery_review, delivery_status |
+| lead | init_team, send_message, mission_start, mission_retro, mission_complete, mission_info, delivery_review |
 | architect | submit_orchestration, send_message, retro_summary_record, mission_info, session_snapshot |
 | curator | apply_skill_domains, send_message, skill_summary_record, mission_info |
 | Execution members | Business file R/W; `gatehouse_execution_complete` / `gatehouse_execution_rework` / `gatehouse_mission_info` |

@@ -1,4 +1,5 @@
-import { isInnerStructuralRoot, type RegistryAgent } from "../registry/types.ts"
+import { isTerminalInnerAgent } from "../orchestration/plan-graph.ts"
+import type { RegistryAgent } from "../registry/types.ts"
 
 export type NodeWatchState = {
   idleSince?: number
@@ -16,7 +17,7 @@ export type MissionWatchState = {
   /** Mission-level idle tracking for record watchdogs. */
   allIdleSince?: number
   lastWakeAt?: number
-  /** 执行树已向 lead send_message，等待答复期间不触发看门狗 */
+  /** 执行树 terminal 已向 lead 发送交付通知，等待答复期间不触发看门狗 */
   paused?: boolean
   /** Orchestrator stall detection cooldown / auto-resume tracking. */
   orchestratorStall?: OrchestratorStallWatchState
@@ -35,8 +36,13 @@ export function watchdogStateMissionId(
   return input.sender.missionId ?? input.missionId ?? input.recipient.missionId
 }
 
-export function isInnerNotifyingLead(sender: RegistryAgent, recipient: RegistryAgent, missionId: string) {
-  if (!isInnerStructuralRoot(sender)) return false
+export function isInnerNotifyingLead(
+  sender: RegistryAgent,
+  recipient: RegistryAgent,
+  missionId: string,
+  projectDirectory: string,
+) {
+  if (!isTerminalInnerAgent(projectDirectory, sender)) return false
   if (recipient.scope !== "outer" || recipient.profile !== "lead") return false
   if (sender.missionId !== undefined && sender.missionId !== missionId) return false
   return true
@@ -64,11 +70,19 @@ export function watchdogDeliveryEventState(
 
 export function watchdogSendMessageState(
   state: MissionWatchState,
-  input: { missionId?: string; sender: RegistryAgent; recipient: RegistryAgent },
+  input: {
+    missionId?: string
+    sender: RegistryAgent
+    recipient: RegistryAgent
+    projectDirectory: string
+  },
 ): MissionWatchState {
   const pauseMissionId = input.sender.missionId ?? input.missionId ?? input.recipient.missionId
   const eventMissionId = watchdogMissionId(input)
-  if (pauseMissionId && isInnerNotifyingLead(input.sender, input.recipient, pauseMissionId)) {
+  if (
+    pauseMissionId &&
+    isInnerNotifyingLead(input.sender, input.recipient, pauseMissionId, input.projectDirectory)
+  ) {
     return { paused: true }
   }
   if (eventMissionId && isSendToTreeMember(input.recipient, eventMissionId)) {

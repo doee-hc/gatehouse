@@ -1,7 +1,7 @@
 import { childNodeIdsFromSpec } from "../tree/parse.ts"
 import type { GatehouseLocale } from "../locale.ts"
 import type { TeamSpec } from "../tree/types.ts"
-import { orchestrationFork, orchestrationJoin, orchestrationRun } from "./run-join-fork.ts"
+import { orchestrationFork, orchestrationRun } from "./run-fork.ts"
 import type { MissionContext, OrchestrationEngine, PromptInput } from "./types.ts"
 import type { SandboxRpcRequest } from "./sandbox-protocol.ts"
 import {
@@ -49,12 +49,8 @@ export function createSandboxMissionContext(input: {
   const ctx: MissionContext = {
     objective: input.objective ?? "",
 
-    async run(target, opts) {
-      await orchestrationRun(engine, target, opts, { defaultWorkOrder })
-    },
-
-    async join(target, opts) {
-      await orchestrationJoin(engine, target, opts, team)
+    async run(nodeId, opts) {
+      await orchestrationRun(engine, nodeId, opts, { defaultWorkOrder })
     },
 
     async fork(tracks) {

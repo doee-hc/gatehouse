@@ -77,7 +77,7 @@ describe("mission lifecycle tools", () => {
           root_node: "root",
           created_at: new Date().toISOString(),
           nodes: {
-            root: { session_id: "ses_root", parent: null, display_name: "root", profile: "build-root" },
+            root: { session_id: "ses_root", parent: null, display_name: "root", profile: "build" },
           },
         }),
       )
@@ -96,7 +96,7 @@ describe("mission lifecycle tools", () => {
         root_node: "root",
         created_at: new Date().toISOString(),
         nodes: {
-          root: { session_id: "ses_root", parent: null, display_name: "root", profile: "build-root" },
+          root: { session_id: "ses_root", parent: null, display_name: "root", profile: "build" },
         },
       })
 
@@ -114,7 +114,6 @@ describe("mission lifecycle tools", () => {
       const pluginInput = {
         directory: dir,
         client: mockClient,
-        serverUrl: new URL("http://127.0.0.1:4096"),
       } as unknown as PluginInput
       await registerOuterTeam(pluginInput)
 
@@ -147,7 +146,7 @@ describe("mission lifecycle tools", () => {
         root_node: "root",
         created_at: new Date().toISOString(),
         nodes: {
-          root: { session_id: "ses_root", parent: null, display_name: "root", profile: "build-root" },
+          root: { session_id: "ses_root", parent: null, display_name: "root", profile: "build" },
         },
       })
 
@@ -189,7 +188,7 @@ describe("mission lifecycle tools", () => {
     try {
       await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
       const missionId = "m-retro-pending"
-      const reportRel = `.gatehouse/trees/${missionId}/reports/nodes/root-retro.md`
+      const reportRel = `.gatehouse/trees/${missionId}/reports/retro-summary.md`
       await mkdir(path.dirname(path.join(dir, reportRel)), { recursive: true })
       await Bun.write(path.join(dir, reportRel), "# retro\n")
       await Bun.write(
@@ -222,16 +221,13 @@ describe("mission lifecycle tools", () => {
 
       await registerOuterTeam(pluginInput)
       const registry = await getRegistryStore(pluginInput)
-      registry.registerRetroNode({
+      registry.registerRetroAnalyst({
         missionId,
-        nodeId: "root",
-        profile: "build-root",
         sessionId: "ses_retro_root",
       })
-      registry.beginRetroRun(missionId, ["root"])
-      await registry.recordRetroCompletion({
+      registry.beginRetroRun(missionId)
+      await registry.recordRetroSummary({
         missionId,
-        nodeId: "root",
         sessionId: "ses_retro_root",
         reportPath: reportRel,
       })
@@ -288,7 +284,7 @@ describe("mission lifecycle tools", () => {
           root_node: "root",
           created_at: new Date().toISOString(),
           nodes: {
-            root: { session_id: "ses_root", parent: null, display_name: "root", profile: "build-root" },
+            root: { session_id: "ses_root", parent: null, display_name: "root", profile: "build" },
           },
         }),
       )
@@ -333,7 +329,7 @@ describe("mission lifecycle tools", () => {
         root_node: "root",
         created_at: new Date().toISOString(),
         nodes: {
-          root: { session_id: "ses_root", parent: null, display_name: "root", profile: "build-root" },
+          root: { session_id: "ses_root", parent: null, display_name: "root", profile: "build" },
         },
       })
       await registerOuterTeam(pluginInput)

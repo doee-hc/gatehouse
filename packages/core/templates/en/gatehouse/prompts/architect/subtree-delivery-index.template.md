@@ -1,6 +1,6 @@
 # Subtree rollup · <node_id>
 
-> Coordinator: when rolling up direct reports, list **paths and one-line status only**; optional short section for work you did yourself. **Do not** paste child artifact bodies.
+> Rollup node: when rolling up and verifying child deliveries, list **paths and one-line status only**; optional short section for work you did yourself. **Do not** paste child artifact bodies.
 
 ## Direct reports
 

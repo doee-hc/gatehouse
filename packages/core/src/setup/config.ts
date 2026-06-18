@@ -6,12 +6,10 @@ import { loadAgentDescription, loadBundledAgentDescription } from "../prompt/age
 import { loadLeadPrompt } from "../prompt/lead.ts"
 import {
   LEAD_OPENCODE,
-  INNER_COORDINATOR_AGENT,
   INNER_EXECUTION_AGENT,
   INNER_EXTRACT_AGENT,
   INNER_VERIFY_AGENT,
-  INNER_ROOT_AGENT,
-  INNER_ROOT_SOLO_AGENT,
+  RETRO_ANALYST_AGENT,
   ARCHITECT_OPENCODE,
   ARBITER_OPENCODE,
   CURATOR_OPENCODE,
@@ -20,12 +18,10 @@ import {
   leadPermissions,
   architectSessionPermissions,
   curatorSessionPermissions,
-  buildCoordinatorPermissions,
   buildExtractPermissions,
   buildVerifyPermissions,
-  buildRootPermissions,
-  buildRootSoloPermissions,
   buildExecutionPermissions,
+  retroAnalystPermissions,
   arbiterSessionPermissions,
   globalGatehousePermissions,
   hiddenToolsFromPermissions,
@@ -39,12 +35,10 @@ const AGENT_FILES = {
   architect: "architect.md",
   curator: "curator.md",
   arbiter: "arbiter.md",
-  buildRoot: "build-root.md",
-  buildRootSolo: "build-root-solo.md",
-  buildCoordinator: "build-coordinator.md",
   buildExtract: "build-extract.md",
   buildVerify: "build-verify.md",
   build: "build.md",
+  retroAnalyst: "retro-analyst.md",
 } as const
 
 function mergeAgent(
@@ -89,12 +83,10 @@ async function loadAgentDescriptions(projectDirectory?: string) {
       architect: await bundledLoad(AGENT_FILES.architect),
       curator: await bundledLoad(AGENT_FILES.curator),
       arbiter: await bundledLoad(AGENT_FILES.arbiter),
-      buildRoot: await bundledLoad(AGENT_FILES.buildRoot),
-      buildRootSolo: await bundledLoad(AGENT_FILES.buildRootSolo),
-      buildCoordinator: await bundledLoad(AGENT_FILES.buildCoordinator),
       buildExtract: await bundledLoad(AGENT_FILES.buildExtract),
       buildVerify: await bundledLoad(AGENT_FILES.buildVerify),
       build: await bundledLoad(AGENT_FILES.build),
+      retroAnalyst: await bundledLoad(AGENT_FILES.retroAnalyst),
     }
   }
   const load = (file: string) => loadAgentDescription(projectDirectory, file)
@@ -103,12 +95,10 @@ async function loadAgentDescriptions(projectDirectory?: string) {
     architect: await load(AGENT_FILES.architect),
     curator: await load(AGENT_FILES.curator),
     arbiter: await load(AGENT_FILES.arbiter),
-    buildRoot: await load(AGENT_FILES.buildRoot),
-    buildRootSolo: await load(AGENT_FILES.buildRootSolo),
-    buildCoordinator: await load(AGENT_FILES.buildCoordinator),
     buildExtract: await load(AGENT_FILES.buildExtract),
     buildVerify: await load(AGENT_FILES.buildVerify),
     build: await load(AGENT_FILES.build),
+    retroAnalyst: await load(AGENT_FILES.retroAnalyst),
   }
 }
 
@@ -170,42 +160,6 @@ export async function applyGatehouseConfig(cfg: Config, projectDirectory?: strin
 
   mergeAgent(
     agents,
-    INNER_ROOT_AGENT,
-    {
-      mode: "primary",
-      ...(descriptions.buildRoot ? { description: descriptions.buildRoot } : {}),
-      color: "#2E6F8F",
-    },
-    buildRootPermissions,
-    hiddenToolsFromPermissions(buildRootPermissions),
-  )
-
-  mergeAgent(
-    agents,
-    INNER_ROOT_SOLO_AGENT,
-    {
-      mode: "primary",
-      ...(descriptions.buildRootSolo ? { description: descriptions.buildRootSolo } : {}),
-      color: "#3A8F7A",
-    },
-    buildRootSoloPermissions,
-    hiddenToolsFromPermissions(buildRootSoloPermissions),
-  )
-
-  mergeAgent(
-    agents,
-    INNER_COORDINATOR_AGENT,
-    {
-      mode: "primary",
-      ...(descriptions.buildCoordinator ? { description: descriptions.buildCoordinator } : {}),
-      color: "#4A90A4",
-    },
-    buildCoordinatorPermissions,
-    hiddenToolsFromPermissions(buildCoordinatorPermissions),
-  )
-
-  mergeAgent(
-    agents,
     INNER_EXECUTION_AGENT,
     {
       mode: "primary",
@@ -238,6 +192,18 @@ export async function applyGatehouseConfig(cfg: Config, projectDirectory?: strin
     },
     buildVerifyPermissions,
     hiddenToolsFromPermissions(buildVerifyPermissions),
+  )
+
+  mergeAgent(
+    agents,
+    RETRO_ANALYST_AGENT,
+    {
+      mode: "primary",
+      ...(descriptions.retroAnalyst ? { description: descriptions.retroAnalyst } : {}),
+      color: "#7A6B8F",
+    },
+    retroAnalystPermissions,
+    hiddenToolsFromPermissions(retroAnalystPermissions),
   )
 
   mergeAgent(

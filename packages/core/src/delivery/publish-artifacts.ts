@@ -2,7 +2,12 @@ import { existsSync, readdirSync, statSync } from "node:fs"
 import path from "node:path"
 import { gatehouseRoot, projectPathKind, resolveProjectPath } from "../paths.ts"
 import { runDeliveryPrecheck } from "./criteria.ts"
-import { BLOG_PUBLISHER_SYSTEM, publishBlogPost } from "../portal/blog-publish.ts"
+import {
+  architectSummaryBlogPostId,
+  BLOG_PUBLISHER_SYSTEM,
+  publishBlogPost,
+  retroSummaryBlogPostId,
+} from "../portal/blog-publish.ts"
 import {
   criterionIdForDeliverablePath,
   deliverableBlogPostId,
@@ -146,6 +151,46 @@ export function explainPublishSkipped(input: {
     "PUBLISH_SKIPPED: deliverable paths were not eligible for publish (precheck did not pass and no force_reason on delivery).",
   )
   return warnings
+}
+
+async function publishMissionRetroReportIfPresent(input: {
+  projectDirectory: string
+  postId: string
+  reportPath: string
+}) {
+  const abs = resolveProjectPath(input.projectDirectory, input.reportPath)
+  if (!(await Bun.file(abs).exists())) return undefined
+  if (!(await Bun.file(abs).text()).trim()) return undefined
+  await publishBlogPost(input.projectDirectory, {
+    postId: input.postId,
+    reportPath: input.reportPath,
+    publishedBy: BLOG_PUBLISHER_SYSTEM,
+  })
+  return input.reportPath
+}
+
+export async function publishRetroSummaryBlogPost(
+  projectDirectory: string,
+  missionId: string,
+  reportPath: string,
+) {
+  return publishMissionRetroReportIfPresent({
+    projectDirectory,
+    postId: retroSummaryBlogPostId(missionId),
+    reportPath,
+  })
+}
+
+export async function publishArchitectSummaryBlogPost(
+  projectDirectory: string,
+  missionId: string,
+  reportPath: string,
+) {
+  return publishMissionRetroReportIfPresent({
+    projectDirectory,
+    postId: architectSummaryBlogPostId(missionId),
+    reportPath,
+  })
 }
 
 export async function publishAllSkillBlogPosts(projectDirectory: string) {

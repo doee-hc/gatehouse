@@ -67,28 +67,32 @@ export class RollupValidationError extends Error {
   }
 }
 
-export function assertRollupFromReady(
+export function assertDependsOnSummaryReady(
   team: TeamSpec,
   state: OrchestrationState,
-  rollupFrom: string[],
+  nodeIds: string[],
 ) {
-  if (rollupFrom.length === 0) return
-  for (const nodeId of rollupFrom) {
+  if (nodeIds.length === 0) return
+  for (const nodeId of nodeIds) {
     if (!team.nodes[nodeId]) {
-      throw new RollupValidationError("ROLLUP_UNKNOWN_NODE", `rollupFrom references unknown node: ${nodeId}`, nodeId)
+      throw new RollupValidationError(
+        "DEPENDS_ON_UNKNOWN_NODE",
+        `dependsOn summary references unknown node: ${nodeId}`,
+        nodeId,
+      )
     }
     const node = state.nodes[nodeId]
     if (!node || node.status !== "done") {
       throw new RollupValidationError(
-        "ROLLUP_NODE_NOT_DONE",
-        `rollupFrom node ${nodeId} is not done (status: ${node?.status ?? "missing"})`,
+        "DEPENDS_ON_NODE_NOT_DONE",
+        `dependsOn node ${nodeId} is not done (status: ${node?.status ?? "missing"})`,
         nodeId,
       )
     }
     if (!node.completion?.summary?.trim()) {
       throw new RollupValidationError(
-        "ROLLUP_MISSING_COMPLETION",
-        `rollupFrom node ${nodeId} has no structured completion; call gatehouse_execution_complete with summary first`,
+        "DEPENDS_ON_MISSING_COMPLETION",
+        `dependsOn node ${nodeId} has no structured completion; call gatehouse_execution_complete with summary first`,
         nodeId,
       )
     }
@@ -122,10 +126,10 @@ export function formatNodeCompletionSection(
 export function formatRollupInjectionBlock(
   locale: GatehouseLocale,
   state: OrchestrationState,
-  rollupFrom: string[],
+  nodeIds: string[],
 ) {
-  if (rollupFrom.length === 0) return ""
-  const sections = rollupFrom.map((nodeId) => {
+  if (nodeIds.length === 0) return ""
+  const sections = nodeIds.map((nodeId) => {
     const completion = state.nodes[nodeId]?.completion
     if (!completion) {
       return `### ${nodeId}\n\n(${gatehouseMessage("completion.rollup.missing", locale)})`

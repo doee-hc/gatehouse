@@ -4,7 +4,7 @@ import { blogPostFormatFromPath, extractBlogPostTitle } from "./blog-content.ts"
 
 export const BLOG_PUBLISHER_SYSTEM = "system"
 export const BLOG_PUBLISHER_LEAD = "lead"
-import { architectSummaryRelPath, gatehouseRoot, retroNodeReportRelPath } from "../paths.ts"
+import { architectSummaryRelPath, gatehouseRoot, retroSummaryRelPath } from "../paths.ts"
 import { isRecord, parseYaml, readString, stringifyYaml } from "../yaml.ts"
 import { requestPortalBlogCacheRefresh } from "./blog-cache-sync.ts"
 import { emitPortalEvent } from "./events.ts"
@@ -46,8 +46,16 @@ export function architectBlogSummaryRel(missionId: string) {
   return architectSummaryRelPath(missionId)
 }
 
-export function retroBlogNodeRel(missionId: string, nodeId: string) {
-  return retroNodeReportRelPath(missionId, nodeId)
+export function retroBlogSummaryRel(missionId: string) {
+  return retroSummaryRelPath(missionId)
+}
+
+export function retroSummaryBlogPostId(missionId: string) {
+  return `${missionId}:retro:summary`
+}
+
+export function architectSummaryBlogPostId(missionId: string) {
+  return `${missionId}:architect:summary`
 }
 
 export function skillBlogRel(domain: string, skillName: string) {
@@ -76,9 +84,9 @@ export function blogMissionIdFromPostId(postId: string) {
     const missionId = postId.slice(0, -":architect:summary".length)
     return missionId || undefined
   }
-  const retroPrefix = ":retro:"
-  const retroAt = postId.indexOf(retroPrefix)
-  if (retroAt > 0) return postId.slice(0, retroAt)
+  if (postId.endsWith(":retro:summary")) {
+    return postId.slice(0, -":retro:summary".length) || undefined
+  }
   return undefined
 }
 
@@ -89,10 +97,8 @@ export function blogPostRelPath(postId: string) {
   if (postId.endsWith(":architect:summary")) {
     return architectBlogSummaryRel(postId.slice(0, -":architect:summary".length))
   }
-  const retroPrefix = ":retro:"
-  const retroAt = postId.indexOf(retroPrefix)
-  if (retroAt > 0) {
-    return retroBlogNodeRel(postId.slice(0, retroAt), postId.slice(retroAt + retroPrefix.length))
+  if (postId.endsWith(":retro:summary")) {
+    return retroBlogSummaryRel(postId.slice(0, -":retro:summary".length))
   }
   if (postId.startsWith("skill:")) {
     const parts = postId.split(":")

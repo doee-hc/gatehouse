@@ -1,44 +1,79 @@
-import { retroAnalysisPromptPath } from "../paths.ts"
+import {
+  retroKickoffPromptPath,
+  retroSummaryRelPath,
+  retroSummaryTemplatePath,
+} from "../paths.ts"
 import { gatehouseMessage } from "../i18n.ts"
 import { DEFAULT_GATEHOUSE_LOCALE, readLocaleSync, type GatehouseLocale } from "../locale.ts"
 import { defaultAgentNames, readAgentNamesSync, renderGatehouseTemplate, type OuterProfile } from "../names.ts"
-import { formatRetroKickoffContext, readRetroSubtreeMetrics } from "./subtree-context.ts"
-import { managerRetroOrder } from "../tree/parse.ts"
+import { retroAnalysisSteps, type RetroAnalysisStep } from "./analysis-order.ts"
+import type { OrchestrationPlan } from "../orchestration/plan-types.ts"
 import type { TreeManifest } from "../tree/types.ts"
+
+function formatAnalysisSteps(steps: RetroAnalysisStep[], locale: GatehouseLocale) {
+  if (steps.length === 0) {
+    return gatehouseMessage("retro.kickoff.noPlanSteps", locale)
+  }
+  return steps
+    .map((step, index) => {
+      const nodes = step.node_ids.join(", ")
+      if (step.op === "fork") {
+        return gatehouseMessage("retro.kickoff.forkStep", locale, {
+          index: String(index + 1),
+          nodes,
+        })
+      }
+      return gatehouseMessage("retro.kickoff.runStep", locale, {
+        index: String(index + 1),
+        node: nodes,
+      })
+    })
+    .join("\n")
+}
 
 export async function loadRetroKickoffPrompt(
   projectDirectory: string,
-  input: { missionId: string; nodeId: string; manifest?: TreeManifest },
+  input: { missionId: string; manifest: TreeManifest; plan?: OrchestrationPlan },
 ) {
   const locale = readLocaleSync(projectDirectory)
+  const names = readAgentNamesSync(projectDirectory)
   const template = renderGatehouseTemplate(
-    await Bun.file(retroAnalysisPromptPath(projectDirectory)).text(),
-    readAgentNamesSync(projectDirectory),
+    await Bun.file(retroKickoffPromptPath(projectDirectory)).text(),
+    names,
   )
-  const retroOrder = input.manifest ? managerRetroOrder(input.manifest) : []
-  const subtree = await readRetroSubtreeMetrics(projectDirectory, input.missionId, input.nodeId)
-  const retroContext = formatRetroKickoffContext({
-    missionId: input.missionId,
-    nodeId: input.nodeId,
-    retroOrder,
-    subtree,
-    locale,
-  })
+  const steps = input.plan ? retroAnalysisSteps(input.plan) : []
+  const retroContext = [
+    gatehouseMessage("retro.kickoff.contextHeader", locale),
+    gatehouseMessage("retro.kickoff.mission", locale, { mission_id: input.missionId }),
+    gatehouseMessage("retro.kickoff.rootNode", locale, { terminal_node: input.manifest.root_node }),
+    gatehouseMessage("retro.kickoff.nodeCount", locale, {
+      node_count: String(Object.keys(input.manifest.nodes).length),
+    }),
+    "",
+    gatehouseMessage("retro.kickoff.analysisOrderHeader", locale),
+    formatAnalysisSteps(steps, locale),
+    "",
+    gatehouseMessage("retro.kickoff.contextPaths", locale, { mission_id: input.missionId }),
+  ].join("\n")
   return template
     .replaceAll("{{mission_id}}", input.missionId)
-    .replaceAll("{{node_id}}", input.nodeId)
     .replaceAll("{{retro_context_snapshot}}", retroContext)
+    .replaceAll("{{retro_summary_path}}", retroSummaryRelPath(input.missionId))
+    .replaceAll("{{retro_summary_template_path}}", retroSummaryTemplatePath(projectDirectory))
 }
 
-export function architectRetroBatchReadyMessage(
+export function architectRetroReviewReadyMessage(
   missionId: string,
-  completions: { nodeId: string; reportPath: string }[],
+  retroSummaryPath: string,
   names: Record<OuterProfile, string> = defaultAgentNames(),
   locale: GatehouseLocale = DEFAULT_GATEHOUSE_LOCALE,
 ) {
-  const lines = completions.map((item) => `- ${item.nodeId}: ${item.reportPath}`).join("\n")
   return renderGatehouseTemplate(
-    gatehouseMessage("retro.batchReady", locale, { mission_id: missionId, lines, lead_name: names.lead }),
+    gatehouseMessage("retro.reviewReady", locale, {
+      mission_id: missionId,
+      retro_summary_path: retroSummaryPath,
+      architect_name: names.architect,
+    }),
     names,
   )
 }

@@ -19,13 +19,14 @@ permission:
   gatehouse_execution_complete: deny
   gatehouse_retro_record: deny
   gatehouse_mission_info: allow
-  gatehouse_list_team: allow
+  gatehouse_list_team: deny
   gatehouse_mission_start: deny
   gatehouse_mission_retro: deny
   gatehouse_mission_complete: deny
 tools:
   bash: false
   task: false
+  gatehouse_list_team: false
   gatehouse_send_message: false
   gatehouse_skill_extract_record: false
 ---

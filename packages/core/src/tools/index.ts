@@ -13,7 +13,7 @@ import { sendMessageTool } from "./send-message.ts"
 import { sessionSnapshotTool } from "./session-snapshot.ts"
 import { initTeamTool } from "./init-team.ts"
 import { unpublishBlogTool } from "./unpublish-blog.ts"
-import { deliveryReviewTool, deliveryStatusTool } from "./delivery.ts"
+import { deliveryReviewTool } from "./delivery.ts"
 import {
   executionCompleteTool,
   executionReworkTool,
@@ -43,7 +43,6 @@ export function createGatehouseCoreTools(input: PluginInput) {
     gatehouse_inspector_decide: inspectorDecideTool(input),
     gatehouse_unpublish_blog: unpublishBlogTool(input),
     gatehouse_delivery_review: deliveryReviewTool(input),
-    gatehouse_delivery_status: deliveryStatusTool(input),
     gatehouse_execution_complete: executionCompleteTool(input),
     gatehouse_execution_rework: executionReworkTool(input),
     gatehouse_execution_status: executionStatusTool(input),

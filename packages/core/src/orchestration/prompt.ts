@@ -7,7 +7,12 @@ import { readAgentNamesSync } from "../names.ts"
 import { innerAgentId } from "../registry/types.ts"
 import type { RegistryStore } from "../registry/store.ts"
 import { promptSession } from "../session/client.ts"
-import { assertRollupFromReady, formatRollupInjectionBlock } from "./completion.ts"
+import { assertDependsOnSummaryReady, formatRollupInjectionBlock } from "./completion.ts"
+import {
+  normalizeDependsOn,
+  summaryNodeIds,
+  waitNodeIds,
+} from "./depends-on.ts"
 import { readOrchestrationState } from "./state.ts"
 import type { PromptInput } from "./types.ts"
 import type { TeamSpec } from "../tree/types.ts"
@@ -42,13 +47,14 @@ export async function deliverOrchestrationPrompt(input: {
 
   if (input.prompt.reply) {
     let activationText = input.prompt.text.trim()
-    const rollupFrom = input.prompt.rollupFrom?.filter((id) => id.trim())
-    if (rollupFrom?.length) {
+    const dependsOn = normalizeDependsOn(input.prompt.dependsOn)
+    const injectSummary = summaryNodeIds(dependsOn)
+    if (injectSummary.length) {
       const state = readOrchestrationState(input.plugin.directory, input.missionId)
       if (!state) throw new Error(`orchestration state missing for ${input.missionId}`)
-      if (!input.team) throw new Error("rollupFrom requires team spec for validation")
-      assertRollupFromReady(input.team, state, rollupFrom)
-      const rollupBlock = formatRollupInjectionBlock(locale, state, rollupFrom)
+      if (!input.team) throw new Error("dependsOn summary requires team spec for validation")
+      assertDependsOnSummaryReady(input.team, state, injectSummary)
+      const rollupBlock = formatRollupInjectionBlock(locale, state, injectSummary)
       if (rollupBlock.trim()) {
         activationText = [activationText, "", rollupBlock].join("\n")
       }

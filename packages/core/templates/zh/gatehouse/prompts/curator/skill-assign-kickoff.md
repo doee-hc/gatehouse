@@ -23,4 +23,4 @@
 2. 新 domain-id 可先更新 `domains.yaml`（仅元数据）。
 3. `gatehouse_apply_skill_domains(assignments='{"node-id":"domain-id"}')` → **结束本轮**。
 
-中间协调节点、无沉淀价值的节点通常**不**列入 `assignments`。可调用 `gatehouse_mission_info` 刷新任务快照。
+汇总/协调节点、无沉淀价值的节点通常**不**列入 `assignments`。可调用 `gatehouse_mission_info` 刷新任务快照。

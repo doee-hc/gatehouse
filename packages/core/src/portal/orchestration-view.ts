@@ -3,6 +3,12 @@ import { portalNodeDisplayName } from "../paths.ts"
 import type { PortalTree } from "./snapshot.ts"
 import type { PlanStepOp } from "../orchestration/plan-types.ts"
 import type { OrchestrationNodeStatus } from "../orchestration/types.ts"
+import {
+  buildPortalOrchestrationFlowEdges,
+  type PortalOrchestrationFlowEdge,
+} from "./orchestration-flow-edges.ts"
+
+export type { PortalOrchestrationFlowEdge } from "./orchestration-flow-edges.ts"
 
 export type PortalOrchestrationNode = {
   node_id: string
@@ -36,6 +42,7 @@ export type PortalOrchestration = {
   completed_steps: number
   phases: PortalOrchestrationPhase[]
   steps: PortalOrchestrationStep[]
+  flow_edges: PortalOrchestrationFlowEdge[]
   nodes: PortalOrchestrationNode[]
   root_node: string
 }
@@ -116,16 +123,31 @@ export function buildPortalOrchestration(
 
   const cursorIndex = orchState?.cursor_step_index ?? 0
   const planSteps = plan?.steps ?? []
-  const steps: PortalOrchestrationStep[] = planSteps.map((step, index) => {
+  const stepStates: PortalOrchestrationStep["state"][] = planSteps.map((_, index) => {
     const done = index < cursorIndex
     const current = !done && index === cursorIndex
+    return done ? "done" : current ? "current" : "pending"
+  })
+  const steps: PortalOrchestrationStep[] = planSteps.map((step, index) => {
+    const state = stepStates[index]!
     return {
       id: step.id,
       op: step.op,
-      state: done ? ("done" as const) : current ? ("current" as const) : ("pending" as const),
+      state,
       ...(step.nodeId && { node_id: step.nodeId }),
     }
   })
+
+  const parentByNode = new Map<string, string | null>()
+  for (const node of tree.nodes) {
+    parentByNode.set(node.node_id, node.parent)
+  }
+  const flow_edges = buildPortalOrchestrationFlowEdges(
+    planSteps,
+    stepStates,
+    parentByNode,
+    tree.root_node,
+  )
 
   const missionRunning = tree.status === "running"
   const hasRuntime = Boolean(script || orchState || plan)
@@ -140,6 +162,7 @@ export function buildPortalOrchestration(
     completed_steps: cursorIndex,
     phases,
     steps,
+    flow_edges,
     nodes,
     root_node: tree.root_node,
   }

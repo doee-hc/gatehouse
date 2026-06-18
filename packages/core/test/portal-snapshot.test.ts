@@ -74,7 +74,7 @@ nodes:
       {
         agentId: "inner:m-a:root",
         scope: "inner",
-        profile: "build-root",
+        profile: "build",
         sessionId: "ses-m-a-root",
         displayName: "m-a root",
         missionId: "m-a",
@@ -98,7 +98,7 @@ nodes:
       {
         agentId: "inner:m-b:root",
         scope: "inner",
-        profile: "build-root",
+        profile: "build",
         sessionId: "ses-m-b-root",
         displayName: "m-b root",
         missionId: "m-b",
@@ -134,7 +134,7 @@ nodes:
     ],
     pendingDeliveries: [],
     retroRuns: [],
-    retroCompletions: [],
+    
     skillExtractRuns: [],
     skillExtractCompletions: [],
     skillVerifyRuns: [],
@@ -242,7 +242,7 @@ nodes:
       {
         agentId: "inner:m-last:root",
         scope: "inner",
-        profile: "build-root",
+        profile: "build",
         sessionId: "ses-m-last-root",
         displayName: "m-last root",
         missionId: "m-last",
@@ -278,7 +278,7 @@ nodes:
     ],
     pendingDeliveries: [],
     retroRuns: [],
-    retroCompletions: [],
+    
     skillExtractRuns: [],
     skillExtractCompletions: [],
     skillVerifyRuns: [],
@@ -328,21 +328,20 @@ nodes:
     updatedAt: now,
     agents: [
       {
-        agentId: "retro:m-retro:root",
+        agentId: "retro:m-retro",
         scope: "retro",
-        profile: "build-root",
-        sessionId: "ses-m-retro-retro-root",
-        displayName: "m-retro retro root",
+        profile: "retro-analyst",
+        sessionId: "ses-m-retro-analyst",
+        displayName: "[retro] m-retro",
         missionId: "m-retro",
-        nodeId: "root",
         status: "active",
         createdAt: now,
         updatedAt: now,
       },
     ],
     pendingDeliveries: [],
-    retroRuns: [{ missionId: "m-retro", expectedNodeIds: ["root"], startedAt: now }],
-    retroCompletions: [],
+    retroRuns: [{ missionId: "m-retro", startedAt: now }],
+    
     skillExtractRuns: [],
     skillExtractCompletions: [],
     skillVerifyRuns: [],
@@ -354,11 +353,33 @@ nodes:
   expect(snap.tree?.mission_id).toBe("m-retro")
   expect(snap.retro?.mission_id).toBe("m-retro")
   expect(snap.retro?.active).toBe(true)
-  expect(snap.retro?.pending_node_ids).toEqual(["root"])
+  expect(snap.retro?.summary_submitted).toBe(false)
   const retroAgent = snap.agents.find((agent) => agent.scope === "retro")
-  expect(retroAgent?.spawn_id).toBe("retro-root")
+  expect(retroAgent?.spawn_id).toBe("retro-analyst")
   expect(snap.agents.some((agent) => agent.scope === "retro" && agent.mission_id === "m-retro")).toBe(true)
   await Bun.$`rm -rf ${retroDir}`.quiet()
+})
+
+test("buildPortalSnapshot includes direction from lead/direction.yaml", async () => {
+  await Bun.write(
+    path.join(dir, ".gatehouse/lead/direction.yaml"),
+    `schema_version: 1
+status: confirmed
+summary: |
+  Ship portal UX improvements first.
+constraints:
+  - "No production config changes"
+confirmed_at: "2026-06-01T00:00:00.000Z"
+review_after: "2026-12-01"
+`,
+  )
+
+  const snap = await buildPortalSnapshot(dir)
+  expect(snap.direction?.status).toBe("confirmed")
+  expect(snap.direction?.confirmed).toBe(true)
+  expect(snap.direction?.summary).toContain("portal UX")
+  expect(snap.direction?.constraints).toEqual(["No production config changes"])
+  expect(snap.direction?.review_after).toBe("2026-12-01")
 })
 
 test("readSkillDetail returns markdown for by-domain skills", async () => {

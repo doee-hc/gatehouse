@@ -2,15 +2,14 @@ import { describe, expect, test } from "bun:test"
 import {
   arbiterSessionPermissions,
   architectSessionPermissions,
-  buildCoordinatorPermissions,
   buildExecutionPermissions,
   buildExtractPermissions,
-  buildRootPermissions,
   buildVerifyPermissions,
   curatorSessionPermissions,
   hiddenToolsFromPermissions,
   injectAgentPermissionYaml,
   leadPermissions,
+  retroAnalystPermissions,
 } from "../src/setup/permissions.ts"
 import { GATEHOUSE_RETRO_TOOLKIT_SKILL } from "../src/skills/constants.ts"
 
@@ -34,7 +33,6 @@ const GATEHOUSE_TOOLS = [
   "gatehouse_inspector_decide",
   "gatehouse_unpublish_blog",
   "gatehouse_delivery_review",
-  "gatehouse_delivery_status",
   "gatehouse_execution_complete",
   "gatehouse_execution_rework",
   "gatehouse_execution_status",
@@ -78,94 +76,54 @@ describe("outer agent permission matrix", () => {
 })
 
 describe("inner execution permission matrix", () => {
-  test("build-root-solo allows task", async () => {
-    const { buildRootSoloPermissions } = await import("../src/setup/permissions.ts")
-    expect(buildRootSoloPermissions.task).toBe("allow")
+  test("build allows task", () => {
+    expect(buildExecutionPermissions.task).toBe("allow")
   })
 
-  test("inner coordinators deny unpublish_blog and hide it from tool schema", () => {
-    const coordinator = buildCoordinatorPermissions as Record<string, unknown>
-    expect(coordinator.gatehouse_unpublish_blog).toBe("deny")
-
-    const tools = hiddenToolsFromPermissions(buildCoordinatorPermissions)
-    expect(tools.gatehouse_unpublish_blog).toBe(false)
-  })
-
-  test("lead allows unpublish_blog only (publish is system-managed on mission_complete)", () => {
-    expect(leadPermissions.gatehouse_unpublish_blog).toBe("allow")
-  })
-
-  test("build-coordinator denies mission lifecycle tools and hides them from tool schema", () => {
-    expect(buildCoordinatorPermissions.gatehouse_mission_start).toBe("deny")
-    expect(buildCoordinatorPermissions.gatehouse_mission_retro).toBe("deny")
-    expect(buildCoordinatorPermissions.gatehouse_mission_complete).toBe("deny")
-    expect(buildCoordinatorPermissions.gatehouse_mission_info).toBe("allow")
-    expect(buildCoordinatorPermissions.gatehouse_skill_extract_record).toBe("deny")
-    expect(buildCoordinatorPermissions.gatehouse_skill_verify_record).toBe("deny")
-
-    const tools = hiddenToolsFromPermissions(buildCoordinatorPermissions)
-    expect(tools.gatehouse_mission_start).toBe(false)
-    expect(tools.gatehouse_mission_retro).toBe(false)
-    expect(tools.gatehouse_mission_complete).toBe(false)
-    expect(tools.gatehouse_send_message).toBe(false)
-  })
-
-  test("build profile denies skill record tools", () => {
+  test("build denies mission lifecycle tools and hides them from tool schema", () => {
+    expect(buildExecutionPermissions.gatehouse_mission_start).toBe("deny")
+    expect(buildExecutionPermissions.gatehouse_mission_retro).toBe("deny")
+    expect(buildExecutionPermissions.gatehouse_mission_complete).toBe("deny")
+    expect(buildExecutionPermissions.gatehouse_mission_info).toBe("allow")
     expect(buildExecutionPermissions.gatehouse_skill_extract_record).toBe("deny")
     expect(buildExecutionPermissions.gatehouse_skill_verify_record).toBe("deny")
-  })
-
-  test("build profile denies mission lifecycle tools and allows mission_info", () => {
-    expect(buildExecutionPermissions.gatehouse_mission_start).toBe("deny")
-    expect(buildExecutionPermissions.gatehouse_mission_info).toBe("allow")
-    const tools = hiddenToolsFromPermissions(buildExecutionPermissions)
-    expect(tools.gatehouse_mission_start).toBe(false)
-  })
-
-  test("build leaf denies peer coordination and orchestration reads", () => {
+    expect(buildExecutionPermissions.gatehouse_unpublish_blog).toBe("deny")
     expect(buildExecutionPermissions.gatehouse_send_message).toBe("deny")
     expect(buildExecutionPermissions.gatehouse_list_team).toBe("deny")
     expect(buildExecutionPermissions.gatehouse_session_snapshot).toBe("deny")
     expect(buildExecutionPermissions.gatehouse_execution_status).toBe("deny")
+    expect(buildExecutionPermissions.gatehouse_submit_orchestration).toBe("deny")
     expect(buildExecutionPermissions.gatehouse_retro_record).toBe("deny")
     expect(buildExecutionPermissions.gatehouse_apply_skill_domains).toBe("deny")
 
     const tools = hiddenToolsFromPermissions(buildExecutionPermissions)
+    expect(tools.gatehouse_mission_start).toBe(false)
+    expect(tools.gatehouse_mission_retro).toBe(false)
+    expect(tools.gatehouse_mission_complete).toBe(false)
     expect(tools.gatehouse_send_message).toBe(false)
+    expect(tools.gatehouse_unpublish_blog).toBe(false)
     expect(tools.gatehouse_session_snapshot).toBe(false)
     expect(tools.gatehouse_execution_status).toBe(false)
   })
 
-  test("build leaf restricts skills to domain skills only", () => {
+  test("build restricts skills to domain skills only", () => {
     const skill = buildExecutionPermissions.skill as Record<string, string>
     expect(skill["*"]).toBe("allow")
     expect(skill["lead-meta"]).toBe("deny")
     expect(skill["architect-meta"]).toBe("deny")
   })
 
-  test("intermediate coordinator denies orchestration reads and send_message", () => {
-    expect(buildCoordinatorPermissions.gatehouse_execution_status).toBe("deny")
-    expect(buildCoordinatorPermissions.gatehouse_delivery_status).toBe("deny")
-    expect(buildCoordinatorPermissions.gatehouse_submit_orchestration).toBe("deny")
-    expect(buildCoordinatorPermissions.gatehouse_send_message).toBe("deny")
-    expect(buildCoordinatorPermissions.gatehouse_session_snapshot).toBe("deny")
-  })
-
-  test("structural root denies session_snapshot", () => {
-    expect(buildRootPermissions.gatehouse_session_snapshot).toBe("deny")
-    const tools = hiddenToolsFromPermissions(buildRootPermissions)
-    expect(tools.gatehouse_session_snapshot).toBe(false)
-  })
-
-  test("structural root denies send_message tool", () => {
-    expect(buildRootPermissions.gatehouse_send_message).toBe("deny")
-    const tools = hiddenToolsFromPermissions(buildRootPermissions)
-    expect(tools.gatehouse_send_message).toBe(false)
-  })
-
-  test("structural root allows orchestration reads", () => {
-    expect(buildRootPermissions.gatehouse_execution_status).toBe("allow")
-    expect(buildRootPermissions.gatehouse_delivery_status).toBe("allow")
+  test("all inner profiles deny list_team", () => {
+    for (const permission of [
+      buildExecutionPermissions,
+      buildExtractPermissions,
+      buildVerifyPermissions,
+      retroAnalystPermissions,
+    ]) {
+      expect(permission.gatehouse_list_team).toBe("deny")
+      const tools = hiddenToolsFromPermissions(permission)
+      expect(tools.gatehouse_list_team).toBe(false)
+    }
   })
 
   test("extract profile allows only extract_record among gatehouse tools", () => {
@@ -236,15 +194,15 @@ body
     expect(result).toContain("lead-meta: allow")
   })
 
-  test("injects skill denylists for build-coordinator", () => {
+  test("injects skill denylists for build", () => {
     const template = `---
-name: build-coordinator
+name: build
 permission:
   task: deny
 ---
 body
 `
-    const result = injectAgentPermissionYaml(template, "build-coordinator.md")
+    const result = injectAgentPermissionYaml(template, "build.md")
     expect(result).toContain("architect-meta: deny")
     expect(result).toContain("*: allow")
     expect(result).toContain("gatehouse_mission_start: deny")
@@ -285,7 +243,7 @@ body
 })
 
 describe("gatehouse path permissions", () => {
-  test("build leaf denies all .gatehouse paths on read", () => {
+  test("build denies all .gatehouse paths on read", () => {
     const read = buildExecutionPermissions.read as Record<string, string>
     expect(read["*"]).toBe("allow")
     expect(read[".gatehouse/**"]).toBe("deny")
@@ -317,9 +275,10 @@ describe("gatehouse path permissions", () => {
     expect(read[".gatehouse/lead/**"]).toBe("deny")
   })
 
-  test("inner retro coordinator allows node reports only under trees", () => {
-    const read = buildCoordinatorPermissions.read as Record<string, string>
-    expect(read[".gatehouse/trees/**/reports/nodes/**"]).toBe("allow")
+  test("retro analyst allows retro summary and context reads only under trees", () => {
+    const read = retroAnalystPermissions.read as Record<string, string>
+    expect(read[".gatehouse/trees/**/context/**"]).toBe("allow")
+    expect(read[".gatehouse/trees/**/reports/retro-summary.md"]).toBe("allow")
     expect(read[".gatehouse/**"]).toBe("deny")
   })
 

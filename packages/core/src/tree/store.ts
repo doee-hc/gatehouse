@@ -125,24 +125,14 @@ async function readRetroManifestYamlExport(projectDirectory: string, missionId: 
   if (!isRecord(raw)) throw new Error("retro-manifest must be a mapping")
   const mission_id = readString(raw.mission_id)
   const created_at = readString(raw.created_at)
-  if (!mission_id || !created_at) throw new Error("retro-manifest missing mission_id or created_at")
-  const retro_order = Array.isArray(raw.retro_order)
-    ? raw.retro_order.filter((item): item is string => typeof item === "string")
-    : []
-  const nodes: RetroManifest["nodes"] = {}
-  if (isRecord(raw.nodes)) {
-    for (const [nodeId, value] of Object.entries(raw.nodes)) {
-      if (!isRecord(value)) continue
-      const exec_session_id = readString(value.exec_session_id)
-      const retro_session_id = readString(value.retro_session_id)
-      if (!exec_session_id || !retro_session_id) continue
-      const child_nodes = Array.isArray(value.child_nodes)
-        ? value.child_nodes.filter((item): item is string => typeof item === "string")
-        : []
-      nodes[nodeId] = { exec_session_id, retro_session_id, child_nodes }
-    }
+  const retro_session_id = readString(raw.retro_session_id)
+  if (!mission_id || !created_at || !retro_session_id) {
+    throw new Error("retro-manifest missing mission_id, created_at, or retro_session_id")
   }
-  return { mission_id, created_at, nodes, retro_order } satisfies RetroManifest
+  const analysis_order = Array.isArray(raw.analysis_order)
+    ? raw.analysis_order.filter((item): item is string => typeof item === "string")
+    : []
+  return { mission_id, created_at, retro_session_id, analysis_order } satisfies RetroManifest
 }
 
 async function importRetroManifestFromYamlExport(projectDirectory: string, missionId: string) {

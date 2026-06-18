@@ -5,7 +5,7 @@ import { refreshAgentOverlay } from "./agent-overlay.ts"
 import { renderBlog } from "./blog.ts"
 import { localeTag, t } from "./i18n.ts"
 import { renderKnowledge } from "./knowledge.ts"
-import { renderMissions } from "./office-sidebar.ts"
+import { renderDirection, renderMissions } from "./office-sidebar.ts"
 import { renderOrchestrationPanel } from "./render-orchestration.ts"
 
 export function renderPortal(snapshot: PortalSnapshot) {
@@ -75,6 +75,7 @@ function renderOffice(snapshot: PortalSnapshot) {
     clock.textContent = new Date().toLocaleTimeString(localeTag(), { hour: "2-digit", minute: "2-digit" })
   }
 
+  renderDirection(snapshot)
   renderMissions(snapshot)
   renderOrchestrationPanel(snapshot)
 

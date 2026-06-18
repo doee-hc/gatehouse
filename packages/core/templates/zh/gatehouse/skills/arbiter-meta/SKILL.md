@@ -23,7 +23,7 @@ disable-model-invocation: true
 
 | profile | 允许的典型 mutate |
 |---------|-------------------|
-| lead | init_team、send_message、mission_start、mission_retro、mission_complete、mission_info、delivery_review、delivery_status |
+| lead | init_team、send_message、mission_start、mission_retro、mission_complete、mission_info、delivery_review |
 | architect | submit_orchestration、send_message、retro_summary_record、mission_info、session_snapshot |
 | curator | apply_skill_domains、send_message、skill_summary_record、mission_info |
 | 任务执行成员 | 读写业务文件；`gatehouse_execution_complete` / `gatehouse_execution_rework` / `gatehouse_mission_info` |

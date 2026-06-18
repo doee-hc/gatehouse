@@ -98,12 +98,10 @@ export const MANAGED_GLOBAL_AGENT_FILES = ["lead.md", "architect.md", "curator.m
 /** Gatehouse-owned agent definitions synced to ~/.config/opencode/agent/. */
 export const SYNCED_GLOBAL_AGENT_FILES = [
   ...MANAGED_GLOBAL_AGENT_FILES,
-  "build-root.md",
-  "build-root-solo.md",
-  "build-coordinator.md",
   "build-extract.md",
   "build-verify.md",
   "build.md",
+  "retro-analyst.md",
 ] as const
 
 export { legacyProjectOpencodeConfigPath, projectOpencodeConfigPath }

@@ -29,9 +29,16 @@ import { getPortalDisplaySettings } from "./portal-display-settings.ts"
 import { spawnIdForAgent } from "./spawn-id.ts"
 import { readOfficeLayoutManifest, readOfficeLayoutSpec, computeOfficeLayoutSpec } from "./office-layout.ts"
 import { scheduleOfficeLayoutSync } from "./office-layout-schedule.ts"
+import { readDirectionDocument, directionIsConfirmed } from "../lead/direction.ts"
 import { buildPortalOrchestration, type PortalOrchestration } from "./orchestration-view.ts"
 
-export type { PortalOrchestration, PortalOrchestrationNode, PortalOrchestrationPhase, PortalOrchestrationStep } from "./orchestration-view.ts"
+export type {
+  PortalOrchestration,
+  PortalOrchestrationFlowEdge,
+  PortalOrchestrationNode,
+  PortalOrchestrationPhase,
+  PortalOrchestrationStep,
+} from "./orchestration-view.ts"
 
 export type PortalMission = {
   id: string
@@ -78,6 +85,15 @@ export type PortalTree = {
   nodes: PortalTreeNode[]
 }
 
+export type PortalDirection = {
+  status: "draft" | "confirmed"
+  confirmed: boolean
+  summary?: string
+  constraints: string[]
+  confirmed_at?: string
+  review_after?: string
+}
+
 export type PortalSnapshot = {
   project_directory: string
   updated_at: string
@@ -102,11 +118,11 @@ export type PortalSnapshot = {
   retro?: {
     mission_id: string
     active: boolean
-    all_done: boolean
-    pending_node_ids: string[]
-    completed_node_ids: string[]
+    summary_submitted: boolean
+    architect_review_pending: boolean
   }
   orchestration?: PortalOrchestration
+  direction?: PortalDirection
 }
 
 async function readMissionsDocument(projectDirectory: string) {
@@ -323,23 +339,26 @@ export async function buildPortalSnapshot(projectDirectory: string, opencodeUrl?
     (() => {
       const run = registrySnapshot.retroRuns.find((entry) => entry.missionId === retroMissionId)
       if (!run) return undefined
-      const completed_node_ids = run.expectedNodeIds.filter((nodeId) =>
-        registrySnapshot.retroCompletions.some(
-          (item) => item.missionId === retroMissionId && item.nodeId === nodeId,
-        ),
-      )
-      const pending_node_ids = run.expectedNodeIds.filter((nodeId) => !completed_node_ids.includes(nodeId))
-      const all_done = pending_node_ids.length === 0 && run.expectedNodeIds.length > 0
+      const summary_submitted = Boolean(run.retroSummarySubmittedAt)
       return {
         mission_id: retroMissionId,
-        active: !all_done,
-        all_done,
-        pending_node_ids,
-        completed_node_ids,
+        active: !summary_submitted,
+        summary_submitted,
+        architect_review_pending: summary_submitted && !run.architectLeadNotifiedAt,
       }
     })()
 
   const orchestration = buildPortalOrchestration(projectDirectory, tree)
+
+  const directionDoc = await readDirectionDocument(projectDirectory)
+  const direction: PortalDirection = {
+    status: directionDoc.status,
+    confirmed: directionIsConfirmed(directionDoc),
+    ...(directionDoc.summary && { summary: directionDoc.summary }),
+    constraints: directionDoc.constraints,
+    ...(directionDoc.confirmed_at && { confirmed_at: directionDoc.confirmed_at }),
+    ...(directionDoc.review_after && { review_after: directionDoc.review_after }),
+  }
 
   return {
     project_directory: projectDirectory,
@@ -356,6 +375,7 @@ export async function buildPortalSnapshot(projectDirectory: string, opencodeUrl?
     opencode_reachable: reachable,
     ...(retro && { retro }),
     ...(orchestration && { orchestration }),
+    direction,
     ...(layoutSpec && {
       office_layout: {
         revision: layoutSpec.revision,

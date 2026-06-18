@@ -19,6 +19,38 @@ export function bindOfficeSidebar() {
   })
 }
 
+export function renderDirection(snapshot: PortalSnapshot) {
+  const host = document.getElementById("direction-host")
+  if (!host) return
+
+  const direction = snapshot.direction
+  if (!direction || (!direction.summary?.trim() && direction.constraints.length === 0)) {
+    host.innerHTML = `<p class="empty-state">${escapeHtml(t("empty.noDirection"))}</p>`
+    return
+  }
+
+  const statusLabel = direction.confirmed
+    ? t("direction.status.confirmed")
+    : t("direction.status.draft")
+  const statusClass = direction.confirmed ? "tag-done" : "tag-draft"
+  const reviewAfter = direction.review_after ? formatDirectionDate(direction.review_after) : ""
+
+  host.innerHTML = `<div class="direction-card${direction.confirmed ? " confirmed" : " draft"}">
+    <div class="direction-head">
+      <span class="tag ${statusClass}">${escapeHtml(statusLabel)}</span>
+      ${reviewAfter ? `<span class="direction-review">${escapeHtml(t("direction.reviewAfter"))} · ${escapeHtml(reviewAfter)}</span>` : ""}
+    </div>
+    ${direction.summary?.trim() ? `<p class="direction-summary">${escapeHtml(direction.summary.trim())}</p>` : ""}
+    ${
+      direction.constraints.length > 0
+        ? `<ul class="direction-constraints">${direction.constraints
+            .map((item) => `<li>${escapeHtml(item)}</li>`)
+            .join("")}</ul>`
+        : ""
+    }
+  </div>`
+}
+
 export function renderMissions(snapshot: PortalSnapshot) {
   const host = document.getElementById("missions-host")
   if (!host) return
@@ -97,6 +129,12 @@ function formatMissionTime(mission: PortalMission) {
     hour: "2-digit",
     minute: "2-digit",
   })
+}
+
+function formatDirectionDate(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleDateString(localeTag(), { year: "numeric", month: "short", day: "numeric" })
 }
 
 function missionStatusTagClass(status: string) {

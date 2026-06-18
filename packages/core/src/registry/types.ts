@@ -1,4 +1,4 @@
-export const REGISTRY_SCHEMA_VERSION = 9
+export const REGISTRY_SCHEMA_VERSION = 10
 
 export const OUTER_LEAD_ID = "outer:lead"
 export const OUTER_ARCHITECT_ID = "outer:architect"
@@ -16,25 +16,10 @@ export const INNER_EXECUTION_AGENT = "build"
 export const INNER_EXTRACT_AGENT = "build-extract"
 /** Isolated skill verifier session (after extract record). */
 export const INNER_VERIFY_AGENT = "build-verify"
-/** Structural root with delegates — coordinates the tree and notifies lead; task denied. */
-export const INNER_ROOT_AGENT = "build-root"
-/** Solo structural root (no children) — executes, may use task, notifies lead. */
-export const INNER_ROOT_SOLO_AGENT = "build-root-solo"
-/** Intermediate inner nodes with children — subtree coordination only; no lead contact. */
-export const INNER_COORDINATOR_AGENT = "build-coordinator"
+/** Empty-context retro analyst — reads execution context and writes retro-summary for architect review. */
+export const RETRO_ANALYST_AGENT = "retro-analyst"
 
-export const INNER_PROFILES = [
-  INNER_ROOT_AGENT,
-  INNER_ROOT_SOLO_AGENT,
-  INNER_COORDINATOR_AGENT,
-  INNER_EXECUTION_AGENT,
-] as const
-
-const INNER_LEAD_CONTACT_PROFILES = new Set<string>([INNER_ROOT_AGENT, INNER_ROOT_SOLO_AGENT])
-
-export function innerProfileMayNotifyLead(profile: string) {
-  return INNER_LEAD_CONTACT_PROFILES.has(profile)
-}
+export const INNER_PROFILES = [INNER_EXECUTION_AGENT] as const
 
 export const GATEHOUSE_OUTER_AGENTS = new Set([
   LEAD_OPENCODE,
@@ -49,7 +34,7 @@ export type RegistryStatus = "active" | "completed" | "error"
 export type RegistryAgent = {
   agentId: string
   scope: RegistryScope
-  /** OpenCode agent id (lead / architect / build-root / build-coordinator / build / …). */
+  /** OpenCode agent id (lead / architect / build / …). */
   profile: string
   sessionId: string
   displayName: string
@@ -79,21 +64,14 @@ export type RegistryPendingDelivery = {
 
 export type RegistryRetroRun = {
   missionId: string
-  expectedNodeIds: string[]
   startedAt: string
+  retroSummarySubmittedAt?: string
+  retroSummaryPath?: string
   architectNotifiedAt?: string
   /** Set when profile architect calls gatehouse_retro_summary_record. */
   architectLeadNotifiedAt?: string
   /** Set when Gatehouse auto-notifies profile lead that retro rollup is complete. */
   leadRollupNotifiedAt?: string
-}
-
-export type RegistryRetroCompletion = {
-  missionId: string
-  nodeId: string
-  reportPath: string
-  sessionId: string
-  completedAt: string
 }
 
 export type RegistrySkillExtractRun = {
@@ -154,7 +132,6 @@ export type RegistrySnapshot = {
   agents: RegistryAgent[]
   pendingDeliveries: RegistryPendingDelivery[]
   retroRuns: RegistryRetroRun[]
-  retroCompletions: RegistryRetroCompletion[]
   skillExtractRuns: RegistrySkillExtractRun[]
   skillExtractCompletions: RegistrySkillExtractCompletion[]
   skillVerifyRuns: RegistrySkillVerifyRun[]
@@ -182,6 +159,14 @@ export type SendMessageInput = {
   message: string
 }
 
+/** System-initiated delivery (e.g. execution_complete → lead); bypasses outer send policy. */
+export type DeliverSystemNotificationInput = {
+  senderSessionId: string
+  senderAgentId?: string
+  recipientQuery: string
+  message: string
+}
+
 export type SendMessageResult =
   | { status: "sent"; recipient: RegistryAgent; sessionId: string; createdSession: boolean }
   | { status: "queued"; recipient: RegistryAgent; sessionId: string; createdSession: boolean }
@@ -195,12 +180,8 @@ export function innerAgentId(missionId: string, nodeId: string) {
   return `inner:${missionId}:${nodeId}`
 }
 
-export function isInnerStructuralRoot(agent: RegistryAgent) {
-  return agent.scope === "inner" && !agent.parentSessionId
-}
-
-export function retroAgentId(missionId: string, nodeId: string) {
-  return `retro:${missionId}:${nodeId}`
+export function retroAgentId(missionId: string) {
+  return `retro:${missionId}`
 }
 
 export function extractAgentId(missionId: string, nodeId: string) {

@@ -1,4 +1,5 @@
 import {
+  GATEHOUSE_RETRO_TOOLKIT_SKILL,
   innerExecutionSkillPermissions,
   innerPipelineSkillPermissions,
   outerProfileSkillPermissions,
@@ -9,7 +10,7 @@ import {
   curatorFilesystemPermissions,
   innerExecutionFilesystemPermissions,
   innerPipelineFilesystemPermissions,
-  innerRetroFilesystemPermissions,
+  innerRetroAnalystFilesystemPermissions,
   leadFilesystemPermissions,
 } from "./gatehouse-path-permissions.ts"
 
@@ -30,17 +31,6 @@ const innerLeafGatehouseDenials = {
   gatehouse_retro_summary_record: "deny",
   gatehouse_skill_summary_record: "deny",
   gatehouse_execution_status: "deny",
-  gatehouse_delivery_status: "deny",
-  gatehouse_submit_orchestration: "deny",
-  gatehouse_init_team: "deny",
-  gatehouse_apply_skill_domains: "deny",
-  gatehouse_direction_status: "deny",
-} as const
-
-/** Intermediate coordinators — structural root only for delivery / orchestration reads. */
-const innerNonStructuralRootDenials = {
-  gatehouse_execution_status: "deny",
-  gatehouse_delivery_status: "deny",
   gatehouse_submit_orchestration: "deny",
   gatehouse_init_team: "deny",
   gatehouse_apply_skill_domains: "deny",
@@ -63,7 +53,6 @@ const innerPipelineGatehouseDenials = {
   gatehouse_skill_summary_record: "deny",
   gatehouse_apply_skill_domains: "deny",
   gatehouse_delivery_review: "deny",
-  gatehouse_delivery_status: "deny",
   gatehouse_execution_complete: "deny",
   gatehouse_execution_rework: "deny",
   gatehouse_execution_status: "deny",
@@ -82,28 +71,37 @@ const innerVerifyGatehousePermissions = {
   ...innerPipelineGatehouseDenials,
 } as const
 
-/** Inner profiles never expose send_message — delivery uses execution_complete + system notify. */
-const innerSendMessageDenials = {
-  gatehouse_send_message: "deny",
-} as const
-
-/** Gatehouse coordination tools for inner coordinators (build-root / build-coordinator; not leaf build). */
-const innerExecutionGatehousePermissions = {
-  gatehouse_list_team: "allow",
-  gatehouse_session_snapshot: "deny",
-  gatehouse_skill_extract_record: "deny",
-  gatehouse_skill_verify_record: "deny",
-  gatehouse_execution_complete: "allow",
-  gatehouse_execution_rework: "allow",
-  gatehouse_mission_info: "allow",
-} as const
-
-/** Retro sessions (managerRetroOrder nodes → build-root / build-coordinator). */
-const innerRetroGatehousePermissions = {
+/** Retro analyst session — write retro-summary, read context, evolve retro-toolkit. */
+const innerRetroAnalystGatehousePermissions = {
   gatehouse_retro_record: "allow",
 } as const
 
-/** Mission lifecycle — outer core team only; hidden from execution profiles (root / coordinators). */
+const innerRetroAnalystPipelineDenials = {
+  gatehouse_init_team: "deny",
+  gatehouse_submit_orchestration: "deny",
+  gatehouse_list_team: "deny",
+  gatehouse_send_message: "deny",
+  gatehouse_session_snapshot: "deny",
+  gatehouse_mission_start: "deny",
+  gatehouse_mission_info: "deny",
+  gatehouse_mission_retro: "deny",
+  gatehouse_mission_complete: "deny",
+  gatehouse_retro_summary_record: "deny",
+  gatehouse_skill_summary_record: "deny",
+  gatehouse_apply_skill_domains: "deny",
+  gatehouse_delivery_review: "deny",
+  gatehouse_execution_complete: "deny",
+  gatehouse_execution_rework: "deny",
+  gatehouse_execution_status: "deny",
+  gatehouse_direction_status: "deny",
+  gatehouse_skill_extract_record: "deny",
+  gatehouse_skill_verify_record: "deny",
+  gatehouse_unpublish_blog: "deny",
+  gatehouse_inspector_queue: "deny",
+  gatehouse_inspector_decide: "deny",
+} as const
+
+/** Mission lifecycle — outer core team only; hidden from execution profiles. */
 const innerMissionLifecycleDenials = {
   gatehouse_mission_start: "deny",
   gatehouse_mission_retro: "deny",
@@ -149,7 +147,6 @@ export const leadPermissions = {
   gatehouse_skill_verify_record: "deny",
   gatehouse_unpublish_blog: "allow",
   gatehouse_delivery_review: "allow",
-  gatehouse_delivery_status: "allow",
   gatehouse_execution_complete: "deny",
   gatehouse_execution_rework: "deny",
   gatehouse_execution_status: "allow",
@@ -178,7 +175,6 @@ export const architectSessionPermissions = {
   gatehouse_skill_verify_record: "deny",
   gatehouse_unpublish_blog: "deny",
   gatehouse_delivery_review: "deny",
-  gatehouse_delivery_status: "allow",
   gatehouse_execution_complete: "deny",
   gatehouse_execution_rework: "deny",
   gatehouse_execution_status: "allow",
@@ -207,7 +203,6 @@ export const curatorSessionPermissions = {
   gatehouse_skill_verify_record: "deny",
   gatehouse_unpublish_blog: "deny",
   gatehouse_delivery_review: "deny",
-  gatehouse_delivery_status: "deny",
   gatehouse_execution_complete: "deny",
   gatehouse_execution_rework: "deny",
   gatehouse_execution_status: "deny",
@@ -218,7 +213,7 @@ export const curatorSessionPermissions = {
   ...nonArbiterInspectorDenials,
 } as const
 
-/** Leaf execution (OpenCode build) — mission lifecycle hidden; no peer coordination. */
+/** Inner execution nodes — mission lifecycle hidden; delivery uses execution_complete + system notify. */
 export const buildExecutionPermissions = {
   ...innerExecutionFilesystemPermissions,
   skill: innerExecutionSkillPermissions(),
@@ -236,41 +231,21 @@ export const buildExecutionPermissions = {
   ...nonArbiterInspectorDenials,
 } as const
 
-const innerCoordinatorPermissions = {
-  ...innerRetroFilesystemPermissions,
-  skill: innerExecutionSkillPermissions(),
+/** Retro analyst — architect assistant; empty context mission retro. */
+export const retroAnalystPermissions = {
+  ...innerRetroAnalystFilesystemPermissions,
+  skill: {
+    "*": "deny" as const,
+    "retro-analyst-meta": "allow" as const,
+    [GATEHOUSE_RETRO_TOOLKIT_SKILL]: "allow" as const,
+  },
   question: "allow",
   plan_enter: "allow",
   task: "deny",
-  gatehouse_unpublish_blog: "deny",
-  ...innerSendMessageDenials,
-  ...innerExecutionGatehousePermissions,
-  ...innerRetroGatehousePermissions,
-  ...innerNonStructuralRootDenials,
-  ...innerMissionLifecycleDenials,
+  ...innerRetroAnalystGatehousePermissions,
+  ...innerRetroAnalystPipelineDenials,
   ...nonArbiterInspectorDenials,
 } as const
-
-const structuralRootDeliveryPermissions = {
-  gatehouse_delivery_status: "allow",
-  gatehouse_execution_status: "allow",
-} as const
-
-/** Structural root with delegates — delivery via execution_complete; task denied. */
-export const buildRootPermissions = {
-  ...innerCoordinatorPermissions,
-  ...structuralRootDeliveryPermissions,
-} as const
-
-/** Solo structural root — delivery via execution_complete; may use task for parallel exploration. */
-export const buildRootSoloPermissions = {
-  ...innerCoordinatorPermissions,
-  ...structuralRootDeliveryPermissions,
-  task: "allow",
-} as const
-
-/** Intermediate subtree coordinator — subtree coordination via complete / rework only. */
-export const buildCoordinatorPermissions = innerCoordinatorPermissions
 
 export const buildExtractPermissions = {
   ...innerPipelineFilesystemPermissions,
@@ -327,7 +302,6 @@ export const arbiterSessionPermissions = {
   gatehouse_inspector_decide: "allow",
   gatehouse_unpublish_blog: "deny",
   gatehouse_delivery_review: "deny",
-  gatehouse_delivery_status: "deny",
   gatehouse_execution_complete: "deny",
   gatehouse_execution_rework: "deny",
   gatehouse_execution_status: "deny",
@@ -339,12 +313,10 @@ export const agentPermissionByAgentFile: Record<string, AgentPermissionMap> = {
   "architect.md": architectSessionPermissions,
   "curator.md": curatorSessionPermissions,
   "arbiter.md": arbiterSessionPermissions,
-  "build-root.md": buildRootPermissions,
-  "build-root-solo.md": buildRootSoloPermissions,
-  "build-coordinator.md": buildCoordinatorPermissions,
   "build-extract.md": buildExtractPermissions,
   "build-verify.md": buildVerifyPermissions,
   "build.md": buildExecutionPermissions,
+  "retro-analyst.md": retroAnalystPermissions,
 }
 
 /** Map permission `deny` entries to legacy OpenCode `tools: false` (hide from LLM tool schema). */

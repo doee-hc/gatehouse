@@ -72,9 +72,8 @@ export async function submitDeliveryOnRootComplete(input: {
     rollupText,
   })
 
-  const notify = await input.store.sendMessage({
+  const notify = await input.store.deliverSystemNotification({
     senderSessionId: input.senderSessionId,
-    senderProfile: input.senderProfile,
     senderAgentId: input.senderAgentId,
     recipientQuery: "lead",
     message,

@@ -131,10 +131,10 @@ describe("orchestration replay complex scenarios", () => {
       await startSandboxOrchestration({ plugin: env.plugin, store: env.store, script: env.script })
 
       await waitForAllPromptMarkers(env, [
-        "marker:trackA-fan-a1",
-        "marker:trackA-fan-a2",
-        "marker:trackB-fan-b1",
-        "marker:trackB-fan-b2",
+        "marker:trackA-a1",
+        "marker:trackA-a2",
+        "marker:trackB-b1",
+        "marker:trackB-b2",
       ])
 
       await completeNodes(env, ["a1", "a2", "b1", "b2"])
@@ -174,10 +174,10 @@ describe("orchestration replay complex scenarios", () => {
         resume: true,
       })
 
-      await waitForAllPromptMarkers(env, ["marker:trackB-fan-b1", "marker:trackB-fan-b2"])
+      await waitForAllPromptMarkers(env, ["marker:trackB-b1", "marker:trackB-b2"])
 
-      expect(countPromptMarkers(env.promptTexts, "marker:trackA-fan-a1")).toBe(0)
-      expect(countPromptMarkers(env.promptTexts, "marker:trackA-fan-a2")).toBe(0)
+      expect(countPromptMarkers(env.promptTexts, "marker:trackA-a1")).toBe(0)
+      expect(countPromptMarkers(env.promptTexts, "marker:trackA-a2")).toBe(0)
     } finally {
       await rm(env.dir, { recursive: true, force: true })
     }
@@ -209,7 +209,7 @@ describe("orchestration replay complex scenarios", () => {
       await waitForPromptMarker(env, "marker:rollup-l4")
       await completeRunningNode(env, "l4")
 
-      expect(readState(env)?.cursor_step_index).toBe(4)
+      expect(readState(env)?.cursor_step_index).toBe(3)
     } finally {
       await rm(env.dir, { recursive: true, force: true })
     }
@@ -226,8 +226,8 @@ describe("orchestration replay complex scenarios", () => {
     try {
       seedDoneNodes(env, ["l1a", "l1b"])
       const state = readState(env)!
-      state.cursor_step_index = 2
-      state.completed_step_ids = ["step-0", "step-1"]
+      state.cursor_step_index = 1
+      state.completed_step_ids = ["step-0"]
       writeOrchestrationState(env.dir, state)
 
       await startSandboxOrchestration({
@@ -393,12 +393,12 @@ describe("orchestration replay complex scenarios", () => {
       await Bun.sleep(500)
       await waitForPromptMarker(env, "marker:rollup-l2")
       await completeRunningNode(env, "l2")
-      await waitForCursorAtLeast(env, 3)
+      await waitForCursorAtLeast(env, 2)
 
       stopSandboxOrchestration(missionId)
       activeMissions.delete(missionId)
 
-      expect(readState(env)?.cursor_step_index).toBeGreaterThanOrEqual(3)
+      expect(readState(env)?.cursor_step_index).toBeGreaterThanOrEqual(2)
 
       env.promptTexts.length = 0
       activeMissions.add(missionId)

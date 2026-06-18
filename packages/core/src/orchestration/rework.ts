@@ -1,28 +1,16 @@
+import type { OrchestrationPlan } from "./plan-types.ts"
+import { upstreamDependsOnNodes } from "./plan-graph.ts"
 import type { TeamSpec } from "../tree/types.ts"
-import type { MissionScriptMeta, OrchestrationState } from "./types.ts"
-
-function isAncestor(team: TeamSpec, ancestorId: string, nodeId: string) {
-  let current = team.nodes[nodeId]?.parent ?? null
-  while (current) {
-    if (current === ancestorId) return true
-    current = team.nodes[current]?.parent ?? null
-  }
-  return false
-}
-
-function isDirectParent(team: TeamSpec, parentId: string, childId: string) {
-  return team.nodes[childId]?.parent === parentId
-}
+import type { OrchestrationState } from "./types.ts"
 
 export function validateReworkRequest(input: {
   team: TeamSpec
-  meta?: MissionScriptMeta
+  plan?: OrchestrationPlan
   state: OrchestrationState
   requesterNodeId: string
   blockedByNodeId: string
 }) {
-  const { team, meta, state, requesterNodeId, blockedByNodeId } = input
-  const policy = meta?.rework ?? { peer_allowed: true, escalate_to: "root" as const, allow_coordinator_rework: true }
+  const { team, plan, state, requesterNodeId, blockedByNodeId } = input
 
   if (!team.nodes[blockedByNodeId]) {
     return { ok: false as const, code: "UNKNOWN_BLOCKER", node_id: blockedByNodeId }
@@ -50,18 +38,17 @@ export function validateReworkRequest(input: {
     return { ok: false as const, code: "SELF_REWORK" }
   }
 
-  const parentOk = isDirectParent(team, blockedByNodeId, requesterNodeId)
-  const ancestorOk = isAncestor(team, blockedByNodeId, requesterNodeId)
-  const coordinatorOk =
-    policy.allow_coordinator_rework !== false &&
-    (isAncestor(team, requesterNodeId, blockedByNodeId) || isDirectParent(team, requesterNodeId, blockedByNodeId))
+  if (!plan) {
+    return { ok: false as const, code: "FORBIDDEN_REWORK", reason: "orchestration plan missing" }
+  }
 
-  if (policy.peer_allowed === false) {
-    if (!parentOk && !(policy.escalate_to === "root" && blockedByNodeId === team.root)) {
-      return { ok: false as const, code: "FORBIDDEN_REWORK", reason: "peer_allowed is false" }
+  const upstream = upstreamDependsOnNodes(plan, requesterNodeId)
+  if (!upstream.has(blockedByNodeId)) {
+    return {
+      ok: false as const,
+      code: "FORBIDDEN_REWORK",
+      reason: "rework allowed only for dependsOn upstream nodes",
     }
-  } else if (!parentOk && !ancestorOk && !coordinatorOk) {
-    return { ok: false as const, code: "FORBIDDEN_REWORK", reason: "no team relationship for rework" }
   }
 
   return { ok: true as const }

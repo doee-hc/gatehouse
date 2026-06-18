@@ -190,7 +190,7 @@ describe("context dump", () => {
         root_node: "root",
         created_at: new Date().toISOString(),
         nodes: {
-          root: { session_id: "ses_root", parent: null, display_name: "root", profile: "build-root" },
+          root: { session_id: "ses_root", parent: null, display_name: "root", profile: "build" },
         },
       }
 

@@ -9,6 +9,7 @@ import {
   clearTeamStatsCacheForTests,
   usageFromNodeMetrics,
   usageFromSessionDetail,
+  usageFromSessionMessages,
 } from "../src/portal/team-stats.ts"
 import { RegistryDatabase } from "../src/registry/db.ts"
 import { emptyTokens } from "../src/metrics/aggregate.ts"
@@ -67,6 +68,196 @@ const originalFetch = globalThis.fetch
 
 afterEach(() => {
   globalThis.fetch = originalFetch
+})
+
+test("usageFromSessionMessages aggregates assistant message tokens", () => {
+  const usage = usageFromSessionMessages([
+    {
+      info: {
+        role: "assistant",
+        tokens: { input: 40, output: 10, reasoning: 0, cache: { read: 0, write: 0 } },
+        cost: 0.08,
+      },
+    },
+    { info: { role: "user", content: "hi" } },
+  ])
+  expect(usage.tokens.total).toBe(50)
+  expect(usage.cost).toBe(0.08)
+})
+
+test("buildTeamStatsSnapshot falls back to phase metrics when retro sessions are gone", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "gh-team-stats-phase-"))
+  try {
+    await mkdir(path.join(dir, ".gatehouse/lead"), { recursive: true })
+    await mkdir(path.join(dir, ".gatehouse/trees/m1/context/retro/node-root"), { recursive: true })
+    await writeFile(
+      path.join(dir, ".gatehouse/lead/missions.yaml"),
+      `schema_version: 1
+missions:
+  - id: m1
+    status: done
+    objective: Phase metrics fallback
+    done_when: []
+    must_not: []
+`,
+    )
+    await writeFile(
+      path.join(dir, ".gatehouse/trees-index.yaml"),
+      `schema_version: 1
+trees:
+  - mission_id: m1
+    status: archived
+`,
+    )
+    await mkdir(path.join(dir, ".gatehouse/internal/exports/trees/m1"), { recursive: true })
+    await writeFile(
+      path.join(dir, ".gatehouse/internal/exports/trees/m1/manifest.yaml"),
+      `mission_id: m1
+status: archived
+root_node: node-root
+created_at: 2026-06-12T00:00:00.000Z
+nodes:
+  node-root:
+    session_id: ses-exec
+    parent: null
+    display_name: root
+`,
+    )
+    await writeFile(
+      path.join(dir, ".gatehouse/internal/exports/trees/m1/retro-manifest.yaml"),
+      `mission_id: m1
+created_at: 2026-06-12T01:00:00.000Z
+retro_session_id: ses-retro
+analysis_order:
+  - node-root
+`,
+    )
+    await mkdir(path.join(dir, ".gatehouse/trees/m1/context/retro/retro-analyst"), { recursive: true })
+    await writeFile(
+      path.join(dir, ".gatehouse/trees/m1/context/retro/retro-analyst/metrics.json"),
+      JSON.stringify({
+        mission_id: "m1",
+        phase: "retro",
+        node_id: "node-root",
+        session_id: "ses-retro",
+        duration_ms: 90_000,
+        cost: 0.21,
+        tokens: { input: 200, output: 40, reasoning: 0, cache: { read: 0, write: 0 }, total: 240 },
+      }),
+    )
+
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? new URL(input) : input instanceof URL ? input : new URL(input.url)
+      if (url.pathname === "/global/health") {
+        return new Response(JSON.stringify({ healthy: true }), { status: 200 })
+      }
+      if (url.pathname.startsWith("/session/")) {
+        return new Response(JSON.stringify({ message: "not found" }), { status: 404 })
+      }
+      return new Response("not found", { status: 404 })
+    }) as typeof fetch
+
+    new RegistryDatabase(dir)
+    clearTeamStatsCacheForTests()
+    const snapshot = await buildTeamStatsSnapshot(dir, "http://127.0.0.1:4096")
+    const retroRole = snapshot.missions[0]?.roles.find((role) => role.session_id === "ses-retro")
+    expect(retroRole?.tokens.total).toBe(240)
+    expect(retroRole?.cost).toBe(0.21)
+    expect(retroRole?.duration_ms).toBe(90_000)
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test("buildTeamStatsSnapshot aggregates retro tokens from session messages when detail is empty", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "gh-team-stats-msg-"))
+  try {
+    await mkdir(path.join(dir, ".gatehouse/lead"), { recursive: true })
+    await writeFile(
+      path.join(dir, ".gatehouse/lead/missions.yaml"),
+      `schema_version: 1
+missions:
+  - id: m1
+    status: retro
+    objective: Message fallback
+    done_when: []
+    must_not: []
+`,
+    )
+    await writeFile(
+      path.join(dir, ".gatehouse/trees-index.yaml"),
+      `schema_version: 1
+trees:
+  - mission_id: m1
+    status: running
+`,
+    )
+    await mkdir(path.join(dir, ".gatehouse/internal/exports/trees/m1"), { recursive: true })
+    await writeFile(
+      path.join(dir, ".gatehouse/internal/exports/trees/m1/manifest.yaml"),
+      `mission_id: m1
+status: running
+root_node: node-root
+created_at: 2026-06-12T00:00:00.000Z
+nodes:
+  node-root:
+    session_id: ses-exec
+    parent: null
+    display_name: root
+`,
+    )
+    await writeFile(
+      path.join(dir, ".gatehouse/internal/exports/trees/m1/retro-manifest.yaml"),
+      `mission_id: m1
+created_at: 2026-06-12T01:00:00.000Z
+retro_session_id: ses-retro
+analysis_order:
+  - node-root
+`,
+    )
+
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? new URL(input) : input instanceof URL ? input : new URL(input.url)
+      if (url.pathname === "/global/health") {
+        return new Response(JSON.stringify({ healthy: true }), { status: 200 })
+      }
+      if (url.pathname === "/session/ses-retro") {
+        return new Response(JSON.stringify({ data: { id: "ses-retro", time: { created: 0, updated: 60_000 } } }), {
+          status: 200,
+        })
+      }
+      if (url.pathname === "/session/ses-retro/message") {
+        return new Response(
+          JSON.stringify({
+            data: [
+              {
+                info: {
+                  role: "assistant",
+                  tokens: { input: 300, output: 60, reasoning: 0, cache: { read: 0, write: 0 } },
+                  cost: 0.12,
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        )
+      }
+      if (url.pathname.startsWith("/session/")) {
+        return new Response(JSON.stringify({ data: {} }), { status: 200 })
+      }
+      return new Response("not found", { status: 404 })
+    }) as typeof fetch
+
+    new RegistryDatabase(dir)
+    clearTeamStatsCacheForTests()
+    const snapshot = await buildTeamStatsSnapshot(dir, "http://127.0.0.1:4096")
+    const retroRole = snapshot.missions[0]?.roles.find((role) => role.session_id === "ses-retro")
+    expect(retroRole?.tokens.total).toBe(360)
+    expect(retroRole?.cost).toBe(0.12)
+    expect(retroRole?.duration_ms).toBe(60_000)
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
 })
 
 test("buildTeamStatsSnapshot falls back to local context metrics when OpenCode sessions are gone", async () => {
@@ -195,10 +386,8 @@ test("buildMissionStats includes retro extract and verify sessions", () => {
   const retro = {
     mission_id: "m1",
     created_at: "2026-06-12T01:00:00.000Z",
-    retro_order: ["node-root"],
-    nodes: {
-      "node-root": { exec_session_id: "ses-exec", retro_session_id: "ses-retro", child_nodes: [] },
-    },
+    retro_session_id: "ses-retro",
+    analysis_order: ["node-root"],
   }
   const extract = {
     mission_id: "m1",

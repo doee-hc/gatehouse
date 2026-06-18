@@ -69,6 +69,12 @@ await ctx.run("root", { brief: { your_work: ["r"], acceptance_slice: ["done"] },
       expect(view?.phases.some((phase) => phase.title === "阶段一" && phase.state === "current")).toBe(true)
       expect(view?.steps.find((step) => step.id === "step-1")?.state).toBe("current")
       expect(view?.completed_steps).toBe(1)
+      expect(view?.flow_edges.some((edge) => edge.from === "root" && edge.to === "leaf" && edge.state === "done")).toBe(
+        true,
+      )
+      expect(view?.flow_edges.some((edge) => edge.from === "leaf" && edge.to === "root" && edge.state === "current")).toBe(
+        true,
+      )
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

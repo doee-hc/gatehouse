@@ -1,6 +1,5 @@
 import { tool, type PluginInput } from "@opencode-ai/plugin"
-import { retroSessionTitle, retroNodeReportRelPath, resolveProjectPath } from "../paths.ts"
-import { childNodeIds, managerRetroOrder } from "../tree/parse.ts"
+import { retroSessionTitle, retroSummaryRelPath, resolveProjectPath } from "../paths.ts"
 import { getRegistryStore } from "../registry/context.ts"
 import {
   readManifest,
@@ -12,9 +11,12 @@ import type { RetroManifest } from "../tree/types.ts"
 import type { RegistryStore } from "../registry/store.ts"
 import { createExtractManifest } from "../extract/setup.ts"
 import { resolveTeamSource } from "../orchestration/resolve-team.ts"
+import { readLatestOrchestrationPlanRecord } from "../orchestration/plan-store.ts"
+import { retroAnalysisNodeOrder } from "../retro/analysis-order.ts"
 import { createSession } from "../session/client.ts"
-import { INNER_EXECUTION_AGENT } from "../registry/types.ts"
-import { dumpMissionContext } from "../session/context-dump.ts"
+import { RETRO_ANALYST_AGENT } from "../registry/types.ts"
+import { dumpMissionContext, dumpPhaseSessionMetrics } from "../session/context-dump.ts"
+import type { GatehouseClient } from "../session/client.ts"
 import { readMissionsDocument, setMissionStatus } from "../missions/store.ts"
 import { requireLeadCaller, requireMission, waitForAllMissionAgentsIdle } from "../missions/lifecycle.ts"
 import { requireActiveMissionId, requireSenderMissionId } from "../missions/scope.ts"
@@ -31,11 +33,11 @@ function retroAlreadyStartedResponse(
   return {
     output: toolOk(toolName, {
       mission_id: missionId,
-      retro_sessions: Object.keys(retro.nodes).length,
+      retro_session_id: retro.retro_session_id,
       already_started: true,
       ...(retroStatus.status === "ok" && {
-        all_done: retroStatus.allDone,
-        remaining: retroStatus.pending.length,
+        summary_submitted: retroStatus.summarySubmitted,
+        architect_review_pending: retroStatus.summarySubmitted && !retroStatus.architectSummarySubmitted,
       }),
     }),
     ...toolMetadata(toolName),
@@ -45,7 +47,7 @@ function retroAlreadyStartedResponse(
 export function missionRetroTool(input: PluginInput) {
   return tool({
     description:
-      "profile lead only: start mission retro after user confirms delivery in chat. Requires delivery recorded (structural root finished all nodes), active mission running in missions.yaml, manifest present, and all inner exec sessions idle. Forks retro sessions, dumps context/, creates isolated build-extract sessions for nodes with skill_domain, and kickoffs retro + skill-extract. Sets missions.yaml to retro. Portal publish happens on gatehouse_mission_complete(done).",
+      "profile lead only: start mission retro after user confirms delivery in chat. Requires delivery recorded, active mission running, manifest present, and all inner exec sessions idle. Forks one retro-analyst session, dumps context/, creates isolated build-extract sessions for nodes with skill_domain, and kickoffs retro + skill-extract. Sets missions.yaml to retro. Retro reports auto-publish to Portal when registered (retro-summary on gatehouse_retro_record, architect-summary on gatehouse_retro_summary_record).",
     args: {},
     async execute(_args, context) {
       const toolName = "gatehouse_mission_retro"
@@ -121,7 +123,7 @@ export function missionRetroTool(input: PluginInput) {
             output: toolFail(
               toolName,
               "DELIVERY_NOT_SUBMITTED",
-              `Mission ${missionId} delivery must be recorded via structural root gatehouse_execution_complete before retro`,
+              `Mission ${missionId} delivery must be recorded via the orchestration terminal node gatehouse_execution_complete before retro`,
               deliveryDoc?.active
                 ? { delivery_version: deliveryDoc.active.version, status: deliveryDoc.active.status }
                 : undefined,
@@ -144,35 +146,33 @@ export function missionRetroTool(input: PluginInput) {
         const registry = await getRegistryStore(input)
         registry.syncMissionRegistryStatus(missionId, "retro")
 
-        const retroOrder = managerRetroOrder(manifest)
-        const nodes: import("../tree/types.ts").RetroManifest["nodes"] = {}
-        for (const nodeId of retroOrder) {
-          const execNode = manifest.nodes[nodeId]
-          if (!execNode) continue
-          nodes[nodeId] = {
-            exec_session_id: execNode.session_id,
-            retro_session_id: await createSession(input.client, input.directory, {
-              display_name: retroSessionTitle(manifest.mission_id, nodeId),
-              profile: execNode.profile ?? INNER_EXECUTION_AGENT,
-            }),
-            child_nodes: childNodeIds(manifest, nodeId),
-          }
-        }
+        const plan = readLatestOrchestrationPlanRecord(input.directory, missionId)
+        const analysisOrder = plan ? retroAnalysisNodeOrder(plan) : Object.keys(manifest.nodes)
+
+        const retroSessionId = await createSession(input.client, input.directory, {
+          display_name: retroSessionTitle(missionId),
+          profile: RETRO_ANALYST_AGENT,
+        })
+
         const retro = {
           mission_id: manifest.mission_id,
           created_at: new Date().toISOString(),
-          nodes,
-          retro_order: retroOrder,
-        }
+          retro_session_id: retroSessionId,
+          analysis_order: analysisOrder,
+        } satisfies RetroManifest
+
         await writeRetroManifest(input.directory, retro)
-        registry.syncRetroFromManifest(retro, manifest)
-        registry.beginRetroRun(manifest.mission_id, retroOrder)
+        registry.syncRetroFromManifest(retro)
+        registry.beginRetroRun(manifest.mission_id)
+
         await dumpMissionContext({
           client: input.client,
           projectDirectory: input.directory,
           manifest,
+          analysisOrder,
         })
         registry.syncInnerFromManifest(manifest)
+
         const resolved = await resolveTeamSource(input.directory, missionId)
         if (!resolved) {
           return {
@@ -184,24 +184,27 @@ export function missionRetroTool(input: PluginInput) {
             ...toolMetadata(toolName),
           }
         }
-        const spec = resolved.spec
+
         const extract = await createExtractManifest({
           client: input.client,
           projectDirectory: input.directory,
           manifest,
-          spec,
+          spec: resolved.spec,
         })
         await writeExtractManifest(input.directory, extract)
         registry.syncExtractFromManifest(extract, manifest)
+
         await Promise.all([
-          registry.kickoffRetroSessions(manifest, retroOrder),
+          registry.kickoffRetroSession(manifest, plan),
           registry.kickoffExtractSkillSessions(extract),
         ])
         await registry.flushPendingDeliveries()
+
         return {
           output: toolOk(toolName, {
             mission_id: manifest.mission_id,
-            retro_sessions: Object.keys(nodes).length,
+            retro_session_id: retroSessionId,
+            analysis_order: analysisOrder,
           }),
           ...toolMetadata(toolName),
         }
@@ -229,11 +232,17 @@ export function missionRetroTool(input: PluginInput) {
 export function retroRecordTool(input: PluginInput) {
   return tool({
     description:
-      "Record retro analysis completion (retro session only). Writes to the default report path for your node. When all expected nodes are recorded, Gatehouse auto-messages profile architect to read reports.",
+      "retro-analyst only: register retro-summary.md after mission analysis. Gatehouse auto-messages profile architect to review and iterate architect-meta, and publishes retro-summary to Portal under the mission.",
     args: {},
     async execute(_args, context) {
       const toolName = "gatehouse_retro_record"
       try {
+        if (context.agent !== RETRO_ANALYST_AGENT) {
+          return {
+            output: toolFail(toolName, "NOT_RETRO_ANALYST", "Only profile retro-analyst may call gatehouse_retro_record"),
+            ...toolMetadata(toolName),
+          }
+        }
         const registry = await getRegistryStore(input)
         const sender = registry.bySession(context.sessionID)
         if (!sender || sender.scope !== "retro") {
@@ -243,26 +252,24 @@ export function retroRecordTool(input: PluginInput) {
           }
         }
         const missionId = requireSenderMissionId(sender)
-        const nodeId = sender.nodeId
-        if (!nodeId) {
-          return {
-            output: toolFail(toolName, "MISSING_NODE_ID", "Retro session is not bound to a registry node"),
-            ...toolMetadata(toolName),
-          }
-        }
         const retroRun = registry.retroStatus(missionId)
-        if (retroRun.status !== "ok" || !retroRun.run.expectedNodeIds.includes(nodeId)) {
+        if (retroRun.status !== "ok") {
           return {
-            output: toolFail(
-              toolName,
-              "NODE_NOT_IN_RETRO_RUN",
-              `Node ${nodeId} is not in the active retro run for mission ${missionId}`,
-              retroRun.status === "ok" ? { expected: retroRun.run.expectedNodeIds } : undefined,
-            ),
+            output: toolFail(toolName, "NO_RETRO_RUN", `No active retro run for mission ${missionId}`),
+          }
+        }
+        if (retroRun.summarySubmitted) {
+          return {
+            output: toolOk(toolName, {
+              mission_id: missionId,
+              already_submitted: true,
+              architect_notified: retroRun.architectNotified,
+            }),
             ...toolMetadata(toolName),
           }
         }
-        const reportRel = retroNodeReportRelPath(missionId, nodeId)
+
+        const reportRel = retroSummaryRelPath(missionId)
         const reportAbs = resolveProjectPath(input.directory, reportRel)
         if (!(await Bun.file(reportAbs).exists())) {
           return {
@@ -272,20 +279,28 @@ export function retroRecordTool(input: PluginInput) {
             ...toolMetadata(toolName),
           }
         }
-        await registry.recordRetroCompletion({
+
+        await registry.recordRetroSummary({
           missionId,
-          nodeId,
           sessionId: context.sessionID,
           reportPath: reportRel,
         })
+        await dumpPhaseSessionMetrics({
+          client: input.client as GatehouseClient,
+          projectDirectory: input.directory,
+          missionId,
+          phase: "retro",
+          nodeId: "retro-analyst",
+          sessionId: context.sessionID,
+        }).catch(() => undefined)
+
         const status = registry.retroStatus(missionId)
         return {
           output: toolOk(toolName, {
             mission_id: missionId,
-            node_id: nodeId,
+            report_path: reportRel,
             ...(status.status === "ok" && {
-              all_done: status.allDone,
-              remaining: status.pending.length,
+              architect_notified: status.architectNotified,
             }),
           }),
           ...toolMetadata(toolName),

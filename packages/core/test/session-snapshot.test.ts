@@ -116,7 +116,7 @@ describe("session snapshot", () => {
       store.registerInnerNode({
         missionId: "m1",
         nodeId: "node-root",
-        profile: "build-root",
+        profile: "build",
         sessionId: "ses_worker",
       })
       seedActiveMissionRegistry(dir, "m1")
@@ -225,7 +225,7 @@ describe("session snapshot", () => {
       store.registerInnerNode({
         missionId: "m1",
         nodeId: "node-root",
-        profile: "build-root",
+        profile: "build",
         sessionId: "ses_worker",
       })
       seedActiveMissionRegistry(dir, "m1")
@@ -354,7 +354,7 @@ describe("session snapshot", () => {
       store.registerInnerNode({
         missionId: "m1",
         nodeId: "node-root",
-        profile: "build-root",
+        profile: "build",
         sessionId: "ses_worker",
       })
       seedActiveMissionRegistry(dir, "m1")
@@ -375,7 +375,7 @@ describe("session snapshot", () => {
     }
   })
 
-  test("forbids inner structural root snapshot of peer node", async () => {
+  test("forbids inner terminal node snapshot of peer node", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-snapshot-inner-deny-"))
     try {
       const mockClient: GatehouseClient = {
@@ -400,7 +400,7 @@ describe("session snapshot", () => {
       store.registerInnerNode({
         missionId: "m1",
         nodeId: "node-root",
-        profile: "build-root",
+        profile: "build",
         sessionId: "ses_root",
       })
       store.registerInnerNode({
@@ -416,7 +416,7 @@ describe("session snapshot", () => {
       const output = toolOutput(
         await snapshot.execute(
           { recipient: "node-doc" },
-          mockToolContext(dir, "ses_root", "build-root"),
+          mockToolContext(dir, "ses_root", "build"),
         ),
       )
       const envelope = parseEnvelope(output)
@@ -457,7 +457,7 @@ describe("session snapshot", () => {
       store.registerInnerNode({
         missionId: "m1",
         nodeId: "node-root",
-        profile: "build-root",
+        profile: "build",
         sessionId: "ses_root",
       })
       store.registerInnerNode({

@@ -223,7 +223,7 @@ describe("orchestration replay integration", () => {
       await waitForPromptMarker(env, "marker:rollup-root", { label: "rollup prompt" })
       await completeRunningNode(env, "root")
 
-      await waitUntil(() => (readState(env)?.cursor_step_index ?? 0) >= 3, {
+      await waitUntil(() => (readState(env)?.cursor_step_index ?? 0) >= 2, {
         label: "all steps complete",
       })
       expect(Object.values(readState(env)?.nodes ?? {}).every((node) => node.status === "done")).toBe(true)

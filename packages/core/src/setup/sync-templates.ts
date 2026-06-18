@@ -15,6 +15,7 @@ const outerMetaSkillRelatives = new Set([
   "skills/architect-meta/SKILL.md",
   "skills/curator-meta/SKILL.md",
   "skills/arbiter-meta/SKILL.md",
+  "skills/retro-analyst-meta/SKILL.md",
 ])
 
 const gatehousePrompts = /^prompts\//

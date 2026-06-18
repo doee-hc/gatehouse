@@ -187,18 +187,21 @@ const innerGatehouseDenyAll: PathPermissionMap = {
 /** Leaf execution — no `.gatehouse/` filesystem access; use gatehouse_mission_info + project tree. */
 export const innerExecutionFilesystemPermissions = filesystemPathPermissions(innerGatehouseDenyAll)
 
-/** Retro coordinators — node reports, retro context, retro toolkit only. */
-export const innerRetroFilesystemPermissions = filesystemPathPermissions(
+/** Retro analyst — retro-summary, context dumps, retro toolkit. */
+export const innerRetroAnalystFilesystemPermissions = filesystemPathPermissions(
   gatehouseRules(
     [
-      `${GH}/trees/**/reports/nodes/**`,
+      `${GH}/trees/**/reports/retro-summary.md`,
       `${GH}/trees/**/context/**`,
       ...retroToolkitPatterns,
+      ...localePatterns("prompts/architect/retro-summary.template.md"),
+      ...localePatterns("prompts/architect/retro-analyst-kickoff.md"),
+      ...metaSkillPatterns("retro-analyst-meta"),
     ],
     [...denyOtherOuterMetaSkills(GATEHOUSE_ROLE_SKILLS.architect), ...promptRolePatterns("architect")],
   ),
   gatehouseRules(
-    [`${GH}/trees/**/reports/nodes/**`, ...retroToolkitPatterns],
+    [`${GH}/trees/**/reports/retro-summary.md`, ...retroToolkitPatterns, ...metaSkillPatterns("retro-analyst-meta")],
     [...denyOtherOuterMetaSkills(GATEHOUSE_ROLE_SKILLS.architect)],
   ),
 )

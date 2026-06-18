@@ -1,30 +1,25 @@
 export const team = {
   mission_id: "<mission_id>",
-  root: "<root-node-id>",
+  root: "<terminal-node-id>",
   nodes: {
-    "<root-node-id>": {
-      parent: null,
-      description: "任务协调者，汇总子节点交付并验收",
-    },
     "<leaf-a>": {
-      parent: "<root-node-id>",
+      parent: "<terminal-node-id>",
       description: "负责 <产出 A> 的执行成员",
     },
     "<leaf-b>": {
-      parent: "<root-node-id>",
+      parent: "<terminal-node-id>",
       description: "负责 <产出 B> 的执行成员",
+    },
+    "<terminal-node-id>": {
+      parent: null,
+      description: "整合上游成果，产出 Mission 最终交付物",
     },
   },
 }
 
 export const meta = {
   name: "<mission_id>",
-  phases: ["并行阶段", "汇总阶段"],
-  rework: {
-    peer_allowed: true,
-    escalate_to: "root" as const,
-    allow_coordinator_rework: true,
-  },
+  phases: ["并行执行", "最终交付"],
 }
 
 export default async function orchestrate(ctx) {
@@ -51,14 +46,14 @@ export default async function orchestrate(ctx) {
     },
   ])
 
-  await ctx.run("<root-node-id>", {
+  await ctx.run("<terminal-node-id>", {
     brief: {
-      your_work: ["汇总子节点交付并验收"],
-      acceptance_slice: ["path: …", "…"],
+      your_work: ["阅读上游报告，产出 Mission 最终交付物"],
+      acceptance_slice: ["path: reports/<mission_id>.html", "…"],
     },
-    text: ctx.template.workOrder("<root-node-id>", {
-      context: `子节点已完成，请阅读 reports/<leaf-a>.md 与 reports/<leaf-b>.md 并验收。`,
+    text: ctx.template.workOrder("<terminal-node-id>", {
+      context: `上游节点已完成，请阅读 reports/<leaf-a>.md 与 reports/<leaf-b>.md 并交付最终产出。`,
     }),
-    rollupFrom: ["<leaf-a>", "<leaf-b>"],
+    dependsOn: [{ node: "<leaf-a>", summary: true }, { node: "<leaf-b>", summary: true }],
   })
 }

@@ -26,7 +26,7 @@ describe("mission inner agent lifecycle", () => {
         {
           agentId: "inner:m-a:root",
           scope: "inner",
-          profile: "build-root",
+          profile: "build",
           sessionId: "ses-a",
           displayName: "m-a root",
           missionId: "m-a",
@@ -48,7 +48,7 @@ describe("mission inner agent lifecycle", () => {
       ],
       pendingDeliveries: [],
       retroRuns: [],
-      retroCompletions: [],
+      
       skillExtractRuns: [],
       skillExtractCompletions: [],
       skillVerifyRuns: [],
@@ -80,7 +80,7 @@ describe("mission inner agent lifecycle", () => {
         root_node: "root",
         created_at: new Date().toISOString(),
         nodes: {
-          root: { session_id: "ses-root", parent: null, display_name: "root", profile: "build-root" },
+          root: { session_id: "ses-root", parent: null, display_name: "root", profile: "build" },
         },
       }),
     )
@@ -92,7 +92,7 @@ describe("mission inner agent lifecycle", () => {
         {
           agentId: "inner:m-a:root",
           scope: "inner",
-          profile: "build-root",
+          profile: "build",
           sessionId: "ses-root",
           displayName: "m-a root",
           missionId: "m-a",
@@ -104,7 +104,7 @@ describe("mission inner agent lifecycle", () => {
       ],
       pendingDeliveries: [],
       retroRuns: [],
-      retroCompletions: [],
+      
       skillExtractRuns: [],
       skillExtractCompletions: [],
       skillVerifyRuns: [],
@@ -144,7 +144,7 @@ describe("mission inner agent lifecycle", () => {
       ],
       pendingDeliveries: [],
       retroRuns: [],
-      retroCompletions: [],
+      
       skillExtractRuns: [],
       skillExtractCompletions: [],
       skillVerifyRuns: [],
@@ -158,7 +158,7 @@ describe("mission inner agent lifecycle", () => {
     expect(count).toBe(1)
   })
 
-  test("reconcileCompletedRetroAgents deactivates fork agents when their node is recorded", async () => {
+  test("reconcileCompletedRetroAgents deactivates retro analyst when summary submitted", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-mission-agents-"))
     const now = new Date().toISOString()
     new RegistryDatabase(dir).save({
@@ -166,29 +166,24 @@ describe("mission inner agent lifecycle", () => {
       updatedAt: now,
       agents: [
         {
-          agentId: "retro:m-retro:root",
+          agentId: "retro:m-retro",
           scope: "retro",
-          profile: "root",
-          sessionId: "ses-retro-root",
-          displayName: "m-retro retro root",
+          profile: "retro-analyst",
+          sessionId: "ses-retro",
+          displayName: "[retro] m-retro",
           missionId: "m-retro",
-          nodeId: "root",
           status: "active",
           createdAt: now,
           updatedAt: now,
         },
       ],
       pendingDeliveries: [],
-      retroRuns: [{ missionId: "m-retro", expectedNodeIds: ["root"], startedAt: now }],
-      retroCompletions: [
-        {
-          missionId: "m-retro",
-          nodeId: "root",
-          reportPath: ".gatehouse/trees/m-retro/reports/nodes/root-retro.md",
-          sessionId: "ses-retro-root",
-          completedAt: now,
-        },
-      ],
+      retroRuns: [{
+        missionId: "m-retro",
+        startedAt: now,
+        retroSummarySubmittedAt: now,
+        retroSummaryPath: ".gatehouse/trees/m-retro/reports/retro-summary.md",
+      }],
       skillExtractRuns: [],
       skillExtractCompletions: [],
       skillVerifyRuns: [],
@@ -200,7 +195,7 @@ describe("mission inner agent lifecycle", () => {
     expect(reloaded.agents[0]?.status).toBe("completed")
   })
 
-  test("reconcileCompletedRetroAgents deactivates only recorded retro nodes", async () => {
+  test("reconcileCompletedRetroAgents leaves analyst active when summary not submitted", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-mission-agents-"))
     const now = new Date().toISOString()
     new RegistryDatabase(dir).save({
@@ -208,50 +203,27 @@ describe("mission inner agent lifecycle", () => {
       updatedAt: now,
       agents: [
         {
-          agentId: "retro:m-retro:root",
+          agentId: "retro:m-retro",
           scope: "retro",
-          profile: "root",
-          sessionId: "ses-retro-root",
-          displayName: "m-retro retro root",
+          profile: "retro-analyst",
+          sessionId: "ses-retro",
+          displayName: "[retro] m-retro",
           missionId: "m-retro",
-          nodeId: "root",
-          status: "active",
-          createdAt: now,
-          updatedAt: now,
-        },
-        {
-          agentId: "retro:m-retro:leaf",
-          scope: "retro",
-          profile: "build",
-          sessionId: "ses-retro-leaf",
-          displayName: "m-retro retro leaf",
-          missionId: "m-retro",
-          nodeId: "leaf",
           status: "active",
           createdAt: now,
           updatedAt: now,
         },
       ],
       pendingDeliveries: [],
-      retroRuns: [{ missionId: "m-retro", expectedNodeIds: ["root", "leaf"], startedAt: now }],
-      retroCompletions: [
-        {
-          missionId: "m-retro",
-          nodeId: "root",
-          reportPath: ".gatehouse/trees/m-retro/reports/nodes/root-retro.md",
-          sessionId: "ses-retro-root",
-          completedAt: now,
-        },
-      ],
+      retroRuns: [{ missionId: "m-retro", startedAt: now }],
       skillExtractRuns: [],
       skillExtractCompletions: [],
       skillVerifyRuns: [],
       skillVerifyCompletions: [],
     })
 
-    expect(reconcileCompletedRetroAgents(dir)).toBe(1)
+    expect(reconcileCompletedRetroAgents(dir)).toBe(0)
     const reloaded = new RegistryDatabase(dir).load()
-    expect(reloaded.agents.find((agent) => agent.nodeId === "root")?.status).toBe("completed")
-    expect(reloaded.agents.find((agent) => agent.nodeId === "leaf")?.status).toBe("active")
+    expect(reloaded.agents[0]?.status).toBe("active")
   })
 })

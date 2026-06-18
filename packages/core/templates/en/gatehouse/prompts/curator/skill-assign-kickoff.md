@@ -23,4 +23,4 @@ Pick `skill_domain` for nodes that should accumulate skills, then **only** call 
 2. New domain ids: optionally update `domains.yaml` first (metadata only).
 3. `gatehouse_apply_skill_domains(assignments='{"node-id":"domain-id"}')` → **end this round**.
 
-Coordinators and low-value nodes are usually **omitted**. Call `gatehouse_mission_info` to refresh the mission snapshot if needed.
+Rollup/coordination nodes and low-value nodes are usually **omitted**. Call `gatehouse_mission_info` to refresh the mission snapshot if needed.

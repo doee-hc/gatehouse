@@ -197,8 +197,16 @@ export function sessionTitle(_missionId: string, nodeId: string, retro = false) 
   return `[retro] ${label}`
 }
 
-export function retroSessionTitle(missionId: string, nodeId: string) {
-  return sessionTitle(missionId, nodeId, true)
+export function retroSessionTitle(missionId: string) {
+  return `[retro] ${nodeDisplayLabel(missionId)}`
+}
+
+export function retroSummaryRelPath(missionId: string) {
+  return path.join(treeRelDir(missionId), "reports", "retro-summary.md")
+}
+
+export function retroSummaryTemplatePath(projectDirectory: string) {
+  return resolveGatehouseContentPath(projectDirectory, "prompts/architect/retro-summary.template.md")
 }
 
 export function extractSessionTitle(missionId: string, nodeId: string) {
@@ -209,20 +217,23 @@ export function verifySessionTitle(missionId: string, nodeId: string) {
   return `[verify] ${nodeDisplayLabel(nodeId)}`
 }
 
-export function retroNodeReportRelPath(missionId: string, nodeId: string) {
-  return path.join(treeRelDir(missionId), "reports", "nodes", `${nodeId}-retro.md`)
-}
-
-export function retroNodeReportPath(projectDirectory: string, missionId: string, nodeId: string) {
-  return path.join(projectDirectory, retroNodeReportRelPath(missionId, nodeId))
-}
-
 export function contextDir(projectDirectory: string, missionId: string) {
   return path.join(treeDir(projectDirectory, missionId), "context")
 }
 
 export function nodeContextDir(projectDirectory: string, missionId: string, nodeId: string) {
   return path.join(contextDir(projectDirectory, missionId), nodeId)
+}
+
+export type PhaseContextScope = "retro" | "extract" | "verify"
+
+export function phaseContextDir(
+  projectDirectory: string,
+  missionId: string,
+  phase: PhaseContextScope,
+  nodeId: string,
+) {
+  return path.join(contextDir(projectDirectory, missionId), phase, nodeId)
 }
 
 export function nodeContextRelDir(missionId: string, nodeId: string) {
@@ -233,8 +244,8 @@ export function contextIndexRelPath(missionId: string) {
   return path.join(treeRelDir(missionId), "context", "index.json")
 }
 
-export function retroAnalysisPromptPath(projectDirectory: string) {
-  return resolveGatehouseContentPath(projectDirectory, "prompts/architect/retro-node-analysis.md")
+export function retroKickoffPromptPath(projectDirectory: string) {
+  return resolveGatehouseContentPath(projectDirectory, "prompts/architect/retro-analyst-kickoff.md")
 }
 
 export function domainSkillExtractPromptPath(projectDirectory: string) {

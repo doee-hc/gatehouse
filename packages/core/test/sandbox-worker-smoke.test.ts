@@ -50,7 +50,7 @@ describe("sandbox worker smoke", () => {
           missionId,
           nodeId,
           sessionId: `ses_${nodeId}`,
-          profile: nodeId === script.team.root ? "build-root" : "build",
+          profile: nodeId === script.team.root ? "build" : "build",
         })
       }
 

@@ -54,10 +54,7 @@ export function collectManifestSessionIds(
   const ids = new Set<string>()
   for (const node of Object.values(manifest.nodes)) ids.add(node.session_id)
   if (retro) {
-    for (const node of Object.values(retro.nodes)) {
-      ids.add(node.exec_session_id)
-      ids.add(node.retro_session_id)
-    }
+    ids.add(retro.retro_session_id)
   }
   if (extract) {
     for (const node of Object.values(extract.nodes)) ids.add(node.extract_session_id)

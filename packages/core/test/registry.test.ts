@@ -14,7 +14,9 @@ import { submitOrchestrationTool } from "../src/tools/submit-orchestration.ts"
 import { applySkillDomainsTool } from "../src/tools/apply-skill-domains.ts"
 import { stopSandboxOrchestration } from "../src/orchestration/sandbox-runtime.ts"
 import { copyExampleMission, seedActiveMissionRegistry } from "./copy-example-mission.ts"
+import { seedTerminalPlan } from "./seed-terminal-plan.ts"
 import { startPortalInternalEventCapture, withPortalEnv } from "./portal-test-server.ts"
+import { readBlogPublishedDocument } from "../src/portal/blog-publish.ts"
 
 const scaffoldScript = path.join(import.meta.dir, "../script/scaffold.ts")
 
@@ -278,7 +280,7 @@ describe("registry harness", () => {
       store.registerInnerNode({
         missionId: "m1",
         nodeId: "node-root",
-        profile: "build-root",
+        profile: "build",
         sessionId: "ses_exec_root",
       })
       seedActiveMissionRegistry(dir, "m1")
@@ -297,7 +299,7 @@ describe("registry harness", () => {
     }
   })
 
-  test("intermediate build-coordinator cannot send_message to lead", async () => {
+  test("intermediate build cannot send_message to lead", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-registry-mid-lead-deny-"))
     try {
       const pluginInput = { directory: dir, client: mockClientMinimal() } as unknown as PluginInput
@@ -310,7 +312,7 @@ describe("registry harness", () => {
       store.registerInnerNode({
         missionId: "m1",
         nodeId: "node-mid",
-        profile: "build-coordinator",
+        profile: "build",
         sessionId: "ses_mid",
         parentSessionId: "ses_root",
       })
@@ -318,7 +320,7 @@ describe("registry harness", () => {
       const output = toolOutput(
         await send.execute(
           { recipient: "lead", message: "subtree done" },
-          mockToolContext(dir, "ses_mid", "build-coordinator"),
+          mockToolContext(dir, "ses_mid", "build"),
         ),
       )
       expect(output).toContain("NOT_AUTHORIZED")
@@ -389,7 +391,7 @@ describe("registry harness", () => {
     }
   })
 
-  test("inner structural root cannot use send_message tool", async () => {
+  test("inner terminal node cannot use send_message tool", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-registry-solo-root-lead-"))
     try {
       const pluginInput = { directory: dir, client: mockClientMinimal() } as unknown as PluginInput
@@ -402,14 +404,14 @@ describe("registry harness", () => {
       store.registerInnerNode({
         missionId: "m1",
         nodeId: "node-root",
-        profile: "build-root-solo",
+        profile: "build",
         sessionId: "ses_root",
       })
       const send = sendMessageTool(pluginInput)
       const output = toolOutput(
         await send.execute(
           { recipient: "lead", message: "solo done" },
-          mockToolContext(dir, "ses_root", "build-root-solo"),
+          mockToolContext(dir, "ses_root", "build"),
         ),
       )
       expect(output).toContain("NOT_AUTHORIZED")
@@ -418,7 +420,38 @@ describe("registry harness", () => {
     }
   })
 
-  test("store.sendMessage delivers structural root notification to lead", async () => {
+  test("store.sendMessage rejects inner senders", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-registry-inner-send-deny-"))
+    try {
+      const pluginInput = { directory: dir, client: mockClientMinimal() } as unknown as PluginInput
+      const store = await getRegistryStore(pluginInput)
+      store.registerOuterSession({
+        profile: "lead",
+        sessionId: "ses_lead",
+        projectRootSessionId: "ses_lead",
+      })
+      store.registerInnerNode({
+        missionId: "m1",
+        nodeId: "node-root",
+        profile: "build",
+        sessionId: "ses_root",
+      })
+      const result = await store.sendMessage({
+        senderSessionId: "ses_root",
+        senderProfile: "build",
+        recipientQuery: "lead",
+        message: "mission done",
+      })
+      expect(result.status).toBe("forbidden")
+      if (result.status === "forbidden") {
+        expect(result.reason).toContain("outer-team only")
+      }
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  test("deliverSystemNotification delivers terminal node notification to lead", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-registry-root-hengduan-"))
     try {
       const mockClient = mockClientMinimal()
@@ -432,12 +465,12 @@ describe("registry harness", () => {
       store.registerInnerNode({
         missionId: "m1",
         nodeId: "node-root",
-        profile: "build-root",
+        profile: "build",
         sessionId: "ses_root",
       })
-      const result = await store.sendMessage({
+      seedTerminalPlan(dir, "m1", "node-root")
+      const result = await store.deliverSystemNotification({
         senderSessionId: "ses_root",
-        senderProfile: "build-root",
         recipientQuery: "lead",
         message: "mission done",
       })
@@ -450,7 +483,38 @@ describe("registry harness", () => {
     }
   })
 
-  test("registry sendMessage from inner root emits agent.chat with node spawn id", async () => {
+  test("deliverSystemNotification rejects non-terminal inner notify to lead", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-registry-mid-system-notify-deny-"))
+    try {
+      const pluginInput = { directory: dir, client: mockClientMinimal() } as unknown as PluginInput
+      const store = await getRegistryStore(pluginInput)
+      store.registerOuterSession({
+        profile: "lead",
+        sessionId: "ses_lead",
+        projectRootSessionId: "ses_lead",
+      })
+      store.registerInnerNode({
+        missionId: "m1",
+        nodeId: "node-mid",
+        profile: "build",
+        sessionId: "ses_mid",
+        parentSessionId: "ses_root",
+      })
+      const result = await store.deliverSystemNotification({
+        senderSessionId: "ses_mid",
+        recipientQuery: "lead",
+        message: "subtree done",
+      })
+      expect(result.status).toBe("forbidden")
+      if (result.status === "forbidden") {
+        expect(result.reason).toContain("terminal node")
+      }
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  test("deliverSystemNotification from inner root emits agent.chat with node spawn id", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-registry-inner-portal-chat-"))
     const token = "registry-test-token"
     const capture = await startPortalInternalEventCapture(token)
@@ -466,12 +530,12 @@ describe("registry harness", () => {
         store.registerInnerNode({
           missionId: "m1",
           nodeId: "node-root",
-          profile: "build-root",
+          profile: "build",
           sessionId: "ses_root",
         })
-        await store.sendMessage({
+        seedTerminalPlan(dir, "m1", "node-root")
+        await store.deliverSystemNotification({
           senderSessionId: "ses_root",
-          senderProfile: "build-root",
           recipientQuery: "lead",
           message: "inner portal chat",
         })
@@ -490,7 +554,7 @@ describe("registry harness", () => {
     }
   })
 
-  test("structural root cannot send_message to architect", async () => {
+  test("terminal node cannot send_message to architect", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-registry-root-architect-deny-"))
     try {
       const mockClient = mockClientMinimal()
@@ -506,14 +570,14 @@ describe("registry harness", () => {
       store.registerInnerNode({
         missionId: "m1",
         nodeId: "node-root",
-        profile: "build-root",
+        profile: "build",
         sessionId: "ses_root",
       })
       const send = sendMessageTool(pluginInput)
       const output = toolOutput(
         await send.execute(
           { recipient: "architect", message: "mission done" },
-          mockToolContext(dir, "ses_root", "build-root"),
+          mockToolContext(dir, "ses_root", "build"),
         ),
       )
       expect(output).toContain("NOT_AUTHORIZED")
@@ -561,25 +625,22 @@ describe("registry harness", () => {
         sessionId: "ses_architect",
         displayName: "Architect",
       })
-      store.registerRetroNode({
+      store.registerRetroAnalyst({
         missionId: "m1",
-        nodeId: "node-root",
-        profile: "build-coordinator",
         sessionId: "ses_retro_root",
       })
-      store.beginRetroRun("m1", ["node-root"])
-      const reportRel = ".gatehouse/trees/m1/reports/nodes/node-root-retro.md"
+      store.beginRetroRun("m1")
+      const reportRel = ".gatehouse/trees/m1/reports/retro-summary.md"
       await Bun.write(path.join(dir, reportRel), "# retro\n")
-      await store.recordRetroCompletion({
+      await store.recordRetroSummary({
         missionId: "m1",
-        nodeId: "node-root",
         sessionId: "ses_retro_root",
         reportPath: reportRel,
       })
-      expect(store.byAgentId("retro:m1:node-root")?.status).toBe("completed")
+      expect(store.byAgentId("retro:m1")?.status).toBe("completed")
       expect(promptCalls).toHaveLength(1)
       expect(promptCalls[0]?.sessionId).toBe("ses_architect")
-      expect(promptCalls[0]?.text).toContain("Retro ready")
+      expect(promptCalls[0]?.text).toContain("Retro review ready")
       expect(store.retroStatus("m1").status === "ok" && store.retroStatus("m1").architectNotified).toBe(true)
     } finally {
       await rm(dir, { recursive: true, force: true })
@@ -632,26 +693,31 @@ describe("registry harness", () => {
         sessionId: "ses_architect",
         displayName: "Architect",
       })
-      store.registerRetroNode({
+      store.registerRetroAnalyst({
         missionId: "m1",
-        nodeId: "node-root",
-        profile: "build-root",
         sessionId: "ses_retro_root",
       })
-      store.beginRetroRun("m1", ["node-root"])
-      const nodeReportRel = ".gatehouse/trees/m1/reports/nodes/node-root-retro.md"
-      await Bun.write(path.join(dir, nodeReportRel), "# retro\n")
-      await store.recordRetroCompletion({
+      store.beginRetroRun("m1")
+      const reportRel = ".gatehouse/trees/m1/reports/retro-summary.md"
+      await Bun.write(path.join(dir, reportRel), "# retro\n")
+      await store.recordRetroSummary({
         missionId: "m1",
-        nodeId: "node-root",
         sessionId: "ses_retro_root",
-        reportPath: nodeReportRel,
+        reportPath: reportRel,
       })
       expect(store.retroStatus("m1").architectSummarySubmitted).toBe(false)
+      const afterRetro = await readBlogPublishedDocument(dir)
+      expect(afterRetro.posts.map((entry) => entry.id)).toEqual(["m1:retro:summary"])
 
       const summaryRel = ".gatehouse/trees/m1/reports/architect-summary.md"
       await Bun.write(path.join(dir, summaryRel), "# architect summary\n")
       await store.recordArchitectRetroSummary({ missionId: "m1", reportPath: summaryRel })
+
+      const afterArchitect = await readBlogPublishedDocument(dir)
+      expect(afterArchitect.posts.map((entry) => entry.id)).toEqual([
+        "m1:retro:summary",
+        "m1:architect:summary",
+      ])
 
       expect(store.retroStatus("m1").architectSummarySubmitted).toBe(true)
       expect(store.retroCompleteReadiness("m1").ready).toBe(true)
@@ -694,7 +760,7 @@ describe("registry harness", () => {
       store.registerInnerNode({
         missionId: "m1",
         nodeId: "node-root",
-        profile: "build-root",
+        profile: "build",
         sessionId: "ses_root",
       })
       store.registerInnerNode({
@@ -720,7 +786,7 @@ describe("registry harness", () => {
     }
   })
 
-  test("hengduan can send_message to structural root", async () => {
+  test("lead can send_message to terminal node", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-registry-hengduan-root-"))
     try {
       const mockClient = mockClientMinimal()
@@ -734,10 +800,11 @@ describe("registry harness", () => {
       store.registerInnerNode({
         missionId: "m1",
         nodeId: "node-root",
-        profile: "build-root",
+        profile: "build",
         sessionId: "ses_root",
       })
       seedActiveMissionRegistry(dir, "m1")
+      seedTerminalPlan(dir, "m1", "node-root")
 
       const send = sendMessageTool(pluginInput)
       const output = toolOutput(
@@ -855,29 +922,22 @@ describe("applyGatehouseConfig", () => {
     expect((agents["lead"]?.permission as Record<string, string>).gatehouse_send_message).toBe("allow")
   })
 
-  test("registers inner coordinator profiles with task denied", async () => {
+  test("registers build profile with task allowed", async () => {
     const { applyGatehouseConfig } = await import("../src/setup/config.ts")
     const cfg = { profile: {} } as Record<string, unknown>
     await applyGatehouseConfig(cfg as never)
     const agents = cfg.agent as Record<string, Record<string, unknown>>
-    for (const profile of ["build-root", "build-coordinator"] as const) {
-      const permission = agents[profile]?.permission as Record<string, string>
-      expect(agents[profile]?.mode).toBe("primary")
-      expect(permission.task).toBe("deny")
-      expect(permission.gatehouse_send_message).toBe("deny")
-      expect(permission.gatehouse_mission_info).toBe("allow")
-      const tools = agents[profile]?.tools as Record<string, boolean>
-      expect(tools.gatehouse_mission_info).toBeUndefined()
-      expect(tools.gatehouse_send_message).toBe(false)
-    }
-    const soloPermission = agents["build-root-solo"]?.permission as Record<string, string>
-    expect(soloPermission.task).toBe("allow")
-    expect(soloPermission.gatehouse_send_message).toBe("deny")
-
     const buildPermission = agents["build"]?.permission as Record<string, string>
+    expect(agents["build"]?.mode).toBe("primary")
+    expect(buildPermission.task).toBe("allow")
+    expect(buildPermission.gatehouse_send_message).toBe("deny")
     expect(buildPermission.gatehouse_mission_info).toBe("allow")
     const buildTools = agents["build"]?.tools as Record<string, boolean>
     expect(buildTools.gatehouse_mission_info).toBeUndefined()
+    expect(buildTools.gatehouse_send_message).toBe(false)
+    expect(agents["build-root"]).toBeUndefined()
+    expect(agents["build-coordinator"]).toBeUndefined()
+    expect(agents["build-root-solo"]).toBeUndefined()
   })
 
   test("sets gatehouse_skill_extract_record for build-extract profile only", async () => {

@@ -4,7 +4,6 @@ import type { RegistryAgent } from "../registry/types.ts"
 import {
   ARBITER_OPENCODE,
   GATEHOUSE_OUTER_AGENTS,
-  isInnerStructuralRoot,
   LEAD_OPENCODE,
 } from "../registry/types.ts"
 import { activeMissionId } from "../missions/scope.ts"
@@ -96,13 +95,12 @@ async function buildOuterListTeam(input: {
   const missionId = activeMissionId(input.store)
   const manifest = missionId ? await readManifest(input.directory, missionId) : undefined
   const retro = missionId ? await readRetroManifest(input.directory, missionId) : undefined
-  const retroNodeIds = retro ? new Set(Object.keys(retro.nodes)) : undefined
   return {
     you: { profile: input.callerProfile },
     mission_id: missionId ?? null,
     outer: outerMembers(input.store, input.callerProfile, includeSessionId),
     ...(manifest && {
-      execution: executionMembers(manifest, retroNodeIds, includeSessionId, input.store, missionId!),
+      execution: executionMembers(manifest, undefined, includeSessionId, input.store, missionId!),
     }),
     ...(retro && {
       retro: retroMembers(retro, includeSessionId, input.store),
@@ -111,16 +109,12 @@ async function buildOuterListTeam(input: {
 }
 
 function retroMembers(retro: RetroManifest, includeSessionId: boolean, store: RegistryStore) {
-  return retro.retro_order.map((nodeId) => {
-    const retroNode = retro.nodes[nodeId]
-    if (!retroNode) return undefined
-    const agent = store.bySession(retroNode.retro_session_id)
-    const entry: ListTeamRetroMember = { node_id: nodeId }
-    if (agent?.displayName) entry.display_name = agent.displayName
-    if (agent?.profile) entry.profile = agent.profile
-    if (includeSessionId) entry.session_id = retroNode.retro_session_id
-    return entry
-  }).filter((item): item is ListTeamRetroMember => item !== undefined)
+  const agent = store.bySession(retro.retro_session_id)
+  const entry: ListTeamRetroMember = { node_id: "retro-analyst" }
+  if (agent?.displayName) entry.display_name = agent.displayName
+  if (agent?.profile) entry.profile = agent.profile
+  if (includeSessionId) entry.session_id = retro.retro_session_id
+  return [entry]
 }
 
 async function buildInnerListTeam(
@@ -138,17 +132,15 @@ async function buildInnerListTeam(
   const manifest = manifestFromSession ?? (await readManifest(input.directory, missionId))
   if (!manifest) return listTeamError("MANIFEST_NOT_FOUND", "Could not resolve mission manifest for this session")
   const retro = await readRetroManifest(input.directory, missionId)
-  const retroNodeIds = retro ? new Set(Object.keys(retro.nodes)) : undefined
   const youNodeId = resolveYouNodeId(manifest, input.sessionId, registryAgent?.nodeId)
   const payload: ListTeamPayload = {
     you: { profile: input.callerProfile, ...(youNodeId && { node_id: youNodeId }) },
     mission_id: missionId,
-    execution: executionMembers(manifest, retroNodeIds, false, input.store, missionId),
+    execution: executionMembers(manifest, undefined, false, input.store, missionId),
   }
-  const structuralRoot =
-    (registryAgent && isInnerStructuralRoot(registryAgent)) ||
-    (youNodeId !== undefined && youNodeId === manifest.root_node)
-  if (structuralRoot) {
+  const terminalNode =
+    youNodeId !== undefined && youNodeId === manifest.root_node
+  if (terminalNode) {
     const lead = input.store.byProfile(LEAD_OPENCODE, "outer")
     if (lead) payload.outer = [{ profile: LEAD_OPENCODE, display_name: lead.displayName }]
   }
@@ -165,24 +157,13 @@ async function buildRetroListTeam(
   manifest: TreeManifest,
   retro: RetroManifest,
 ) {
-  const missionId = manifest.mission_id
-  const youNodeId = retroNodeIdForSession(retro, input.sessionId)
-  if (!youNodeId) return listTeamError("RETRO_NODE_UNKNOWN", "Could not resolve retro node for this session")
-  const subtreeIds = new Set(collectSubtreeNodeIds(manifest, youNodeId, true))
-  const retroInSubtree = new Set(
-    retro.retro_order.filter((nodeId) => subtreeIds.has(nodeId)),
-  )
+  if (retro.retro_session_id !== input.sessionId) {
+    return listTeamError("RETRO_NODE_UNKNOWN", "Could not resolve retro session for this session")
+  }
   return {
-    you: { profile: input.callerProfile, node_id: youNodeId },
-    mission_id: missionId,
-    subtree: executionMembers(
-      manifest,
-      retroInSubtree,
-      false,
-      input.store,
-      missionId,
-      subtreeIds,
-    ),
+    you: { profile: input.callerProfile, node_id: "retro-analyst" },
+    mission_id: manifest.mission_id,
+    execution: executionMembers(manifest, undefined, false, input.store, manifest.mission_id),
   } satisfies ListTeamPayload
 }
 
@@ -253,8 +234,7 @@ function resolveYouNodeId(manifest: TreeManifest, sessionId: string, nodeId?: st
 }
 
 function retroNodeIdForSession(retro: RetroManifest, sessionId: string) {
-  const hit = Object.entries(retro.nodes).find(([, node]) => node.retro_session_id === sessionId)
-  return hit?.[0]
+  return retro.retro_session_id === sessionId ? "retro-analyst" : undefined
 }
 
 async function resolveMissionSession(

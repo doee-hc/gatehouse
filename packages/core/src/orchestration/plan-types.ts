@@ -3,7 +3,7 @@ import type { TeamSpec } from "../tree/types.ts"
 
 export const ORCHESTRATION_PLAN_SCHEMA_VERSION = 1
 
-export type PlanStepOp = "run" | "join" | "fork" | "other"
+export type PlanStepOp = "run" | "fork" | "other"
 
 export type PlanStep = {
   id: string
@@ -19,6 +19,8 @@ export type OrchestrationPlan = {
   mission_id: string
   plan_version: string
   script_hash: string
+  /** Lead delivery node; inferred as the plan dependency sink at compile time. */
+  terminal_node?: string
   steps: PlanStep[]
   warnings: string[]
 }

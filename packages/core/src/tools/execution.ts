@@ -1,7 +1,7 @@
 import { tool, type PluginInput } from "@opencode-ai/plugin"
 import { getRegistryStore } from "../registry/context.ts"
-import { isInnerStructuralRoot } from "../registry/types.ts"
 import { orchestrationComplete, orchestrationRework } from "../orchestration/events.ts"
+import { isMissionTerminalNode } from "../orchestration/plan-graph.ts"
 import { parseArtifactsInput, parseRisksInput } from "../orchestration/completion.ts"
 import { hasOrchestrationRuntime, readOrchestrationState } from "../orchestration/state.ts"
 import type { NodeCompletion } from "../orchestration/types.ts"
@@ -71,7 +71,10 @@ export function executionCompleteTool(input: PluginInput) {
         const missionId = sender.missionId
         const nodeId = sender.nodeId
         const summary = args.summary.trim()
-        const isRoot = isInnerStructuralRoot(sender)
+        const scriptDb = new RegistryDatabase(input.directory, { readonly: true })
+        const scriptRecord = scriptDb.getMissionScript(missionId)
+        const plan = scriptDb.getLatestOrchestrationPlan(missionId)
+        const isTerminal = isMissionTerminalNode(nodeId, plan)
 
         let artifacts: ReturnType<typeof parseArtifactsInput>
         let risks: ReturnType<typeof parseRisksInput>
@@ -98,7 +101,7 @@ export function executionCompleteTool(input: PluginInput) {
 
         const state = readOrchestrationState(input.directory, missionId)
         const node = state?.nodes[nodeId]
-        const finalRootDelivery = Boolean(isRoot && state && allOtherNodesDone(state, nodeId))
+        const finalRootDelivery = Boolean(isTerminal && state && allOtherNodesDone(state, nodeId))
 
         if (finalRootDelivery) {
           const missionsDoc = await readMissionsDocument(input.directory)
@@ -143,16 +146,13 @@ export function executionCompleteTool(input: PluginInput) {
           ...(node?.round !== undefined && { round: node.round }),
         }
 
-        const scriptRecord = new RegistryDatabase(input.directory, { readonly: true }).getMissionScript(missionId)
-        const isStructuralRoot = scriptRecord?.team.root === nodeId
-
         const result = await orchestrationComplete({
           plugin: input,
           store,
           missionId,
           nodeId,
           completion,
-          skipAcceptanceSlice: Boolean(isStructuralRoot && state && allOtherNodesDone(state, nodeId)),
+          skipAcceptanceSlice: Boolean(isTerminal && state && allOtherNodesDone(state, nodeId)),
         })
 
         if (result.status === "no_orchestration") {
@@ -189,7 +189,7 @@ export function executionCompleteTool(input: PluginInput) {
         let delivery:
           | Awaited<ReturnType<typeof submitDeliveryOnRootComplete>>
           | undefined
-        if (isRoot && result.all_done) {
+        if (isTerminal && result.all_done) {
           try {
             delivery = await submitDeliveryOnRootComplete({
               plugin: input,
@@ -339,7 +339,7 @@ export function executionReworkTool(input: PluginInput) {
 export function executionStatusTool(input: PluginInput) {
   return tool({
     description:
-      "Read orchestration runtime state (node statuses, phase, completions, running/done/blocked/rework). For root, coordinators, lead, architect during running missions.",
+      "Read orchestration runtime state (node statuses, phase, completions, running/done/blocked/rework). For lead and architect during running missions.",
     args: {
       mission_id: tool.schema.string().optional().describe("Mission id; default active mission"),
     },

@@ -1,4 +1,5 @@
 import type { BlogPost, BlogSnapshot } from "../api/types.ts"
+import { openBlogHtmlOverlay } from "./blog-html-overlay.ts"
 import { localeTag, t } from "./i18n.ts"
 import { renderBlogPostBody } from "./render-blog-post.ts"
 
@@ -18,11 +19,9 @@ export function initBlog() {
   if (!back || !list || !detail) return
 
   back.addEventListener("click", () => {
-    detail.classList.remove("visible", "html-article")
+    detail.classList.remove("visible")
     const layout = document.querySelector(".blog-layout")
-    if (layout instanceof HTMLElement) layout.classList.remove("blog-reading", "blog-reading-html")
-    const view = document.getElementById("view-blog")
-    if (view instanceof HTMLElement) view.classList.remove("blog-html-reading")
+    if (layout instanceof HTMLElement) layout.classList.remove("blog-reading")
     list.style.display = "block"
     if (header instanceof HTMLElement) header.style.display = "block"
   })
@@ -122,23 +121,24 @@ function renderPostPreview(post: BlogPost) {
 
 function openBlogPost(postId: string) {
   const post = postsById.get(postId)
+  if (!post) return
+
+  if (post.format === "html") {
+    openBlogHtmlOverlay(post)
+    return
+  }
+
   const list = document.getElementById("blog-list")
   const header = document.querySelector(".blog-header")
   const detail = document.getElementById("post-detail")
-  if (!post || !list || !detail) return
+  if (!list || !detail) return
 
   list.style.display = "none"
   if (header instanceof HTMLElement) header.style.display = "none"
   detail.classList.add("visible")
-  detail.classList.toggle("html-article", post.format === "html")
 
   const layout = document.querySelector(".blog-layout")
-  if (layout instanceof HTMLElement) {
-    layout.classList.add("blog-reading")
-    layout.classList.toggle("blog-reading-html", post.format === "html")
-  }
-  const view = document.getElementById("view-blog")
-  if (view instanceof HTMLElement) view.classList.toggle("blog-html-reading", post.format === "html")
+  if (layout instanceof HTMLElement) layout.classList.add("blog-reading")
 
   const title = document.getElementById("detail-title")
   const meta = document.getElementById("detail-meta")

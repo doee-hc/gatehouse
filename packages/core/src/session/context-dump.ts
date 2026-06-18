@@ -1,13 +1,19 @@
 import path from "node:path"
 import { existsSync } from "node:fs"
 import { mkdir } from "node:fs/promises"
-import { contextDir, contextIndexRelPath, nodeContextDir, nodeContextRelDir, treeRelDir } from "../paths.ts"
+import {
+  contextDir,
+  contextIndexRelPath,
+  nodeContextDir,
+  nodeContextRelDir,
+  phaseContextDir,
+  type PhaseContextScope,
+  treeRelDir,
+} from "../paths.ts"
 import { aggregateSessionMetrics, mergeSessionMetrics, type SessionMetrics } from "../metrics/aggregate.ts"
-import { managerRetroOrder } from "../tree/parse.ts"
-import type { TreeManifest, TreeNode } from "../tree/types.ts"
+import type { ExtractManifest, RetroManifest, TreeManifest, TreeNode, VerifyManifest } from "../tree/types.ts"
 import type { GatehouseClient } from "./client.ts"
 import { sessionDetail, sessionDurationMs, sessionMessages } from "./client.ts"
-import { collectSubtreeNodeIds } from "../tools/list-members.ts"
 
 export type MessageKind =
   | "user"
@@ -318,6 +324,117 @@ export function missionContextAlreadyDumped(projectDirectory: string, missionId:
   return existsSync(path.join(contextDir(projectDirectory, missionId), "index.json"))
 }
 
+export async function dumpPhaseSessionMetrics(input: {
+  client: GatehouseClient
+  projectDirectory: string
+  missionId: string
+  phase: PhaseContextScope
+  nodeId: string
+  sessionId: string
+}) {
+  const [messages, detail] = await Promise.all([
+    sessionMessages(input.client, input.projectDirectory, input.sessionId),
+    sessionDetail(input.client, input.projectDirectory, input.sessionId),
+  ])
+  const absDir = phaseContextDir(input.projectDirectory, input.missionId, input.phase, input.nodeId)
+  await mkdir(absDir, { recursive: true })
+  const duration_ms = sessionDurationMs(detail)
+  const metrics = aggregateSessionMetrics({
+    node_id: input.nodeId,
+    session_id: input.sessionId,
+    messages,
+    duration_ms,
+  })
+  await Bun.write(
+    path.join(absDir, "metrics.json"),
+    JSON.stringify(
+      {
+        mission_id: input.missionId,
+        phase: input.phase,
+        dumped_at: new Date().toISOString(),
+        ...metrics,
+      },
+      null,
+      2,
+    ),
+  )
+  return metrics
+}
+
+async function dumpPhaseSessionMetricsIfMissing(input: {
+  client: GatehouseClient
+  projectDirectory: string
+  missionId: string
+  phase: PhaseContextScope
+  nodeId: string
+  sessionId: string
+}) {
+  const metricsPath = path.join(
+    phaseContextDir(input.projectDirectory, input.missionId, input.phase, input.nodeId),
+    "metrics.json",
+  )
+  if (existsSync(metricsPath)) {
+    return { skipped: true as const, session_id: input.sessionId, node_id: input.nodeId, phase: input.phase }
+  }
+  await dumpPhaseSessionMetrics(input)
+  return { skipped: false as const, session_id: input.sessionId, node_id: input.nodeId, phase: input.phase }
+}
+
+export async function ensureMissionPhaseMetricsDumped(input: {
+  client: GatehouseClient
+  projectDirectory: string
+  missionId: string
+  retro?: RetroManifest
+  extract?: ExtractManifest
+  verify?: VerifyManifest
+}) {
+  const results: Array<
+    | { skipped: true; session_id: string; node_id: string; phase: PhaseContextScope }
+    | { skipped: false; session_id: string; node_id: string; phase: PhaseContextScope }
+  > = []
+  if (input.retro) {
+    results.push(
+      await dumpPhaseSessionMetricsIfMissing({
+        client: input.client,
+        projectDirectory: input.projectDirectory,
+        missionId: input.missionId,
+        phase: "retro",
+        nodeId: "retro-analyst",
+        sessionId: input.retro.retro_session_id,
+      }),
+    )
+  }
+  if (input.extract) {
+    for (const [nodeId, node] of Object.entries(input.extract.nodes)) {
+      results.push(
+        await dumpPhaseSessionMetricsIfMissing({
+          client: input.client,
+          projectDirectory: input.projectDirectory,
+          missionId: input.missionId,
+          phase: "extract",
+          nodeId,
+          sessionId: node.extract_session_id,
+        }),
+      )
+    }
+  }
+  if (input.verify) {
+    for (const [nodeId, node] of Object.entries(input.verify.nodes)) {
+      results.push(
+        await dumpPhaseSessionMetricsIfMissing({
+          client: input.client,
+          projectDirectory: input.projectDirectory,
+          missionId: input.missionId,
+          phase: "verify",
+          nodeId,
+          sessionId: node.verify_session_id,
+        }),
+      )
+    }
+  }
+  return { mission_id: input.missionId, dumped: results.filter((row) => !row.skipped).length, results }
+}
+
 export async function ensureMissionContextDumped(input: {
   client: GatehouseClient
   projectDirectory: string
@@ -338,6 +455,7 @@ export async function dumpMissionContext(input: {
   client: GatehouseClient
   projectDirectory: string
   manifest: TreeManifest
+  analysisOrder?: string[]
 }) {
   const entries = await Promise.all(
     Object.entries(input.manifest.nodes).map(([nodeId, node]) =>
@@ -355,34 +473,24 @@ export async function dumpMissionContext(input: {
     entries.map((entry) => [entry.node_id, entry.metrics satisfies SessionMetrics]),
   ) as Record<string, SessionMetrics>
 
-  const retroOrder = managerRetroOrder(input.manifest)
-  const retroNodes = Object.fromEntries(
-    retroOrder.map((nodeId) => {
-      const nodeIds = collectSubtreeNodeIds(input.manifest, nodeId, true)
-      const sessions = nodeIds.map((id) => metricsByNode[id]).filter((metrics): metrics is SessionMetrics => Boolean(metrics))
-      return [
-        nodeId,
-        {
-          root_node_id: nodeId,
-          scope: "subtree" as const,
-          node_ids: nodeIds,
-          ...mergeSessionMetrics(sessions),
-        },
-      ]
-    }),
-  )
+  const analysisOrder =
+    input.analysisOrder && input.analysisOrder.length > 0
+      ? input.analysisOrder
+      : Object.keys(input.manifest.nodes)
+  const missionMetrics = mergeSessionMetrics(Object.values(metricsByNode))
 
   const contextRoot = contextDir(input.projectDirectory, input.manifest.mission_id)
-  const subtreeMetricsRel = path.join(treeRelDir(input.manifest.mission_id), "context", "subtree-metrics.json")
+  const missionMetricsRel = path.join(treeRelDir(input.manifest.mission_id), "context", "mission-metrics.json")
   await mkdir(contextRoot, { recursive: true })
   await Bun.write(
-    path.join(contextRoot, "subtree-metrics.json"),
+    path.join(contextRoot, "mission-metrics.json"),
     JSON.stringify(
       {
         mission_id: input.manifest.mission_id,
         dumped_at: new Date().toISOString(),
-        retro_order: retroOrder,
-        retro_nodes: retroNodes,
+        analysis_order: analysisOrder,
+        node_ids: Object.keys(input.manifest.nodes),
+        ...missionMetrics,
       },
       null,
       2,
@@ -397,9 +505,9 @@ export async function dumpMissionContext(input: {
       {
         mission_id: input.manifest.mission_id,
         dumped_at: new Date().toISOString(),
-        note: "Execution context snapshot: messages/timeline/metrics persisted; use retro coord custom scripts or skills/retro-toolkit/ for semantic feature extraction",
-        subtree_metrics_path: subtreeMetricsRel,
-        retro_order: retroOrder,
+        note: "Execution context snapshot: messages/timeline/metrics persisted; use retro-toolkit scripts for semantic feature extraction",
+        mission_metrics_path: missionMetricsRel,
+        analysis_order: analysisOrder,
         nodes: nodeEntries,
       },
       null,
@@ -412,7 +520,7 @@ export async function dumpMissionContext(input: {
     dumped: entries.length,
     nodes: nodeEntries,
     index_path: contextIndexRelPath(input.manifest.mission_id),
-    subtree_metrics_path: subtreeMetricsRel,
-    retro_order: retroOrder,
+    mission_metrics_path: missionMetricsRel,
+    analysis_order: analysisOrder,
   }
 }

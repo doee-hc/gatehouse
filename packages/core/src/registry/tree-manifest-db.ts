@@ -24,7 +24,8 @@ type TreeNodeRow = {
 type RetroRow = {
   mission_id: string
   created_at: string
-  retro_order_json: string
+  retro_session_id: string
+  analysis_order_json: string
 }
 
 type VerifyNodeRow = {
@@ -55,12 +56,13 @@ type VerifyRow = {
   verify_order_json: string
 }
 
-type RetroNodeRow = {
-  mission_id: string
-  node_id: string
-  exec_session_id: string
-  retro_session_id: string
-  child_nodes_json: string
+function rowsToRetro(tree: RetroRow): RetroManifest {
+  return {
+    mission_id: tree.mission_id,
+    created_at: tree.created_at,
+    retro_session_id: tree.retro_session_id,
+    analysis_order: JSON.parse(tree.analysis_order_json) as string[],
+  }
 }
 
 function rowsToManifest(tree: TreeRow, nodeRows: TreeNodeRow[]): TreeManifest {
@@ -85,21 +87,40 @@ function rowsToManifest(tree: TreeRow, nodeRows: TreeNodeRow[]): TreeManifest {
   }
 }
 
-function rowsToRetro(tree: RetroRow, nodeRows: RetroNodeRow[]): RetroManifest {
-  const nodes: RetroManifest["nodes"] = {}
-  for (const row of nodeRows) {
-    nodes[row.node_id] = {
-      exec_session_id: row.exec_session_id,
-      retro_session_id: row.retro_session_id,
-      child_nodes: JSON.parse(row.child_nodes_json) as string[],
-    }
-  }
-  return {
-    mission_id: tree.mission_id,
-    created_at: tree.created_at,
-    retro_order: JSON.parse(tree.retro_order_json) as string[],
-    nodes,
-  }
+
+export function getRetroManifest(db: Database, missionId: string) {
+  const tree = db
+    .query("SELECT * FROM registry_retro_tree WHERE mission_id = $mission_id")
+    .get({ $mission_id: missionId }) as RetroRow | undefined
+  if (!tree) return undefined
+  return rowsToRetro(tree)
+}
+
+export function saveRetroManifest(db: Database, retro: RetroManifest) {
+  db.prepare(`
+    INSERT INTO registry_retro_tree (mission_id, created_at, retro_session_id, analysis_order_json)
+    VALUES ($mission_id, $created_at, $retro_session_id, $analysis_order_json)
+    ON CONFLICT(mission_id) DO UPDATE SET
+      created_at = excluded.created_at,
+      retro_session_id = excluded.retro_session_id,
+      analysis_order_json = excluded.analysis_order_json
+  `).run({
+    $mission_id: retro.mission_id,
+    $created_at: retro.created_at,
+    $retro_session_id: retro.retro_session_id,
+    $analysis_order_json: JSON.stringify(retro.analysis_order),
+  })
+}
+
+export function findTreeManifestByRetroSession(db: Database, sessionId: string) {
+  const tree = db
+    .query("SELECT mission_id FROM registry_retro_tree WHERE retro_session_id = $session_id LIMIT 1")
+    .get({ $session_id: sessionId }) as { mission_id: string } | undefined
+  if (!tree) return undefined
+  const retro = getRetroManifest(db, tree.mission_id)
+  const manifest = getTreeManifest(db, tree.mission_id)
+  if (!retro || !manifest) return undefined
+  return { missionId: tree.mission_id, manifest, retro }
 }
 
 export function getTreeManifest(db: Database, missionId: string) {
@@ -219,71 +240,6 @@ export function findTreeManifestByExecSession(db: Database, sessionId: string) {
   const manifest = getTreeManifest(db, node.mission_id)
   if (!manifest) return undefined
   return { missionId: node.mission_id, manifest }
-}
-
-export function getRetroManifest(db: Database, missionId: string) {
-  const tree = db
-    .query("SELECT * FROM registry_retro_tree WHERE mission_id = $mission_id")
-    .get({ $mission_id: missionId }) as RetroRow | undefined
-  if (!tree) return undefined
-  const nodeRows = db
-    .query("SELECT * FROM registry_retro_tree_node WHERE mission_id = $mission_id ORDER BY node_id")
-    .all({ $mission_id: missionId }) as RetroNodeRow[]
-  return rowsToRetro(tree, nodeRows)
-}
-
-export function saveRetroManifest(db: Database, retro: RetroManifest) {
-  db.exec("BEGIN")
-  try {
-    const upsert = db.prepare(`
-      INSERT INTO registry_retro_tree (mission_id, created_at, retro_order_json)
-      VALUES ($mission_id, $created_at, $retro_order_json)
-      ON CONFLICT(mission_id) DO UPDATE SET
-        created_at = excluded.created_at,
-        retro_order_json = excluded.retro_order_json
-    `)
-    upsert.run({
-      $mission_id: retro.mission_id,
-      $created_at: retro.created_at,
-      $retro_order_json: JSON.stringify(retro.retro_order),
-    })
-    db.prepare("DELETE FROM registry_retro_tree_node WHERE mission_id = $mission_id").run({
-      $mission_id: retro.mission_id,
-    })
-    const insertNode = db.prepare(`
-      INSERT INTO registry_retro_tree_node (
-        mission_id, node_id, exec_session_id, retro_session_id, child_nodes_json
-      ) VALUES (
-        $mission_id, $node_id, $exec_session_id, $retro_session_id, $child_nodes_json
-      )
-    `)
-    for (const [nodeId, node] of Object.entries(retro.nodes)) {
-      insertNode.run({
-        $mission_id: retro.mission_id,
-        $node_id: nodeId,
-        $exec_session_id: node.exec_session_id,
-        $retro_session_id: node.retro_session_id,
-        $child_nodes_json: JSON.stringify(node.child_nodes),
-      })
-    }
-    db.exec("COMMIT")
-  } catch (error) {
-    db.exec("ROLLBACK")
-    throw error
-  }
-}
-
-export function findTreeManifestByRetroSession(db: Database, sessionId: string) {
-  const node = db
-    .query(
-      "SELECT mission_id FROM registry_retro_tree_node WHERE retro_session_id = $session_id LIMIT 1",
-    )
-    .get({ $session_id: sessionId }) as { mission_id: string } | undefined
-  if (!node) return undefined
-  const retro = getRetroManifest(db, node.mission_id)
-  const manifest = getTreeManifest(db, node.mission_id)
-  if (!retro || !manifest) return undefined
-  return { missionId: node.mission_id, manifest, retro }
 }
 
 function rowsToExtract(tree: ExtractRow, nodeRows: ExtractNodeRow[]): ExtractManifest {
@@ -506,19 +462,11 @@ export const TREE_MANIFEST_SCHEMA_SQL = `
     CREATE TABLE IF NOT EXISTS registry_retro_tree (
       mission_id TEXT PRIMARY KEY,
       created_at TEXT NOT NULL,
-      retro_order_json TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS registry_retro_tree_node (
-      mission_id TEXT NOT NULL,
-      node_id TEXT NOT NULL,
-      exec_session_id TEXT NOT NULL,
       retro_session_id TEXT NOT NULL,
-      child_nodes_json TEXT NOT NULL,
-      PRIMARY KEY (mission_id, node_id)
+      analysis_order_json TEXT NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS registry_retro_tree_node_retro_session_idx
-      ON registry_retro_tree_node(retro_session_id);
+    CREATE INDEX IF NOT EXISTS registry_retro_tree_session_idx
+      ON registry_retro_tree(retro_session_id);
 
     CREATE TABLE IF NOT EXISTS registry_extract_tree (
       mission_id TEXT PRIMARY KEY,

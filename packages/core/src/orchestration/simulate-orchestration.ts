@@ -16,7 +16,7 @@ import {
   formatReworkTextWithLocale,
   formatWorkOrderTextWithLocale,
 } from "./templates.ts"
-import { orchestrationFork, orchestrationJoin, orchestrationRun } from "./run-join-fork.ts"
+import { orchestrationFork, orchestrationRun } from "./run-fork.ts"
 
 export const ORCHESTRATION_SIMULATION_TIMEOUT_MS = 5_000
 export const ORCHESTRATION_SIMULATION_MAX_STEPS = 500
@@ -113,7 +113,7 @@ function createSimulatedMissionContext(input: {
       if (!input.dispatchedReply.has(nodeId)) {
         throw new MissionScriptParseError(
           "SCRIPT_SIMULATION_UNPROMPTED_WAIT",
-          `join("${nodeId}") before run for that node`,
+          `run("${nodeId}") waits before that node was dispatched`,
         )
       }
       markNodeDone(state, nodeId)
@@ -129,14 +129,9 @@ function createSimulatedMissionContext(input: {
   return {
     objective: input.objective,
 
-    async run(target, opts) {
+    async run(nodeId, opts) {
       bumpStep(input.stepCount, input.maxSteps)
-      await orchestrationRun(engine, target, opts, { defaultWorkOrder })
-    },
-
-    async join(target, opts) {
-      bumpStep(input.stepCount, input.maxSteps)
-      await orchestrationJoin(engine, target, opts, team)
+      await orchestrationRun(engine, nodeId, opts, { defaultWorkOrder })
     },
 
     async fork(tracks) {
@@ -292,7 +287,7 @@ export async function simulateOrchestration(input: {
       code: "SCRIPT_SIMULATION_INCOMPLETE",
       message:
         `orchestrate simulation finished but mission is incomplete (${incompleteSimulationMessage(state)}). ` +
-        "Every team node must reach done via ctx.run or dispatch+join.",
+        "Every team node must reach done via ctx.run.",
     }
   }
 

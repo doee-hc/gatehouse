@@ -128,7 +128,7 @@ describe("example flow", () => {
       expect(manifest?.nodes["node-root"]?.display_name).toBe("root")
       expect(manifest?.nodes["node-doc"]?.display_name).toBe("doc")
       expect(manifest?.nodes["node-root"]?.description).toBe(
-        "Mission 任务协调者，分派 node-doc 并汇总交付",
+        "Mission 汇总节点，汇总验收 node-doc 交付并向上汇报",
       )
       expect(manifest?.nodes["node-doc"]?.description).toBe("文档执行成员，负责 README 示例章节")
       expect(sessionCounter).toBe(2)

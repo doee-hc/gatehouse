@@ -5,7 +5,7 @@ import { gatehouseMessage } from "../i18n.ts"
 import { readLocaleSync, type GatehouseLocale } from "../locale.ts"
 import { LEAD_OPENCODE } from "../registry/types.ts"
 import type { RegistryAgent } from "../registry/types.ts"
-import { isInnerStructuralRoot } from "../registry/types.ts"
+import { isTerminalInnerAgent } from "../orchestration/plan-graph.ts"
 
 /** True when the message already carries a delivery checklist (e.g. from formatLeadDeliveryNotification). */
 export function leadDeliveryMessageAlreadyEnriched(message: string, locale?: GatehouseLocale) {
@@ -25,7 +25,7 @@ export function enrichLeadDeliveryMessage(
   input: { sender: RegistryAgent; recipient: RegistryAgent; message: string },
 ) {
   if (input.recipient.profile !== LEAD_OPENCODE || input.recipient.scope !== "outer") return input.message
-  if (!isInnerStructuralRoot(input.sender)) return input.message
+  if (!isTerminalInnerAgent(projectDirectory, input.sender)) return input.message
   const missionId = input.sender.missionId
   if (!missionId) return input.message
 

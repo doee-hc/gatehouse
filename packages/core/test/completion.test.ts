@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import type { PluginInput } from "@opencode-ai/plugin"
 import {
-  assertRollupFromReady,
+  assertDependsOnSummaryReady,
   formatRollupInjectionBlock,
   parseArtifactsInput,
   synthesizeRootDeliveryMarkdown,
@@ -109,13 +109,13 @@ describe("node completion", () => {
     expect(block).toContain("docs/x.md")
   })
 
-  test("assertRollupFromReady rejects missing completion", () => {
+  test("assertDependsOnSummaryReady rejects missing completion", () => {
     const state = initOrchestrationState("m1", ["root", "leaf"])
     state.nodes.leaf = { status: "done" }
-    expect(() => assertRollupFromReady(team, state, ["leaf"])).toThrow(/completion/)
+    expect(() => assertDependsOnSummaryReady(team, state, ["leaf"])).toThrow(/completion/)
   })
 
-  test("deliverOrchestrationPrompt appends rollupFrom block", async () => {
+  test("deliverOrchestrationPrompt appends dependsOn block", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-rollup-prompt-"))
     const token = "rollup-test-token"
     const capture = await startPortalInternalEventCapture(token)
@@ -162,7 +162,7 @@ describe("node completion", () => {
         store.register({
           agentId: "inner:m1:root",
           scope: "inner",
-          profile: "build-root",
+          profile: "build",
           sessionId: "ses_root",
           displayName: "root",
           missionId: "m1",
@@ -179,7 +179,7 @@ describe("node completion", () => {
           prompt: {
             text: "[work order]",
             reply: true,
-            rollupFrom: ["leaf"],
+            dependsOn: [{ node: "leaf", summary: true }],
           },
         })
         await capture.waitPosted()

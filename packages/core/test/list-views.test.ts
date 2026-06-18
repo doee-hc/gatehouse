@@ -53,7 +53,7 @@ nodes:
     session_id: ses-root
     parent: null
     description: 协调根
-    profile: build-root
+    profile: build
   leaf:
     session_id: ses-leaf
     parent: root
@@ -77,7 +77,7 @@ describe("buildListTeamData", () => {
     store.register({
       agentId: "inner:m1:root",
       scope: "inner",
-      profile: "build-root",
+      profile: "build",
       sessionId: "ses-root",
       displayName: "root",
       missionId: "m1",
@@ -142,7 +142,7 @@ describe("buildListTeamData", () => {
       {
         agentId: "inner:m1:root",
         scope: "inner",
-        profile: "build-root",
+        profile: "build",
         sessionId: "ses-r",
         displayName: "root",
         missionId: "m1",
@@ -162,7 +162,7 @@ describe("buildListTeamData", () => {
     expect(payload.execution?.find((item) => item.node_id === "leaf")?.session_id).toBeUndefined()
   })
 
-  test("inner structural root sees lead and all execution nodes", async () => {
+  test("inner terminal node sees lead and all execution nodes", async () => {
     const { store, dir } = await storeWithAgents([
       {
         agentId: "outer:lead",
@@ -177,7 +177,7 @@ describe("buildListTeamData", () => {
     const data = await buildListTeamData({
       store,
       directory: dir,
-      callerProfile: "build-root",
+      callerProfile: "build",
       sessionId: "ses-root",
     })
     const payload = expectPayload(data)
@@ -201,7 +201,7 @@ describe("buildListTeamData", () => {
     expect(payload.execution?.length).toBe(2)
   })
 
-  test("retro session sees subtree only", async () => {
+  test("retro analyst session sees full execution tree", async () => {
     const { store, dir } = await storeWithAgents([])
     seedActiveMissionRegistry(dir, "m1")
     const manifest = parseTreeManifest(`
@@ -214,12 +214,12 @@ nodes:
     session_id: ses-root
     parent: null
     description: 根
-    profile: build-root
+    profile: build
   mid:
     session_id: ses-mid
     parent: root
     description: 中层
-    profile: build-coordinator
+    profile: build
   leaf:
     session_id: ses-leaf
     parent: mid
@@ -228,41 +228,27 @@ nodes:
 `)
     await exportTreeManifestYaml(dir, manifest)
     store.register({
-      agentId: "retro:m1:mid",
+      agentId: "retro:m1",
       scope: "retro",
-      profile: "build-coordinator",
-      sessionId: "ses-retro-mid",
-      displayName: "mid",
+      profile: "retro-analyst",
+      sessionId: "ses-retro",
+      displayName: "[retro] m1",
       missionId: "m1",
-      nodeId: "mid",
     })
     await writeRetroManifest(dir, {
       mission_id: "m1",
       created_at: "2026-01-01T00:00:00Z",
-      retro_order: ["mid", "root"],
-      nodes: {
-        mid: {
-          exec_session_id: "ses-mid",
-          retro_session_id: "ses-retro-mid",
-          child_nodes: ["leaf"],
-        },
-        root: {
-          exec_session_id: "ses-root",
-          retro_session_id: "ses-retro-root",
-          child_nodes: ["mid"],
-        },
-      },
+      retro_session_id: "ses-retro",
+      analysis_order: ["leaf", "mid", "root"],
     })
     const data = await buildListTeamData({
       store,
       directory: dir,
-      callerProfile: "build-coordinator",
-      sessionId: "ses-retro-mid",
+      callerProfile: "retro-analyst",
+      sessionId: "ses-retro",
     })
     const payload = expectPayload(data)
-    expect(payload.subtree?.map((item) => item.node_id).sort()).toEqual(["leaf", "mid"])
-    expect(payload.execution).toBeUndefined()
-    expect(payload.outer).toBeUndefined()
-    expect(payload.you.node_id).toBe("mid")
+    expect(payload.execution?.map((item) => item.node_id).sort()).toEqual(["leaf", "mid", "root"])
+    expect(payload.you.node_id).toBe("retro-analyst")
   })
 })

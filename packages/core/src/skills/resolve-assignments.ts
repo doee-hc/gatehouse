@@ -9,15 +9,15 @@ export type ResolvedSkillDomainAssignments = {
   source: "spec" | "user_skill" | "inferred"
 }
 
-function isIntermediateCoordinator(spec: TeamSpec, nodeId: string) {
-  return nodeId !== spec.root && childNodeIdsFromSpec(spec, nodeId).length > 0
+function isAcceptanceLayerNode(spec: TeamSpec, nodeId: string) {
+  return childNodeIdsFromSpec(spec, nodeId).length > 0
 }
 
-/** Leaf exec nodes that may receive skill_domain (root + intermediate coordinators omitted). */
+/** Leaf exec nodes that may receive skill_domain (rollup/coordination nodes omitted). */
 export function nodesEligibleForSkillDomain(spec: TeamSpec) {
   return Object.keys(spec.nodes).filter((nodeId) => {
     if (nodeId === spec.root) return false
-    if (isIntermediateCoordinator(spec, nodeId)) return false
+    if (isAcceptanceLayerNode(spec, nodeId)) return false
     return true
   })
 }

@@ -36,13 +36,13 @@ test("spawnIdForAgent maps outer profiles to portal boss seat ids", () => {
   ).toBe("arbiter")
 })
 
-test("spawnIdForAgent uses retro- prefix for fork agents", () => {
+test("spawnIdForAgent maps retro analyst to portal seat id", () => {
   expect(
     spawnIdForAgent({
       scope: "retro",
-      profile: "root",
-      nodeId: "root",
-      agentId: "retro:m-a:root",
+      profile: "retro-analyst",
+      nodeId: undefined,
+      agentId: "retro:m-a",
     }),
-  ).toBe("retro-root")
+  ).toBe("retro-analyst")
 })

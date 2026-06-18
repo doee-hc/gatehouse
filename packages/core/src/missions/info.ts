@@ -5,19 +5,19 @@ import { readLocaleSync } from "../locale.ts"
 import { readNodeBriefRegistry } from "../execution/artifacts.ts"
 import { RegistryDatabase } from "../registry/db.ts"
 import type { RegistryAgent } from "../registry/types.ts"
-import {
-  INNER_COORDINATOR_AGENT,
-  INNER_EXECUTION_AGENT,
-  INNER_ROOT_AGENT,
-  INNER_ROOT_SOLO_AGENT,
-} from "../registry/types.ts"
+import { INNER_EXECUTION_AGENT } from "../registry/types.ts"
 import type { MissionContract } from "./contract.ts"
 import { registryMissionToContract } from "./contract.ts"
 import { formatMissionContractForRole } from "./contract-format.ts"
 import type { MissionContractAudience } from "./contract-format.ts"
 import { filterDoneWhenForExecutionTeam } from "./done-when-filter.ts"
+import {
+  innerNodeShowsMissionContract,
+  innerNodeShowsMissionContractFromManifest,
+} from "../tree/parse.ts"
+import { readManifest } from "../tree/store.ts"
 
-export type MissionInfoRoleView = "lead" | "architect" | "curator" | "coordinator" | "execution"
+export type MissionInfoRoleView = "lead" | "architect" | "curator" | "acceptance" | "execution"
 
 export type MissionInfoPayload = {
   mission_id: string
@@ -25,15 +25,30 @@ export type MissionInfoPayload = {
   markdown: string
 }
 
-function isInnerCoordinator(profile?: string) {
-  return (
-    profile === INNER_ROOT_AGENT ||
-    profile === INNER_ROOT_SOLO_AGENT ||
-    profile === INNER_COORDINATOR_AGENT
-  )
+async function resolveInnerMissionInfoRoleView(
+  projectDirectory: string,
+  sender: RegistryAgent,
+): Promise<MissionInfoRoleView | "forbidden"> {
+  if (sender.scope !== "inner" || sender.profile !== INNER_EXECUTION_AGENT) return "forbidden"
+  if (!sender.missionId || !sender.nodeId) return "execution"
+
+  const script = new RegistryDatabase(projectDirectory, { readonly: true }).getMissionScript(sender.missionId)
+  if (script?.team) {
+    return innerNodeShowsMissionContract(script.team, sender.nodeId) ? "acceptance" : "execution"
+  }
+
+  const manifest = await readManifest(projectDirectory, sender.missionId)
+  if (manifest) {
+    return innerNodeShowsMissionContractFromManifest(manifest, sender.nodeId) ? "acceptance" : "execution"
+  }
+
+  return "execution"
 }
 
-export function resolveMissionInfoRoleView(sender: RegistryAgent | undefined): MissionInfoRoleView | "forbidden" {
+export async function resolveMissionInfoRoleView(
+  projectDirectory: string,
+  sender: RegistryAgent | undefined,
+): Promise<MissionInfoRoleView | "forbidden"> {
   if (!sender) return "forbidden"
   if (sender.scope === "outer") {
     if (sender.profile === "lead") return "lead"
@@ -41,8 +56,9 @@ export function resolveMissionInfoRoleView(sender: RegistryAgent | undefined): M
     if (sender.profile === "curator") return "curator"
     return "forbidden"
   }
-  if (sender.profile === INNER_EXECUTION_AGENT) return "execution"
-  if (isInnerCoordinator(sender.profile)) return "coordinator"
+  if (sender.scope === "inner") {
+    return resolveInnerMissionInfoRoleView(projectDirectory, sender)
+  }
   return "forbidden"
 }
 
@@ -58,15 +74,15 @@ function visibleContract(contract: MissionContract, roleView: MissionInfoRoleVie
 }
 
 function includesBoundaries(roleView: MissionInfoRoleView) {
-  return roleView === "execution" || roleView === "coordinator"
+  return roleView === "execution" || roleView === "acceptance"
 }
 
 function includesContract(roleView: MissionInfoRoleView) {
-  return roleView === "lead" || roleView === "architect" || roleView === "curator" || roleView === "coordinator"
+  return roleView === "lead" || roleView === "architect" || roleView === "curator" || roleView === "acceptance"
 }
 
 function includesBrief(roleView: MissionInfoRoleView) {
-  return roleView === "execution" || roleView === "coordinator"
+  return roleView === "execution" || roleView === "acceptance"
 }
 
 export async function resolveMissionInfo(input: {
@@ -75,7 +91,7 @@ export async function resolveMissionInfo(input: {
   missionId: string
   locale?: GatehouseLocale
 }): Promise<MissionInfoPayload | { error: "NOT_AUTHORIZED" | "NO_CONTRACT" }> {
-  const roleView = resolveMissionInfoRoleView(input.sender)
+  const roleView = await resolveMissionInfoRoleView(input.projectDirectory, input.sender)
   if (roleView === "forbidden") return { error: "NOT_AUTHORIZED" }
 
   const record = new RegistryDatabase(input.projectDirectory, { readonly: true }).getMission(input.missionId)

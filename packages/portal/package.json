@@ -13,6 +13,7 @@
     "dev:restart": "bun script/portal-stack.ts restart",
     "dev:stop": "bun script/portal-stack.ts stop",
     "demo:status-sync": "bun script/status-sync-demo.ts",
+    "gallery:orchestration-graphs": "bun script/generate-orchestration-graph-gallery.ts",
     "build": "bun script/ensure-assets.ts && bun --bun vite build",
     "preview": "vite preview",
     "typecheck": "tsgo --noEmit"

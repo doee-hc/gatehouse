@@ -1,5 +1,6 @@
 import { childNodeIdsFromSpec } from "../tree/parse.ts"
 import type { TeamSpec } from "../tree/types.ts"
+import { parseDependsOnArrayBody } from "./depends-on.ts"
 import { parenBraceDepthBefore } from "./source-depth.ts"
 
 export type OrchestrationLintIssue = {
@@ -45,15 +46,11 @@ function literalIdsFromArrayBody(body: string) {
   return ids
 }
 
-function runWaitsByDefault(body: string) {
-  return !/\bwait\s*:\s*false\b/.test(body)
-}
-
 function runRepliesByDefault(body: string) {
   return !/\breply\s*:\s*false\b/.test(body)
 }
 
-/** Direct child of structural root in the ancestry chain; null for the root itself. */
+/** Direct child of team.root in the ancestry chain; null for team.root itself. */
 export function missionTrackForNode(team: TeamSpec, nodeId: string): string | null {
   if (nodeId === team.root) return null
   let current = nodeId
@@ -67,38 +64,12 @@ export function missionTrackForNode(team: TeamSpec, nodeId: string): string | nu
   }
 }
 
-function isDescendantOf(team: TeamSpec, ancestorId: string, nodeId: string) {
-  let current: string | null = nodeId
-  while (current) {
-    if (current === ancestorId) return true
-    const parent: string | null = team.nodes[current]?.parent ?? null
-    if (parent === null) return false
-    current = parent
-  }
-  return false
-}
-
-export function extractRunLiteralItems(orchestrateSource: string) {
-  const items: string[] = []
-  const pattern = /ctx\.run\s*\(\s*\[([^\]]*)\]/g
-  for (const match of orchestrateSource.matchAll(pattern)) {
-    items.push(...literalIdsFromArrayBody(match[1] ?? ""))
-  }
-  return items
-}
-
 export function extractSetBriefNodes(orchestrateSource: string) {
   const nodes = new Set<string>()
   const runSinglePattern = /ctx\.run\s*\(\s*["'`]([^"'`]+)["'`]/g
   for (const match of orchestrateSource.matchAll(runSinglePattern)) {
     const body = callBodyAt(orchestrateSource, match.index!, match[0])
     if (/\bbrief\s*:/.test(body) && match[1]) nodes.add(match[1])
-  }
-  const runArrayPattern = /ctx\.run\s*\(\s*\[([^\]]*)\]/g
-  for (const match of orchestrateSource.matchAll(runArrayPattern)) {
-    const body = callBodyAt(orchestrateSource, match.index!, match[0])
-    if (!/\bbrief\s*:/.test(body)) continue
-    for (const id of literalIdsFromArrayBody(match[1] ?? "")) nodes.add(id)
   }
   return nodes
 }
@@ -112,36 +83,8 @@ export function extractOrchestrationEvents(orchestrateSource: string): Orchestra
     const depth = parenBraceDepthBefore(orchestrateSource, index)
     const nodeId = match[1]!
     const body = callBodyAt(orchestrateSource, index, match[0])
-    if (runRepliesByDefault(body)) events.push({ kind: "dispatch", nodeId, depth })
-    if (runWaitsByDefault(body)) events.push({ kind: "wait", nodeId, depth })
-  }
-
-  const runArray = /\bctx\.run\s*\(\s*\[([^\]]*)\]/g
-  for (const match of orchestrateSource.matchAll(runArray)) {
-    const index = match.index!
-    const depth = parenBraceDepthBefore(orchestrateSource, index)
-    const body = callBodyAt(orchestrateSource, index, match[0])
-    const ids = literalIdsFromArrayBody(match[1] ?? "")
-    for (const nodeId of ids) {
-      if (runRepliesByDefault(body)) events.push({ kind: "dispatch", nodeId, depth })
-      if (runWaitsByDefault(body)) events.push({ kind: "wait", nodeId, depth })
-    }
-  }
-
-  const joinSingle = /\bctx\.join\s*\(\s*["'`]([^"'`]+)["'`]/g
-  for (const match of orchestrateSource.matchAll(joinSingle)) {
-    const index = match.index!
-    const depth = parenBraceDepthBefore(orchestrateSource, index)
-    const body = callBodyAt(orchestrateSource, index, match[0])
-    if (/subtree\s*:\s*true/.test(body)) continue
-    events.push({ kind: "wait", nodeId: match[1]!, depth })
-  }
-
-  const joinArray = /\bctx\.join\s*\(\s*\[([^\]]*)\]/g
-  for (const match of orchestrateSource.matchAll(joinArray)) {
-    const index = match.index!
-    const depth = parenBraceDepthBefore(orchestrateSource, index)
-    for (const nodeId of literalIdsFromArrayBody(match[1] ?? "")) {
+    if (runRepliesByDefault(body)) {
+      events.push({ kind: "dispatch", nodeId, depth })
       events.push({ kind: "wait", nodeId, depth })
     }
   }
@@ -152,33 +95,22 @@ export function extractOrchestrationEvents(orchestrateSource: string): Orchestra
 export function extractReferencedNodeIds(orchestrateSource: string) {
   const nodes = new Set<string>()
   const patterns = [
-    /ctx\.(?:run|join)\s*\(\s*["'`]([^"'`]+)["'`]/g,
+    /ctx\.run\s*\(\s*["'`]([^"'`]+)["'`]/g,
     /ctx\.template\.workOrder\s*\(\s*["'`]([^"'`]+)["'`]/g,
     /ctx\.template\.rework\s*\(\s*["'`]([^"'`]+)["'`]/g,
     /ctx\.template\.reworkResume\s*\(\s*["'`]([^"'`]+)["'`]/g,
-    /rollupFrom\s*:\s*\[([^\]]*)\]/g,
+    /dependsOn\s*:\s*\[([^\]]*)\]/g,
   ]
   for (const pattern of patterns) {
     for (const match of orchestrateSource.matchAll(pattern)) {
-      if (pattern.source.includes("rollupFrom")) {
-        for (const id of literalIdsFromArrayBody(match[1] ?? "")) nodes.add(id)
+      if (pattern.source.includes("dependsOn")) {
+        for (const dep of parseDependsOnArrayBody(match[1] ?? "")) nodes.add(dep.node)
         continue
       }
       if (match[1]) nodes.add(match[1])
     }
   }
-  for (const id of extractRunLiteralItems(orchestrateSource)) nodes.add(id)
-  for (const id of extractJoinLiteralItems(orchestrateSource)) nodes.add(id)
   return nodes
-}
-
-export function extractJoinLiteralItems(orchestrateSource: string) {
-  const items: string[] = []
-  const pattern = /ctx\.join\s*\(\s*\[([^\]]*)\]/g
-  for (const match of orchestrateSource.matchAll(pattern)) {
-    items.push(...literalIdsFromArrayBody(match[1] ?? ""))
-  }
-  return items
 }
 
 function findMatchingBrace(source: string, openBraceIndex: number) {
@@ -245,20 +177,11 @@ function extractLiteralBriefInner(body: string) {
 }
 
 function collectRunCalls(orchestrateSource: string) {
-  const calls: Array<{ nodeIds: string[]; body: string; index: number; matchText: string }> = []
+  const calls: Array<{ nodeId: string; body: string; index: number; matchText: string }> = []
   const runSingle = /\bctx\.run\s*\(\s*["'`]([^"'`]+)["'`]/g
   for (const match of orchestrateSource.matchAll(runSingle)) {
     calls.push({
-      nodeIds: [match[1]!],
-      body: callBodyAt(orchestrateSource, match.index!, match[0]),
-      index: match.index!,
-      matchText: match[0],
-    })
-  }
-  const runArray = /\bctx\.run\s*\(\s*\[([^\]]*)\]/g
-  for (const match of orchestrateSource.matchAll(runArray)) {
-    calls.push({
-      nodeIds: literalIdsFromArrayBody(match[1] ?? ""),
+      nodeId: match[1]!,
       body: callBodyAt(orchestrateSource, match.index!, match[0]),
       index: match.index!,
       matchText: match[0],
@@ -270,28 +193,13 @@ function collectRunCalls(orchestrateSource: string) {
 function lintPlanDynamicTopLevel(orchestrateSource: string): OrchestrationLintIssue[] {
   const errors: OrchestrationLintIssue[] = []
   scanTopLevelLoopBodies(orchestrateSource, (body) => {
-    if (!/\bctx\.(?:run|join)\s*\(/.test(body)) return
+    if (!/\bctx\.run\s*\(/.test(body)) return
     errors.push({
       code: "SCRIPT_PLAN_DYNAMIC_TOP_LEVEL",
       message:
-        "top-level for/while must not contain ctx.run or ctx.join; use ctx.fork tracks or explicit top-level await ctx.run/join steps for plan replay",
+        "top-level for/while must not contain ctx.run; use ctx.fork tracks or explicit top-level await ctx.run steps for plan replay",
     })
   })
-  return errors
-}
-
-function lintRollupOnFanout(orchestrateSource: string): OrchestrationLintIssue[] {
-  const errors: OrchestrationLintIssue[] = []
-  const runArray = /\bctx\.run\s*\(\s*\[([^\]]*)\]/g
-  for (const match of orchestrateSource.matchAll(runArray)) {
-    const body = callBodyAt(orchestrateSource, match.index!, match[0])
-    if (!/rollupFrom\s*:/.test(body)) continue
-    errors.push({
-      code: "SCRIPT_ROLLUP_ON_FANOUT",
-      message:
-        "rollupFrom is ignored on ctx.run([...]) fan-out; use single-node ctx.run(coordinator, { rollupFrom: [...] }) after children complete",
-    })
-  }
   return errors
 }
 
@@ -318,7 +226,7 @@ function lintBriefQuality(team: TeamSpec, orchestrateSource: string): string[] {
     const yourWork = yourWorkMatch ? parseLiteralStringArray(yourWorkMatch[1] ?? "") : []
     const acceptance = acceptanceMatch ? parseLiteralStringArray(acceptanceMatch[1] ?? "") : []
 
-    for (const nodeId of call.nodeIds) {
+    for (const nodeId of [call.nodeId]) {
       if (!team.nodes[nodeId]) continue
       if (yourWork.length === 0) {
         warnings.push(`literal brief for "${nodeId}" has empty your_work`)
@@ -333,27 +241,9 @@ function lintBriefQuality(team: TeamSpec, orchestrateSource: string): string[] {
   return warnings
 }
 
-function lintWaitFalseWithoutJoin(orchestrateSource: string): string[] {
-  const warnings: string[] = []
-  const joined = new Set(
-    extractOrchestrationEvents(orchestrateSource)
-      .filter((event) => event.kind === "wait")
-      .map((event) => event.nodeId),
-  )
-
-  for (const call of collectRunCalls(orchestrateSource)) {
-    if (runWaitsByDefault(call.body)) continue
-    for (const nodeId of call.nodeIds) {
-      if (joined.has(nodeId)) continue
-      warnings.push(`ctx.run(..., { wait: false }) on "${nodeId}" has no matching ctx.join`)
-    }
-  }
-  return warnings
-}
-
 function lintNonLiteralNodeIds(orchestrateSource: string): string[] {
   const warnings: string[] = []
-  const pattern = /\bctx\.(?:run|join)\s*\(\s*(?![\["'`])/g
+  const pattern = /\bctx\.run\s*\(\s*(?![\["'`])/g
   for (const match of orchestrateSource.matchAll(pattern)) {
     const snippet = orchestrateSource.slice(match.index!, match.index! + 40).replace(/\s+/g, " ")
     warnings.push(
@@ -365,7 +255,7 @@ function lintNonLiteralNodeIds(orchestrateSource: string): string[] {
 
 function lintMissingAwait(orchestrateSource: string): string[] {
   const warnings: string[] = []
-  const pattern = /\bctx\.(?:run|join|fork)\s*\(/g
+  const pattern = /\bctx\.(?:run|fork)\s*\(/g
   for (const match of orchestrateSource.matchAll(pattern)) {
     const index = match.index!
     const before = orchestrateSource.slice(Math.max(0, index - 12), index)
@@ -385,23 +275,6 @@ function extractRunCalls(orchestrateSource: string) {
     if (runRepliesByDefault(body)) calls.push({ coordinator, body })
   }
   return calls
-}
-
-function lintLegacyApi(orchestrateSource: string): OrchestrationLintIssue[] {
-  if (
-    /ctx\.(?:setBrief|prompt|waitFor|waitForRollup|parallel|pipeline|phase|log)\s*\(/.test(
-      orchestrateSource,
-    )
-  ) {
-    return [
-      {
-        code: "SCRIPT_LEGACY_API",
-        message:
-          "orchestrate must use ctx.run / ctx.join / ctx.fork only; legacy setBrief/prompt/waitFor/parallel/pipeline APIs were removed",
-      },
-    ]
-  }
-  return []
 }
 
 function lintSerialTrackBlocking(team: TeamSpec, orchestrateSource: string): OrchestrationLintIssue[] {
@@ -426,7 +299,7 @@ function lintSerialTrackBlocking(team: TeamSpec, orchestrateSource: string): Orc
       errors.push({
         code: "SCRIPT_SERIAL_TRACK_BLOCK",
         message:
-          `top-level join on "${event.nodeId}" blocks script before track "${nextTrack}" dispatches ` +
+          `top-level wait on "${event.nodeId}" blocks script before track "${nextTrack}" dispatches ` +
           `"${next.nodeId}"; dispatch all tracks first or wrap independent tracks in ctx.fork`,
       })
       break
@@ -436,7 +309,7 @@ function lintSerialTrackBlocking(team: TeamSpec, orchestrateSource: string): Orc
   return errors
 }
 
-function lintRollupFrom(team: TeamSpec, orchestrateSource: string): {
+function lintDependsOn(team: TeamSpec, orchestrateSource: string): {
   errors: OrchestrationLintIssue[]
   warnings: string[]
 } {
@@ -444,36 +317,28 @@ function lintRollupFrom(team: TeamSpec, orchestrateSource: string): {
   const warnings: string[] = []
 
   for (const call of extractRunCalls(orchestrateSource)) {
-    const rollupMatch = /rollupFrom\s*:\s*\[([^\]]*)\]/.exec(call.body)
-    if (!rollupMatch) continue
+    const nodeId = call.coordinator
+    if (!team.nodes[nodeId]) continue
 
-    const coordinator = call.coordinator
-    const rollupIds = literalIdsFromArrayBody(rollupMatch[1] ?? "")
+    const dependsMatch = /dependsOn\s*:\s*\[([\s\S]*?)\]/m.exec(call.body)
+    const dependsOn = dependsMatch ? parseDependsOnArrayBody(dependsMatch[1] ?? "") : []
+    const summaryIds = dependsOn.filter((dep) => dep.summary).map((dep) => dep.node)
 
-    if (!team.nodes[coordinator]) continue
-
-    for (const rollupId of rollupIds) {
-      if (!team.nodes[rollupId]) {
+    for (const dep of dependsOn) {
+      if (!team.nodes[dep.node]) {
         errors.push({
           code: "SCRIPT_UNKNOWN_NODE",
-          message: `rollupFrom on "${coordinator}" references unknown node_id: ${rollupId}`,
-        })
-        continue
-      }
-      if (rollupId !== coordinator && !isDescendantOf(team, coordinator, rollupId)) {
-        errors.push({
-          code: "SCRIPT_INVALID_ROLLUP",
-          message: `rollupFrom on "${coordinator}" includes "${rollupId}" which is not in its subtree`,
+          message: `run on "${nodeId}" references unknown node_id in dependsOn: ${dep.node}`,
         })
       }
     }
 
-    const directChildren = childNodeIdsFromSpec(team, coordinator)
-    if (directChildren.length > 0 && rollupIds.length > 0) {
-      const missing = directChildren.filter((childId) => !rollupIds.includes(childId))
+    const directChildren = childNodeIdsFromSpec(team, nodeId)
+    if (directChildren.length > 0 && summaryIds.length > 0) {
+      const missing = directChildren.filter((childId) => !summaryIds.includes(childId))
       if (missing.length > 0) {
         warnings.push(
-          `rollupFrom on "${coordinator}" omits direct children: ${missing.join(", ")}`,
+          `dependsOn summary on "${nodeId}" omits direct children: ${missing.join(", ")}`,
         )
       }
     }
@@ -495,15 +360,6 @@ function lintBriefCoverage(team: TeamSpec, orchestrateSource: string): Orchestra
         message: `orchestrate run dispatches node "${event.nodeId}" but never provides brief in ctx.run`,
       })
     }
-  }
-
-  for (const nodeId of extractRunLiteralItems(orchestrateSource)) {
-    if (!team.nodes[nodeId]) continue
-    if (briefNodes.has(nodeId)) continue
-    errors.push({
-      code: "SCRIPT_MISSING_BRIEF",
-      message: `orchestrate run([...]) includes "${nodeId}" but never provides brief for that node`,
-    })
   }
 
   return errors
@@ -536,7 +392,7 @@ function lintDuplicateDispatches(orchestrateSource: string): string[] {
     const prevWait = lastWaitIndex.get(event.nodeId)
     if (prevDispatch !== undefined && (prevWait === undefined || prevWait < prevDispatch)) {
       warnings.push(
-        `node "${event.nodeId}" has multiple run dispatch calls without an intervening join/wait`,
+        `node "${event.nodeId}" has multiple run dispatch calls without an intervening completion wait`,
       )
     }
     lastDispatchIndex.set(event.nodeId, i)
@@ -551,12 +407,6 @@ function lintEmptyFork(orchestrateSource: string): OrchestrationLintIssue[] {
     errors.push({
       code: "SCRIPT_EMPTY_FORK",
       message: "ctx.fork([]) has no tracks; remove the call or add tracks",
-    })
-  }
-  if (/ctx\.run\s*\(\s*\[\s*\]/.test(orchestrateSource)) {
-    errors.push({
-      code: "SCRIPT_EMPTY_RUN",
-      message: "ctx.run([]) has no nodes; remove the call or add node ids",
     })
   }
   return errors
@@ -597,7 +447,7 @@ function lintForkRecommended(team: TeamSpec, orchestrateSource: string): string[
   if (waitTracks.size >= 2) {
     warnings.push(
       `mission has ${tracks.size} sibling tracks (${[...tracks].join(", ")}) but no ctx.fork; ` +
-        "sequential top-level joins may block independent tracks",
+        "sequential top-level runs may block independent tracks",
     )
   }
 
@@ -608,21 +458,18 @@ export function lintOrchestrationScript(team: TeamSpec, orchestrateSource: strin
   const errors: OrchestrationLintIssue[] = []
   const warnings: string[] = []
 
-  errors.push(...lintLegacyApi(orchestrateSource))
   errors.push(...lintForbiddenCtxRead(orchestrateSource))
   errors.push(...lintPlanDynamicTopLevel(orchestrateSource))
-  errors.push(...lintRollupOnFanout(orchestrateSource))
   errors.push(...lintSerialTrackBlocking(team, orchestrateSource))
   errors.push(...lintBriefCoverage(team, orchestrateSource))
   errors.push(...lintEmptyFork(orchestrateSource))
   errors.push(...lintForbiddenPatterns(orchestrateSource))
 
-  const rollup = lintRollupFrom(team, orchestrateSource)
-  errors.push(...rollup.errors)
-  warnings.push(...rollup.warnings)
+  const dependsOn = lintDependsOn(team, orchestrateSource)
+  errors.push(...dependsOn.errors)
+  warnings.push(...dependsOn.warnings)
 
   warnings.push(...lintBriefQuality(team, orchestrateSource))
-  warnings.push(...lintWaitFalseWithoutJoin(orchestrateSource))
   warnings.push(...lintNonLiteralNodeIds(orchestrateSource))
   warnings.push(...lintMissingAwait(orchestrateSource))
   warnings.push(...lintUnusedTeamNodes(team, orchestrateSource))

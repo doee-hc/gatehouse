@@ -36,7 +36,6 @@ permission:
   gatehouse_inspector_decide: allow
   gatehouse_unpublish_blog: deny
   gatehouse_delivery_review: deny
-  gatehouse_delivery_status: deny
   gatehouse_execution_complete: deny
   gatehouse_execution_rework: deny
   gatehouse_execution_status: deny
@@ -63,7 +62,6 @@ tools:
   gatehouse_skill_verify_record: false
   gatehouse_unpublish_blog: false
   gatehouse_delivery_review: false
-  gatehouse_delivery_status: false
   gatehouse_execution_complete: false
   gatehouse_execution_rework: false
   gatehouse_execution_status: false

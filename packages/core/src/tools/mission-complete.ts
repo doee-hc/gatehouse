@@ -11,7 +11,7 @@ import {
   assertRetroReadyForComplete,
   type MissionTerminalStatus,
 } from "../missions/lifecycle.ts"
-import { ensureMissionContextDumped } from "../session/context-dump.ts"
+import { ensureMissionContextDumped, ensureMissionPhaseMetricsDumped } from "../session/context-dump.ts"
 import type { GatehouseClient } from "../session/client.ts"
 import { readManifest, readRetroManifest, readExtractManifest, readVerifyManifest } from "../tree/store.ts"
 import { finalizeDeliveryOnMissionComplete } from "../delivery/store.ts"
@@ -127,6 +127,14 @@ export function missionCompleteTool(input: PluginInput) {
             manifest,
           })
         }
+        await ensureMissionPhaseMetricsDumped({
+          client: input.client as GatehouseClient,
+          projectDirectory: input.directory,
+          missionId,
+          retro,
+          extract,
+          verify,
+        })
         lead.registry.purgePendingDeliveriesForMission(missionId)
         await abortMissionSessions(input, sessionIds)
         await deleteMissionSessions(input, sessionIds)

@@ -95,40 +95,17 @@ async function readPublishedPost(projectDirectory: string, relPath: string, post
   } satisfies BlogPost
 }
 
-function treeNodeOrder(manifest: TreeManifest) {
-  const order: string[] = []
-  const queue = Object.entries(manifest.nodes)
-    .filter(([, node]) => node.parent === manifest.root_node)
-    .map(([nodeId]) => nodeId)
-  while (queue.length > 0) {
-    const nodeId = queue.shift()!
-    order.push(nodeId)
-    for (const [childId, node] of Object.entries(manifest.nodes)) {
-      if (node.parent === nodeId) queue.push(childId)
-    }
-  }
-  return order
-}
-
-function blogPostSortRank(postId: string, manifest?: TreeManifest) {
+function blogPostSortRank(postId: string) {
   if (postId.includes(":deliverable:")) return 0
   if (postId.endsWith(":lead:report")) return 1
   if (postId.endsWith(":architect:summary")) return 2
-  const retroPrefix = ":retro:"
-  const retroAt = postId.indexOf(retroPrefix)
-  if (retroAt > 0 && manifest) {
-    const nodeId = postId.slice(retroAt + retroPrefix.length)
-    const index = treeNodeOrder(manifest).indexOf(nodeId)
-    return index < 0 ? 50 : 3 + index
-  }
+  if (postId.endsWith(":retro:summary")) return 3
   return 99
 }
 
-function sortMissionPosts(posts: BlogPost[], manifest?: TreeManifest) {
+function sortMissionPosts(posts: BlogPost[]) {
   return [...posts].sort(
-    (a, b) =>
-      blogPostSortRank(a.id, manifest) - blogPostSortRank(b.id, manifest) ||
-      a.title.localeCompare(b.title),
+    (a, b) => blogPostSortRank(a.id) - blogPostSortRank(b.id) || a.title.localeCompare(b.title),
   )
 }
 
@@ -188,7 +165,7 @@ async function loadBlogSnapshot(projectDirectory: string) {
         ...(mission.completed_at && { completed_at: mission.completed_at }),
         post_count: groupPosts.length,
         expanded: false,
-        posts: sortMissionPosts(groupPosts, manifest),
+        posts: sortMissionPosts(groupPosts),
       }
     }),
   )

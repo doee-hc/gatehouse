@@ -12,7 +12,7 @@ import { missionCompleteTool } from "../src/tools/mission-complete.ts"
 
 let dir: string
 
-function mockToolContext(directory: string, sessionID: string, agent = "build-root"): ToolContext {
+function mockToolContext(directory: string, sessionID: string, agent = "build"): ToolContext {
   return {
     sessionID,
     messageID: "test-message",
@@ -84,7 +84,7 @@ test("mission_complete done publishes deliverables; lead may unpublish", async (
   store.register({
     agentId: `inner:${missionId}:root`,
     scope: "inner",
-    profile: "build-root",
+    profile: "build",
     sessionId: "ses_root",
     displayName: "root",
     missionId,
@@ -137,7 +137,7 @@ test("unpublish_blog rejects non-lead callers", async () => {
   store.register({
     agentId: "inner:m1:root",
     scope: "inner",
-    profile: "build-root",
+    profile: "build",
     sessionId: "ses_root",
     displayName: "root",
     missionId: "m1",

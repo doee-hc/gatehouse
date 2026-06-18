@@ -1,30 +1,25 @@
 export const team = {
   mission_id: "<mission_id>",
-  root: "<root-node-id>",
+  root: "<terminal-node-id>",
   nodes: {
-    "<root-node-id>": {
-      parent: null,
-      description: "Mission coordinator — roll up child deliveries and verify acceptance",
-    },
     "<leaf-a>": {
-      parent: "<root-node-id>",
+      parent: "<terminal-node-id>",
       description: "Executes <deliverable A>",
     },
     "<leaf-b>": {
-      parent: "<root-node-id>",
+      parent: "<terminal-node-id>",
       description: "Executes <deliverable B>",
+    },
+    "<terminal-node-id>": {
+      parent: null,
+      description: "Integrates upstream work into the final mission deliverable",
     },
   },
 }
 
 export const meta = {
   name: "<mission_id>",
-  phases: ["Parallel phase", "Rollup phase"],
-  rework: {
-    peer_allowed: true,
-    escalate_to: "root" as const,
-    allow_coordinator_rework: true,
-  },
+  phases: ["Parallel work", "Final delivery"],
 }
 
 export default async function orchestrate(ctx) {
@@ -51,14 +46,14 @@ export default async function orchestrate(ctx) {
     },
   ])
 
-  await ctx.run("<root-node-id>", {
+  await ctx.run("<terminal-node-id>", {
     brief: {
-      your_work: ["Roll up child deliveries and verify acceptance"],
-      acceptance_slice: ["path: …", "…"],
+      your_work: ["Read upstream reports and produce the final mission deliverable"],
+      acceptance_slice: ["path: reports/<mission_id>.html", "…"],
     },
-    text: ctx.template.workOrder("<root-node-id>", {
-      context: `Child nodes are done. Read reports/<leaf-a>.md and reports/<leaf-b>.md, then verify acceptance.`,
+    text: ctx.template.workOrder("<terminal-node-id>", {
+      context: `Upstream nodes are done. Read reports/<leaf-a>.md and reports/<leaf-b>.md, then deliver the final artifact.`,
     }),
-    rollupFrom: ["<leaf-a>", "<leaf-b>"],
+    dependsOn: [{ node: "<leaf-a>", summary: true }, { node: "<leaf-b>", summary: true }],
   })
 }

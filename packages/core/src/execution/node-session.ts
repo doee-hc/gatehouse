@@ -1,5 +1,5 @@
 import type { PluginInput } from "@opencode-ai/plugin"
-import { formatCoordinatorSubtreeSnapshot } from "../dispatch/team-snapshot.ts"
+import { formatAcceptanceSubtreeSnapshot } from "../dispatch/team-snapshot.ts"
 import { gatehouseMessage } from "../i18n.ts"
 import type { GatehouseLocale } from "../locale.ts"
 import { readLocaleSync } from "../locale.ts"
@@ -32,13 +32,13 @@ export function buildInnerBootstrapSystem(input: {
   description: string
   locale: GatehouseLocale
   contract?: MissionContract
-  coordinatorSubtree?: string
+  acceptanceSubtree?: string
   skillDomainNote?: string
   brief?: NodeBrief
 }) {
   const parts = [formatNodeRoleBlock(input.nodeId, input.description, input.locale)]
   if (input.skillDomainNote?.trim()) parts.push(input.skillDomainNote.trim())
-  if (input.coordinatorSubtree?.trim()) parts.push(input.coordinatorSubtree.trim())
+  if (input.acceptanceSubtree?.trim()) parts.push(input.acceptanceSubtree.trim())
   if (input.contract) parts.push(formatMissionContextBlock(input.contract, input.locale))
   if (input.brief) parts.push(formatNodeBriefBlock(input.brief, input.locale))
   return parts.join("\n\n")
@@ -77,10 +77,9 @@ export async function buildBootstrapSystemForNode(input: {
     ? skillDomainContextNote(specNode.skill_domain, input.agentNames, locale, skillCatalog)
     : undefined
 
-  const isIntermediateCoordinator =
-    input.nodeId !== input.spec.root && childNodeIdsFromSpec(input.spec, input.nodeId).length > 0
-  const coordinatorSubtree = isIntermediateCoordinator
-    ? formatCoordinatorSubtreeSnapshot(input.spec, input.nodeId, locale)
+  const isAcceptanceLayerNode = childNodeIdsFromSpec(input.spec, input.nodeId).length > 0
+  const acceptanceSubtree = isAcceptanceLayerNode
+    ? formatAcceptanceSubtreeSnapshot(input.spec, input.nodeId, locale)
     : undefined
 
   return buildInnerBootstrapSystem({
@@ -88,7 +87,7 @@ export async function buildBootstrapSystemForNode(input: {
     description: specNode.description,
     locale,
     ...(input.contract && { contract: input.contract }),
-    ...(coordinatorSubtree && { coordinatorSubtree }),
+    ...(acceptanceSubtree && { acceptanceSubtree }),
     ...(skillDomainNote && { skillDomainNote }),
     ...(input.brief && { brief: input.brief }),
   })

@@ -10,6 +10,7 @@ export const LOCALE_SPECIFIC_GATEHOUSE_PREFIXES = [
   "skills/architect-meta/",
   "skills/curator-meta/",
   "skills/arbiter-meta/",
+  "skills/retro-analyst-meta/",
   "skills/retro-toolkit/",
   "prompts/",
   "skills/by-domain/",

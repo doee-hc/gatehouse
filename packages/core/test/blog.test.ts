@@ -83,13 +83,10 @@ nodes:
 
   await write(".gatehouse/lead/reports/mission-old/report.md", "# 旧任务验收\n\nlead 汇报。")
   await write(".gatehouse/trees/mission-old/reports/architect-summary.md", "# 旧任务复盘\n\narchitect 汇总。")
-  await write(
-    ".gatehouse/trees/mission-old/reports/nodes/leaf-a-retro.md",
-    "# leaf-a 复盘\n\n叶子 retro。",
-  )
+  await write(".gatehouse/trees/mission-old/reports/retro-summary.md", "# 旧任务 retro 汇总\n\nretro analyst。")
 
   await write(".gatehouse/lead/reports/mission-new/report.md", "# 新任务验收\n\n最新汇报。")
-  await write(".gatehouse/trees/mission-new/reports/nodes/leaf-b-retro.md", "# leaf-b 复盘\n\n最新 retro。")
+  await write(".gatehouse/trees/mission-new/reports/retro-summary.md", "# 新任务 retro 汇总\n\n最新 retro。")
   await write(".gatehouse/lead/reports/mission-running/report.md", "# 进行中汇报\n\nrunning。")
 
   await publishBlogPost(dir, {
@@ -97,8 +94,8 @@ nodes:
     reportPath: ".gatehouse/lead/reports/mission-new/report.md",
   })
   await publishBlogPost(dir, {
-    postId: "mission-new:retro:leaf-b",
-    reportPath: ".gatehouse/trees/mission-new/reports/nodes/leaf-b-retro.md",
+    postId: "mission-new:retro:summary",
+    reportPath: ".gatehouse/trees/mission-new/reports/retro-summary.md",
   })
   await publishBlogPost(dir, {
     postId: "mission-old:lead:report",
@@ -109,8 +106,8 @@ nodes:
     reportPath: ".gatehouse/trees/mission-old/reports/architect-summary.md",
   })
   await publishBlogPost(dir, {
-    postId: "mission-old:retro:leaf-a",
-    reportPath: ".gatehouse/trees/mission-old/reports/nodes/leaf-a-retro.md",
+    postId: "mission-old:retro:summary",
+    reportPath: ".gatehouse/trees/mission-old/reports/retro-summary.md",
   })
   await publishBlogPost(dir, {
     postId: "mission-running:lead:report",
@@ -125,13 +122,13 @@ nodes:
     ["mission", "mission-running"],
   ])
   expect(blog.groups[0]?.expanded).toBe(true)
-  expect(blog.groups[0]?.posts.map((post) => post.title)).toEqual(["新任务验收", "leaf-b 复盘"])
+  expect(blog.groups[0]?.posts.map((post) => post.title)).toEqual(["新任务验收", "新任务 retro 汇总"])
 
   const old = blog.groups.find((group) => group.id === "mission-old")
   expect(old?.posts.map((post) => post.title)).toEqual([
     "旧任务验收",
     "旧任务复盘",
-    "leaf-a 复盘",
+    "旧任务 retro 汇总",
   ])
 
   const running = blog.groups.find((group) => group.id === "mission-running")

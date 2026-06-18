@@ -3,6 +3,7 @@ import { childNodeIdsFromSpec, topologicalNodeOrder } from "../tree/parse.ts"
 import type { TeamSpec } from "../tree/types.ts"
 import { MissionScriptParseError } from "./script-parse.ts"
 import { parenBraceDepthBefore } from "./source-depth.ts"
+import { inferTerminalNodeFromPlan } from "./plan-graph.ts"
 import {
   hashPlanVersion,
   ORCHESTRATION_PLAN_SCHEMA_VERSION,
@@ -20,13 +21,13 @@ export function trimPlanStatementChunk(chunk: string) {
   return trimmed.trim()
 }
 
-/** Split orchestrate body into top-level await ctx.run/join/fork statements. */
+/** Split orchestrate body into top-level await ctx.run/fork statements. */
 export function splitOrchestrateStatements(orchestrateSource: string) {
   const statements: string[] = []
   const trimmed = orchestrateSource.trim()
   if (!trimmed) return statements
 
-  const boundaryPattern = /\bawait\s+ctx\.(?:run|join|fork)\s*\(/gm
+  const boundaryPattern = /\bawait\s+ctx\.(?:run|fork)\s*\(/gm
   let match: RegExpExecArray | null
   const starts: number[] = []
   while ((match = boundaryPattern.exec(trimmed)) !== null) {
@@ -38,7 +39,7 @@ export function splitOrchestrateStatements(orchestrateSource: string) {
   if (starts.length === 0) {
     throw new MissionScriptParseError(
       "SCRIPT_EMPTY_PLAN",
-      "orchestrate body has no await ctx.run/join/fork steps",
+      "orchestrate body has no await ctx.run/fork steps",
     )
   }
 
@@ -61,17 +62,10 @@ function classifyStatement(statement: string, team: TeamSpec): PlanStep {
   const trimmed = statement.trim()
   let op: PlanStepOp = "other"
   let nodeId: string | undefined
-  let rootNodeId: string | undefined
 
   if (/^await\s+ctx\.run\s*\(/.test(trimmed)) {
     op = "run"
     nodeId = extractNodeIdFromCall(trimmed, "run")
-  } else if (/^await\s+ctx\.join\s*\(/.test(trimmed)) {
-    op = "join"
-    nodeId = extractNodeIdFromCall(trimmed, "join")
-    if (/subtree\s*:\s*true/.test(trimmed)) {
-      rootNodeId = nodeId
-    }
   } else if (/^await\s+ctx\.fork\s*\(/.test(trimmed)) {
     op = "fork"
   }
@@ -79,16 +73,12 @@ function classifyStatement(statement: string, team: TeamSpec): PlanStep {
   if (nodeId && !team.nodes[nodeId]) {
     throw new MissionScriptParseError("SCRIPT_UNKNOWN_NODE", `plan step references unknown node_id: ${nodeId}`)
   }
-  if (rootNodeId && !team.nodes[rootNodeId]) {
-    throw new MissionScriptParseError("SCRIPT_UNKNOWN_NODE", `plan step references unknown rootNodeId: ${rootNodeId}`)
-  }
 
   return {
     id: "",
     op,
     statement: trimmed,
     ...(nodeId && { nodeId }),
-    ...(rootNodeId && { rootNodeId }),
   }
 }
 
@@ -131,15 +121,6 @@ function validateWaitSequence(steps: PlanStep[]) {
       dispatchCounts.set(step.nodeId, (dispatchCounts.get(step.nodeId) ?? 0) + 1)
     }
 
-    if (step.op === "join" && step.nodeId && !step.rootNodeId) {
-      if (!dispatched.has(step.nodeId)) {
-        throw new MissionScriptParseError(
-          "SCRIPT_UNPROMPTED_WAIT",
-          `join("${step.nodeId}") appears before run for that node`,
-        )
-      }
-    }
-
     if (step.op === "fork") {
       // Compound step; inner order validated by simulation.
     }
@@ -166,7 +147,7 @@ export function compileOrchestrationPlan(input: {
 
   const rawStatements = splitOrchestrateStatements(input.orchestrateSource)
   if (rawStatements.length === 0) {
-    throw new MissionScriptParseError("SCRIPT_EMPTY_PLAN", "orchestrate body has no await ctx.run/join/fork steps")
+    throw new MissionScriptParseError("SCRIPT_EMPTY_PLAN", "orchestrate body has no await ctx.run/fork steps")
   }
 
   const steps: PlanStep[] = rawStatements.map((statement, index) => {
@@ -184,6 +165,7 @@ export function compileOrchestrationPlan(input: {
     steps,
     warnings,
   }
+  plan.terminal_node = inferTerminalNodeFromPlan(plan)
   plan.plan_version = hashPlanVersion(plan)
   return plan
 }

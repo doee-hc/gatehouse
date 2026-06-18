@@ -136,7 +136,7 @@ bunx @gatehouse/core install --no-tui --locale=zh
 |------|------|
 | 全局 OpenCode | `~/.config/opencode/opencode.jsonc` → `["@gatehouse/core", {}]` |
 | 全局 TUI | `~/.config/opencode/tui.json` → `["@gatehouse/core", {}]` |
-| Agent 定义 | `~/.config/opencode/agent/{lead,architect,curator,arbiter,build-root,build-coordinator,build,build-root-solo}.md` |
+| Agent 定义 | `~/.config/opencode/agent/{lead,architect,curator,arbiter,build,build-extract,build-verify,retro-analyst}.md` |
 | Gatehouse 配置 | `~/.config/gatehouse/config.yaml`（locale，若指定） |
 
 ### Step 3：运行 doctor（全局层）

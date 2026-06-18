@@ -209,21 +209,10 @@ describe("orchestration state", () => {
 })
 
 describe("orchestration rework validation", () => {
-  const state = initOrchestrationState("orch-m1", ["root", "a", "b"])
-  state.nodes.a = { status: "running" }
-  state.nodes.b = { status: "done" }
-
-  test("allows parent reopening child", () => {
-    const result = validateReworkRequest({
-      team: sampleTeam,
-      state,
-      requesterNodeId: "a",
-      blockedByNodeId: "b",
-    })
-    expect(result.ok).toBe(true)
-  })
-
   test("rejects unknown blocker", () => {
+    const state = initOrchestrationState("orch-m1", ["root", "a", "b"])
+    state.nodes.a = { status: "running" }
+    state.nodes.b = { status: "done" }
     const result = validateReworkRequest({
       team: sampleTeam,
       state,

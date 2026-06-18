@@ -66,11 +66,6 @@ export type OrchestrationState = {
 export type MissionScriptMeta = {
   name?: string
   phases?: string[]
-  rework?: {
-    peer_allowed?: boolean
-    escalate_to?: "root" | "parent"
-    allow_coordinator_rework?: boolean
-  }
 }
 
 export type MissionScriptRecord = {
@@ -82,11 +77,13 @@ export type MissionScriptRecord = {
   lockedAt: string
 }
 
+export type DependsOnEntry = string | { node: string; summary?: boolean }
+
 export type PromptInput = {
   text?: string
   system?: string
   reply?: boolean
-  rollupFrom?: string[]
+  dependsOn?: DependsOnEntry[]
 }
 
 export type NodeBriefPartial = {
@@ -99,17 +96,11 @@ export type NodeBriefPartial = {
 export type RunOpts = {
   brief?: NodeBriefPartial | ((nodeId: string) => NodeBriefPartial)
   text?: string | ((nodeId: string) => string)
-  rollupFrom?: string[]
+  dependsOn?: DependsOnEntry[]
   reply?: boolean
-  wait?: boolean
 }
 
-export type JoinOpts = {
-  subtree?: boolean
-  timeout?: string
-}
-
-/** Host/runtime dispatch surface used internally by run/join. Not available in mission scripts. */
+/** Host/runtime dispatch surface used internally by run. Not available in mission scripts. */
 export type OrchestrationEngine = {
   setBrief(nodeId: string, partial: NodeBriefPartial): Promise<void>
   prompt(nodeId: string | string[], input: PromptInput): Promise<void>
@@ -118,8 +109,7 @@ export type OrchestrationEngine = {
 
 export type MissionContext = {
   objective: string
-  run(target: string | readonly string[], opts?: RunOpts): Promise<void>
-  join(target: string | readonly string[], opts?: JoinOpts): Promise<void>
+  run(nodeId: string, opts?: RunOpts): Promise<void>
   fork<T>(tracks: ReadonlyArray<() => Promise<T>>): Promise<T[]>
   readMissionContext(): string
   readContract(opts?: { view?: "summary" | "full" }): unknown

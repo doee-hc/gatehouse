@@ -4,7 +4,7 @@ export type TreeNode = {
   display_name?: string
   /** One-line role summary for UI and gatehouse_list_team (execution view) */
   description?: string
-  /** OpenCode profile (build-root / build-coordinator / build). */
+  /** OpenCode profile (build). */
   profile?: string
   /** Skill extract domain; curator gatehouse_apply_skill_domains writes manifest */
   skill_domain?: string
@@ -19,17 +19,11 @@ export type TreeManifest = {
   nodes: Record<string, TreeNode>
 }
 
-export type RetroManifestNode = {
-  exec_session_id: string
-  retro_session_id: string
-  child_nodes: string[]
-}
-
 export type RetroManifest = {
   mission_id: string
   created_at: string
-  nodes: Record<string, RetroManifestNode>
-  retro_order: string[]
+  retro_session_id: string
+  analysis_order: string[]
 }
 
 export type ExtractManifestNode = {

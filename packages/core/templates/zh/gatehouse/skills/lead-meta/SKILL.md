@@ -17,7 +17,7 @@ disable-model-invocation: true
 | 维护 `.gatehouse/lead/missions.yaml`（唯一任务正文）                                               | 写协作脚本 / 拓扑                                                                            |
 | `gatehouse_mission_start` 启动任务（自动通知{{architect_name}}）                                   | start 后再 `send_message` 向{{architect_name}}复述任务、`gatehouse_submit_orchestration`、直连叶子 |
 | 验收后 `gatehouse_mission_retro`（须任务执行团队 inner 全部 idle）；用户不复盘则 `gatehouse_mission_complete` | 用 `send_message` 通知{{architect_name}}启动复盘；inner 未 idle 时勿调 retro                      |
-| 改进反馈：`send_message(recipient="<root_node>", ...)`                                        | 经{{architect_name}}中转、替用户跟叶子对话                                                        |
+| 改进反馈：`send_message(recipient="<terminal_node_id>", ...)`                                        | 经{{architect_name}}中转、替用户跟叶子对话                                                        |
 | `gatehouse_direction_status`；维护 `.gatehouse/lead/direction.yaml`                         | 替用户开关 autopilot                                                                           |
 
 
@@ -35,14 +35,14 @@ disable-model-invocation: true
 1. **团队就绪** — read `.gatehouse/lead/missions.yaml`（固定路径，勿 glob）。文件缺失时请用户确认 Gatehouse 项目根与插件。`gatehouse_list_team()`：`outer` 中 `architect|curator|arbiter` 任一 `ready: false` → `gatehouse_init_team`（幂等）。
 2. **定方向** — 读队列与历史评价，提议任务（objective / done_when 草案）。**歧义术语**须先与用户确认语义域再写 mission；勿仅凭 web 搜索扩 scope。**规划期只做轻量调研**；深度搜集交给任务执行团队。
 3. **启动** — 在 `missions.yaml` 为该任务写全字段（`status: queued`）→ 向用户确认（autopilot 关闭时）→ `gatehouse_mission_start(mission_id=...)`。start 成功后无需再向{{architect_name}} `send_message` 复述 objective。**running/retro 期间勿改正文**；改状态用 `gatehouse_mission_complete` / `gatehouse_mission_retro`。
-4. **验收** — structural root 全树 `gatehouse_execution_complete` 后（交付已记录 + precheck；**尚未**上 Portal）→ `gatehouse_delivery_status` + 读 Lead 通知中的汇总与项目内 `done_when` 交付路径 → **在对话中请用户对照确认**（autopilot 开启时可自主决断）。
+4. **验收** — 编排 **terminal 节点**全树 `gatehouse_execution_complete` 后（交付已记录 + precheck；**尚未**上 Portal）→ 读系统发给 Lead 的交付通知（含 rollup、precheck、`done_when`）与项目内交付路径 → **在对话中请用户对照确认**（autopilot 开启时可自主决断）。
   - **接受且发布**：用户确认接受并要上 Portal → `gatehouse_mission_complete(status=done, publish_deliverables=true, user_feedback=...)`（Skill 仍自动发布；交付物仅此一步上 Portal）。
   - **接受不发布**：`gatehouse_mission_complete(status=done)` — 仅结案，不上 Portal。
   - **接受 + 复盘**：`gatehouse_mission_retro` → 等待 Gatehouse **retro rollup 就绪**通知（architect `gatehouse_retro_summary_record`；有 skill 分配时 curator `gatehouse_skill_summary_record`）→ `**mission_complete(done, publish_deliverables=...)`** → 请用户确认是否结案（autopilot 开启时可自主）。
   - **直接完成（不复盘）**：`gatehouse_mission_complete(status=done)` — 向用户说明：**将跳过 skill 提炼**（{{curator_name}} 已登记的 domain 不会生成 `by-domain/*/SKILL.md`）。
   - **拒绝**：`gatehouse_delivery_review(decision=rejected, user_feedback=...)` — 与用户确认后续（`mission_complete(cancelled)` 取消，或改走返工）。
   - **取消 / 中途停止**：`gatehouse_mission_complete`（`status=cancelled` 或 `done`）；**勿**手改 `missions.yaml` 的 `cancelled`/`done`。
-  - **返工**：`gatehouse_delivery_review(decision=revision_requested, failed_criteria=..., revision_brief=..., user_feedback=...)`（`revision_brief` 必填）→ 保持 `running`。默认通知 root；若需改拓扑/编排，传 `architect_orchestrate=true` 由{{architect_name}}重写 `mission.script.ts`。
+  - **返工**：`gatehouse_delivery_review(decision=revision_requested, failed_criteria=..., revision_brief=..., user_feedback=...)`（`revision_brief` 必填）→ 保持 `running`。默认通知 orchestration terminal 节点；若需改拓扑/编排，传 `architect_orchestrate=true` 由{{architect_name}}重写 `mission.script.ts`。
 5. **下一项任务** — 读 `.gatehouse/trees/<id>/reports/architect-summary.md`（及{{curator_name}}摘要若有），结合用户评价规划。
 
 ## 串行任务（同时仅一条 active）
@@ -82,7 +82,7 @@ disable-model-invocation: true
 | -------- | ------------------------------------------------------------------------------------------------------------------ |
 | 队列与任务正文  | `.gatehouse/lead/missions.yaml`                                                                                    |
 | 长期方向     | `.gatehouse/lead/direction.yaml`                                                                                   |
-| 交付记录     | `.gatehouse/trees/<id>/delivery.yaml`（亦可用 `gatehouse_delivery_status`）                                             |
+| 交付记录     | `.gatehouse/trees/<id>/delivery.yaml`                                                                                    |
 | 交付物（项目内） | `done_when` 中 `path` / `文件存在:` 的路径；Lead 在 `mission_complete(publish_deliverables=true)` 时发布到 Portal                |
 | 可选验收记录   | `.gatehouse/lead/reports/<id>/report.md`（简短勾选 + 引用路径；用户反馈经 `mission_complete(user_feedback=...)` 写入 delivery.yaml） |
 | 任务报告（只读） | `.gatehouse/trees/<id>/reports/`                                                                                   |
@@ -114,16 +114,16 @@ missions:
 
 ## 验收与 Portal
 
-- **交付物以项目路径为准** — 对照 `done_when` 中 `path` / `文件存在:`、structural root 完成通知中的汇总，以及 `gatehouse_delivery_status`。`.gatehouse/trees/.../reports/` 下协调报告不是交付正文。
+- **交付物以项目路径为准** — 对照 `done_when` 中 `path` / `文件存在:` 与 terminal 节点完成通知中的汇总。`.gatehouse/trees/.../reports/` 下协调报告不是交付正文。
 - **你只补充验收视角** — 严格按冻结 `done_when` 条数对照；manual 条由你读文件验收（autopilot 开启时亦然）。
-- **Portal 由 Lead 结案时 opt-in** — `gatehouse_mission_complete(done, publish_deliverables=true)` 才上 Portal；Skill 在 `mission_complete(done)` 时自动发布。勿在 `done_when` 写 `publish:`。以 `gatehouse_delivery_status` 为准；`published_artifacts` 为空或有 `publish_warnings` 时不得声称已发布。
+- **Portal 由 Lead 结案时 opt-in** — `gatehouse_mission_complete(done, publish_deliverables=true)` 才上 Portal；Skill 在 `mission_complete(done)` 时自动发布。勿在 `done_when` 写 `publish:`。以 `mission_complete` 返回的 `published_artifacts` / `publish_warnings` 为准；`published_artifacts` 为空或有 `publish_warnings` 时不得声称已发布。
 
 可选本地验收记录：
 
 ```markdown
 # 验收记录：<mission_id>
 
-**交付：** `gatehouse_delivery_status` + structural root 完成通知中的汇总。
+**交付：** terminal 节点完成通知中的汇总。
 
 ## 验收对照（Lead）
 - [ ] / [x] <done_when 条目，对照 precheck>

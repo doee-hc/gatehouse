@@ -38,13 +38,22 @@ export type PortalOrchestrationPhase = {
   state: "done" | "current" | "pending"
 }
 
-export type PlanStepOp = "run" | "join" | "fork" | "other"
+export type PlanStepOp = "run" | "fork" | "other"
 
 export type PortalOrchestrationStep = {
   id: string
   op: PlanStepOp
   state: "done" | "current" | "pending"
   node_id?: string
+}
+
+export type PortalOrchestrationFlowEdge = {
+  step_id: string
+  from: string
+  to: string
+  op: PlanStepOp
+  state: "done" | "current" | "pending"
+  kind?: "activate" | "rollup" | "serial" | "depends"
 }
 
 export type PortalOrchestration = {
@@ -57,8 +66,18 @@ export type PortalOrchestration = {
   completed_steps: number
   phases: PortalOrchestrationPhase[]
   steps: PortalOrchestrationStep[]
+  flow_edges: PortalOrchestrationFlowEdge[]
   nodes: PortalOrchestrationNode[]
   root_node: string
+}
+
+export type PortalDirection = {
+  status: "draft" | "confirmed"
+  confirmed: boolean
+  summary?: string
+  constraints: string[]
+  confirmed_at?: string
+  review_after?: string
 }
 
 export type PortalAgent = {
@@ -108,11 +127,11 @@ export type PortalSnapshot = {
   retro?: {
     mission_id: string
     active: boolean
-    all_done: boolean
-    pending_node_ids: string[]
-    completed_node_ids: string[]
+    summary_submitted: boolean
+    architect_review_pending: boolean
   }
   orchestration?: PortalOrchestration
+  direction?: PortalDirection
 }
 
 export type BlogPostFormat = "markdown" | "html"

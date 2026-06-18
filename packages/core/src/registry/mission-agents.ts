@@ -99,11 +99,9 @@ export function reconcileCompletedRetroAgents(projectDirectory: string) {
   const updatedAt = new Date().toISOString()
   let count = 0
   const agents = snapshot.agents.map((agent) => {
-    if (agent.scope !== "retro" || agent.status !== "active" || !agent.missionId || !agent.nodeId) return agent
-    const recorded = snapshot.retroCompletions.some(
-      (item) => item.missionId === agent.missionId && item.nodeId === agent.nodeId,
-    )
-    if (!recorded) return agent
+    if (agent.scope !== "retro" || agent.status !== "active" || !agent.missionId) return agent
+    const run = snapshot.retroRuns.find((item) => item.missionId === agent.missionId)
+    if (!run?.retroSummarySubmittedAt) return agent
     count++
     return { ...agent, status: "completed" as const, updatedAt }
   })

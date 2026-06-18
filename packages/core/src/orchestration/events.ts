@@ -143,7 +143,7 @@ export async function orchestrationRework(input: {
 
   const validation = validateReworkRequest({
     team: scriptRecord.team,
-    meta: scriptRecord.meta,
+    plan: registry.getLatestOrchestrationPlan(input.missionId),
     state,
     requesterNodeId: input.requesterNodeId,
     blockedByNodeId: input.blockedByNodeId,

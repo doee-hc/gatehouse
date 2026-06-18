@@ -7,8 +7,8 @@ export function spawnIdForAgent(agent: Pick<RegistryAgent, "scope" | "profile" |
     const profile = normalizeOuterProfile(agent.profile)
     if (profile) return profile
   }
-  if (agent.scope === "retro" && agent.nodeId) {
-    return `retro-${agent.nodeId.replace(/[^a-zA-Z0-9_-]/g, "-")}`
+  if (agent.scope === "retro") {
+    return "retro-analyst"
   }
   if (agent.scope === "extract" && agent.nodeId) {
     return `extract-${agent.nodeId.replace(/[^a-zA-Z0-9_-]/g, "-")}`

@@ -25,7 +25,7 @@ import { executionCompleteTool } from "../src/tools/execution.ts"
 
 let dir: string
 
-function mockToolContext(directory: string, sessionID: string, agent = "build-root"): ToolContext {
+function mockToolContext(directory: string, sessionID: string, agent = "build"): ToolContext {
   return {
     sessionID,
     messageID: "test-message",
@@ -213,7 +213,7 @@ test("submitDeliveryRecord exposes publishable paths via criteria without publis
   store.register({
     agentId: `inner:${missionId}:root`,
     scope: "inner",
-    profile: "build-root",
+    profile: "build",
     sessionId: "ses_root",
     displayName: "root",
     missionId,
@@ -272,7 +272,7 @@ test("mission_complete done without publish_deliverables does not publish delive
   store.register({
     agentId: `inner:${missionId}:root`,
     scope: "inner",
-    profile: "build-root",
+    profile: "build",
     sessionId: "ses_root",
     displayName: "root",
     missionId,
@@ -340,7 +340,7 @@ test("mission_complete done with publish_deliverables publishes done_when delive
   store.register({
     agentId: `inner:${missionId}:root`,
     scope: "inner",
-    profile: "build-root",
+    profile: "build",
     sessionId: "ses_root",
     displayName: "root",
     missionId,
@@ -415,7 +415,7 @@ test("mission_complete publishes done_when path string prefix deliverables", asy
   store.register({
     agentId: `inner:${missionId}:root`,
     scope: "inner",
-    profile: "build-root",
+    profile: "build",
     sessionId: "ses_root",
     displayName: "root",
     missionId,
@@ -542,7 +542,7 @@ test("delivery submit + review revision flow", async () => {
   store.register({
     agentId: `inner:${missionId}:root`,
     scope: "inner",
-    profile: "build-root",
+    profile: "build",
     sessionId: "ses_root",
     displayName: "root",
     missionId,

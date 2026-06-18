@@ -13,13 +13,14 @@ import { loadCuratorSkillAssignKickoff } from "../src/curator/prompt.ts"
 import { loadWatchdogNodeWakePrompt } from "../src/watchdog/prompt.ts"
 import { loadRetroKickoffPrompt } from "../src/retro/prompt.ts"
 import {
-  formatCoordinatorSubtreeSnapshot,
+  formatAcceptanceSubtreeSnapshot,
   formatTeamSpecAssignmentSummary,
 } from "../src/dispatch/team-snapshot.ts"
-import { formatRetroKickoffContext } from "../src/retro/subtree-context.ts"
+import { retroAnalysisNodeOrder } from "../src/retro/analysis-order.ts"
 import { formatSkillDomainsRegistry } from "../src/skills/domains.ts"
 import { parseTeamSpec, parseTreeManifest } from "../src/tree/parse.ts"
 import { copyExampleMission } from "./copy-example-mission.ts"
+import { seedTerminalPlan } from "./seed-terminal-plan.ts"
 
 const scaffoldScript = path.join(import.meta.dir, "../script/scaffold.ts")
 
@@ -29,7 +30,7 @@ root: node-root
 nodes:
   node-root:
     parent: null
-    description: 任务协调者
+    description: Mission 汇总节点，汇总验收 node-doc 交付并向上汇报
   node-doc:
     parent: node-root
     description: 文档执行成员
@@ -92,32 +93,11 @@ describe("prompt snapshot injections", () => {
     }
   })
 
-  test("loadRetroKickoffPrompt injects retro context snapshot", async () => {
+  test("loadRetroKickoffPrompt injects orchestration analysis order", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-retro-kickoff-"))
     try {
       await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
       const missionId = "retro-m1"
-      const contextRoot = path.join(dir, ".gatehouse", "trees", missionId, "context")
-      await mkdir(contextRoot, { recursive: true })
-      await writeFile(
-        path.join(contextRoot, "subtree-metrics.json"),
-        JSON.stringify({
-          mission_id: missionId,
-          retro_order: ["node-root"],
-          retro_nodes: {
-            "node-root": {
-              root_node_id: "node-root",
-              scope: "subtree",
-              node_ids: ["node-root", "node-doc"],
-              session_count: 2,
-              assistant_messages: 5,
-              tokens: { input: 1, output: 2, reasoning: 0, cache: { read: 0, write: 0 }, total: 3 },
-              cost: 0,
-              tools: { total: 4, completed: 3, errors: 1, running: 0, pending: 0, by_name: {} },
-            },
-          },
-        }),
-      )
       const manifest = parseTreeManifest(`
 mission_id: ${missionId}
 status: running
@@ -133,25 +113,35 @@ nodes:
 `)
       const prompt = await loadRetroKickoffPrompt(dir, {
         missionId,
-        nodeId: "node-root",
         manifest,
+        plan: {
+          schema_version: 1,
+          mission_id: missionId,
+          plan_version: "v1",
+          script_hash: "abc",
+          warnings: [],
+          steps: [
+            { id: "step-0", op: "run", nodeId: "node-doc", statement: 'await ctx.run("node-doc", {})' },
+            { id: "step-1", op: "run", nodeId: "node-root", statement: 'await ctx.run("node-root", {})' },
+          ],
+        },
       })
       expect(prompt).toContain("node-doc")
-      expect(prompt).toContain("tokens_total=3")
+      expect(prompt).toContain("node-root")
       expect(prompt).not.toContain("{{retro_context_snapshot}}")
       expect(prompt).toContain(".gatehouse/trees/retro-m1/context/")
-      expect(prompt).toContain("subtree-metrics.json")
-      expect(prompt).toContain(".gatehouse/trees/retro-m1/reports/nodes/node-root-retro.md")
-      expect(prompt).toContain("工具贡献")
-      expect(prompt).not.toContain("architect/trees")
-      expect(prompt).not.toMatch(/report_path=reports\/nodes/)
+      expect(prompt).toContain("retro-summary.md")
+      expect(prompt).toContain("编排脚本顺序")
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
   })
 
-  test("leadDeliveryMessageAlreadyEnriched detects formatted delivery submit body", () => {
-    const formatted = formatLeadDeliveryNotification("/tmp", {
+  test("leadDeliveryMessageAlreadyEnriched detects formatted delivery submit body", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-lead-enriched-"))
+    try {
+      seedTerminalPlan(dir, "m1", "root")
+      const formatted = formatLeadDeliveryNotification(dir, {
       missionId: "m1",
       record: {
         version: 1,
@@ -174,11 +164,11 @@ nodes:
     })
     expect(leadDeliveryMessageAlreadyEnriched(formatted)).toBe(true)
     expect(
-      enrichLeadDeliveryMessage("/tmp", {
+      enrichLeadDeliveryMessage(dir, {
         sender: {
           agentId: "inner:m1:root",
           sessionId: "s-root",
-          profile: "build-root",
+          profile: "build",
           scope: "inner",
           missionId: "m1",
           nodeId: "root",
@@ -200,18 +190,22 @@ nodes:
         message: formatted,
       }),
     ).toBe(formatted)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
   })
 
-  test("enrichLeadDeliveryMessage appends done_when checklist for structural root → lead", async () => {
+  test("enrichLeadDeliveryMessage appends done_when checklist for terminal node → lead", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-lead-delivery-"))
     try {
       await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
       await copyExampleMission(dir)
+      seedTerminalPlan(dir, "core-example-smoke-v1", "node-root")
       const message = enrichLeadDeliveryMessage(dir, {
         sender: {
           agentId: "inner:core-example-smoke-v1:node-root",
           sessionId: "s-root",
-          profile: "build-root",
+          profile: "build",
           scope: "inner",
           missionId: "core-example-smoke-v1",
           nodeId: "node-root",
@@ -240,17 +234,18 @@ nodes:
     }
   })
 
-  test("formatCoordinatorSubtreeSnapshot covers coordinator branch", () => {
+  test("formatAcceptanceSubtreeSnapshot covers rollup node branch", () => {
     const spec = parseTeamSpec(teamSpecYaml)
-    const snapshot = formatCoordinatorSubtreeSnapshot(spec, "node-root", "zh")
+    const snapshot = formatAcceptanceSubtreeSnapshot(spec, "node-root", "zh")
     expect(snapshot).toContain("node-root")
     expect(snapshot).toContain("node-doc")
+    expect(snapshot).toContain("子树快照")
   })
 
   test("formatTeamSpecAssignmentSummary lists node descriptions", () => {
     const spec = parseTeamSpec(teamSpecYaml)
     const summary = formatTeamSpecAssignmentSummary(spec, "zh")
-    expect(summary).toContain("任务协调者")
+    expect(summary).toContain("Mission 汇总节点，汇总验收 node-doc 交付并向上汇报")
     expect(summary).toContain("文档执行成员")
   })
 
@@ -275,13 +270,18 @@ nodes:
     expect(block).toContain("note line")
   })
 
-  test("formatRetroKickoffContext without metrics still lists scope", () => {
-    const text = formatRetroKickoffContext({
-      missionId: "m1",
-      nodeId: "node-root",
-      retroOrder: ["node-root"],
-      locale: "zh",
+  test("retroAnalysisNodeOrder deduplicates nodes across steps", () => {
+    const order = retroAnalysisNodeOrder({
+      schema_version: 1,
+      mission_id: "m1",
+      plan_version: "v1",
+      script_hash: "abc",
+      warnings: [],
+      steps: [
+        { id: "step-0", op: "run", nodeId: "node-doc", statement: 'await ctx.run("node-doc", {})' },
+        { id: "step-1", op: "run", nodeId: "node-root", statement: 'await ctx.run("node-root", {})' },
+      ],
     })
-    expect(text).toContain("node-root")
+    expect(order).toEqual(["node-doc", "node-root"])
   })
 })

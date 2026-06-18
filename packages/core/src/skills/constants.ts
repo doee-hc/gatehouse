@@ -16,6 +16,7 @@ export const GATEHOUSE_META_SKILL_NAMES = [
   GATEHOUSE_ROLE_SKILLS.curator,
   GATEHOUSE_ROLE_SKILLS.arbiter,
   GATEHOUSE_RETRO_TOOLKIT_SKILL,
+  "retro-analyst-meta",
 ] as const
 
 export const OUTER_PROFILE_SKILL_DIRS: Record<string, string[]> = {

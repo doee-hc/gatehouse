@@ -7,6 +7,8 @@ import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
 import { parseSkillPathsFromExtractSummary, runProgrammaticVerifier } from "../skills/quality-gate.ts"
 import { recordSkillVerifyPass } from "../skills/utility.ts"
 import { readExtractManifest } from "../tree/store.ts"
+import { dumpPhaseSessionMetrics } from "../session/context-dump.ts"
+import type { GatehouseClient } from "../session/client.ts"
 
 export function skillVerifyRecordTool(input: PluginInput) {
   return tool({
@@ -90,6 +92,14 @@ export function skillVerifyRecordTool(input: PluginInput) {
           passed: true,
           reportPath: reportRel,
         })
+        await dumpPhaseSessionMetrics({
+          client: input.client as GatehouseClient,
+          projectDirectory: input.directory,
+          missionId,
+          phase: "verify",
+          nodeId,
+          sessionId: context.sessionID,
+        }).catch(() => undefined)
         const status = registry.skillVerifyStatus(missionId)
         return {
           output: toolOk(toolName, {

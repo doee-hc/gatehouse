@@ -7,21 +7,21 @@
 # {{architect_name}}复盘汇总 · {{mission_id}}
 
 ## 拓扑回顾
-- 根：{{root_node}}
+- Terminal：{{terminal_node}}
 - 节点数：{{node_count}}
 
-## 任务分配与 prompt 约束（来自各节点 retro 报告）
+## 任务分配与 prompt 约束（来自 retro-summary）
 - 任务分配 / done_when / node brief 是否有效：
 - 哪些约束措辞需收紧或放宽：
 - 拓扑（when_pair_with、层级）调整建议：
 
 ## 运行时问题汇总（跨节点）
-- 各 coord 自主发现的主要效率问题（引用其脚本证据或 timeline 片段）：
+- retro-analyst 发现的主要效率问题（引用其脚本证据或 timeline 片段）：
 - 上下文压缩 / 协调 / token 热点等模式：
 
 ## retro 工具演进摘要
 
-| retro 节点 | 新工具/改进 | 路径 | 纳入 toolkit? | 一句话 |
+| retro-analyst | 新工具/改进 | 路径 | 纳入 toolkit? | 一句话 |
 |------------|------------|------|---------------|--------|
 
 ## 本轮协调改进要点

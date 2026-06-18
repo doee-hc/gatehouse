@@ -15,7 +15,7 @@ function resolveMissionId(
 export function missionInfoTool(input: PluginInput) {
   return tool({
     description:
-      "Read mission information scoped to the caller: shared boundaries, frozen contract, and your node brief when applicable. Returns only what your role may see.",
+      "Re-read mission scope for your role: shared boundaries, frozen contract, and your node brief when applicable. Returns only what your role may see.",
     args: {
       mission_id: tool.schema.string().optional().describe("Mission id; default active mission"),
     },

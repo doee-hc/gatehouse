@@ -1,6 +1,7 @@
 import { tool, type PluginInput } from "@opencode-ai/plugin"
 import { getRegistryStore } from "../registry/context.ts"
-import { isInnerStructuralRoot, type RegistryAgent } from "../registry/types.ts"
+import type { RegistryAgent } from "../registry/types.ts"
+import { isTerminalInnerAgent } from "../orchestration/plan-graph.ts"
 import { sessionMessages } from "../session/client.ts"
 import {
   clampSnapshotLines,
@@ -35,14 +36,15 @@ function snapshotPolicyViolation(
   sender: RegistryAgent,
   recipient: RegistryAgent,
   names: ReturnType<typeof readAgentNamesSync>,
+  projectDirectory: string,
 ) {
   if (sender.scope === "inner" || sender.scope === "retro") {
     return "execution sessions cannot snapshot other sessions"
   }
   if (sender.scope === "outer" && sender.profile === "lead") {
     if (recipient.scope === "outer" && recipient.profile === "architect") return undefined
-    if (isInnerStructuralRoot(recipient)) return undefined
-    return `profile lead (${names.lead}) may only snapshot architect (${names.architect}) or the structural root`
+    if (isTerminalInnerAgent(projectDirectory, recipient)) return undefined
+    return `profile lead (${names.lead}) may only snapshot architect (${names.architect}) or the terminal node`
   }
   if (sender.scope === "outer" && sender.profile === "architect") {
     if (recipient.scope === "outer" && recipient.profile !== "architect") return undefined
@@ -141,7 +143,7 @@ export function sessionSnapshotTool(input: PluginInput) {
           }
         }
 
-        const forbidden = snapshotPolicyViolation(sender, recipient, readAgentNamesSync(input.directory))
+        const forbidden = snapshotPolicyViolation(sender, recipient, readAgentNamesSync(input.directory), input.directory)
         if (forbidden) {
           return {
             output: toolFail(toolName, "SNAPSHOT_FORBIDDEN", forbidden, {

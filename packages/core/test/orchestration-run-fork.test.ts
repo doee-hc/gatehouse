@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { orchestrationFork, orchestrationJoin, orchestrationRun } from "../src/orchestration/run-join-fork.ts"
+import { orchestrationFork, orchestrationRun } from "../src/orchestration/run-fork.ts"
 import type { NodeBriefPartial, OrchestrationEngine } from "../src/orchestration/types.ts"
 
 function mockEngine() {
@@ -8,8 +8,9 @@ function mockEngine() {
     async setBrief(nodeId: string, _partial: NodeBriefPartial) {
       log.push(`brief:${nodeId}`)
     },
-    async prompt(nodeId: string, input: { text?: string; reply?: boolean }) {
-      log.push(`prompt:${nodeId}:${input.reply !== false ? "reply" : "silent"}:${input.text ?? ""}`)
+    async prompt(nodeId: string, input: { text?: string; reply?: boolean; dependsOn?: unknown[] }) {
+      const deps = input.dependsOn?.length ? `:deps=${input.dependsOn.length}` : ""
+      log.push(`prompt:${nodeId}:${input.reply !== false ? "reply" : "silent"}:${input.text ?? ""}${deps}`)
     },
     async waitFor(nodeId: string) {
       log.push(`wait:${nodeId}`)
@@ -18,36 +19,25 @@ function mockEngine() {
   return { engine, log }
 }
 
-describe("run / join / fork", () => {
-  test("run single node dispatches brief, prompt, and waits by default", async () => {
+describe("run / fork", () => {
+  test("run dispatches brief, prompt, dependsOn, and waits by default", async () => {
     const { engine, log } = mockEngine()
     await orchestrationRun(engine, "leaf", {
       brief: { your_work: ["work"], acceptance_slice: ["done"] },
       text: "go",
-    })
-    expect(log).toEqual(["brief:leaf", "prompt:leaf:reply:go", "wait:leaf"])
-  })
-
-  test("run array fan-out dispatches all nodes before waiting", async () => {
-    const { engine, log } = mockEngine()
-    await orchestrationRun(engine, ["a", "b"], {
-      brief: (id) => ({ your_work: [id], acceptance_slice: ["done"] }),
-      text: (id) => `go:${id}`,
+      dependsOn: [{ node: "upstream", summary: true }],
     })
     expect(log).toEqual([
-      "brief:a",
-      "brief:b",
-      "prompt:a:reply:go:a",
-      "prompt:b:reply:go:b",
-      "wait:a",
-      "wait:b",
+      "brief:leaf",
+      "prompt:leaf:reply:go:deps=1",
+      "wait:leaf",
     ])
   })
 
-  test("run with wait:false skips join", async () => {
+  test("run with reply:false skips completion wait", async () => {
     const { engine, log } = mockEngine()
-    await orchestrationRun(engine, "leaf", { brief: { your_work: ["w"] }, text: "go", wait: false })
-    expect(log).toEqual(["brief:leaf", "prompt:leaf:reply:go"])
+    await orchestrationRun(engine, "leaf", { brief: { your_work: ["w"] }, text: "go", reply: false })
+    expect(log).toEqual(["brief:leaf", "prompt:leaf:silent:go"])
   })
 
   test("run without text uses defaultWorkOrder when reply is true", async () => {
@@ -59,12 +49,6 @@ describe("run / join / fork", () => {
       { defaultWorkOrder: (nodeId) => `work-order:${nodeId}` },
     )
     expect(log).toEqual(["brief:leaf", "prompt:leaf:reply:work-order:leaf", "wait:leaf"])
-  })
-
-  test("join waits multiple nodes in parallel order", async () => {
-    const { engine, log } = mockEngine()
-    await orchestrationJoin(engine, ["a", "b"])
-    expect(log).toEqual(["wait:a", "wait:b"])
   })
 
   test("fork runs tracks concurrently", async () => {

@@ -10,7 +10,7 @@ Architecture & workflow: project `.gatehouse/**/SKILL.md` prompts (scaffolded on
 |------|---------|
 | `gatehouse_init_team` | **profile lead** — register architect, curator, arbiter registry sessions (idempotent; first conversation) |
 | `gatehouse_submit_orchestration` | **profile architect** — validate `mission.script.ts`, wake curator for skill_domain assignment (no exec sessions yet). Execution tree is created inside `gatehouse_apply_skill_domains` |
-| `gatehouse_list_team` | Team roster (no args): outer sees full mission roster; inner root sees lead + execution; inner leaf sees all execution; retro sees subtree only; arbiter includes `session_id` |
+| `gatehouse_list_team` | Team roster (no args): outer core team only — full mission roster for lead/architect/curator; arbiter includes `session_id` for permission correlation. Inner profiles cannot call this tool |
 | `gatehouse_send_message` | Registry messaging; busy→queue in SQLite, idle/15s flush; send policy by sender scope |
 | `gatehouse_session_snapshot` | **lead / architect / arbiter** — one-off diagnostic tail (≤50 lines) + `session_status`; not for polling |
 | `gatehouse_apply_skill_domains` | **profile curator** — assign `skill_domain` and create execution team when no manifest yet |
@@ -18,9 +18,8 @@ Architecture & workflow: project `.gatehouse/**/SKILL.md` prompts (scaffolded on
 | `gatehouse_mission_info` | **all roles except arbiter** — mission scope for the caller: boundaries, frozen contract, and own node brief (role-filtered) |
 | `gatehouse_mission_retro` | **profile lead** — start retro after user confirms submitted delivery (requires all inner idle); fork retro sessions, dump `context/`, create isolated `build-extract` sessions for nodes with `skill_domain`, kickoff retro + skill-extract |
 | `gatehouse_mission_complete` | **profile lead** — end mission (`done` or `cancelled`): abort inner/retro/extract/verify sessions, archive manifest, auto-notify architect + curator; on `done`, finalizes submitted delivery (records user feedback); pass `publish_deliverables=true` after user confirms Portal publish to publish `done_when` path deliverables; auto-publishes `.gatehouse/skills/by-domain/*/SKILL.md` to Portal on every `done` |
-| `gatehouse_execution_complete` | **inner** — mark node done; structural root auto-delivers to lead when all nodes done |
+| `gatehouse_execution_complete` | **inner** — mark node done; orchestration terminal node auto-delivers to lead when all nodes done |
 | `gatehouse_delivery_review` | **profile lead** — request revision or reject submitted delivery (deliverable publish is Lead opt-in on `mission_complete(done, publish_deliverables=true)`) |
-| `gatehouse_delivery_status` | Read structured delivery record (lead, architect, structural root) |
 | `gatehouse_unpublish_blog` | **profile lead** — remove a published Portal post by `report_path` (corrections only; publish is system-managed) |
 | `gatehouse_retro_record` | Retro session marks report done in registry; when all complete, auto-notifies **profile architect** |
 | `gatehouse_retro_summary_record` | **profile architect** — register `architect-summary.md`; when rollup is complete, auto-notifies **profile lead** |
@@ -30,10 +29,10 @@ Architecture & workflow: project `.gatehouse/**/SKILL.md` prompts (scaffolded on
 | `gatehouse_inspector_queue` | **profile arbiter** — list pending permission requests |
 | `gatehouse_inspector_decide` | **profile arbiter** — approve (`once` / `always`) or reject a permission request |
 | `gatehouse_execution_rework` | **inner** — reopen a dependency node (in-flight rework) |
-| `gatehouse_execution_status` | **lead / architect / root / coordinators** — read orchestration runtime state |
+| `gatehouse_execution_status` | **lead / architect** — read orchestration runtime state (architect: stall diagnosis only) |
 | `gatehouse_direction_status` | **profile lead** — read `.gatehouse/lead/direction.yaml` |
 
-Everything else (missions queue, reports, skills) uses OpenCode **read/write** + SKILL prompts under `.gatehouse/`. Portal: domain skills auto-publish on `gatehouse_mission_complete(done)`; deliverables publish only when Lead passes `publish_deliverables=true`.
+Everything else (missions queue, reports, skills) uses OpenCode **read/write** + SKILL prompts under `.gatehouse/`. Portal: domain skills auto-publish on `gatehouse_mission_complete(done)`; deliverables publish only when Lead passes `publish_deliverables=true`; retro `retro-summary.md` and `architect-summary.md` auto-publish to Portal under the mission when registered via `gatehouse_retro_record` / `gatehouse_retro_summary_record`.
 
 **Autopilot:** user toggles with **TUI** `/autopilot` (picker or `/autopilot-on` / `/autopilot-off`) or **IM** `/autopilot on|off`. When ON and `direction.yaml` is `status: confirmed`, if the lead session is idle, the last message is from the assistant, and the user has not replied for **10 minutes**, Gatehouse delivers `prompts/lead/autopilot-wake.md` — full delegation; Lead proceeds without asking the user. User messages reset the idle timer. TUI sidebar shows autopilot + direction status (read-only).
 
@@ -41,7 +40,7 @@ Personnel registry (outer + inner + retro + extract + verify agents ↔ OpenCode
 
 **Delivery queue:** if the recipient session is `busy` or `retry`, the prompt is appended to `registry_pending_delivery` and the tool returns `delivery: queued`. The plugin flushes the FIFO queue when OpenCode emits `session.status: idle` for that session, and every 15s as a fallback.
 
-**Watchdog:** while a mission is `running` with orchestration state (no retro fork), the plugin polls every 2s; for each node marked `running` or `rework` in orchestration whose session stays `idle` for 10s, it wakes **that node** with `prompts/architect/watchdog-node-wake.md` (30s per-node cooldown). Watchdog **pauses** after structural root delivery notification to lead (awaiting reply) and **resumes** on `send_message` from lead to a tree member (`recipient=<node_id>` or inner session).
+**Watchdog:** while a mission is `running` with orchestration state (no retro fork), the plugin polls every 2s; for each node marked `running` or `rework` in orchestration whose session stays `idle` for 10s, it wakes **that node** with `prompts/architect/watchdog-node-wake.md` (30s per-node cooldown). Watchdog **pauses** after the orchestration terminal node delivery notification to lead (awaiting reply) and **resumes** on `send_message` from lead to a tree member (`recipient=<node_id>` or inner session).
 
 **Retro / skill record watchdogs:** four independent pollers (same 2s / 10s idle / 30s cooldown). While `gatehouse_retro_record`, `gatehouse_skill_extract_record`, or `gatehouse_skill_verify_record` completions are still pending, if **all** expected retro, extract, or verify sessions are idle for 10s, Gatehouse notifies each **pending** agent with `watchdog-retro-record-wake.md`, `watchdog-skill-record-wake.md`, or `watchdog-skill-verify-record-wake.md` to finish and call the record tool.
 

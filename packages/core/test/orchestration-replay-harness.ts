@@ -154,7 +154,7 @@ export async function createReplayTestEnv(input: {
       missionId: input.missionId,
       nodeId,
       sessionId,
-      profile: nodeId === script.team.root ? "build-root" : "build",
+      profile: nodeId === script.team.root ? "build" : "build",
     })
   }
 
@@ -288,12 +288,12 @@ export default async function orchestrate(ctx) {
   await ctx.run("n2", {
     brief: { your_work: ["n2"], acceptance_slice: [] },
     text: "marker:step1-n2",
-    rollupFrom: ["n1"],
+    dependsOn: [{ node: "n1", summary: true }],
   })
   await ctx.run("n3", {
     brief: { your_work: ["n3"], acceptance_slice: [] },
     text: "marker:step2-n3",
-    rollupFrom: ["n2"],
+    dependsOn: [{ node: "n2", summary: true }],
   })
 }
 `
@@ -334,7 +334,7 @@ export default async function orchestrate(ctx) {
   await ctx.run("root", {
     brief: { your_work: ["final"], acceptance_slice: [] },
     text: "marker:final-root",
-    rollupFrom: ["a2"],
+    dependsOn: [{ node: "a2", summary: true }],
   })
 }
 `
@@ -370,16 +370,24 @@ export const team = {
   },
 }
 export default async function orchestrate(ctx) {
-  await ctx.run(["a", "b"], {
-    brief: (id) => ({ your_work: [id], acceptance_slice: [] }),
-    text: (id) => \`marker:fanout-\${id}\`,
-    wait: false,
-  })
-  await ctx.join(["a", "b"])
+  await ctx.fork([
+    async () => {
+      await ctx.run("a", {
+        brief: { your_work: ["a"], acceptance_slice: [] },
+        text: "marker:fanout-a",
+      })
+    },
+    async () => {
+      await ctx.run("b", {
+        brief: { your_work: ["b"], acceptance_slice: [] },
+        text: "marker:fanout-b",
+      })
+    },
+  ])
   await ctx.run("root", {
     brief: { your_work: ["rollup"], acceptance_slice: [] },
     text: "marker:rollup-root",
-    rollupFrom: ["a", "b"],
+    dependsOn: [{ node: "a", summary: true }, { node: "b", summary: true }],
   })
 }
 `
@@ -409,7 +417,7 @@ export default async function orchestrate(ctx) {
       await ctx.run("a", {
         brief: { your_work: ["rollup a"], acceptance_slice: [] },
         text: "marker:trackA-rollup",
-        rollupFrom: ["a1", "a2"],
+        dependsOn: [{ node: "a1", summary: true }, { node: "a2", summary: true }],
       })
     },
     async () => {
@@ -418,14 +426,14 @@ export default async function orchestrate(ctx) {
       await ctx.run("b", {
         brief: { your_work: ["rollup b"], acceptance_slice: [] },
         text: "marker:trackB-rollup",
-        rollupFrom: ["b1", "b2"],
+        dependsOn: [{ node: "b1", summary: true }, { node: "b2", summary: true }],
       })
     },
   ])
   await ctx.run("root", {
     brief: { your_work: ["final"], acceptance_slice: [] },
     text: "marker:final-root",
-    rollupFrom: ["a", "b"],
+    dependsOn: [{ node: "a", summary: true }, { node: "b", summary: true }],
   })
 }
 `
@@ -450,36 +458,52 @@ export const team = {
 export default async function orchestrate(ctx) {
   await ctx.fork([
     async () => {
-      await ctx.run(["a1", "a2"], {
-        brief: (id) => ({ your_work: [id], acceptance_slice: [] }),
-        text: (id) => \`marker:trackA-fan-\${id}\`,
-        wait: false,
-      })
-      await ctx.join(["a1", "a2"])
+      await ctx.fork([
+        async () => {
+          await ctx.run("a1", {
+            brief: { your_work: ["a1"], acceptance_slice: [] },
+            text: "marker:trackA-a1",
+          })
+        },
+        async () => {
+          await ctx.run("a2", {
+            brief: { your_work: ["a2"], acceptance_slice: [] },
+            text: "marker:trackA-a2",
+          })
+        },
+      ])
       await ctx.run("a", {
         brief: { your_work: ["rollup a"], acceptance_slice: [] },
         text: "marker:trackA-rollup",
-        rollupFrom: ["a1", "a2"],
+        dependsOn: [{ node: "a1", summary: true }, { node: "a2", summary: true }],
       })
     },
     async () => {
-      await ctx.run(["b1", "b2"], {
-        brief: (id) => ({ your_work: [id], acceptance_slice: [] }),
-        text: (id) => \`marker:trackB-fan-\${id}\`,
-        wait: false,
-      })
-      await ctx.join(["b1", "b2"])
+      await ctx.fork([
+        async () => {
+          await ctx.run("b1", {
+            brief: { your_work: ["b1"], acceptance_slice: [] },
+            text: "marker:trackB-b1",
+          })
+        },
+        async () => {
+          await ctx.run("b2", {
+            brief: { your_work: ["b2"], acceptance_slice: [] },
+            text: "marker:trackB-b2",
+          })
+        },
+      ])
       await ctx.run("b", {
         brief: { your_work: ["rollup b"], acceptance_slice: [] },
         text: "marker:trackB-rollup",
-        rollupFrom: ["b1", "b2"],
+        dependsOn: [{ node: "b1", summary: true }, { node: "b2", summary: true }],
       })
     },
   ])
   await ctx.run("root", {
     brief: { your_work: ["final"], acceptance_slice: [] },
     text: "marker:final-root",
-    rollupFrom: ["a", "b"],
+    dependsOn: [{ node: "a", summary: true }, { node: "b", summary: true }],
   })
 }
 `
@@ -500,26 +524,34 @@ export const team = {
   },
 }
 export default async function orchestrate(ctx) {
-  await ctx.run(["l1a", "l1b"], {
-    brief: (id) => ({ your_work: [id], acceptance_slice: [] }),
-    text: (id) => \`marker:leaf-\${id}\`,
-    wait: false,
-  })
-  await ctx.join(["l1a", "l1b"])
+  await ctx.fork([
+    async () => {
+      await ctx.run("l1a", {
+        brief: { your_work: ["l1a"], acceptance_slice: [] },
+        text: "marker:leaf-l1a",
+      })
+    },
+    async () => {
+      await ctx.run("l1b", {
+        brief: { your_work: ["l1b"], acceptance_slice: [] },
+        text: "marker:leaf-l1b",
+      })
+    },
+  ])
   await ctx.run("l2", {
     brief: { your_work: ["l2 rollup"], acceptance_slice: [] },
     text: "marker:rollup-l2",
-    rollupFrom: ["l1a", "l1b"],
+    dependsOn: [{ node: "l1a", summary: true }, { node: "l1b", summary: true }],
   })
   await ctx.run("l3", {
     brief: { your_work: ["l3 rollup"], acceptance_slice: [] },
     text: "marker:rollup-l3",
-    rollupFrom: ["l2"],
+    dependsOn: [{ node: "l2", summary: true }],
   })
   await ctx.run("l4", {
     brief: { your_work: ["l4 rollup"], acceptance_slice: [] },
     text: "marker:rollup-l4",
-    rollupFrom: ["l3"],
+    dependsOn: [{ node: "l3", summary: true }],
   })
 }
 `
@@ -540,16 +572,24 @@ export const team = {
 export default async function orchestrate(ctx) {
   await ctx.fork([
     async () => {
-      await ctx.run(["x1", "x2"], {
-        brief: (id) => ({ your_work: [id], acceptance_slice: [] }),
-        text: (id) => \`marker:fan-\${id}\`,
-        wait: false,
-      })
-      await ctx.join(["x1", "x2"])
+      await ctx.fork([
+        async () => {
+          await ctx.run("x1", {
+            brief: { your_work: ["x1"], acceptance_slice: [] },
+            text: "marker:fan-x1",
+          })
+        },
+        async () => {
+          await ctx.run("x2", {
+            brief: { your_work: ["x2"], acceptance_slice: [] },
+            text: "marker:fan-x2",
+          })
+        },
+      ])
       await ctx.run("coord", {
         brief: { your_work: ["round1"], acceptance_slice: [] },
         text: "marker:coord-r1",
-        rollupFrom: ["x1", "x2"],
+        dependsOn: [{ node: "x1", summary: true }, { node: "x2", summary: true }],
       })
       await ctx.run("coord", {
         brief: { your_work: ["round2"], acceptance_slice: [] },
@@ -585,7 +625,7 @@ export default async function orchestrate(ctx) {
   await ctx.run("root", {
     brief: { your_work: ["root wave1"], acceptance_slice: [] },
     text: "marker:root-w1",
-    rollupFrom: ["a", "b"],
+    dependsOn: [{ node: "a", summary: true }, { node: "b", summary: true }],
   })
   await ctx.run("root", {
     brief: { your_work: ["root wave2"], acceptance_slice: [] },

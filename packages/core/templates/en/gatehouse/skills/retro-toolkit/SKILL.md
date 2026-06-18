@@ -1,7 +1,7 @@
 ---
 name: retro-toolkit
 description: >-
-  Shared retro analysis methodology and reusable scripts for Gatehouse build-root / build-coordinator retro sessions.
+  Shared retro analysis methodology and reusable scripts for Gatehouse retro-analyst sessions.
   Use during mission retro when analyzing context/ dumps and promoting reusable retro tools.
 metadata:
   gatehouse-kind: toolkit

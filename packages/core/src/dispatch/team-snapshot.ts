@@ -123,14 +123,14 @@ export function formatTeamSpecAssignmentSummary(spec: TeamSpec, locale: Gatehous
   return lines.join("\n")
 }
 
-export function formatCoordinatorSubtreeSnapshot(spec: TeamSpec, coordinatorNodeId: string, locale: GatehouseLocale) {
-  const nodeIds = collectSpecSubtreeNodeIds(spec, coordinatorNodeId, true)
+export function formatAcceptanceSubtreeSnapshot(spec: TeamSpec, acceptanceNodeId: string, locale: GatehouseLocale) {
+  const nodeIds = collectSpecSubtreeNodeIds(spec, acceptanceNodeId, true)
   const lines = [gatehouseMessage("dispatch.teamSnapshot.subtreeHeader", locale)]
   for (const nodeId of nodeIds) {
     const node = spec.nodes[nodeId]
     if (!node) continue
     const you =
-      nodeId === coordinatorNodeId ? gatehouseMessage("dispatch.teamSnapshot.you", locale) : ""
+      nodeId === acceptanceNodeId ? gatehouseMessage("dispatch.teamSnapshot.you", locale) : ""
     const parent =
       node.parent === null
         ? "`parent: null`"
@@ -147,7 +147,7 @@ export function formatCoordinatorSubtreeSnapshot(spec: TeamSpec, coordinatorNode
 
 export function formatSubtreeSnapshotFromManifest(
   manifest: TreeManifest,
-  coordinatorNodeId: string,
+  acceptanceNodeId: string,
   locale: GatehouseLocale,
 ) {
   const nodeIds = (() => {
@@ -157,7 +157,7 @@ export function formatSubtreeSnapshotFromManifest(
       ids.push(nodeId)
       for (const childId of childNodeIds(manifest, nodeId)) walk(childId)
     }
-    walk(coordinatorNodeId)
+    walk(acceptanceNodeId)
     return ids
   })()
   const members = manifestMembers(manifest).filter((member) => nodeIds.includes(member.node_id))
@@ -170,6 +170,6 @@ export function formatSubtreeSnapshotFromManifest(
       ...(member.profile && { profile: member.profile }),
       ...(member.child_nodes.length > 0 && { children: member.child_nodes }),
     })),
-    { youNodeId: coordinatorNodeId, locale, manifest },
+    { youNodeId: acceptanceNodeId, locale, manifest },
   )
 }

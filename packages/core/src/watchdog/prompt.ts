@@ -1,7 +1,7 @@
 import { RegistryDatabase } from "../registry/db.ts"
 import {
   curatorSkillSummaryRelPath,
-  retroNodeReportRelPath,
+  retroSummaryRelPath,
   watchdogNodeWakePromptPath,
   autopilotWakePromptPath,
   autopilotEnabledPromptPath,
@@ -41,10 +41,9 @@ export async function loadWatchdogRetroRecordWakePrompt(
     await Bun.file(watchdogRetroRecordWakePromptPath(projectDirectory)).text(),
     readAgentNamesSync(projectDirectory),
   )
-  const reportPath = retroNodeReportRelPath(input.missionId, input.nodeId)
+  const reportPath = retroSummaryRelPath(input.missionId)
   return template
     .replaceAll("{{mission_id}}", input.missionId)
-    .replaceAll("{{node_id}}", input.nodeId)
     .replaceAll("{{idle_seconds}}", String(input.idleSeconds))
     .replaceAll("{{report_path}}", reportPath)
 }

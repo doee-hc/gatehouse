@@ -4,7 +4,8 @@ import { manifestExportPath, nodeDisplayLabel } from "../paths.ts"
 import { topologicalNodeOrder, validateTeamSpec, resolveInnerProfile } from "./parse.ts"
 import { readManifest, upsertTreesIndex, writeManifest } from "./store.ts"
 import type { TeamSpec, TreeManifest } from "./types.ts"
-import { loadGatehouseConfig, modelForInnerProfile } from "../gatehouse-config.ts"
+import { loadGatehouseConfig } from "../gatehouse-config.ts"
+import { modelForInnerNode } from "./parse.ts"
 import { createSession, promptSession } from "../session/client.ts"
 import { readAgentNamesSync } from "../names.ts"
 import { readActiveMissionContract } from "../missions/contract.ts"
@@ -14,6 +15,7 @@ import { scheduleOfficeLayoutSync } from "../portal/office-layout-schedule.ts"
 import { buildBootstrapSystemForNode } from "../execution/node-session.ts"
 import { readNodeBriefRegistry } from "../execution/artifacts.ts"
 import { loadMissionScript } from "../orchestration/script-load.ts"
+import { resolveTerminalNode } from "../orchestration/plan-graph.ts"
 import { prepareOrchestrationRuntime, startOrchestrationRuntime } from "../orchestration/runtime.ts"
 
 export type BootstrapRunResult = {
@@ -54,7 +56,7 @@ export async function runBootstrapTree(
       throw new Error(`parent session missing for ${nodeId}`)
     }
     const profile = resolveInnerProfile(spec, nodeId)
-    const model = modelForInnerProfile(models, profile)
+    const model = modelForInnerNode(models, spec, nodeId)
     const display_name = nodeDisplayLabel(nodeId)
     const sessionId = await createSession(input.client, input.directory, {
       display_name,
@@ -87,10 +89,17 @@ export async function runBootstrapTree(
     }, input)
   }
 
+  const terminalNode = resolveTerminalNode({ plan: script.plan })
+  if (!terminalNode || !nodes[terminalNode]) {
+    throw new Error(
+      `Mission ${spec.mission_id} orchestration plan has no terminal node matching team.nodes`,
+    )
+  }
+
   const manifest: TreeManifest = {
     mission_id: spec.mission_id,
     status: "running",
-    root_node: spec.root,
+    root_node: terminalNode,
     created_at: createdAt,
     nodes,
   }
@@ -98,8 +107,8 @@ export async function runBootstrapTree(
   const objective = options?.objective ?? contract?.objective
   await upsertTreesIndex(input.directory, {
     mission_id: spec.mission_id,
-    root_session_id: nodes[spec.root]?.session_id ?? "",
-    root_node: spec.root,
+    root_session_id: nodes[terminalNode]?.session_id ?? "",
+    root_node: terminalNode,
     status: "running",
     created_at: createdAt,
     ...(objective && { objective }),
@@ -120,8 +129,8 @@ export async function runBootstrapTree(
 
   return {
     mission_id: spec.mission_id,
-    root_node: spec.root,
-    root_session_id: nodes[spec.root]?.session_id ?? "",
+    root_node: terminalNode,
+    root_session_id: nodes[terminalNode]?.session_id ?? "",
     node_count: Object.keys(nodes).length,
     manifest_path: manifestExportPath(input.directory, spec.mission_id),
     orchestration_runtime: orchestrationRuntime,

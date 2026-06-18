@@ -1,7 +1,11 @@
 import type { PluginInput } from "@opencode-ai/plugin"
 import { RegistryDatabase } from "./db.ts"
 import { enrichLeadDeliveryMessage } from "../messaging/delivery-notify.ts"
-import { architectRetroBatchReadyMessage, leadRetroRollupReadyMessage, loadRetroKickoffPrompt } from "../retro/prompt.ts"
+import {
+  publishArchitectSummaryBlogPost,
+  publishRetroSummaryBlogPost,
+} from "../delivery/publish-artifacts.ts"
+import { architectRetroReviewReadyMessage, leadRetroRollupReadyMessage, loadRetroKickoffPrompt } from "../retro/prompt.ts"
 import { loadDomainSkillExtractPrompt } from "../retro/skill-kickoff.ts"
 import { loadDomainSkillVerifyPrompt } from "../extract/prompt.ts"
 import { createVerifyManifest } from "../extract/verify-setup.ts"
@@ -12,7 +16,7 @@ import type { ExtractManifest, TeamSpec, VerifyManifest } from "../tree/types.ts
 import { loadArchitectPrompt } from "../prompt/architect.ts"
 import { loadArbiterPrompt } from "../prompt/arbiter.ts"
 import { loadCuratorPrompt } from "../prompt/curator.ts"
-import { curatorSkillAssignKickoffPath, curatorSkillSummaryRelPath, extractSessionTitle, nodeDisplayLabel, retroNodeReportRelPath, sessionTitle, verifySessionTitle, architectSummaryRelPath, curatorSummaryRelPath } from "../paths.ts"
+import { curatorSkillAssignKickoffPath, curatorSkillSummaryRelPath, extractSessionTitle, nodeDisplayLabel, retroSessionTitle, retroSummaryRelPath, verifySessionTitle, architectSummaryRelPath, curatorSummaryRelPath } from "../paths.ts"
 import { buildDirectedNotification, gatehouseMessage, parseDirectedNotification } from "../i18n.ts"
 import { loadGatehouseConfig, modelForOuterProfile } from "../gatehouse-config.ts"
 import { readLocaleSync } from "../locale.ts"
@@ -23,7 +27,6 @@ import {
   INNER_EXECUTION_AGENT,
   INNER_EXTRACT_AGENT,
   INNER_VERIFY_AGENT,
-  innerProfileMayNotifyLead,
   ARBITER_OPENCODE,
   CURATOR_OPENCODE,
   OUTER_ARCHITECT_ID,
@@ -31,13 +34,14 @@ import {
   OUTER_ARBITER_ID,
   OUTER_CURATOR_ID,
   REGISTRY_SCHEMA_VERSION,
+  RETRO_ANALYST_AGENT,
+  type DeliverSystemNotificationInput,
   type SendMessageInput,
   type SendMessageResult,
   retroAgentId,
   type RegisterAgentInput,
   type RegistryAgent,
   type RegistryPendingDelivery,
-  type RegistryRetroCompletion,
   type RegistryRetroRun,
   type RegistrySkillExtractCompletion,
   type RegistrySkillExtractRun,
@@ -47,9 +51,10 @@ import {
   extractAgentId,
   innerAgentId,
   verifyAgentId,
-  isInnerStructuralRoot,
 } from "./types.ts"
+import { isTerminalInnerAgent } from "../orchestration/plan-graph.ts"
 import type { RetroManifest, TreeManifest } from "../tree/types.ts"
+import type { OrchestrationPlan } from "../orchestration/plan-types.ts"
 import {
   createSession,
   promptSession,
@@ -111,10 +116,6 @@ function formatDirectedNotification(
   return buildDirectedNotification(senderLabel, content, readLocaleSync(projectDirectory))
 }
 
-function retroCompletionKey(missionId: string, nodeId: string) {
-  return `${missionId}:${nodeId}`
-}
-
 function skillExtractCompletionKey(missionId: string, nodeId: string) {
   return `${missionId}:${nodeId}`
 }
@@ -128,7 +129,6 @@ export class RegistryStore {
   private agents = new Map<string, RegistryAgent>()
   private pendingDeliveries: RegistryPendingDelivery[] = []
   private retroRuns = new Map<string, RegistryRetroRun>()
-  private retroCompletions = new Map<string, RegistryRetroCompletion>()
   private skillExtractRuns = new Map<string, RegistrySkillExtractRun>()
   private skillExtractCompletions = new Map<string, RegistrySkillExtractCompletion>()
   private skillVerifyRuns = new Map<string, RegistrySkillVerifyRun>()
@@ -195,9 +195,6 @@ export class RegistryStore {
     this.agents = new Map(snapshot.agents.map((item) => [item.agentId, item]))
     this.pendingDeliveries = snapshot.pendingDeliveries
     this.retroRuns = new Map(snapshot.retroRuns.map((item) => [item.missionId, item]))
-    this.retroCompletions = new Map(
-      snapshot.retroCompletions.map((item) => [retroCompletionKey(item.missionId, item.nodeId), item]),
-    )
     this.skillExtractRuns = new Map(snapshot.skillExtractRuns.map((item) => [item.missionId, item]))
     this.skillExtractCompletions = new Map(
       snapshot.skillExtractCompletions.map((item) => [skillExtractCompletionKey(item.missionId, item.nodeId), item]),
@@ -215,7 +212,6 @@ export class RegistryStore {
       agents: Array.from(this.agents.values()),
       pendingDeliveries: [...this.pendingDeliveries],
       retroRuns: Array.from(this.retroRuns.values()),
-      retroCompletions: Array.from(this.retroCompletions.values()),
       skillExtractRuns: Array.from(this.skillExtractRuns.values()),
       skillExtractCompletions: Array.from(this.skillExtractCompletions.values()),
       skillVerifyRuns: Array.from(this.skillVerifyRuns.values()),
@@ -300,46 +296,33 @@ export class RegistryStore {
     }
   }
 
-  syncRetroFromManifest(retro: RetroManifest, manifest: TreeManifest) {
+  syncRetroFromManifest(retro: RetroManifest) {
     return this.mutate(() => {
       const projectRootSessionId = this.byProfile("lead", "outer")?.sessionId
-      const synced: RegistryAgent[] = []
-      for (const [nodeId, node] of Object.entries(retro.nodes)) {
-        const execNode = manifest.nodes[nodeId]
-        if (!execNode) continue
-        synced.push(
-          this.registerRetroNode({
-            missionId: retro.mission_id,
-            nodeId,
-            sessionId: node.retro_session_id,
-            profile: execNode.profile ?? INNER_EXECUTION_AGENT,
-            projectRootSessionId,
-          }),
-        )
-      }
-      return synced
+      return this.registerRetroAnalyst({
+        missionId: retro.mission_id,
+        sessionId: retro.retro_session_id,
+        projectRootSessionId,
+      })
     })
   }
 
-  registerRetroNode(input: {
+  registerRetroAnalyst(input: {
     missionId: string
-    nodeId: string
     sessionId: string
-    profile: string
     projectRootSessionId?: string
   }) {
     return this.mutate(() => {
-      const agentId = retroAgentId(input.missionId, input.nodeId)
+      const agentId = retroAgentId(input.missionId)
       const existing = this.agents.get(agentId)
       const updatedAt = now()
       const record: RegistryAgent = {
         agentId,
         scope: "retro",
-        profile: input.profile,
+        profile: RETRO_ANALYST_AGENT,
         sessionId: input.sessionId,
-        displayName: sessionTitle(input.missionId, input.nodeId, true),
+        displayName: retroSessionTitle(input.missionId),
         missionId: input.missionId,
-        nodeId: input.nodeId,
         status: "active",
         createdAt: existing?.createdAt ?? updatedAt,
         updatedAt,
@@ -757,6 +740,14 @@ export class RegistryStore {
       return { status: "forbidden", reason: "Sender session is not registered in registry" }
     }
 
+    if (resolvedSender.scope !== "outer") {
+      return {
+        status: "forbidden",
+        reason: "gatehouse_send_message is outer-team only; execution nodes use gatehouse_execution_complete",
+        sender: resolvedSender,
+      }
+    }
+
     const missionId = resolvedSender.missionId ?? this.getActiveMission()?.missionId
     const recipientResolution = this.resolveRecipient(input.recipientQuery, {
       missionId,
@@ -767,7 +758,12 @@ export class RegistryStore {
     const recipient = recipientResolution.recipient
     if (recipient.sessionId === input.senderSessionId) return { status: "self", recipient }
 
-    const forbidden = sendPolicyViolation(resolvedSender, recipient, readAgentNamesSync(this.options.directory))
+    const forbidden = sendPolicyViolation(
+      resolvedSender,
+      recipient,
+      readAgentNamesSync(this.options.directory),
+      this.options.directory,
+    )
     if (forbidden) {
       return {
         status: "forbidden",
@@ -777,29 +773,86 @@ export class RegistryStore {
       }
     }
 
-    const senderLabel = resolvedSender.displayName
-    const message = enrichLeadDeliveryMessage(this.options.directory, {
-      sender: resolvedSender,
+    return this.deliverDirectedNotification({
+      resolvedSender,
       recipient,
+      message: input.message,
+      senderAgentId: resolvedSender.agentId ?? input.senderAgentId,
+      missionId,
+    })
+  }
+
+  /** Delivery after execution_complete or other system flows; not available to agents. */
+  async deliverSystemNotification(input: DeliverSystemNotificationInput): Promise<SendMessageResult> {
+    const resolvedSender = input.senderAgentId
+      ? this.byAgentId(input.senderAgentId)
+      : this.bySession(input.senderSessionId)
+    if (!resolvedSender) {
+      return { status: "forbidden", reason: "Sender session is not registered in registry" }
+    }
+
+    const missionId = resolvedSender.missionId ?? this.getActiveMission()?.missionId
+    const recipientResolution = this.resolveRecipient(input.recipientQuery, {
+      missionId,
+      sender: resolvedSender,
+    })
+    if (recipientResolution.status !== "resolved") return recipientResolution
+
+    const recipient = recipientResolution.recipient
+    if (recipient.sessionId === input.senderSessionId) return { status: "self", recipient }
+
+    if (
+      recipient.scope === "outer" &&
+      recipient.profile === LEAD_OPENCODE &&
+      !isTerminalInnerAgent(this.options.directory, resolvedSender)
+    ) {
+      return {
+        status: "forbidden",
+        reason: "only the terminal node may notify lead of mission delivery",
+        sender: resolvedSender,
+        recipient,
+      }
+    }
+
+    return this.deliverDirectedNotification({
+      resolvedSender,
+      recipient,
+      message: input.message,
+      senderAgentId: resolvedSender.agentId ?? input.senderAgentId,
+      missionId,
+    })
+  }
+
+  private async deliverDirectedNotification(input: {
+    resolvedSender: RegistryAgent
+    recipient: RegistryAgent
+    message: string
+    senderAgentId?: string
+    missionId?: string
+  }): Promise<SendMessageResult> {
+    const senderLabel = input.resolvedSender.displayName
+    const message = enrichLeadDeliveryMessage(this.options.directory, {
+      sender: input.resolvedSender,
+      recipient: input.recipient,
       message: input.message,
     })
     const delivery = await this.deliverToRecipient({
-      recipient,
+      recipient: input.recipient,
       promptText: formatDirectedNotification(this.options.directory, senderLabel, message),
-      senderAgentId: resolvedSender.agentId ?? input.senderAgentId,
+      senderAgentId: input.senderAgentId,
     })
     if (delivery.status === "failed") {
-      return { status: "failed", recipient, error: delivery.error ?? "prompt failed" }
+      return { status: "failed", recipient: input.recipient, error: delivery.error ?? "prompt failed" }
     }
     notifyWatchdogSendMessage(this.options.directory, {
-      missionId,
-      sender: resolvedSender,
-      recipient,
+      missionId: input.missionId,
+      sender: input.resolvedSender,
+      recipient: input.recipient,
     })
     return {
       status: delivery.status,
-      recipient,
-      sessionId: recipient.sessionId,
+      recipient: input.recipient,
+      sessionId: input.recipient.sessionId,
       createdSession: false,
     }
   }
@@ -826,12 +879,9 @@ export class RegistryStore {
     this.emitPortalAgentChat(sender, recipient, suffix ? `${parsed.text}${suffix}` : parsed.text)
   }
 
-  beginRetroRun(missionId: string, expectedNodeIds: string[]) {
+  beginRetroRun(missionId: string) {
     return this.mutate(() => {
-      for (const key of [...this.retroCompletions.keys()]) {
-        if (key.startsWith(`${missionId}:`)) this.retroCompletions.delete(key)
-      }
-      const run: RegistryRetroRun = { missionId, expectedNodeIds, startedAt: now() }
+      const run: RegistryRetroRun = { missionId, startedAt: now() }
       this.retroRuns.set(missionId, run)
       return run
     })
@@ -840,22 +890,11 @@ export class RegistryStore {
   retroStatus(missionId: string) {
     const run = this.retroRuns.get(missionId)
     if (!run) return { status: "no_run" as const }
-    const completed = run.expectedNodeIds.filter((nodeId) =>
-      this.retroCompletions.has(retroCompletionKey(missionId, nodeId)),
-    )
-    const pending = run.expectedNodeIds.filter((nodeId) => !completed.includes(nodeId))
-    const completions = completed.flatMap((nodeId) => {
-      const item = this.retroCompletions.get(retroCompletionKey(missionId, nodeId))
-      if (!item) return []
-      return [{ node_id: nodeId, report_path: item.reportPath, completed_at: item.completedAt }]
-    })
+    const summarySubmitted = Boolean(run.retroSummarySubmittedAt)
     return {
       status: "ok" as const,
       run,
-      completed,
-      pending,
-      completions,
-      allDone: pending.length === 0 && run.expectedNodeIds.length > 0,
+      summarySubmitted,
       architectNotified: Boolean(run.architectNotifiedAt),
       architectSummarySubmitted: Boolean(run.architectLeadNotifiedAt),
       architectLeadNotified: Boolean(run.architectLeadNotifiedAt),
@@ -869,8 +908,7 @@ export class RegistryStore {
     if (retro.status === "no_run") {
       return { ready: true, pending, retro, skill: this.skillExtractStatus(missionId) }
     }
-    if (!retro.allDone) pending.push("manager_retro_nodes")
-    else if (!retro.architectNotified) pending.push("architect_retro_kickoff")
+    if (!retro.summarySubmitted) pending.push("retro_analyst_summary")
     else if (!retro.architectSummarySubmitted) pending.push("architect_retro_summary")
 
     const skill = this.skillExtractStatus(missionId)
@@ -892,8 +930,8 @@ export class RegistryStore {
     if (retro.status !== "ok") {
       throw new Error(`No retro run for mission ${input.missionId}`)
     }
-    if (!retro.architectNotified) {
-      throw new Error(`Mission ${input.missionId} retro nodes are not all recorded yet`)
+    if (!retro.summarySubmitted) {
+      throw new Error(`Mission ${input.missionId} retro-summary has not been submitted yet`)
     }
     const alreadySubmitted = retro.architectSummarySubmitted
     if (!alreadySubmitted) {
@@ -904,6 +942,9 @@ export class RegistryStore {
       })
     }
     const leadDelivery = await this.maybeNotifyLeadRetroRollupComplete(input.missionId)
+    await publishArchitectSummaryBlogPost(this.options.directory, input.missionId, input.reportPath).catch(
+      () => undefined,
+    )
     return {
       missionId: input.missionId,
       reportPath: input.reportPath,
@@ -982,33 +1023,29 @@ export class RegistryStore {
     return { status: sent.status, session_id: lead.sessionId }
   }
 
-  async recordRetroCompletion(input: {
-    missionId: string
-    nodeId: string
-    sessionId: string
-    reportPath: string
-  }) {
+  async recordRetroSummary(input: { missionId: string; sessionId: string; reportPath: string }) {
     const recorded = this.mutate(() => {
-      const item: RegistryRetroCompletion = {
-        missionId: input.missionId,
-        nodeId: input.nodeId,
-        reportPath: input.reportPath,
-        sessionId: input.sessionId,
-        completedAt: now(),
+      const run = this.retroRuns.get(input.missionId)
+      if (!run) throw new Error(`No retro run for mission ${input.missionId}`)
+      const updated: RegistryRetroRun = {
+        ...run,
+        retroSummarySubmittedAt: now(),
+        retroSummaryPath: input.reportPath,
       }
-      this.retroCompletions.set(retroCompletionKey(input.missionId, input.nodeId), item)
-      return item
+      this.retroRuns.set(input.missionId, updated)
+      return updated
     })
-    this.deactivateRetroAgentForNode(input.missionId, input.nodeId)
-    await this.maybeNotifyApoRetroComplete(input.missionId)
-    const after = this.retroStatus(input.missionId)
-    if (after.status === "ok" && after.allDone) this.deactivateRetroAgentsForMission(input.missionId)
+    this.deactivateRetroAgent(input.missionId)
+    await this.maybeNotifyArchitectRetroReview(input.missionId, input.reportPath)
+    await publishRetroSummaryBlogPost(this.options.directory, input.missionId, input.reportPath).catch(
+      () => undefined,
+    )
     return recorded
   }
 
-  deactivateRetroAgentForNode(missionId: string, nodeId: string) {
+  deactivateRetroAgent(missionId: string) {
     return this.mutate(() => {
-      const agentId = retroAgentId(missionId, nodeId)
+      const agentId = retroAgentId(missionId)
       const agent = this.agents.get(agentId)
       if (!agent || agent.status !== "active") return 0
       this.agents.set(agentId, { ...agent, status: "completed", updatedAt: now() })
@@ -1017,13 +1054,7 @@ export class RegistryStore {
   }
 
   deactivateRetroAgentsForMission(missionId: string) {
-    return this.mutate(() => {
-      const updatedAt = now()
-      for (const [agentId, agent] of this.agents.entries()) {
-        if (agent.scope !== "retro" || agent.missionId !== missionId || agent.status !== "active") continue
-        this.agents.set(agentId, { ...agent, status: "completed", updatedAt })
-      }
-    })
+    return this.deactivateRetroAgent(missionId)
   }
 
   async deliverSystemMessage(recipient: RegistryAgent, content: string, promptProfile?: string) {
@@ -1137,48 +1168,38 @@ export class RegistryStore {
     return deliveries
   }
 
-  async kickoffRetroSessions(manifest: TreeManifest, retroOrder: string[]) {
-    const deliveries: Array<{ nodeId: string; delivery: "sent" | "queued" | "failed"; error?: string }> = []
-    for (const nodeId of retroOrder) {
-      const execNode = manifest.nodes[nodeId]
-      const recipient = this.byAgentId(retroAgentId(manifest.mission_id, nodeId))
-      if (!execNode || !recipient) {
-        deliveries.push({ nodeId, delivery: "failed", error: "retro agent not in registry" })
-        continue
-      }
-      const promptText = await loadRetroKickoffPrompt(this.options.directory, {
-        missionId: manifest.mission_id,
-        nodeId,
-        manifest,
-      })
-      const result = await this.deliverToRecipient({
-        recipient,
-        promptText,
-        promptProfile: recipient.profile,
-      })
-      deliveries.push({
-        nodeId,
-        delivery: result.status,
-        ...(result.error && { error: result.error }),
-      })
+  async kickoffRetroSession(manifest: TreeManifest, plan?: OrchestrationPlan) {
+    const recipient = this.byAgentId(retroAgentId(manifest.mission_id))
+    if (!recipient) {
+      return { delivery: "failed" as const, error: "retro analyst not in registry" }
     }
-    return deliveries
+    const promptText = await loadRetroKickoffPrompt(this.options.directory, {
+      missionId: manifest.mission_id,
+      manifest,
+      plan,
+    })
+    const result = await this.deliverToRecipient({
+      recipient,
+      promptText,
+      promptProfile: recipient.profile,
+    })
+    return {
+      nodeId: manifest.mission_id,
+      delivery: result.status,
+      ...(result.error && { error: result.error }),
+    }
   }
 
-  private async maybeNotifyApoRetroComplete(missionId: string) {
+  private async maybeNotifyArchitectRetroReview(missionId: string, reportPath: string) {
     const status = this.retroStatus(missionId)
-    if (status.status !== "ok" || !status.allDone || status.architectNotified) return
+    if (status.status !== "ok" || !status.summarySubmitted || status.architectNotified) return
     const architect = this.byProfile("architect", "outer")
     if (!architect) return
-    const completions = status.completed.map((nodeId) => {
-      const item = this.retroCompletions.get(retroCompletionKey(missionId, nodeId))
-      return { nodeId, reportPath: item?.reportPath ?? retroNodeReportRelPath(missionId, nodeId) }
-    })
     const sent = await this.deliverSystemMessage(
       architect,
-      architectRetroBatchReadyMessage(
+      architectRetroReviewReadyMessage(
         missionId,
-        completions,
+        reportPath,
         readAgentNamesSync(this.options.directory),
         readLocaleSync(this.options.directory),
       ),
@@ -1283,11 +1304,11 @@ export class RegistryStore {
   listIncompleteRetroRecordRuns() {
     return [...this.retroRuns.keys()].flatMap((missionId) => {
       const status = this.retroStatus(missionId)
-      if (status.status !== "ok" || status.allDone) return []
+      if (status.status !== "ok" || status.summarySubmitted) return []
       return [{
         missionId,
-        expectedNodeIds: status.run.expectedNodeIds,
-        pendingNodeIds: status.pending,
+        expectedNodeIds: ["retro-analyst"],
+        pendingNodeIds: ["retro-analyst"],
       }]
     })
   }
@@ -1618,37 +1639,24 @@ function sendPolicyViolation(
   sender: RegistryAgent,
   recipient: RegistryAgent,
   names: Record<OuterProfile, string>,
+  projectDirectory: string,
 ) {
-  if (sender.scope === "outer" && sender.profile === "lead") {
-    if (recipient.scope === "outer" && (recipient.profile === "architect" || recipient.profile === "curator")) return undefined
-    if (isInnerStructuralRoot(recipient)) return undefined
-    return `profile lead (${names.lead}) may only message architect (${names.architect}), curator (${names.curator}), or the structural root`
+  if (sender.scope !== "outer") {
+    return "gatehouse_send_message is outer-team only"
   }
-  if (sender.scope === "outer" && sender.profile === "architect") {
+  if (sender.profile === "lead") {
+    if (recipient.scope === "outer" && (recipient.profile === "architect" || recipient.profile === "curator")) return undefined
+    if (isTerminalInnerAgent(projectDirectory, recipient)) return undefined
+    return `profile lead (${names.lead}) may only message architect (${names.architect}), curator (${names.curator}), or the terminal node`
+  }
+  if (sender.profile === "architect") {
     if (recipient.scope === "outer" && recipient.profile === "lead") return undefined
     return `profile architect (${names.architect}) may only message lead (${names.lead})`
   }
-  if (sender.scope === "outer" && sender.profile === "curator") {
+  if (sender.profile === "curator") {
     if (recipient.scope === "outer" && recipient.profile === "lead") return undefined
     if (recipient.scope === "inner") return undefined
     return `profile curator (${names.curator}) may only message lead (${names.lead}) or execution-tree sessions`
   }
-  if (sender.scope === "inner") {
-    if (recipient.scope === "outer" && recipient.profile === "lead") {
-      if (sender.parentSessionId) {
-        return `only profile build-root (structural root) may notify lead (${names.lead}) of mission completion`
-      }
-      if (!innerProfileMayNotifyLead(sender.profile)) {
-        return `only profile build-root or build-root-solo (structural root) may notify lead (${names.lead}); got profile ${sender.profile}`
-      }
-      return undefined
-    }
-    if (recipient.scope === "outer") return "execution-tree nodes may only message peers in the same mission"
-    if (sender.missionId !== recipient.missionId) return "execution-tree nodes may only message peers in the same mission"
-    return undefined
-  }
-  if (sender.scope === "retro") return "retro sessions must use gatehouse_retro_record"
-  if (sender.scope === "extract") return "extract sessions must use gatehouse_skill_extract_record"
-  if (sender.scope === "verify") return "verify sessions must use gatehouse_skill_verify_record"
   return "sender is not allowed to use gatehouse_send_message"
 }

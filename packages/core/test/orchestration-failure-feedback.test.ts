@@ -253,7 +253,7 @@ export default async function orchestrate(ctx) {
         sessionId: "ses_architect",
         displayName: "Architect",
       })
-      store.registerInnerNode({ missionId, nodeId: "node-root", sessionId: "ses_leaf", profile: "build-root" })
+      store.registerInnerNode({ missionId, nodeId: "node-root", sessionId: "ses_leaf", profile: "build" })
       store.registerInnerNode({ missionId, nodeId: "node-doc", sessionId: "ses_doc", profile: "build" })
 
       writeOrchestrationState(dir, initOrchestrationState(missionId, ["node-root", "node-doc"]))
@@ -268,7 +268,7 @@ export default async function orchestrate(ctx) {
             parent: null,
             display_name: "node-root",
             description: "root",
-            profile: "build-root",
+            profile: "build",
           },
           "node-doc": {
             session_id: "ses_doc",

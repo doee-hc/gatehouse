@@ -22,7 +22,6 @@ permission:
   gatehouse_skill_verify_record: deny
   gatehouse_unpublish_blog: allow
   gatehouse_delivery_review: allow
-  gatehouse_delivery_status: allow
   gatehouse_execution_complete: deny
   gatehouse_execution_rework: deny
   gatehouse_execution_status: allow

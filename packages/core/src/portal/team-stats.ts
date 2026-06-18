@@ -5,11 +5,12 @@ import {
   extractSessionTitle,
   leadDir,
   nodeContextDir,
+  phaseContextDir,
   portalNodeDisplayName,
   retroSessionTitle,
   verifySessionTitle,
 } from "../paths.ts"
-import { addTokens, emptyTokens, type TokenBreakdown } from "../metrics/aggregate.ts"
+import { addTokens, aggregateAssistantMessages, emptyTokens, type TokenBreakdown } from "../metrics/aggregate.ts"
 import { collectManifestSessionIds } from "../missions/lifecycle.ts"
 import { RegistryDatabase } from "../registry/db.ts"
 import type { RegistryAgent } from "../registry/types.ts"
@@ -80,6 +81,25 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null
 }
 
+export function usageFromSessionMessages(
+  messages: unknown,
+  detail?: Record<string, unknown>,
+): SessionUsage {
+  if (!Array.isArray(messages)) {
+    return usageFromSessionDetail(undefined)
+  }
+  const agg = aggregateAssistantMessages(
+    messages.filter(isRecord).map((row) => ({
+      info: isRecord(row.info) ? row.info : row,
+    })),
+  )
+  return {
+    tokens: { ...agg.tokens },
+    cost: agg.cost,
+    duration_ms: sessionDurationMs(detail) ?? 0,
+  }
+}
+
 export function usageFromSessionDetail(detail: Record<string, unknown> | undefined): SessionUsage {
   if (!detail) {
     return { tokens: emptyTokens(), cost: 0, duration_ms: 0 }
@@ -126,9 +146,9 @@ function usageFromMetricsRecord(input: {
   }
 }
 
-function sessionUsageIsEmpty(usage: SessionUsage | undefined) {
+function sessionUsageTokensMissing(usage: SessionUsage | undefined) {
   if (!usage) return true
-  return usage.cost === 0 && usage.tokens.total === 0 && usage.duration_ms === 0
+  return usage.cost === 0 && usage.tokens.total === 0
 }
 
 function mergeUsage(target: SessionUsage, source: SessionUsage) {
@@ -200,13 +220,11 @@ export function buildMissionStats(
   }
 
   if (retro) {
-    for (const [nodeId, node] of Object.entries(retro.nodes)) {
-      pushRole(roles, totals, sessionUsage, {
-        node_id: `retro:${nodeId}`,
-        label: retroSessionTitle(mission.id, nodeId),
-        session_id: node.retro_session_id,
-      })
-    }
+    pushRole(roles, totals, sessionUsage, {
+      node_id: "retro:analyst",
+      label: retroSessionTitle(mission.id),
+      session_id: retro.retro_session_id,
+    })
   }
 
   if (extract) {
@@ -275,6 +293,23 @@ async function opencodeReachable(opencodeUrl: string) {
   return isRecord(body) && body.healthy === true
 }
 
+async function fetchSessionMessagesHttp(opencodeUrl: string, projectDirectory: string, sessionId: string) {
+  const url = new URL(`/session/${encodeURIComponent(sessionId)}/message`, opencodeUrl)
+  url.searchParams.set("directory", projectDirectory)
+  const response = await fetch(url, {
+    headers: {
+      accept: "application/json",
+      "x-opencode-directory": projectDirectory,
+    },
+    signal: AbortSignal.timeout(8000),
+  }).catch(() => undefined)
+  if (!response?.ok) return undefined
+  const body = (await response.json()) as unknown
+  if (isRecord(body) && Array.isArray(body.data)) return body.data
+  if (Array.isArray(body)) return body
+  return undefined
+}
+
 async function fetchSessionDetailHttp(opencodeUrl: string, projectDirectory: string, sessionId: string) {
   const url = new URL(`/session/${encodeURIComponent(sessionId)}`, opencodeUrl)
   url.searchParams.set("directory", projectDirectory)
@@ -308,15 +343,19 @@ async function loadSessionUsageMap(
       index += 1
       if (!current) continue
       const detail = await fetchSessionDetailHttp(opencodeUrl, projectDirectory, current)
-      usage.set(current, usageFromSessionDetail(detail))
+      let sessionUsageEntry = usageFromSessionDetail(detail)
+      if (sessionUsageTokensMissing(sessionUsageEntry)) {
+        const messages = await fetchSessionMessagesHttp(opencodeUrl, projectDirectory, current)
+        sessionUsageEntry = usageFromSessionMessages(messages, detail)
+      }
+      usage.set(current, sessionUsageEntry)
     }
   })
   await Promise.all(workers)
   return usage
 }
 
-async function readLocalNodeMetricsUsage(projectDirectory: string, missionId: string, nodeId: string) {
-  const metricsPath = path.join(nodeContextDir(projectDirectory, missionId, nodeId), "metrics.json")
+async function readLocalMetricsFile(metricsPath: string) {
   const file = Bun.file(metricsPath)
   if (!(await file.exists())) return undefined
   try {
@@ -326,16 +365,53 @@ async function readLocalNodeMetricsUsage(projectDirectory: string, missionId: st
   }
 }
 
+async function readLocalNodeMetricsUsage(projectDirectory: string, missionId: string, nodeId: string) {
+  const metricsPath = path.join(nodeContextDir(projectDirectory, missionId, nodeId), "metrics.json")
+  return readLocalMetricsFile(metricsPath)
+}
+
+async function readLocalPhaseMetricsUsage(
+  projectDirectory: string,
+  missionId: string,
+  phase: "retro" | "extract" | "verify",
+  nodeId: string,
+) {
+  const metricsPath = path.join(phaseContextDir(projectDirectory, missionId, phase, nodeId), "metrics.json")
+  return readLocalMetricsFile(metricsPath)
+}
+
 async function enrichSessionUsageFromLocalContext(
   projectDirectory: string,
   manifests: Map<string, TreeManifest>,
   sessionUsage: Map<string, SessionUsage>,
+  retroManifests: Map<string, RetroManifest>,
+  extractManifests: Map<string, ExtractManifest>,
+  verifyManifests: Map<string, VerifyManifest>,
 ) {
   for (const [missionId, manifest] of manifests) {
     for (const [nodeId, node] of Object.entries(manifest.nodes)) {
-      if (!sessionUsageIsEmpty(sessionUsage.get(node.session_id))) continue
+      if (!sessionUsageTokensMissing(sessionUsage.get(node.session_id))) continue
       const local = await readLocalNodeMetricsUsage(projectDirectory, missionId, nodeId)
       if (local) sessionUsage.set(node.session_id, local)
+    }
+  }
+  for (const [missionId, retro] of retroManifests) {
+    if (!sessionUsageTokensMissing(sessionUsage.get(retro.retro_session_id))) continue
+    const local = await readLocalPhaseMetricsUsage(projectDirectory, missionId, "retro", "retro-analyst")
+    if (local) sessionUsage.set(retro.retro_session_id, local)
+  }
+  for (const [missionId, extract] of extractManifests) {
+    for (const [nodeId, node] of Object.entries(extract.nodes)) {
+      if (!sessionUsageTokensMissing(sessionUsage.get(node.extract_session_id))) continue
+      const local = await readLocalPhaseMetricsUsage(projectDirectory, missionId, "extract", nodeId)
+      if (local) sessionUsage.set(node.extract_session_id, local)
+    }
+  }
+  for (const [missionId, verify] of verifyManifests) {
+    for (const [nodeId, node] of Object.entries(verify.nodes)) {
+      if (!sessionUsageTokensMissing(sessionUsage.get(node.verify_session_id))) continue
+      const local = await readLocalPhaseMetricsUsage(projectDirectory, missionId, "verify", nodeId)
+      if (local) sessionUsage.set(node.verify_session_id, local)
     }
   }
 }
@@ -359,10 +435,7 @@ function collectMissionSessionIds(
   if (manifest) return collectManifestSessionIds(manifest, retro, extract, verify)
   const ids = new Set<string>()
   if (retro) {
-    for (const node of Object.values(retro.nodes)) {
-      ids.add(node.exec_session_id)
-      ids.add(node.retro_session_id)
-    }
+    ids.add(retro.retro_session_id)
   }
   if (extract) {
     for (const node of Object.values(extract.nodes)) ids.add(node.extract_session_id)
@@ -427,7 +500,14 @@ async function loadTeamStatsSnapshot(projectDirectory: string, opencodeUrl?: str
   const baseUrl = opencodeUrl ?? process.env.OPENCODE_URL ?? process.env.OPENCODE_SERVER_URL ?? "http://127.0.0.1:4096"
   const reachable = await opencodeReachable(baseUrl)
   const sessionUsage = await loadSessionUsageMap(baseUrl, projectDirectory, [...sessionIds], reachable)
-  await enrichSessionUsageFromLocalContext(projectDirectory, manifests, sessionUsage)
+  await enrichSessionUsageFromLocalContext(
+    projectDirectory,
+    manifests,
+    sessionUsage,
+    retroManifests,
+    extractManifests,
+    verifyManifests,
+  )
 
   const snapshot: TeamStatsSnapshot = {
     project_directory: projectDirectory,

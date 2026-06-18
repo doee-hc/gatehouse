@@ -208,7 +208,7 @@ export function startRecordWatchdogs(
     "retro_record",
     timing,
     (store) => store.listIncompleteRetroRecordRuns(),
-    (store, missionId, nodeId) => store.byAgentId(retroAgentId(missionId, nodeId)),
+    (store, missionId, _nodeId) => store.byAgentId(retroAgentId(missionId)),
     loadWatchdogRetroRecordWakePrompt,
   ).start()
 

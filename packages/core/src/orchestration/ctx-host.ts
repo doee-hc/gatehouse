@@ -11,6 +11,7 @@ import {
   readMissionContextForScript,
 } from "./events.ts"
 import { deliverOrchestrationPrompt } from "./prompt.ts"
+import { normalizeDependsOn, waitNodeIds } from "./depends-on.ts"
 import { readLatestOrchestrationPlanRecord } from "./plan-store.ts"
 import type { PlanStep } from "./plan-types.ts"
 import {
@@ -41,7 +42,7 @@ import {
   formatReworkText,
   formatWorkOrderText,
 } from "./templates.ts"
-import { orchestrationFork, orchestrationJoin, orchestrationRun } from "./run-join-fork.ts"
+import { orchestrationFork, orchestrationRun } from "./run-fork.ts"
 import { RegistryDatabase } from "../registry/db.ts"
 
 const PROMPT_TEXT_MAX = 32_768
@@ -154,8 +155,7 @@ function assertNodeInTeam(team: TeamSpec, nodeId: string) {
 function assertPromptAllowed(team: TeamSpec, nodeIds: string[], input: PromptInput, replyCount: number) {
   if (nodeIds.length === 0) throw new Error("prompt requires at least one nodeId")
   for (const nodeId of nodeIds) assertNodeInTeam(team, nodeId)
-  const rollupFrom = input.rollupFrom?.filter((id) => id.trim()) ?? []
-  for (const nodeId of rollupFrom) assertNodeInTeam(team, nodeId)
+  for (const nodeId of waitNodeIds(normalizeDependsOn(input.dependsOn))) assertNodeInTeam(team, nodeId)
   const text = input.text ?? ""
   if (text.length > PROMPT_TEXT_MAX) {
     throw new Error(`prompt text exceeds ${PROMPT_TEXT_MAX} bytes`)
@@ -243,6 +243,14 @@ export function createMissionContext(input: {
         })
       }
 
+      const dependencyIds = waitNodeIds(normalizeDependsOn(promptInput.dependsOn))
+      for (const depId of dependencyIds) {
+        const readState = () => readOrchestrationState(plugin.directory, missionId)
+        const fresh = readState()
+        if (fresh && nodeIsCompleteForWait(fresh, depId)) continue
+        await waitForOrchestration(missionId, depId, "complete", { readState })
+      }
+
       for (const nodeId of toDeliver) {
         const decision = decideReplyPrompt({
           state,
@@ -328,18 +336,14 @@ export function createMissionContext(input: {
   const ctx: MissionContext = {
     objective: contract?.objective ?? "",
 
-    async run(target, opts) {
-      await orchestrationRun(engine, target, opts, {
+    async run(nodeId, opts) {
+      await orchestrationRun(engine, nodeId, opts, {
         defaultWorkOrder: (nodeId) =>
           formatWorkOrderText(plugin.directory, {
             missionId,
             nodeId,
           }),
       })
-    },
-
-    async join(target, opts) {
-      await orchestrationJoin(engine, target, opts, team)
     },
 
     async fork(tracks) {

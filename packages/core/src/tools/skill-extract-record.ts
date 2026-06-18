@@ -7,6 +7,8 @@ import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
 import { runSkillQualityGate } from "../skills/quality-gate.ts"
 import { recordSkillExtract } from "../skills/utility.ts"
 import { readExtractManifest } from "../tree/store.ts"
+import { dumpPhaseSessionMetrics } from "../session/context-dump.ts"
+import type { GatehouseClient } from "../session/client.ts"
 
 export function skillExtractRecordTool(input: PluginInput) {
   return tool({
@@ -99,6 +101,14 @@ export function skillExtractRecordTool(input: PluginInput) {
           sessionId: context.sessionID,
           summaryPath: summaryRel,
         })
+        await dumpPhaseSessionMetrics({
+          client: input.client as GatehouseClient,
+          projectDirectory: input.directory,
+          missionId,
+          phase: "extract",
+          nodeId,
+          sessionId: context.sessionID,
+        }).catch(() => undefined)
         const status = registry.skillExtractStatus(missionId)
         return {
           output: toolOk(toolName, {

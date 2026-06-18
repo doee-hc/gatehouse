@@ -46,9 +46,9 @@ Task body includes objective / done_when / must_not / notes / user_topology / us
 
 | Export | Purpose |
 |--------|---------|
-| `export const team` | Execution team: each node's `node_id`, `parent` report line, one-line `description` |
-| `export const meta` | Optional: progress `phases`, rework policy `rework` |
-| `export default async function orchestrate(ctx)` | Orchestration: `ctx.run` / `ctx.join` / `ctx.fork` |
+| `export const team` | Execution team roster: `node_id`, `parent` (Portal/reporting lines), one-line `description`; `root` = terminal node id |
+| `export const meta` | Optional: progress `phases` (optional `name`) |
+| `export default async function orchestrate(ctx)` | Orchestration timing: `ctx.run` / `ctx.fork` / `dependsOn` |
 
 Each inner node **must** have `description` (one-line role). Put detailed tasks and boundaries in `ctx.run({ brief: … })`.
 
@@ -70,15 +70,15 @@ await ctx.run("researcher-a", {
 ```typescript
 export const team = {
   mission_id: "<id>",
-  root: "<root-node-id>",
+  root: "<terminal-node-id>",
   nodes: {
-    "<root-node-id>": {
-      parent: null,
-      description: "Task coordinator — delegate and summarize delivery",
-    },
     "<leaf-id>": {
-      parent: "<root-node-id>",
+      parent: "<terminal-node-id>",
       description: "Executes <concrete deliverable>",
+    },
+    "<terminal-node-id>": {
+      parent: null,
+      description: "Produces the final mission deliverable",
     },
   },
 }
@@ -86,11 +86,6 @@ export const team = {
 export const meta = {
   name: "<id>",
   phases: ["Phase A", "Phase B"],
-  rework: {
-    peer_allowed: true,
-    escalate_to: "root" as const,
-    allow_coordinator_rework: true,
-  },
 }
 
 export default async function orchestrate(ctx) {
@@ -102,70 +97,80 @@ export default async function orchestrate(ctx) {
     text: ctx.template.workOrder("<leaf-id>"),
   })
 
-  await ctx.run("<root-node-id>", {
+  await ctx.run("<terminal-node-id>", {
     brief: {
-      your_work: ["Roll up child deliveries and verify acceptance"],
+      your_work: ["Integrate upstream work into the final deliverable"],
       acceptance_slice: ["path: …", "…"],
     },
-    text: ctx.template.workOrder("<root-node-id>", { context: "…" }),
-    rollupFrom: ["<leaf-id>"],
+    text: ctx.template.workOrder("<terminal-node-id>", { context: "…" }),
+    dependsOn: [{ node: "<leaf-id>", summary: true }],
   })
 }
 ```
 
-**Multi-level team** (root → intermediate → leaves): express the report tree with `team.nodes.parent`; use `ctx.join(coordinator, { subtree: true })` or sequential `ctx.run` in `orchestrate`. Coordinator subtree scope goes in `run` brief. Coordinator rollup format: `subtree-delivery-index.template.md`. Intermediate coordinators usually do not get `skill_domain`.
+**Team vs orchestration:**
+
+- `team.root` **must equal the terminal node** (`parent: null`). Use a meaningful node id — **do not** add a generic `root` node by default.
+- `team.nodes` lists members and `parent` (Portal/list views only). **Timing and dependencies** live only in `orchestrate()` via `ctx.run` / `dependsOn` — never infer execution order from `parent`.
+- **Terminal node:** the plan dependency sink (last `ctx.run` target that nothing else waits on). When all nodes are done and the terminal calls `gatehouse_execution_complete`, Gatehouse auto-notifies {{lead_name}}.
+- Add intermediate synthesis nodes only when the work split genuinely needs them. When a node waits on upstream deliverables, use `dependsOn` with `summary: true`; Curator decides `skill_domain` — do not encode it in the script.
+
+**Rework (runtime):** a node may call `gatehouse_execution_rework` only on **upstream nodes listed in its own run `dependsOn`**; do not put rework policy in `meta`.
 
 **Orchestration primitives (`ctx.*` only):**
 
 | API | Purpose |
 |-----|---------|
-| `ctx.run(nodeId \| nodeIds[], { brief?, text?, rollupFrom?, reply?, wait? })` | Activate node(s): brief + work order; default `wait: true` (fan-out then fan-in for arrays) |
-| `ctx.join(nodeId \| nodeIds[], { subtree?, timeout? })` | Wait until node(s) call `gatehouse_execution_complete`; `subtree: true` waits all descendants |
-| `ctx.fork(tracks)` | **Barrier parallel tracks**: run thunks concurrently; continue after all finish |
+| `ctx.run(nodeId, { brief?, text?, dependsOn?, reply? })` | Activate one node: all `dependsOn` entries must be satisfied, then dispatch once and wait for `complete` |
+| `ctx.fork(tracks)` | **Parallel tracks**: run thunks concurrently; continue after all finish |
 | `ctx.template.workOrder` / `rework` / `reworkResume` | Standard work-order text |
 | `ctx.objective` | Frozen mission objective string (safe to embed in work orders) |
 
-Do **not** simulate peer coordination in the script — drive timing only with `ctx.run` / `ctx.join`.
+Do **not** simulate peer coordination in the script — drive timing only with `ctx.run` and `ctx.fork`.
 
-**`rollupFrom` rules:**
+**`dependsOn` rules:**
 
-- Use only on **parent / coordinator** nodes inside `ctx.run(..., { rollupFrom: [...] })` — lists **descendant** node_ids whose delivery summaries attach to that work order.
-- **Do not** put sibling node_ids in `rollupFrom` on a leaf (`SCRIPT_INVALID_ROLLUP`). For leaves that need upstream output, pass paths via `ctx.template.workOrder(..., { context: \`…\` })`.
+- Each entry is a **string** (wait for completion only) or **`{ node, summary?: boolean }`** (`summary: true` injects that node's completion into the work order).
+- When the work order needs upstream deliverables, list every relevant node explicitly with `summary: true` (including all direct children when aggregating a subtree).
+- **Cross-track ordering:** `dependsOn: ["other-node"]` (ordering only, no summary) — allowed anywhere, including top level and inside fork tracks.
+- **Cross-track with upstream delivery content:** `dependsOn: [{ node: "a1", summary: true }]` inside parallel fork tracks.
 
-**Every node needs dispatch + join:**
+**Every node must be run:**
 
-- **Each** node_id in `team.nodes` (including root) must be activated and completed via `ctx.run` (or `ctx.run(..., { wait: false })` then `ctx.join`), or dry-run fails with `SCRIPT_SIMULATION_INCOMPLETE`.
+- **Each** node_id in `team.nodes` must be activated via `ctx.run`, or dry-run fails with `SCRIPT_SIMULATION_INCOMPLETE`.
 
-**Parallel orchestration:** for independent subtrees (e.g. track A: a1/a2/a3 + coordinator a, track B: b1/b2/b3 + coordinator b), use `ctx.fork` so both tracks advance **without blocking each other**:
+**Parallel orchestration:** for independent subtrees or sibling leaves, use `ctx.fork` with one `ctx.run` per node:
 
 ```typescript
 await ctx.fork([
   async () => {
-    await ctx.run(["a1", "a2", "a3"], {
-      brief: (id) => ({ your_work: ["…"], acceptance_slice: ["…"] }),
-      text: (id) => ctx.template.workOrder(id),
-    })
+    await ctx.run("a1", { brief: { your_work: ["…"], acceptance_slice: ["…"] }, text: ctx.template.workOrder("a1") })
+    await ctx.run("a2", { brief: { your_work: ["…"], acceptance_slice: ["…"] }, text: ctx.template.workOrder("a2") })
     await ctx.run("a", {
-      brief: { your_work: ["rollup A"], acceptance_slice: ["…"] },
+      brief: { your_work: ["…"], acceptance_slice: ["…"] },
       text: ctx.template.workOrder("a"),
-      rollupFrom: ["a1", "a2", "a3"],
+      dependsOn: [{ node: "a1", summary: true }, { node: "a2", summary: true }],
     })
   },
   async () => {
-    await ctx.run(["b1", "b2", "b3"], {
-      brief: (id) => ({ your_work: ["…"], acceptance_slice: ["…"] }),
-      text: (id) => ctx.template.workOrder(id),
-    })
+    await ctx.run("b1", { brief: { your_work: ["…"], acceptance_slice: ["…"] }, text: ctx.template.workOrder("b1") })
+    await ctx.run("b2", { brief: { your_work: ["…"], acceptance_slice: ["…"] }, text: ctx.template.workOrder("b2") })
     await ctx.run("b", {
-      brief: { your_work: ["rollup B"], acceptance_slice: ["…"] },
+      brief: { your_work: ["…"], acceptance_slice: ["…"] },
       text: ctx.template.workOrder("b"),
-      rollupFrom: ["b1", "b2", "b3"],
+      dependsOn: [{ node: "b1", summary: true }, { node: "b2", summary: true }],
     })
   },
 ])
+// Cross-track final delivery only when the mission needs it; set team.root to this node.
+await ctx.run("<terminal-node-id>", {
+  brief: { your_work: ["…"], acceptance_slice: ["…"] },
+  text: ctx.template.workOrder("<terminal-node-id>"),
+  dependsOn: [{ node: "a", summary: true }, { node: "b", summary: true }],
+})
 ```
 
-For sibling leaves only (no separate subtrees), `ctx.run([...])` fan-out is enough.
+When the last work node already satisfies `done_when`, make it the terminal (`team.root`, `parent: null`) — no extra wrapper node.
 
 **Script writing limits:**
 
@@ -174,12 +179,12 @@ For sibling leaves only (no separate subtrees), `ctx.run([...])` fan-out is enou
 3. `team` / `meta` must be object literals.
 4. Prefer string literals for `nodeId` so node names stay correct.
 5. Do not paste the full contract into the script — put boundaries in `run` brief or work-order text.
-6. Recommended flow: `ctx.run(nodeId, { brief, text })`; use `wait: false` + `ctx.join` when you need split dispatch/wait control.
+6. Recommended flow: `ctx.run(nodeId, { brief, text })`; parallel siblings use `ctx.fork` with one run per node.
 7. Use documented `ctx.*` only (`ctx.objective` is available).
 8. **Strings:** in `orchestrate`, prefer template literals or single quotes for `context` / `note`. **`SCRIPT_RISKY_STRING_LITERAL` applies only** when `context:` / `note:` use double quotes **and** the value contains `gatehouse_` (`run` brief and `team`/`meta` literals are exempt). Fix only the line the error cites — do not bulk-convert quote styles.
-9. **Validation & recovery:** save the script, then call `gatehouse_submit_orchestration` — the system validates and starts or resumes automatically. **Dry-run failures return errors in the tool response only**; no separate Gatehouse system message (runtime sandbox failures still notify you). Dry-run checks cross-track false serialization (`SCRIPT_SERIAL_TRACK_BLOCK`), `rollupFrom` subtree validity, brief coverage, unreferenced nodes, `ctx.fork` hints, and more; warnings are returned in `warnings`. After rewriting mid-mission: **`gatehouse_submit_orchestration(mode=continue)`**. Do not edit `mission.script.ts` during active orchestration.
+9. **Validation & recovery:** save the script, then call `gatehouse_submit_orchestration` — the system validates and starts or resumes automatically. **Dry-run failures return errors in the tool response only**; no separate Gatehouse system message (runtime sandbox failures still notify you). Dry-run checks cross-track false serialization (`SCRIPT_SERIAL_TRACK_BLOCK`), `dependsOn` subtree validity, brief coverage, unreferenced nodes, `ctx.fork` hints, and more; warnings are returned in `warnings`. After rewriting mid-mission: **`gatehouse_submit_orchestration(mode=continue)`**. Do not edit `mission.script.ts` during active orchestration.
 
-The script drives timing and work orders. When waking a parent/coordinator, use `run(..., { rollupFrom: [...] })` to **list** child node_ids whose reports belong in that order. Structural root auto-notifies {{lead_name}} via `gatehouse_execution_complete` when all nodes are done. **Portal publish happens on Lead `mission_complete(done)`** — never put “publish to Portal” or any publish tool name in `setBrief` or work orders.
+The script drives timing and work orders via `dependsOn` when upstream deliverables are needed. The **terminal node** auto-notifies {{lead_name}} via `gatehouse_execution_complete` when all nodes are done. **Portal publish happens on Lead `mission_complete(done)`** — never put “publish to Portal” or any publish tool name in `setBrief` or work orders.
 
 1. `gatehouse_submit_orchestration(objective=...)` → wait for execution to start after skill domains are resolved.
 2. **Exit the execution loop** — do not offer `gatehouse_execution_status` tracking or progress polling.
@@ -188,9 +193,14 @@ The script drives timing and work orders. When waking a parent/coordinator, use 
 
 Execution team collaborates on its own; **you do not intervene**, track progress, or snapshot-poll during normal runs. **Exception:** on orchestration stall alerts, use `gatehouse_execution_status` once for diagnosis.
 
-### 4. Retro rollup
+### 4. Retro review
 
-When you receive the “Retro ready” notification, write `.gatehouse/trees/<id>/reports/architect-summary.md` per `architect-summary.template.md`, then **`gatehouse_retro_summary_record`** (do not `send_message` {{lead_name}} for rollup).
+When you receive the “Retro review ready” notification:
+
+1. Read `.gatehouse/trees/<id>/reports/retro-summary.md` (retro-analyst output).
+2. Review conclusions and iterate **architect-meta**.
+3. Write `.gatehouse/trees/<id>/reports/architect-summary.md` per `architect-summary.template.md`.
+4. Call **`gatehouse_retro_summary_record`** (do not `send_message` {{lead_name}} for rollup).
 
 ## Paths
 
@@ -199,8 +209,7 @@ When you receive the “Retro ready” notification, write `.gatehouse/trees/<id
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Mission script / reports | `.gatehouse/trees/<id>/mission.script.ts`                                                                                                                |
 | Node reports | Each node `gatehouse_execution_complete(summary, artifacts?)` |
-| Rollup work order | Parent `prompt` with `rollupFrom: [node_id, ...]` |
-| Writing guides | `prompts/architect/subtree-delivery-index.template.md` (coordinators) |
+| Upstream deliverables in work order | `dependsOn: [{ node: "…", summary: true }, …]` on `ctx.run` |
 | Prompt templates         | `.gatehouse/<locale>/prompts/architect/` (`<locale>` from `config.yaml`)                                                                                 |
 | Retro methodology        | `.gatehouse/<locale>/skills/retro-toolkit/SKILL.md`                                                                                                      |
 | Retro tool scripts       | `.gatehouse/skills/retro-toolkit/tools/`                                                                                                                 |

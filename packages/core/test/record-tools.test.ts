@@ -7,8 +7,9 @@ import type { ToolContext } from "@opencode-ai/plugin/tool"
 import { getRegistryStore } from "../src/registry/context.ts"
 import { retroRecordTool } from "../src/tools/retro.ts"
 import { skillExtractRecordTool } from "../src/tools/skill-extract-record.ts"
-import { curatorSkillSummaryRelPath, retroNodeReportRelPath } from "../src/paths.ts"
+import { curatorSkillSummaryRelPath, retroSummaryRelPath } from "../src/paths.ts"
 import { writeExtractManifest } from "../src/tree/store.ts"
+import { RETRO_ANALYST_AGENT } from "../src/registry/types.ts"
 
 function mockToolContext(directory: string, sessionID: string, agent: string): ToolContext {
   return {
@@ -30,40 +31,41 @@ function toolOutput(result: Awaited<ReturnType<ReturnType<typeof retroRecordTool
 }
 
 describe("record tools", () => {
-  test("retro_record uses caller session node and requires retro run membership", async () => {
+  test("retro_record requires retro-analyst session and retro-summary report", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-record-retro-"))
     try {
       const pluginInput = { directory: dir, client: {} } as unknown as PluginInput
       const store = await getRegistryStore(pluginInput)
       const missionId = "m1"
-      const nodeId = "node-root"
       store.registerInnerNode({
         missionId,
-        nodeId,
+        nodeId: "node-root",
         sessionId: "ses_inner",
         profile: "build",
       })
-      store.registerRetroNode({
+      store.registerRetroAnalyst({
         missionId,
-        nodeId,
         sessionId: "ses_retro",
-        profile: "build-coordinator",
       })
       const record = retroRecordTool(pluginInput)
+      store.beginRetroRun(missionId)
 
-      store.beginRetroRun(missionId, ["other-node"])
-      const rejected = toolOutput(await record.execute({}, mockToolContext(dir, "ses_retro", "build-coordinator")))
-      expect(rejected).toContain("NODE_NOT_IN_RETRO_RUN")
+      const missingReport = toolOutput(
+        await record.execute({}, mockToolContext(dir, "ses_retro", RETRO_ANALYST_AGENT)),
+      )
+      expect(missingReport).toContain("REPORT_NOT_FOUND")
 
-      store.beginRetroRun(missionId, [nodeId])
-      const reportRel = retroNodeReportRelPath(missionId, nodeId)
-      await Bun.write(path.join(dir, reportRel), "# retro\n")
-      const ok = toolOutput(await record.execute({}, mockToolContext(dir, "ses_retro", "build-coordinator")))
+      const reportRel = retroSummaryRelPath(missionId)
+      await Bun.write(path.join(dir, reportRel), "# retro summary\n")
+      const ok = toolOutput(await record.execute({}, mockToolContext(dir, "ses_retro", RETRO_ANALYST_AGENT)))
       expect(ok).toContain("ok")
-      expect(ok).toContain(nodeId)
+      expect(ok).toContain("retro-summary.md")
 
       const inner = toolOutput(await record.execute({}, mockToolContext(dir, "ses_inner", "build")))
-      expect(inner).toContain("NOT_RETRO_SESSION")
+      expect(inner).toContain("NOT_RETRO_ANALYST")
+
+      const wrongAgent = toolOutput(await record.execute({}, mockToolContext(dir, "ses_retro", "build")))
+      expect(wrongAgent).toContain("NOT_RETRO_ANALYST")
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
@@ -91,38 +93,24 @@ describe("record tools", () => {
         sessionId: "ses_extract",
         profile: "build-extract",
       })
-      store.registerExtractNode({
-        missionId,
-        nodeId: "node-other",
-        sessionId: "ses_other_extract",
-        profile: "build-extract",
-      })
       await writeExtractManifest(dir, {
         mission_id: missionId,
         created_at: new Date().toISOString(),
         extract_order: [nodeId],
         nodes: {
           [nodeId]: {
-            exec_session_id: "ses_doc",
+            exec_session_id: "ses_inner",
             extract_session_id: "ses_extract",
             skill_domain: "docs",
           },
         },
       })
       store.beginSkillExtractRun(missionId, [nodeId])
+      const record = skillExtractRecordTool(pluginInput)
       const summaryRel = curatorSkillSummaryRelPath(missionId, nodeId)
       await Bun.write(path.join(dir, summaryRel), "# extract\n")
-
-      const record = skillExtractRecordTool(pluginInput)
       const ok = toolOutput(await record.execute({}, mockToolContext(dir, "ses_extract", "build-extract")))
       expect(ok).toContain("ok")
-      expect(ok).toContain(nodeId)
-
-      const rejected = toolOutput(await record.execute({}, mockToolContext(dir, "ses_other_extract", "build-extract")))
-      expect(rejected).toContain("NODE_NOT_IN_SKILL_EXTRACT_RUN")
-
-      const innerRejected = toolOutput(await record.execute({}, mockToolContext(dir, "ses_doc", "build")))
-      expect(innerRejected).toContain("NOT_EXTRACT_SESSION")
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

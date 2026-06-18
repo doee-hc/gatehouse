@@ -136,7 +136,7 @@ bunx @gatehouse/core install --no-tui --locale=en
 |------|--------|
 | Global OpenCode | `~/.config/opencode/opencode.jsonc` → `["@gatehouse/core", {}]` |
 | Global TUI | `~/.config/opencode/tui.json` → `["@gatehouse/core", {}]` |
-| Agent definitions | `~/.config/opencode/agent/{lead,architect,curator,arbiter,build-root,build-coordinator,build,build-root-solo}.md` |
+| Agent definitions | `~/.config/opencode/agent/{lead,architect,curator,arbiter,build,build-extract,build-verify,retro-analyst}.md` |
 | Gatehouse config | `~/.config/gatehouse/config.yaml` (locale, if specified) |
 
 ### Step 3: Run Doctor (global layer)

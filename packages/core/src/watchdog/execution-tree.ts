@@ -199,7 +199,10 @@ export class ExecutionTreeWatchdog {
     const missionId = watchdogStateMissionId(event)
     if (!missionId) return
     const state = getMissionWatchState(this.input.directory, missionId) ?? {}
-    setMissionWatchState(this.input.directory, missionId, watchdogSendMessageState(state, event))
+    setMissionWatchState(this.input.directory, missionId, watchdogSendMessageState(state, {
+      ...event,
+      projectDirectory: this.input.directory,
+    }))
   }
 
   tick() {

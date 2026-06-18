@@ -7,21 +7,21 @@ Write to: `.gatehouse/trees/<mission_id>/reports/architect-summary.md`
 # {{architect_name}} retro rollup · {{mission_id}}
 
 ## Topology recap
-- Root: {{root_node}}
+- Terminal: {{terminal_node}}
 - Node count: {{node_count}}
 
-## Task assignment & prompt constraints (from node retro reports)
+## Task assignment & prompt constraints (from retro-summary)
 - Were assignment / done_when / node briefs effective:
 - Constraints to tighten or relax:
 - Topology (when_pair_with, hierarchy) adjustments:
 
 ## Runtime issues (cross-node)
-- Main efficiency findings per coord (cite script evidence or timeline snippets):
+- Main efficiency findings from retro-analyst (cite script evidence or timeline snippets):
 - Patterns: compaction, coordination, token hotspots, etc.
 
 ## Retro tool evolution summary
 
-| retro node | new/improved tool | path | add to toolkit? | one line |
+| retro-analyst | new/improved tool | path | add to toolkit? | one line |
 |------------|-------------------|------|-----------------|----------|
 
 ## Coordination improvements this round

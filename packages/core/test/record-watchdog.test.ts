@@ -14,15 +14,14 @@ import type { PluginInput } from "@opencode-ai/plugin"
 
 const missionId = "m1"
 
-function retroAgent(nodeId: string): RegistryAgent {
+function retroAnalystAgent(): RegistryAgent {
   return {
-    agentId: retroAgentId(missionId, nodeId),
+    agentId: retroAgentId(missionId),
     scope: "retro",
-    profile: "build-coordinator",
-    sessionId: `ses_retro_${nodeId}`,
-    displayName: nodeId,
+    profile: "retro-analyst",
+    sessionId: "ses_retro_analyst",
+    displayName: "[retro] m1",
     missionId,
-    nodeId,
     status: "active",
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
@@ -33,7 +32,7 @@ function execAgent(nodeId: string): RegistryAgent {
   return {
     agentId: innerAgentId(missionId, nodeId),
     scope: "inner",
-    profile: "build-coordinator",
+    profile: "build",
     sessionId: `ses_exec_${nodeId}`,
     displayName: nodeId,
     missionId,
@@ -52,47 +51,40 @@ function mockRegistry(agents: RegistryAgent[]) {
   } as unknown as RegistryStore
 }
 
-const run: IncompleteRecordRun = {
+const retroRun: IncompleteRecordRun = {
   missionId,
-  expectedNodeIds: ["node-a", "node-b"],
-  pendingNodeIds: ["node-b"],
+  expectedNodeIds: ["retro-analyst"],
+  pendingNodeIds: ["retro-analyst"],
 }
 
 describe("record watchdog helpers", () => {
-  test("expectedSessionIds collects sessions for all expected nodes", () => {
-    const registry = mockRegistry([retroAgent("node-a"), retroAgent("node-b")])
+  test("expectedSessionIds collects retro analyst session", () => {
+    const registry = mockRegistry([retroAnalystAgent()])
     expect(
-      expectedSessionIds(registry, run, (mid, nodeId) => registry.byAgentId(retroAgentId(mid, nodeId))),
-    ).toEqual(["ses_retro_node-a", "ses_retro_node-b"])
+      expectedSessionIds(registry, retroRun, (mid) => registry.byAgentId(retroAgentId(mid))),
+    ).toEqual(["ses_retro_analyst"])
   })
 
-  test("pendingSessionIds only collects sessions for pending nodes", () => {
-    const registry = mockRegistry([retroAgent("node-a"), retroAgent("node-b")])
+  test("pendingSessionIds collects retro analyst session", () => {
+    const registry = mockRegistry([retroAnalystAgent()])
     expect(
-      pendingSessionIds(run, (mid, nodeId) => registry.byAgentId(retroAgentId(mid, nodeId))),
-    ).toEqual(["ses_retro_node-b"])
+      pendingSessionIds(retroRun, (mid) => registry.byAgentId(retroAgentId(mid))),
+    ).toEqual(["ses_retro_analyst"])
   })
 
-  test("checkRecordWatchdogMission ignores completed nodes when checking idle", async () => {
-    const dir = `/tmp/gh-record-wd-pending-idle-${Date.now()}`
+  test("checkRecordWatchdogMission wakes retro analyst when idle", async () => {
+    const dir = `/tmp/gh-record-wd-retro-idle-${Date.now()}`
     const notified: string[] = []
     const registry = {
       byAgentId: (agentId: string) =>
-        agentId === retroAgentId(missionId, "node-a")
-          ? retroAgent("node-a")
-          : agentId === retroAgentId(missionId, "node-b")
-            ? retroAgent("node-b")
-            : undefined,
+        agentId === retroAgentId(missionId) ? retroAnalystAgent() : undefined,
       deliverSystemMessage: async (agent: RegistryAgent) => {
-        notified.push(agent.nodeId ?? agent.agentId)
+        notified.push(agent.agentId)
         return { status: "sent" as const }
       },
     } as unknown as RegistryStore
 
-    const idleMap = new Map([
-      ["ses_retro_node-a", "busy"],
-      ["ses_retro_node-b", "idle"],
-    ] as const)
+    const idleMap = new Map([["ses_retro_analyst", "idle"]] as const)
     const allIdleSince = 20_000 - WATCHDOG_IDLE_THRESHOLD_MS - 1_000
 
     setMissionWatchState(dir, missionId, { allIdleSince }, "retro_record")
@@ -100,16 +92,16 @@ describe("record watchdog helpers", () => {
     const result = await checkRecordWatchdogMission({
       pluginInput: { directory: dir, client: {} } as PluginInput,
       registry,
-      run,
+      run: retroRun,
       kind: "retro_record",
       statusMap: idleMap,
       now: 20_000,
-      resolveAgent: (mid, nodeId) => registry.byAgentId(retroAgentId(mid, nodeId)),
+      resolveAgent: (mid) => registry.byAgentId(retroAgentId(mid)),
       loadWakePrompt: async (_dir, params) => `wake:${params.nodeId}`,
     })
 
     expect(result.action).toBe("wake")
-    expect(notified).toEqual(["node-b"])
+    expect(notified).toEqual([retroAgentId(missionId)])
     deleteMissionWatchState(dir, missionId, "retro_record")
   })
 
@@ -117,22 +109,22 @@ describe("record watchdog helpers", () => {
     const dir = `/tmp/gh-record-wd-fail-${Date.now()}`
     const registry = {
       byAgentId: (agentId: string) =>
-        agentId === retroAgentId(missionId, "node-b") ? retroAgent("node-b") : undefined,
+        agentId === retroAgentId(missionId) ? retroAnalystAgent() : undefined,
       deliverSystemMessage: async () => ({ status: "failed" as const }),
     } as unknown as RegistryStore
 
-    const idleMap = new Map([["ses_retro_node-b", "idle"]] as const)
+    const idleMap = new Map([["ses_retro_analyst", "idle"]] as const)
     const allIdleSince = 20_000 - WATCHDOG_IDLE_THRESHOLD_MS - 1_000
     setMissionWatchState(dir, missionId, { allIdleSince }, "retro_record")
 
     await checkRecordWatchdogMission({
       pluginInput: { directory: dir, client: {} } as PluginInput,
       registry,
-      run: { ...run, expectedNodeIds: ["node-b"], pendingNodeIds: ["node-b"] },
+      run: retroRun,
       kind: "retro_record",
       statusMap: idleMap,
       now: 20_000,
-      resolveAgent: (mid, nodeId) => registry.byAgentId(retroAgentId(mid, nodeId)),
+      resolveAgent: (mid) => registry.byAgentId(retroAgentId(mid)),
       loadWakePrompt: async () => "wake",
     })
 
@@ -140,65 +132,22 @@ describe("record watchdog helpers", () => {
     deleteMissionWatchState(dir, missionId, "retro_record")
   })
 
-  test("checkRecordWatchdogMission waits until all expected sessions idle for threshold", async () => {
+  test("checkRecordWatchdogMission waits until retro analyst is idle", async () => {
     const dir = `/tmp/gh-record-wd-wait-${Date.now()}`
-    const registry = mockRegistry([retroAgent("node-a"), retroAgent("node-b")])
-    const busyMap = new Map([
-      ["ses_retro_node-a", "idle"],
-      ["ses_retro_node-b", "busy"],
-    ] as const)
+    const registry = mockRegistry([retroAnalystAgent()])
+    const busyMap = new Map([["ses_retro_analyst", "busy"]] as const)
 
     const result = await checkRecordWatchdogMission({
       pluginInput: { directory: dir, client: {} } as PluginInput,
       registry,
-      run,
+      run: retroRun,
       kind: "retro_record",
       statusMap: busyMap,
       now: 20_000,
-      resolveAgent: (mid, nodeId) => registry.byAgentId(retroAgentId(mid, nodeId)),
+      resolveAgent: (mid) => registry.byAgentId(retroAgentId(mid)),
       loadWakePrompt: async () => "wake",
     })
     expect(result.action).toBe("reset")
-    deleteMissionWatchState(dir, missionId, "retro_record")
-  })
-
-  test("checkRecordWatchdogMission notifies pending agents after idle threshold", async () => {
-    const dir = `/tmp/gh-record-wd-wake-${Date.now()}`
-    const notified: string[] = []
-    const registry = {
-      byAgentId: (agentId: string) =>
-        agentId === retroAgentId(missionId, "node-a")
-          ? retroAgent("node-a")
-          : agentId === retroAgentId(missionId, "node-b")
-            ? retroAgent("node-b")
-            : undefined,
-      deliverSystemMessage: async (agent: RegistryAgent) => {
-        notified.push(agent.nodeId ?? agent.agentId)
-        return { status: "sent" as const }
-      },
-    } as unknown as RegistryStore
-
-    const idleMap = new Map([
-      ["ses_retro_node-a", "idle"],
-      ["ses_retro_node-b", "idle"],
-    ] as const)
-    const allIdleSince = 20_000 - WATCHDOG_IDLE_THRESHOLD_MS - 1_000
-
-    setMissionWatchState(dir, missionId, { allIdleSince }, "retro_record")
-
-    const result = await checkRecordWatchdogMission({
-      pluginInput: { directory: dir, client: {} } as PluginInput,
-      registry,
-      run,
-      kind: "retro_record",
-      statusMap: idleMap,
-      now: 20_000,
-      resolveAgent: (mid, nodeId) => registry.byAgentId(retroAgentId(mid, nodeId)),
-      loadWakePrompt: async (_dir, params) => `wake:${params.nodeId}`,
-    })
-
-    expect(result.action).toBe("wake")
-    expect(notified).toEqual(["node-b"])
     deleteMissionWatchState(dir, missionId, "retro_record")
   })
 
@@ -210,7 +159,7 @@ describe("record watchdog helpers", () => {
     const result = await checkRecordWatchdogMission({
       pluginInput: { directory: dir, client: {} } as PluginInput,
       registry,
-      run: { ...run, pendingNodeIds: [] },
+      run: { missionId, expectedNodeIds: ["node-a"], pendingNodeIds: [] },
       kind: "skill_record",
       statusMap: new Map(),
       now: 20_000,

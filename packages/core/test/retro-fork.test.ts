@@ -128,7 +128,7 @@ describe("retro_batch skill kickoffs", () => {
       const parsed = parseYaml(output)
       if (!isRecord(parsed) || !isRecord(parsed.data)) throw new Error("unexpected tool output")
 
-      expect(parsed.data.retro_sessions).toBe(1)
+      expect(typeof parsed.data.retro_session_id).toBe("string")
 
       const skillPrompts = promptCalls.filter((call) => call.text.includes("领域 skill 提炼"))
       expect(skillPrompts).toHaveLength(1)
@@ -138,10 +138,10 @@ describe("retro_batch skill kickoffs", () => {
       expect(skillPrompts[0]?.text).toContain("node-doc")
       expect(skillPrompts[0]?.text).toContain("gatehouse_skill_extract_record")
 
-      const retroPrompts = promptCalls.filter((call) => call.text.includes("复盘任务"))
+      const retroPrompts = promptCalls.filter((call) => call.text.includes("复盘分析师"))
       expect(retroPrompts).toHaveLength(1)
       const retroDoc = await readRetroManifest(dir, "core-example-smoke-v1")
-      expect(retroPrompts[0]?.sessionId).toBe(retroDoc?.nodes["node-root"]?.retro_session_id)
+      expect(retroPrompts[0]?.sessionId).toBe(retroDoc?.retro_session_id)
     } finally {
       stopTestOrchestration("core-example-smoke-v1")
       await rm(dir, { recursive: true, force: true })
@@ -261,18 +261,18 @@ export default async function orchestrate(ctx) {
       const parsed = parseYaml(output)
       if (!isRecord(parsed) || !isRecord(parsed.data)) throw new Error("unexpected tool output")
 
-      expect(parsed.data.retro_sessions).toBe(1)
+      expect(typeof parsed.data.retro_session_id).toBe("string")
 
       const skillPrompts = promptCalls.filter((call) => call.text.includes("领域 skill 提炼"))
       expect(skillPrompts).toHaveLength(1)
       const extractSolo = await readExtractManifest(dir, missionId)
       expect(skillPrompts[0]?.sessionId).toBe(extractSolo?.nodes["node-root"]?.extract_session_id)
 
-      const retroPrompts = promptCalls.filter((call) => call.text.includes("复盘任务"))
+      const retroPrompts = promptCalls.filter((call) => call.text.includes("复盘分析师"))
       expect(retroPrompts).toHaveLength(1)
       const retroSolo = await readRetroManifest(dir, missionId)
-      expect(retroPrompts[0]?.sessionId).toBe(retroSolo?.nodes["node-root"]?.retro_session_id)
-      expect(retroPrompts[0]?.text).toContain("node-root")
+      expect(retroPrompts[0]?.sessionId).toBe(retroSolo?.retro_session_id)
+      expect(retroPrompts[0]?.text).toContain("编排脚本顺序")
     } finally {
       stopTestOrchestration("solo-root-mission")
       await rm(dir, { recursive: true, force: true })
@@ -330,7 +330,7 @@ export default async function orchestrate(ctx) {
       )
       const parsed = parseYaml(output)
       if (!isRecord(parsed) || !isRecord(parsed.data)) throw new Error("unexpected tool output")
-      expect(parsed.data.retro_sessions).toBe(1)
+      expect(typeof parsed.data.retro_session_id).toBe("string")
     } finally {
       stopTestOrchestration("core-example-smoke-v1")
       await rm(dir, { recursive: true, force: true })
@@ -410,8 +410,8 @@ export default async function orchestrate(ctx) {
       expect(mission?.status).toBe("retro")
 
       const retroAfterSecond = await readRetroManifest(dir, "core-example-smoke-v1")
-      expect(retroAfterSecond?.nodes["node-root"]?.retro_session_id).toBe(
-        retroAfterFirst?.nodes["node-root"]?.retro_session_id,
+      expect(retroAfterSecond?.retro_session_id).toBe(
+        retroAfterFirst?.retro_session_id,
       )
     } finally {
       stopTestOrchestration("core-example-smoke-v1")

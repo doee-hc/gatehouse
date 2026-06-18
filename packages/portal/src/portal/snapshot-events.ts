@@ -128,15 +128,12 @@ function logRetroEvents(prev: PortalSnapshot, next: PortalSnapshot) {
     logEvent(() => t("event.retroKickoff", { id: nextRetro.mission_id }), "evt-busy")
   }
 
-  const prevCompleted = new Set(prevRetro?.completed_node_ids ?? [])
-  for (const nodeId of nextRetro?.completed_node_ids ?? []) {
-    if (prevCompleted.has(nodeId)) continue
-    const label = nodeLabel(next, nextRetro?.mission_id, nodeId)
-    logEvent(() => t("event.retroNodeDone", { node: label }), "evt-msg")
+  if (nextRetro?.summary_submitted && !prevRetro?.summary_submitted) {
+    logEvent(() => t("event.retroSummarySubmitted", { id: nextRetro.mission_id }), "evt-msg")
   }
 
-  if (nextRetro?.all_done && !prevRetro?.all_done) {
-    logEvent(() => t("event.retroAllDone", { id: nextRetro.mission_id }), "evt-live")
+  if (nextRetro?.architect_review_pending && !prevRetro?.architect_review_pending) {
+    logEvent(() => t("event.retroArchitectReview", { id: nextRetro.mission_id }), "evt-live")
   }
 }
 

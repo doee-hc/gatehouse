@@ -29,13 +29,13 @@ test("resolveBlogPostId only maps skill paths", () => {
 
 test("blogMissionIdFromPostId extracts mission id", () => {
   expect(blogMissionIdFromPostId("m1:lead:report")).toBe("m1")
-  expect(blogMissionIdFromPostId("m1:retro:n1")).toBe("m1")
+  expect(blogMissionIdFromPostId("m1:retro:summary")).toBe("m1")
   expect(blogMissionIdFromPostId("skill:dft:x")).toBeUndefined()
 })
 
 test("blogPostRelPath inverts post ids", () => {
   expect(blogPostRelPath("m1:lead:report")).toBe(".gatehouse/lead/reports/m1/report.md")
-  expect(blogPostRelPath("m1:retro:n1")).toBe(".gatehouse/trees/m1/reports/nodes/n1-retro.md")
+  expect(blogPostRelPath("m1:retro:summary")).toBe(".gatehouse/trees/m1/reports/retro-summary.md")
 })
 
 test("publishBlogPost writes manifest and supports republish", async () => {

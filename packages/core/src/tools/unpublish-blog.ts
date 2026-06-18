@@ -48,7 +48,7 @@ async function resolveUnpublishPostId(input: {
 export function unpublishBlogTool(input: PluginInput) {
   return tool({
     description:
-      "profile lead only: unpublish a Portal post (deliverable or domain SKILL). Pass the same report_path used when the post was published.",
+      "profile lead only: unpublish a Portal post (deliverable, retro report, or domain SKILL). Pass the same report_path used when the post was published.",
     args: {
       mission_id: tool.schema.string().optional().describe("Mission id for deliverable paths"),
       report_path: tool.schema
@@ -98,7 +98,7 @@ export function unpublishBlogTool(input: PluginInput) {
             output: toolFail(
               toolName,
               "INVALID_BLOG_POST",
-              "report_path must be a published deliverable or domain SKILL.md",
+              "report_path must be a published deliverable, retro report, or domain SKILL.md",
               { report_path: reportRel },
             ),
             ...toolMetadata(toolName),

@@ -18,7 +18,7 @@ function rollupReadinessPayload(missionId: string, registry: Awaited<ReturnType<
 export function retroSummaryRecordTool(input: PluginInput) {
   return tool({
     description:
-      "profile architect only: register architect retro summary after writing architect-summary.md. When rollup is complete (and curator summary if skill domains were assigned), Gatehouse auto-notifies profile lead.",
+      "profile architect only: register architect retro summary after writing architect-summary.md. When rollup is complete (and curator summary if skill domains were assigned), Gatehouse auto-notifies profile lead and publishes architect-summary to Portal under the mission.",
     args: {},
     async execute(_args, context) {
       const toolName = "gatehouse_retro_summary_record"

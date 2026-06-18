@@ -1,4 +1,7 @@
 import { describe, expect, test } from "bun:test"
+import path from "node:path"
+import { mkdtemp, rm } from "node:fs/promises"
+import { tmpdir } from "node:os"
 import { parseTreeManifest } from "../src/tree/parse.ts"
 import { orchestrationProblemNodeIds, initOrchestrationState } from "../src/orchestration/state.ts"
 import {
@@ -31,6 +34,7 @@ import {
 import { watchdogIdleTickDecision, watchdogNodeIdleTickDecision } from "../src/watchdog/tick.ts"
 import type { RegistryAgent } from "../src/registry/types.ts"
 import { RegistryDatabase } from "../src/registry/db.ts"
+import { seedTerminalPlan } from "./seed-terminal-plan.ts"
 
 const sampleManifest = parseTreeManifest(`
 mission_id: mission-a
@@ -166,16 +170,28 @@ describe("watchdog send_message signals", () => {
     })
   })
 
-  test("isInnerNotifyingLead matches structural root to lead when tool mission_id differs from sender", () => {
-    const root = { ...innerAgent("root"), missionId: undefined }
-    expect(isInnerNotifyingLead(root, leadAgent, missionId)).toBe(true)
-    expect(
-      watchdogSendMessageState({}, { missionId, sender: root, recipient: leadAgent }),
-    ).toEqual({ paused: true })
+  test("isInnerNotifyingLead matches terminal node to lead", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-watchdog-terminal-notify-"))
+    try {
+      seedTerminalPlan(dir, missionId, "root")
+      const root = innerAgent("root")
+      expect(isInnerNotifyingLead(root, leadAgent, missionId, dir)).toBe(true)
+      expect(
+        watchdogSendMessageState({}, { missionId, sender: root, recipient: leadAgent, projectDirectory: dir }),
+      ).toEqual({ paused: true })
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
   })
 
-  test("isInnerNotifyingLead rejects non-root inner senders", () => {
-    expect(isInnerNotifyingLead(innerAgent("leaf", "ses_root"), leadAgent, missionId)).toBe(false)
+  test("isInnerNotifyingLead rejects non-terminal inner senders", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-watchdog-non-terminal-"))
+    try {
+      seedTerminalPlan(dir, missionId, "root")
+      expect(isInnerNotifyingLead(innerAgent("leaf", "ses_root"), leadAgent, missionId, dir)).toBe(false)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
   })
 
   test("isSendToTreeMember matches inner recipients in mission", () => {
@@ -188,15 +204,30 @@ describe("watchdog send_message signals", () => {
     expect(watchdogDeliveryEventState({ paused: true }, "revision_requested")).toEqual({})
   })
 
-  test("watchdogSendMessageState pauses on root to lead and resumes on tree send", () => {
-    const root = innerAgent("root")
-    const leaf = innerAgent("leaf", "ses_root")
-    const paused = watchdogSendMessageState({}, { missionId, sender: root, recipient: leadAgent })
-    expect(paused).toEqual({ paused: true })
-    const resumed = watchdogSendMessageState(paused, { missionId, sender: leadAgent, recipient: root })
-    expect(resumed).toEqual({})
-    const resumedFromRoot = watchdogSendMessageState(paused, { missionId, sender: root, recipient: leaf })
-    expect(resumedFromRoot).toEqual({})
+  test("watchdogSendMessageState pauses on terminal to lead and resumes on tree send", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-watchdog-pause-resume-"))
+    try {
+      seedTerminalPlan(dir, missionId, "root")
+      const root = innerAgent("root")
+      const leaf = innerAgent("leaf", "ses_root")
+      const paused = watchdogSendMessageState(
+        {},
+        { missionId, sender: root, recipient: leadAgent, projectDirectory: dir },
+      )
+      expect(paused).toEqual({ paused: true })
+      const resumed = watchdogSendMessageState(
+        paused,
+        { missionId, sender: leadAgent, recipient: root, projectDirectory: dir },
+      )
+      expect(resumed).toEqual({})
+      const resumedFromRoot = watchdogSendMessageState(
+        paused,
+        { missionId, sender: root, recipient: leaf, projectDirectory: dir },
+      )
+      expect(resumedFromRoot).toEqual({})
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
   })
 })
 
@@ -262,9 +293,11 @@ describe("execution watchdog mission check", () => {
 })
 
 describe("execution watchdog integration", () => {
-  test("recordSendMessage pauses using sender mission id when tool mission_id differs", () => {
-    const dir = `/tmp/gh-watchdog-pause-${Date.now()}`
-    const registry = { byAgentId: () => undefined } as unknown as import("../src/registry/store.ts").RegistryStore
+  test("recordSendMessage pauses using sender mission id when tool mission_id differs", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-watchdog-pause-"))
+    try {
+      seedTerminalPlan(dir, missionId, "root")
+      const registry = { byAgentId: () => undefined } as unknown as import("../src/registry/store.ts").RegistryStore
     const watchdog = new ExecutionTreeWatchdog(
       { directory: dir, client: {} } as import("@opencode-ai/plugin").PluginInput,
       registry,
@@ -287,7 +320,10 @@ describe("execution watchdog integration", () => {
     })
     expect(getMissionWatchState(dir, missionId)).toEqual({ paused: true })
     expect(getMissionWatchState(dir, "wrong-mission")).toBeUndefined()
-    deleteMissionWatchState(dir, missionId)
+    } finally {
+      deleteMissionWatchState(dir, missionId)
+      await rm(dir, { recursive: true, force: true })
+    }
   })
 })
 

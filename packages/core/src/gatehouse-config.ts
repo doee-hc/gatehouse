@@ -221,9 +221,6 @@ export function modelForInnerProfile(
   profile: string,
 ) {
   if (profile === "build") return models.executor
-  if (profile === "build-root" || profile === "build-root-solo" || profile === "build-coordinator") {
-    return models.coordinator
-  }
   return undefined
 }
 
