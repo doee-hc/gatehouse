@@ -88,7 +88,7 @@ test("mission_complete done publishes deliverables; lead may unpublish", async (
     sessionId: "ses_root",
     displayName: "root",
     missionId,
-    nodeId: "root",
+    nodeId: "terminal",
     status: "active",
   })
   store.activateMission({
@@ -141,7 +141,7 @@ test("unpublish_blog rejects non-lead callers", async () => {
     sessionId: "ses_root",
     displayName: "root",
     missionId: "m1",
-    nodeId: "root",
+    nodeId: "terminal",
     status: "active",
   })
 

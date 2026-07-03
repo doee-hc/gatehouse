@@ -159,10 +159,9 @@ describe("retro_batch skill kickoffs", () => {
         path.join(treeDir, "mission.script.ts"),
         `export const team = {
   mission_id: "${missionId}",
-  root: "node-root",
+  terminal: "node-root",
   nodes: {
     "node-root": {
-      parent: null,
       description: "任务协调者兼执行者",
     },
   },

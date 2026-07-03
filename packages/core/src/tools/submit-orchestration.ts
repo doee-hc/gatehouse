@@ -179,10 +179,16 @@ export function submitOrchestrationTool(input: PluginInput) {
               ...toolMetadata(toolName),
             }
           }
+          if (!script.plan) {
+            return {
+              output: toolFail(toolName, "MISSION_SCRIPT_PLAN_MISSING", "Active mission script has no compiled orchestration plan"),
+              ...toolMetadata(toolName),
+            }
+          }
           const planWarnings = script.plan?.warnings.length ? script.plan.warnings : undefined
 
           const domains = await readSkillDomainsRegistry(input.directory)
-          const skillReady = resolveSkillDomainAssignments(spec, {
+          const skillReady = resolveSkillDomainAssignments(spec, script.plan, {
             ...(contract?.user_skill && { userSkill: contract.user_skill }),
             domains,
           })

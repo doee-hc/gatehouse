@@ -38,7 +38,7 @@ function writeRegistry(dir: string, rows: Array<RegistryRow>) {
       mission_id TEXT,
       node_id TEXT,
       parent_session_id TEXT,
-      project_root_session_id TEXT,
+      project_terminal_session_id TEXT,
       status TEXT NOT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
@@ -197,13 +197,13 @@ describe("loadAgentDescriptions", () => {
     mkdirSync(dir, { recursive: true })
     writeRegistry(dir, [
       {
-        agent_id: "inner:m-run:root",
+        agent_id: "inner:m-run:terminal",
         scope: "inner",
         profile: "build",
         session_id: "ses_run",
-        display_name: "运行根",
+        display_name: "运行 terminal",
         mission_id: "m-run",
-        node_id: "root",
+        node_id: "terminal",
       },
     ])
     const dbPath = path.join(dir, ".gatehouse", "registry.db")
@@ -227,22 +227,22 @@ describe("loadAgentDescriptions", () => {
           mission_id, node_id, session_id, display_name, description
         ) VALUES (?, ?, ?, ?, ?)`,
       )
-      .run("m-run", "root", "ses_run", "运行根", "负责当前 mission 的根节点协调")
+      .run("m-run", "terminal", "ses_run", "运行 terminal", "负责当前 mission 的 terminal 节点协调")
     db.close()
 
     const agents = [
       {
-        agentId: "inner:m-run:root",
+        agentId: "inner:m-run:terminal",
         scope: "inner",
         sessionId: "ses_run",
-        displayName: "运行根",
+        displayName: "运行 terminal",
         opencodeAgent: "build",
         missionId: "m-run",
-        nodeId: "root",
+        nodeId: "terminal",
       },
     ]
     const descriptions = loadAgentDescriptions(dir, agents)
-    expect(descriptions.get("inner:m-run:root")).toBe("负责当前 mission 的根节点协调")
+    expect(descriptions.get("inner:m-run:terminal")).toBe("负责当前 mission 的 terminal 节点协调")
   })
 
   test("reads outer descriptions from global agent md", () => {

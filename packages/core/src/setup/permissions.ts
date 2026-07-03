@@ -124,7 +124,7 @@ const outerRetroSummaryRecordDenials = {
   gatehouse_retro_summary_record: "deny",
 } as const
 
-/** Curator skill rollup summary — curator only. */
+/** Curator skill summary — curator only. */
 const outerSkillSummaryRecordDenials = {
   gatehouse_skill_summary_record: "deny",
 } as const

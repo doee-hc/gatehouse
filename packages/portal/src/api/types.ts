@@ -16,7 +16,6 @@ export type PortalSkill = {
 
 export type PortalTreeNode = {
   node_id: string
-  parent: string | null
   skill_domain?: string
   display_name: string
   description?: string
@@ -27,7 +26,6 @@ export type PortalOrchestrationNodeStatus = "pending" | "running" | "done" | "bl
 export type PortalOrchestrationNode = {
   node_id: string
   display_name: string
-  parent: string | null
   skill_domain?: string
   status: PortalOrchestrationNodeStatus
   round?: number
@@ -53,7 +51,7 @@ export type PortalOrchestrationFlowEdge = {
   to: string
   op: PlanStepOp
   state: "done" | "current" | "pending"
-  kind?: "activate" | "rollup" | "serial" | "depends"
+  kind?: "summary" | "serial" | "depends"
 }
 
 export type PortalOrchestration = {
@@ -67,8 +65,10 @@ export type PortalOrchestration = {
   phases: PortalOrchestrationPhase[]
   steps: PortalOrchestrationStep[]
   flow_edges: PortalOrchestrationFlowEdge[]
+  /** Plan dispatch order for graph layout (fork tracks included). */
+  activation_order: string[]
   nodes: PortalOrchestrationNode[]
-  root_node: string
+  terminal_node: string
 }
 
 export type PortalDirection = {
@@ -105,13 +105,13 @@ export type PortalSnapshot = {
   agents: PortalAgent[]
   tree?: {
     mission_id: string
-    root_node: string
+    terminal_node: string
     status: string
     nodes: PortalTreeNode[]
   }
   trees?: Array<{
     mission_id: string
-    root_node: string
+    terminal_node: string
     status: string
     nodes: PortalTreeNode[]
   }>

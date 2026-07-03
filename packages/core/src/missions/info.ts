@@ -6,16 +6,12 @@ import { readNodeBriefRegistry } from "../execution/artifacts.ts"
 import { RegistryDatabase } from "../registry/db.ts"
 import type { RegistryAgent } from "../registry/types.ts"
 import { INNER_EXECUTION_AGENT } from "../registry/types.ts"
+import { innerNodeShowsMissionContract } from "../orchestration/plan-graph.ts"
 import type { MissionContract } from "./contract.ts"
 import { registryMissionToContract } from "./contract.ts"
 import { formatMissionContractForRole } from "./contract-format.ts"
 import type { MissionContractAudience } from "./contract-format.ts"
 import { filterDoneWhenForExecutionTeam } from "./done-when-filter.ts"
-import {
-  innerNodeShowsMissionContract,
-  innerNodeShowsMissionContractFromManifest,
-} from "../tree/parse.ts"
-import { readManifest } from "../tree/store.ts"
 
 export type MissionInfoRoleView = "lead" | "architect" | "curator" | "acceptance" | "execution"
 
@@ -33,13 +29,9 @@ async function resolveInnerMissionInfoRoleView(
   if (!sender.missionId || !sender.nodeId) return "execution"
 
   const script = new RegistryDatabase(projectDirectory, { readonly: true }).getMissionScript(sender.missionId)
-  if (script?.team) {
-    return innerNodeShowsMissionContract(script.team, sender.nodeId) ? "acceptance" : "execution"
-  }
-
-  const manifest = await readManifest(projectDirectory, sender.missionId)
-  if (manifest) {
-    return innerNodeShowsMissionContractFromManifest(manifest, sender.nodeId) ? "acceptance" : "execution"
+  const plan = new RegistryDatabase(projectDirectory, { readonly: true }).getLatestOrchestrationPlan(sender.missionId)
+  if (script?.team && plan) {
+    return innerNodeShowsMissionContract(script.team, sender.nodeId, plan) ? "acceptance" : "execution"
   }
 
   return "execution"

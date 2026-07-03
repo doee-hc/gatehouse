@@ -2,9 +2,9 @@ import fs from "node:fs"
 
 export const team = {
   mission_id: "evil-m1",
-  root: "root",
+  terminal: "terminal",
   nodes: {
-    root: { parent: null, description: "x" },
+    terminal: { description: "x" },
   },
 }
 

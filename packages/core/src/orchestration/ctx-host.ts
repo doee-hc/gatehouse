@@ -2,7 +2,7 @@ import type { PluginInput } from "@opencode-ai/plugin"
 import { gatehouseLog } from "../log.ts"
 import type { RegistryStore } from "../registry/store.ts"
 import type { TeamSpec } from "../tree/types.ts"
-import { childNodeIdsFromSpec } from "../tree/parse.ts"
+import { planChildNodeIds, planLeafNodeIds } from "./plan-graph.ts"
 import { deliverNodeBriefSystemPrompt } from "../execution/node-session.ts"
 import { readActiveMissionContract } from "../missions/contract.ts"
 import {
@@ -363,11 +363,13 @@ export function createMissionContext(input: {
     },
 
     leaves() {
-      return Object.keys(team.nodes).filter((nodeId) => childNodeIdsFromSpec(team, nodeId).length === 0)
+      const plan = readLatestOrchestrationPlanRecord(plugin.directory, missionId)
+      return plan ? planLeafNodeIds(team, plan) : Object.keys(team.nodes).filter((nodeId) => nodeId !== team.terminal)
     },
 
     children(nodeId) {
-      return childNodeIdsFromSpec(team, nodeId)
+      const plan = readLatestOrchestrationPlanRecord(plugin.directory, missionId)
+      return plan ? planChildNodeIds(plan, nodeId) : []
     },
 
     template: {

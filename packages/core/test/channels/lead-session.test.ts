@@ -22,7 +22,7 @@ function writeRegistryLead(dir: string, sessionId: string) {
       mission_id TEXT,
       node_id TEXT,
       parent_session_id TEXT,
-      project_root_session_id TEXT,
+      project_terminal_session_id TEXT,
       status TEXT NOT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL

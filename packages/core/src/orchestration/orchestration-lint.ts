@@ -1,4 +1,9 @@
-import { childNodeIdsFromSpec } from "../tree/parse.ts"
+import {
+  planChildNodeIds,
+  planLeafNodeIds,
+  planTrackForNode,
+} from "./plan-graph.ts"
+import type { OrchestrationPlan } from "./plan-types.ts"
 import type { TeamSpec } from "../tree/types.ts"
 import { parseDependsOnArrayBody } from "./depends-on.ts"
 import { parenBraceDepthBefore } from "./source-depth.ts"
@@ -48,20 +53,6 @@ function literalIdsFromArrayBody(body: string) {
 
 function runRepliesByDefault(body: string) {
   return !/\breply\s*:\s*false\b/.test(body)
-}
-
-/** Direct child of team.root in the ancestry chain; null for team.root itself. */
-export function missionTrackForNode(team: TeamSpec, nodeId: string): string | null {
-  if (nodeId === team.root) return null
-  let current = nodeId
-  while (true) {
-    const node = team.nodes[current]
-    if (!node) return null
-    const parent: string | null = node.parent
-    if (parent === team.root) return current
-    if (parent === null) return null
-    current = parent
-  }
 }
 
 export function extractSetBriefNodes(orchestrateSource: string) {
@@ -214,7 +205,7 @@ function lintForbiddenCtxRead(orchestrateSource: string): OrchestrationLintIssue
   ]
 }
 
-function lintBriefQuality(team: TeamSpec, orchestrateSource: string): string[] {
+function lintBriefQuality(team: TeamSpec, plan: OrchestrationPlan, orchestrateSource: string): string[] {
   const warnings: string[] = []
   for (const call of collectRunCalls(orchestrateSource)) {
     if (!runRepliesByDefault(call.body)) continue
@@ -231,7 +222,7 @@ function lintBriefQuality(team: TeamSpec, orchestrateSource: string): string[] {
       if (yourWork.length === 0) {
         warnings.push(`literal brief for "${nodeId}" has empty your_work`)
       }
-      if (childNodeIdsFromSpec(team, nodeId).length === 0) {
+      if (planLeafNodeIds(team, plan).includes(nodeId)) {
         if (!acceptance.some((item) => /^path\s*:/i.test(item.trim()))) {
           warnings.push(`leaf node "${nodeId}" brief acceptance_slice has no path: entry`)
         }
@@ -277,7 +268,7 @@ function extractRunCalls(orchestrateSource: string) {
   return calls
 }
 
-function lintSerialTrackBlocking(team: TeamSpec, orchestrateSource: string): OrchestrationLintIssue[] {
+function lintSerialTrackBlocking(team: TeamSpec, plan: OrchestrationPlan, orchestrateSource: string): OrchestrationLintIssue[] {
   const errors: OrchestrationLintIssue[] = []
   const topLevel = extractOrchestrationEvents(orchestrateSource).filter((event) => event.depth === 0)
   const dispatched = new Set<string>()
@@ -289,12 +280,12 @@ function lintSerialTrackBlocking(team: TeamSpec, orchestrateSource: string): Orc
       continue
     }
 
-    const waitTrack = missionTrackForNode(team, event.nodeId)
+    const waitTrack = planTrackForNode(plan, team, event.nodeId)
     if (!waitTrack) continue
 
     for (const next of topLevel.slice(i + 1)) {
       if (next.kind !== "dispatch" || dispatched.has(next.nodeId)) continue
-      const nextTrack = missionTrackForNode(team, next.nodeId)
+      const nextTrack = planTrackForNode(plan, team, next.nodeId)
       if (!nextTrack || nextTrack === waitTrack) continue
       errors.push({
         code: "SCRIPT_SERIAL_TRACK_BLOCK",
@@ -309,7 +300,7 @@ function lintSerialTrackBlocking(team: TeamSpec, orchestrateSource: string): Orc
   return errors
 }
 
-function lintDependsOn(team: TeamSpec, orchestrateSource: string): {
+function lintDependsOn(team: TeamSpec, plan: OrchestrationPlan, orchestrateSource: string): {
   errors: OrchestrationLintIssue[]
   warnings: string[]
 } {
@@ -333,7 +324,7 @@ function lintDependsOn(team: TeamSpec, orchestrateSource: string): {
       }
     }
 
-    const directChildren = childNodeIdsFromSpec(team, nodeId)
+    const directChildren = planChildNodeIds(plan, nodeId)
     if (directChildren.length > 0 && summaryIds.length > 0) {
       const missing = directChildren.filter((childId) => !summaryIds.includes(childId))
       if (missing.length > 0) {
@@ -423,11 +414,11 @@ function lintForbiddenPatterns(orchestrateSource: string): OrchestrationLintIssu
   return errors
 }
 
-function lintForkRecommended(team: TeamSpec, orchestrateSource: string): string[] {
+function lintForkRecommended(team: TeamSpec, plan: OrchestrationPlan, orchestrateSource: string): string[] {
   const warnings: string[] = []
   const tracks = new Set<string>()
   for (const nodeId of Object.keys(team.nodes)) {
-    const track = missionTrackForNode(team, nodeId)
+    const track = planTrackForNode(plan, team, nodeId)
     if (track) tracks.add(track)
   }
   if (tracks.size < 2) return warnings
@@ -442,7 +433,7 @@ function lintForkRecommended(team: TeamSpec, orchestrateSource: string): string[
   if (topWaits.length === 0 || topDispatches.length === 0) return warnings
 
   const waitTracks = new Set(
-    topWaits.map((event) => missionTrackForNode(team, event.nodeId)).filter((track): track is string => !!track),
+    topWaits.map((event) => planTrackForNode(plan, team, event.nodeId)).filter((track): track is string => !!track),
   )
   if (waitTracks.size >= 2) {
     warnings.push(
@@ -454,27 +445,31 @@ function lintForkRecommended(team: TeamSpec, orchestrateSource: string): string[
   return warnings
 }
 
-export function lintOrchestrationScript(team: TeamSpec, orchestrateSource: string): OrchestrationLintResult {
+export function lintOrchestrationScript(
+  team: TeamSpec,
+  plan: OrchestrationPlan,
+  orchestrateSource: string,
+): OrchestrationLintResult {
   const errors: OrchestrationLintIssue[] = []
   const warnings: string[] = []
 
   errors.push(...lintForbiddenCtxRead(orchestrateSource))
   errors.push(...lintPlanDynamicTopLevel(orchestrateSource))
-  errors.push(...lintSerialTrackBlocking(team, orchestrateSource))
+  errors.push(...lintSerialTrackBlocking(team, plan, orchestrateSource))
   errors.push(...lintBriefCoverage(team, orchestrateSource))
   errors.push(...lintEmptyFork(orchestrateSource))
   errors.push(...lintForbiddenPatterns(orchestrateSource))
 
-  const dependsOn = lintDependsOn(team, orchestrateSource)
+  const dependsOn = lintDependsOn(team, plan, orchestrateSource)
   errors.push(...dependsOn.errors)
   warnings.push(...dependsOn.warnings)
 
-  warnings.push(...lintBriefQuality(team, orchestrateSource))
+  warnings.push(...lintBriefQuality(team, plan, orchestrateSource))
   warnings.push(...lintNonLiteralNodeIds(orchestrateSource))
   warnings.push(...lintMissingAwait(orchestrateSource))
   warnings.push(...lintUnusedTeamNodes(team, orchestrateSource))
   warnings.push(...lintDuplicateDispatches(orchestrateSource))
-  warnings.push(...lintForkRecommended(team, orchestrateSource))
+  warnings.push(...lintForkRecommended(team, plan, orchestrateSource))
 
   const dedupedErrors = dedupeIssues(errors)
   const dedupedWarnings = [...new Set(warnings)]

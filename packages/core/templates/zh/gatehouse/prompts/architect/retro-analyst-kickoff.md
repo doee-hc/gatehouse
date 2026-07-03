@@ -11,7 +11,7 @@
   index.json                 # 全部 node_id、mission-metrics 路径
   mission-metrics.json       # 全 Mission token/耗时/工具聚合
   <node_id>/
-    messages.json            # 全量原始消息（含 tool input/output、parent）
+    messages.json            # 全量原始消息（含 tool input/output）
     timeline.md              # grep 友好时间线（含 kind、tokens=）
     metrics.json             # 单节点 session 级 token/耗时/工具聚合
 

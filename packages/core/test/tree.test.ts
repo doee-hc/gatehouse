@@ -1,14 +1,11 @@
 import { describe, expect, test } from "bun:test"
+import { teamNodeOrder } from "../src/orchestration/plan-graph.ts"
 import {
-  childNodeIds,
-  innerNodeHasChildren,
-  innerNodeShowsMissionContract,
   isSoloExecutionTeam,
   manifestMembers,
   modelForInnerNode,
   parseTeamSpec,
   resolveInnerProfile,
-  topologicalNodeOrder,
   validateTeamSpec,
 } from "../src/tree/parse.ts"
 import { parseTreeManifest } from "../src/tree/parse.ts"
@@ -21,18 +18,17 @@ mission_id: demo-mission
 root: root
 nodes:
   root:
-    parent: null
     description: 任务协调者
   leaf:
-    parent: root
     description: 执行成员
 `
 
 describe("TeamSpec", () => {
-  test("topological order places parent before child", () => {
+  test("teamNodeOrder puts terminal first without plan", () => {
     const spec = parseTeamSpec(sampleSpec)
     validateTeamSpec(spec)
-    expect(topologicalNodeOrder(spec)).toEqual(["root", "leaf"])
+    expect(spec.terminal).toBe("root")
+    expect(teamNodeOrder(spec)).toEqual(["root", "leaf"])
   })
 
   test("parseTeamSpec rejects node without description", () => {
@@ -43,7 +39,6 @@ mission_id: demo-mission
 root: root
 nodes:
   root:
-    parent: null
 `)
     } catch (error) {
       message = error instanceof Error ? error.message : String(error)
@@ -59,7 +54,6 @@ mission_id: demo-mission
 root: root
 nodes:
   root:
-    parent: null
     description: 任务协调者
     constraints: "coord"
 `)
@@ -78,7 +72,6 @@ mission_id: demo-mission
 root: root
 nodes:
   root:
-    parent: null
     description: "   "
 `),
       )
@@ -97,7 +90,6 @@ created_at: "2026-01-01T00:00:00Z"
 nodes:
   root:
     session_id: ses-1
-    parent: null
     description: 任务协调者
 `)
     expect(manifest.nodes.root?.description).toBe("任务协调者")
@@ -112,11 +104,9 @@ created_at: "2026-01-01T00:00:00Z"
 nodes:
   root:
     session_id: ses-1
-    parent: null
     description: 协调
   leaf:
     session_id: ses-2
-    parent: root
     description: 执行
 `)
     const members = manifestMembers(manifest)
@@ -133,38 +123,54 @@ mission_id: multi
 root: node-root
 nodes:
   node-root:
-    parent: null
     description: 根
   node-mid:
-    parent: node-root
     description: 中层
   node-leaf:
-    parent: node-mid
     description: 叶
 `)
     expect(resolveInnerProfile(multi, "node-mid")).toBe(INNER_EXECUTION_AGENT)
     expect(resolveInnerProfile(multi, "node-leaf")).toBe(INNER_EXECUTION_AGENT)
   })
 
-  test("topology helpers distinguish coordinator visibility and model", () => {
+  test("modelForInnerNode uses rollup targets as coordinator", () => {
     const solo = parseTeamSpec(`
 mission_id: solo
 root: node-root
 nodes:
   node-root:
-    parent: null
     description: 单人根节点
 `)
-    expect(innerNodeHasChildren(solo, "node-root")).toBe(false)
-    expect(innerNodeShowsMissionContract(solo, "node-root")).toBe(true)
-    expect(modelForInnerNode({ executor: "exec", coordinator: "coord" }, solo, "node-root")).toBe("exec")
+    const soloPlan: OrchestrationPlan = {
+      schema_version: 1,
+      mission_id: "solo",
+      plan_version: "v1",
+      script_hash: "solo",
+      warnings: [],
+      steps: [{ id: "step-0", op: "run", nodeId: "node-root", statement: 'await ctx.run("node-root", {})' }],
+    }
+    expect(modelForInnerNode({ executor: "exec", coordinator: "coord" }, soloPlan, "node-root")).toBe("exec")
 
     const multi = parseTeamSpec(sampleSpec)
-    expect(innerNodeHasChildren(multi, "root")).toBe(true)
-    expect(innerNodeShowsMissionContract(multi, "root")).toBe(true)
-    expect(innerNodeShowsMissionContract(multi, "leaf")).toBe(false)
-    expect(modelForInnerNode({ executor: "exec", coordinator: "coord" }, multi, "root")).toBe("coord")
-    expect(modelForInnerNode({ executor: "exec", coordinator: "coord" }, multi, "leaf")).toBe("exec")
+    const multiPlan: OrchestrationPlan = {
+      schema_version: 1,
+      mission_id: "demo-mission",
+      plan_version: "v1",
+      script_hash: "multi",
+      warnings: [],
+      steps: [
+        { id: "step-0", op: "run", nodeId: "leaf", statement: 'await ctx.run("leaf", {})' },
+        {
+          id: "step-1",
+          op: "run",
+          nodeId: "root",
+          statement: 'await ctx.run("root", { dependsOn: [{ node: "leaf", summary: true }] })',
+        },
+      ],
+    }
+    expect(multi.terminal).toBe("root")
+    expect(modelForInnerNode({ executor: "exec", coordinator: "coord" }, multiPlan, "root")).toBe("coord")
+    expect(modelForInnerNode({ executor: "exec", coordinator: "coord" }, multiPlan, "leaf")).toBe("exec")
   })
 
   test("parseTeamSpec rejects profile field on nodes", () => {
@@ -175,7 +181,6 @@ mission_id: bad
 root: root
 nodes:
   root:
-    parent: null
     description: 根
     profile: build
 `)
@@ -196,7 +201,6 @@ created_at: "2026-01-01T00:00:00Z"
 nodes:
   root:
     session_id: ses-1
-    parent: null
     display_name: root
 `)
     expect(manifest.nodes.root?.display_name).toBe("root")
@@ -230,10 +234,8 @@ created_at: "2026-01-01T00:00:00Z"
 nodes:
   root:
     session_id: s1
-    parent: null
   leaf:
     session_id: s2
-    parent: root
 `)
     expect(isSoloExecutionTeam(manifest)).toBe(false)
   })

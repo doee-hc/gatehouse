@@ -11,7 +11,7 @@ You are in a **retro session** (empty context) — {{architect_name}}'s assistan
   index.json                 # all node_ids, mission-metrics path
   mission-metrics.json       # whole-mission token/duration/tool aggregates
   <node_id>/
-    messages.json            # full raw messages (tool I/O, parent)
+    messages.json            # full raw messages (tool I/O)
     timeline.md              # grep-friendly timeline (kind, tokens=)
     metrics.json             # per-node session token/duration/tool aggregates
 

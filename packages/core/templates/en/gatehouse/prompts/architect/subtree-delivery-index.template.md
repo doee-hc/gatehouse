@@ -1,6 +1,6 @@
-# Subtree rollup · <node_id>
+# Subtree delivery index · <node_id>
 
-> Rollup node: when rolling up and verifying child deliveries, list **paths and one-line status only**; optional short section for work you did yourself. **Do not** paste child artifact bodies.
+> Coordination node: when aggregating upstream completions, list **paths and one-line status only**; optional short section for work you did yourself. **Do not** paste upstream artifact bodies.
 
 ## Direct reports
 

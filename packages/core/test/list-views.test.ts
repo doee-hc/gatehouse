@@ -22,7 +22,6 @@ async function storeWithAgents(
     displayName: string
     missionId?: string
     nodeId?: string
-    parentSessionId?: string
   }>,
 ) {
   const dir = await mkdtemp(path.join(tmpdir(), "gh-list-views-"))
@@ -37,7 +36,6 @@ async function storeWithAgents(
       displayName: agent.displayName,
       ...(agent.missionId && { missionId: agent.missionId }),
       ...(agent.nodeId && { nodeId: agent.nodeId }),
-      ...(agent.parentSessionId && { parentSessionId: agent.parentSessionId }),
     })
   }
   return { dir, store }
@@ -45,18 +43,16 @@ async function storeWithAgents(
 
 const sampleManifestYaml = `
 mission_id: m1
-root_node: root
+terminal_node: root
 created_at: "2026-01-01T00:00:00Z"
 status: running
 nodes:
   root:
     session_id: ses-root
-    parent: null
     description: 协调根
     profile: build
   leaf:
     session_id: ses-leaf
-    parent: root
     description: 执行叶
     profile: build
 `
@@ -81,7 +77,7 @@ describe("buildListTeamData", () => {
       sessionId: "ses-root",
       displayName: "root",
       missionId: "m1",
-      nodeId: "root",
+      nodeId: "terminal",
     })
     store.register({
       agentId: "inner:m1:leaf",
@@ -91,7 +87,6 @@ describe("buildListTeamData", () => {
       displayName: "leaf",
       missionId: "m1",
       nodeId: "leaf",
-      parentSessionId: "ses-root",
     })
     const data = await buildListTeamData({
       store,
@@ -146,7 +141,7 @@ describe("buildListTeamData", () => {
         sessionId: "ses-r",
         displayName: "root",
         missionId: "m1",
-        nodeId: "root",
+        nodeId: "terminal",
       },
     ])
     seedActiveMissionRegistry(dir, "m1")
@@ -206,23 +201,20 @@ describe("buildListTeamData", () => {
     seedActiveMissionRegistry(dir, "m1")
     const manifest = parseTreeManifest(`
 mission_id: m1
-root_node: root
+terminal_node: root
 created_at: "2026-01-01T00:00:00Z"
 status: running
 nodes:
   root:
     session_id: ses-root
-    parent: null
     description: 根
     profile: build
   mid:
     session_id: ses-mid
-    parent: root
     description: 中层
     profile: build
   leaf:
     session_id: ses-leaf
-    parent: mid
     description: 叶
     profile: build
 `)

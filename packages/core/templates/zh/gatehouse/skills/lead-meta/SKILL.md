@@ -35,10 +35,10 @@ disable-model-invocation: true
 1. **团队就绪** — read `.gatehouse/lead/missions.yaml`（固定路径，勿 glob）。文件缺失时请用户确认 Gatehouse 项目根与插件。`gatehouse_list_team()`：`outer` 中 `architect|curator|arbiter` 任一 `ready: false` → `gatehouse_init_team`（幂等）。
 2. **定方向** — 读队列与历史评价，提议任务（objective / done_when 草案）。**歧义术语**须先与用户确认语义域再写 mission；勿仅凭 web 搜索扩 scope。**规划期只做轻量调研**；深度搜集交给任务执行团队。
 3. **启动** — 在 `missions.yaml` 为该任务写全字段（`status: queued`）→ 向用户确认（autopilot 关闭时）→ `gatehouse_mission_start(mission_id=...)`。start 成功后无需再向{{architect_name}} `send_message` 复述 objective。**running/retro 期间勿改正文**；改状态用 `gatehouse_mission_complete` / `gatehouse_mission_retro`。
-4. **验收** — 编排 **terminal 节点**全树 `gatehouse_execution_complete` 后（交付已记录 + precheck；**尚未**上 Portal）→ 读系统发给 Lead 的交付通知（含 rollup、precheck、`done_when`）与项目内交付路径 → **在对话中请用户对照确认**（autopilot 开启时可自主决断）。
+4. **验收** — 编排 **terminal 节点**全树 `gatehouse_execution_complete` 后（交付已记录 + precheck；**尚未**上 Portal）→ 读系统发给 Lead 的交付通知（含节点汇报汇总、precheck、`done_when`）与项目内交付路径 → **在对话中请用户对照确认**（autopilot 开启时可自主决断）。
   - **接受且发布**：用户确认接受并要上 Portal → `gatehouse_mission_complete(status=done, publish_deliverables=true, user_feedback=...)`（Skill 仍自动发布；交付物仅此一步上 Portal）。
   - **接受不发布**：`gatehouse_mission_complete(status=done)` — 仅结案，不上 Portal。
-  - **接受 + 复盘**：`gatehouse_mission_retro` → 等待 Gatehouse **retro rollup 就绪**通知（architect `gatehouse_retro_summary_record`；有 skill 分配时 curator `gatehouse_skill_summary_record`）→ `**mission_complete(done, publish_deliverables=...)`** → 请用户确认是否结案（autopilot 开启时可自主）。
+  - **接受 + 复盘**：`gatehouse_mission_retro` → 等待 Gatehouse **复盘摘要就绪**通知（architect `gatehouse_retro_summary_record`；有 skill 分配时 curator `gatehouse_skill_summary_record`）→ `**mission_complete(done, publish_deliverables=...)`** → 请用户确认是否结案（autopilot 开启时可自主）。
   - **直接完成（不复盘）**：`gatehouse_mission_complete(status=done)` — 向用户说明：**将跳过 skill 提炼**（{{curator_name}} 已登记的 domain 不会生成 `by-domain/*/SKILL.md`）。
   - **拒绝**：`gatehouse_delivery_review(decision=rejected, user_feedback=...)` — 与用户确认后续（`mission_complete(cancelled)` 取消，或改走返工）。
   - **取消 / 中途停止**：`gatehouse_mission_complete`（`status=cancelled` 或 `done`）；**勿**手改 `missions.yaml` 的 `cancelled`/`done`。
@@ -47,8 +47,8 @@ disable-model-invocation: true
 
 ## 串行任务（同时仅一条 active）
 
-- **同时最多一条**任务处于 `running` 或 `retro`；下一条须等当前任务 rollup 登记完成且 `status: done` 后再启动。
-- 启动前：若已有 `running` 或 `retro`，`**gatehouse_mission_start` 会被拒绝** — 先完成 rollup（`mission_complete`）或取消。
+- **同时最多一条**任务处于 `running` 或 `retro`；下一条须等当前任务复盘摘要登记完成且 `status: done` 后再启动。
+- 启动前：若已有 `running` 或 `retro`，`**gatehouse_mission_start` 会被拒绝** — 先完成复盘摘要登记（`mission_complete`）或取消。
 - 需要并行执行的工作项，应作为**同一任务内**的子任务调度，而非再开第二条任务。
 - 用户反馈、汇报路径始终带 `<mission_id>`。
 

@@ -22,10 +22,10 @@ Architecture & workflow: project `.gatehouse/**/SKILL.md` prompts (scaffolded on
 | `gatehouse_delivery_review` | **profile lead** — request revision or reject submitted delivery (deliverable publish is Lead opt-in on `mission_complete(done, publish_deliverables=true)`) |
 | `gatehouse_unpublish_blog` | **profile lead** — remove a published Portal post by `report_path` (corrections only; publish is system-managed) |
 | `gatehouse_retro_record` | Retro session marks report done in registry; when all complete, auto-notifies **profile architect** |
-| `gatehouse_retro_summary_record` | **profile architect** — register `architect-summary.md`; when rollup is complete, auto-notifies **profile lead** |
+| `gatehouse_retro_summary_record` | **profile architect** — register `architect-summary.md`; when retro summaries are complete, auto-notifies **profile lead** |
 | `gatehouse_skill_extract_record` | **build-extract** session only — runs quality gates, records extract completion; when all nodes complete, auto-starts verify sessions |
 | `gatehouse_skill_verify_record` | **build-verify** session only — programmatic + agent verification; when all nodes pass, auto-notifies **profile curator** |
-| `gatehouse_skill_summary_record` | **profile curator** — register `curator-summary.md`; when rollup is complete, auto-notifies **profile lead** |
+| `gatehouse_skill_summary_record` | **profile curator** — register `curator-summary.md`; when retro summaries are complete, auto-notifies **profile lead** |
 | `gatehouse_inspector_queue` | **profile arbiter** — list pending permission requests |
 | `gatehouse_inspector_decide` | **profile arbiter** — approve (`once` / `always`) or reject a permission request |
 | `gatehouse_execution_rework` | **inner** — reopen a dependency node (in-flight rework) |
@@ -119,7 +119,7 @@ Creates `.gatehouse/` with:
 - `skills/lead-meta/SKILL.md`（skill id: `lead-meta`）+ empty `missions.yaml`
 - `skills/architect-meta/SKILL.md`（`architect-meta`）+ `prompts/architect/` templates
 - `skills/retro-toolkit/` — shared retro analysis tools (skill + scripts)
-- `skills/curator-meta/SKILL.md`（`curator-meta`）+ `prompts/curator/` skill assignment / rollup prompts
+- `skills/curator-meta/SKILL.md`（`curator-meta`）+ `prompts/curator/` skill assignment / summary prompts
 - `skills/arbiter-meta/SKILL.md`（`arbiter-meta`）
 - `config.yaml` — global `~/.config/gatehouse/config.yaml` + project `.gatehouse/config.yaml` (Portal brand, ICP, **outer team display names**, per-role `models`)
 - `skills/by-domain/` + `skills/domains.yaml` (curator assigns domains after orchestration submit; Gatehouse creates extract/verify sessions and delivers skill prompts on retro)

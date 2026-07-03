@@ -19,8 +19,8 @@ import { seedActiveMissionRegistry } from "./copy-example-mission.ts"
 const brokenScript = `
 export const team = {
   mission_id: "orch-fail-m1",
-  root: "leaf",
-  nodes: { leaf: { parent: null, description: "leaf" } },
+  terminal: "leaf",
+  nodes: { leaf: { description: "leaf" } },
 }
 export default async function orchestrate(ctx) {
   await ctx.run("leaf", {
@@ -155,8 +155,8 @@ describe("orchestration failure feedback", () => {
       const fixedScript = `
 export const team = {
   mission_id: "${missionId}",
-  root: "leaf",
-  nodes: { leaf: { parent: null, description: "leaf" } },
+  terminal: "leaf",
+  nodes: { leaf: { description: "leaf" } },
 }
 export default async function orchestrate(ctx) {
   await ctx.run("leaf", {
@@ -260,19 +260,17 @@ export default async function orchestrate(ctx) {
       await writeManifest(dir, {
         mission_id: missionId,
         status: "running",
-        root_node: "node-root",
+        terminal_node: "node-root",
         created_at: new Date().toISOString(),
         nodes: {
           "node-root": {
             session_id: "ses_leaf",
-            parent: null,
             display_name: "node-root",
             description: "root",
             profile: "build",
           },
           "node-doc": {
             session_id: "ses_doc",
-            parent: "node-root",
             display_name: "node-doc",
             description: "doc",
             profile: "build",

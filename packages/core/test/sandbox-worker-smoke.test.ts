@@ -7,7 +7,7 @@ import { getRegistryStore } from "../src/registry/context.ts"
 import { loadMissionScript } from "../src/orchestration/script-load.ts"
 import { initOrchestrationState, writeOrchestrationState } from "../src/orchestration/state.ts"
 import { startSandboxOrchestration, stopSandboxOrchestration } from "../src/orchestration/sandbox-runtime.ts"
-import { topologicalNodeOrder } from "../src/tree/parse.ts"
+import { teamNodeOrder } from "../src/orchestration/plan-graph.ts"
 
 describe("sandbox worker smoke", () => {
   test("worker delivers first prompt via RPC", async () => {
@@ -23,7 +23,7 @@ describe("sandbox worker smoke", () => {
       const script = await loadMissionScript(dir, missionId)
       if (!script?.orchestrateSource) throw new Error("missing orchestrate")
 
-      writeOrchestrationState(dir, initOrchestrationState(missionId, topologicalNodeOrder(script.team)))
+      writeOrchestrationState(dir, initOrchestrationState(missionId, teamNodeOrder(script.team)))
 
       const promptTexts: string[] = []
       let sessionCounter = 0
@@ -45,12 +45,12 @@ describe("sandbox worker smoke", () => {
 
       const pluginInput = { directory: dir, client: mockClient } as unknown as PluginInput
       const store = await getRegistryStore(pluginInput)
-      for (const nodeId of topologicalNodeOrder(script.team)) {
+      for (const nodeId of teamNodeOrder(script.team)) {
         store.registerInnerNode({
           missionId,
           nodeId,
           sessionId: `ses_${nodeId}`,
-          profile: nodeId === script.team.root ? "build" : "build",
+          profile: nodeId === script.team.terminal ? "build" : "build",
         })
       }
 

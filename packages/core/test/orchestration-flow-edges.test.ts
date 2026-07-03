@@ -3,14 +3,7 @@ import type { PlanStep } from "../src/orchestration/plan-types.ts"
 import { buildPortalOrchestrationFlowEdges } from "../src/portal/orchestration-flow-edges.ts"
 
 describe("portal orchestration flow edges", () => {
-  test("builds dispatch and rollup arrows from plan steps", () => {
-    const parentByNode = new Map<string, string | null>([
-      ["root", null],
-      ["a", "root"],
-      ["a1", "a"],
-      ["leaf", "root"],
-    ])
-
+  test("builds rollup arrows from plan steps", () => {
     const planSteps: PlanStep[] = [
       {
         id: "step-0",
@@ -21,7 +14,7 @@ describe("portal orchestration flow edges", () => {
       {
         id: "step-1",
         op: "run",
-        statement: `await ctx.run("a", { brief: { your_work: ["a"], acceptance_slice: ["done"] }, text: "rollup", dependsOn: [{ node: "a1", summary: true }] })`,
+        statement: `await ctx.run("a", { brief: { your_work: ["a"], acceptance_slice: ["done"] }, text: "summary", dependsOn: [{ node: "a1", summary: true }] })`,
         nodeId: "a",
       },
       {
@@ -33,28 +26,22 @@ describe("portal orchestration flow edges", () => {
       {
         id: "step-3",
         op: "run",
-        statement: `await ctx.run("root", { brief: { your_work: ["root"], acceptance_slice: ["done"] }, text: "final", dependsOn: [{ node: "a", summary: true }, { node: "leaf", summary: true }] })`,
-        nodeId: "root",
+        statement: `await ctx.run("terminal", { brief: { your_work: ["root"], acceptance_slice: ["done"] }, text: "final", dependsOn: [{ node: "a", summary: true }, { node: "leaf", summary: true }] })`,
+        nodeId: "terminal",
       },
     ]
 
     const states = ["done", "current", "pending", "pending"] as const
-    const edges = buildPortalOrchestrationFlowEdges(planSteps, [...states], parentByNode, "root")
+    const edges = buildPortalOrchestrationFlowEdges(planSteps, [...states])
 
     expect(edges).toEqual([
-      { step_id: "step-0", from: "a", to: "a1", op: "run", state: "done", kind: "activate" },
-      { step_id: "step-1", from: "a1", to: "a", op: "run", state: "current", kind: "rollup" },
-      { step_id: "step-2", from: "root", to: "leaf", op: "run", state: "pending", kind: "activate" },
-      { step_id: "step-3", from: "a", to: "root", op: "run", state: "pending", kind: "rollup" },
-      { step_id: "step-3", from: "leaf", to: "root", op: "run", state: "pending", kind: "rollup" },
+      { step_id: "step-1", from: "a1", to: "a", op: "run", state: "current", kind: "summary" },
+      { step_id: "step-3", from: "a", to: "terminal", op: "run", state: "pending", kind: "summary" },
+      { step_id: "step-3", from: "leaf", to: "terminal", op: "run", state: "pending", kind: "summary" },
     ])
   })
 
-  test("links sequential run steps when dispatch edge is unavailable", () => {
-    const parentByNode = new Map<string, string | null>([
-      ["root", null],
-      ["leaf", "root"],
-    ])
+  test("links sequential run steps across plan steps", () => {
     const planSteps: PlanStep[] = [
       {
         id: "step-0",
@@ -65,30 +52,17 @@ describe("portal orchestration flow edges", () => {
       {
         id: "step-1",
         op: "run",
-        statement: `await ctx.run("root", { text: "rollup" })`,
-        nodeId: "root",
+        statement: `await ctx.run("terminal", { text: "summary" })`,
+        nodeId: "terminal",
       },
     ]
-    const edges = buildPortalOrchestrationFlowEdges(
-      planSteps,
-      ["done", "current"],
-      parentByNode,
-      "root",
-    )
+    const edges = buildPortalOrchestrationFlowEdges(planSteps, ["done", "current"])
     expect(edges).toEqual([
-      { step_id: "step-0", from: "root", to: "leaf", op: "run", state: "done", kind: "activate" },
-      { step_id: "step-1", from: "leaf", to: "root", op: "run", state: "current", kind: "serial" },
+      { step_id: "step-1", from: "leaf", to: "terminal", op: "run", state: "current", kind: "serial" },
     ])
   })
 
-  test("links sequential sibling run steps under the same parent", () => {
-    const parentByNode = new Map<string, string | null>([
-      ["root", null],
-      ["lead", "root"],
-      ["a", "lead"],
-      ["b", "lead"],
-      ["c", "lead"],
-    ])
+  test("links sequential sibling run steps under separate plan steps", () => {
     const planSteps: PlanStep[] = [
       {
         id: "step-0",
@@ -109,29 +83,14 @@ describe("portal orchestration flow edges", () => {
         nodeId: "c",
       },
     ]
-    const edges = buildPortalOrchestrationFlowEdges(
-      planSteps,
-      ["done", "done", "current"],
-      parentByNode,
-      "root",
-    )
+    const edges = buildPortalOrchestrationFlowEdges(planSteps, ["done", "done", "current"])
     expect(edges).toEqual([
-      { step_id: "step-0", from: "lead", to: "a", op: "run", state: "done", kind: "activate" },
-      { step_id: "step-1", from: "lead", to: "b", op: "run", state: "done", kind: "activate" },
       { step_id: "step-1", from: "a", to: "b", op: "run", state: "done", kind: "serial" },
-      { step_id: "step-2", from: "lead", to: "c", op: "run", state: "current", kind: "activate" },
       { step_id: "step-2", from: "b", to: "c", op: "run", state: "current", kind: "serial" },
     ])
   })
 
-  test("builds cross-parent dependsOn dependency arrows", () => {
-    const parentByNode = new Map<string, string | null>([
-      ["root", null],
-      ["a", "root"],
-      ["b", "root"],
-      ["a1", "a"],
-      ["b1", "b"],
-    ])
+  test("builds cross-branch dependsOn dependency arrows", () => {
     const planSteps: PlanStep[] = [
       {
         id: "step-0",
@@ -146,29 +105,13 @@ describe("portal orchestration flow edges", () => {
         nodeId: "b1",
       },
     ]
-    const edges = buildPortalOrchestrationFlowEdges(
-      planSteps,
-      ["done", "current"],
-      parentByNode,
-      "root",
-    )
+    const edges = buildPortalOrchestrationFlowEdges(planSteps, ["done", "current"])
     expect(edges).toEqual([
-      { step_id: "step-0", from: "a", to: "a1", op: "run", state: "done", kind: "activate" },
-      { step_id: "step-1", from: "b", to: "b1", op: "run", state: "current", kind: "activate" },
       { step_id: "step-1", from: "a1", to: "b1", op: "run", state: "current", kind: "depends" },
     ])
   })
 
-  test("extracts nested run steps inside ctx.fork for dispatch and rollup arrows", () => {
-    const parentByNode = new Map<string, string | null>([
-      ["root", null],
-      ["research-lead", "root"],
-      ["analysis-lead", "root"],
-      ["gpt-researcher", "research-lead"],
-      ["claude-researcher", "research-lead"],
-      ["benchmark-analyst", "analysis-lead"],
-      ["pricing-analyst", "analysis-lead"],
-    ])
+  test("extracts nested run steps inside ctx.fork for rollup and serial arrows", () => {
     const planSteps: PlanStep[] = [
       {
         id: "step-0",
@@ -179,7 +122,7 @@ await ctx.fork([
     await ctx.run("gpt-researcher", { text: "go" })
     await ctx.run("claude-researcher", { text: "go" })
     await ctx.run("research-lead", {
-      text: "rollup",
+      text: "summary",
       dependsOn: [{ node: "gpt-researcher", summary: true }, { node: "claude-researcher", summary: true }],
     })
   },
@@ -187,31 +130,15 @@ await ctx.fork([
     await ctx.run("benchmark-analyst", { text: "go" })
     await ctx.run("pricing-analyst", { text: "go" })
     await ctx.run("analysis-lead", {
-      text: "rollup",
+      text: "summary",
       dependsOn: [{ node: "benchmark-analyst", summary: true }, { node: "pricing-analyst", summary: true }],
     })
   },
 ])`,
       },
     ]
-    const edges = buildPortalOrchestrationFlowEdges(planSteps, ["done"], parentByNode, "root")
+    const edges = buildPortalOrchestrationFlowEdges(planSteps, ["done"])
     expect(edges).toEqual([
-      {
-        step_id: "step-0",
-        from: "research-lead",
-        to: "gpt-researcher",
-        op: "run",
-        state: "done",
-        kind: "activate",
-      },
-      {
-        step_id: "step-0",
-        from: "research-lead",
-        to: "claude-researcher",
-        op: "run",
-        state: "done",
-        kind: "activate",
-      },
       {
         step_id: "step-0",
         from: "gpt-researcher",
@@ -226,7 +153,7 @@ await ctx.fork([
         to: "research-lead",
         op: "run",
         state: "done",
-        kind: "rollup",
+        kind: "summary",
       },
       {
         step_id: "step-0",
@@ -234,23 +161,7 @@ await ctx.fork([
         to: "research-lead",
         op: "run",
         state: "done",
-        kind: "rollup",
-      },
-      {
-        step_id: "step-0",
-        from: "analysis-lead",
-        to: "benchmark-analyst",
-        op: "run",
-        state: "done",
-        kind: "activate",
-      },
-      {
-        step_id: "step-0",
-        from: "analysis-lead",
-        to: "pricing-analyst",
-        op: "run",
-        state: "done",
-        kind: "activate",
+        kind: "summary",
       },
       {
         step_id: "step-0",
@@ -266,7 +177,7 @@ await ctx.fork([
         to: "analysis-lead",
         op: "run",
         state: "done",
-        kind: "rollup",
+        kind: "summary",
       },
       {
         step_id: "step-0",
@@ -274,18 +185,12 @@ await ctx.fork([
         to: "analysis-lead",
         op: "run",
         state: "done",
-        kind: "rollup",
+        kind: "summary",
       },
     ])
   })
 
   test("does not link parallel fork tracks that dispatch sibling nodes", () => {
-    const parentByNode = new Map<string, string | null>([
-      ["root", null],
-      ["playbook-synthesis", "root"],
-      ["playbook-assessment", "root"],
-      ["playbook-roadmap", "root"],
-    ])
     const planSteps: PlanStep[] = [
       {
         id: "step-0",
@@ -306,66 +211,42 @@ await ctx.fork([
       {
         id: "step-1",
         op: "run",
-        statement: `await ctx.run("root", {
-  text: "rollup",
+        statement: `await ctx.run("terminal", {
+  text: "summary",
   dependsOn: [
     { node: "playbook-synthesis", summary: true },
     { node: "playbook-assessment", summary: true },
     { node: "playbook-roadmap", summary: true },
   ],
 })`,
-        nodeId: "root",
+        nodeId: "terminal",
       },
     ]
-    const edges = buildPortalOrchestrationFlowEdges(planSteps, ["done", "done"], parentByNode, "root")
+    const edges = buildPortalOrchestrationFlowEdges(planSteps, ["done", "done"])
     expect(edges).toEqual([
-      {
-        step_id: "step-0",
-        from: "root",
-        to: "playbook-synthesis",
-        op: "run",
-        state: "done",
-        kind: "activate",
-      },
-      {
-        step_id: "step-0",
-        from: "root",
-        to: "playbook-assessment",
-        op: "run",
-        state: "done",
-        kind: "activate",
-      },
-      {
-        step_id: "step-0",
-        from: "root",
-        to: "playbook-roadmap",
-        op: "run",
-        state: "done",
-        kind: "activate",
-      },
       {
         step_id: "step-1",
         from: "playbook-synthesis",
-        to: "root",
+        to: "terminal",
         op: "run",
         state: "done",
-        kind: "rollup",
+        kind: "summary",
       },
       {
         step_id: "step-1",
         from: "playbook-assessment",
-        to: "root",
+        to: "terminal",
         op: "run",
         state: "done",
-        kind: "rollup",
+        kind: "summary",
       },
       {
         step_id: "step-1",
         from: "playbook-roadmap",
-        to: "root",
+        to: "terminal",
         op: "run",
         state: "done",
-        kind: "rollup",
+        kind: "summary",
       },
     ])
   })

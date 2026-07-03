@@ -35,16 +35,16 @@ export async function dryRunMissionScriptSource(
         "mission.script.ts must export default async function orchestrate(ctx)",
       )
     }
-    const lint = lintOrchestrationScript(parsed.team, parsed.orchestrateSource)
-    for (const issue of lint.errors) {
-      throw new MissionScriptParseError(issue.code, issue.message)
-    }
     const plan = compileOrchestrationPlan({
       missionId: parsed.team.mission_id,
       team: parsed.team,
       orchestrateSource: parsed.orchestrateSource,
       scriptHash: parsed.scriptHash,
     })
+    const lint = lintOrchestrationScript(parsed.team, plan, parsed.orchestrateSource)
+    for (const issue of lint.errors) {
+      throw new MissionScriptParseError(issue.code, issue.message)
+    }
     validatePlanStepsCompile(plan)
     const simulation = await simulateOrchestration({ parsed, plan })
     if (!simulation.ok) {

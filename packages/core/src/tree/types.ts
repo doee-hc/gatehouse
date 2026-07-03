@@ -1,6 +1,5 @@
 export type TreeNode = {
   session_id: string
-  parent: string | null
   display_name?: string
   /** One-line role summary for UI and gatehouse_list_team (execution view) */
   description?: string
@@ -13,7 +12,7 @@ export type TreeNode = {
 export type TreeManifest = {
   mission_id: string
   status: "running" | "archived"
-  root_node: string
+  terminal_node: string
   created_at: string
   archived_at?: string
   nodes: Record<string, TreeNode>
@@ -53,7 +52,6 @@ export type VerifyManifest = {
 }
 
 export type TeamSpecNode = {
-  parent: string | null
   /** One-line role summary; copied into manifest at bootstrap */
   description: string
   /** Curator apply_skill_domains writes before bootstrap; copied into manifest at bootstrap */
@@ -62,14 +60,14 @@ export type TeamSpecNode = {
 
 export type TeamSpec = {
   mission_id: string
-  root: string
+  terminal: string
   nodes: Record<string, TeamSpecNode>
 }
 
 export type TreesIndexEntry = {
   mission_id: string
-  root_session_id: string
-  root_node: string
+  terminal_session_id: string
+  terminal_node: string
   status: string
   created_at: string
   objective?: string
@@ -83,11 +81,7 @@ export type TreesIndex = {
 export type TreeMember = {
   node_id: string
   session_id: string
-  parent: string | null
-  child_nodes: string[]
   display_name?: string
   description?: string
   profile?: string
 }
-
-export type ListScope = "all" | "children" | "siblings"

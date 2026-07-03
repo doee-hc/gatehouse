@@ -13,7 +13,7 @@ describe("mission script sandbox parse", () => {
   test("parseMissionScriptSource extracts team meta and orchestrate body", async () => {
     const source = await Bun.file(smokeFixture).text()
     const parsed = parseMissionScriptSource(source, "core-example-smoke-v1")
-    expect(parsed.team.root).toBe("node-root")
+    expect(parsed.team.terminal).toBe("node-root")
     expect(parsed.meta?.name).toBe("core-example-smoke-v1")
     expect(parsed.orchestrateSource).toContain('ctx.run("node-doc"')
     expect(parsed.scriptHash.length).toBe(64)
@@ -23,10 +23,10 @@ describe("mission script sandbox parse", () => {
     const source = `
 export const team = {
   mission_id: "m1",
-  root: "coord",
+  terminal: "coord",
   nodes: {
-    coord: { parent: null, description: "root" },
-    leaf: { parent: "coord", description: "leaf" },
+    coord: { description: "root" },
+    leaf: { description: "leaf" },
   },
 }
 export default async function orchestrate(ctx) {
@@ -47,8 +47,8 @@ export default async function orchestrate(ctx) {
     const source = `
 export const team = {
   mission_id: "m1",
-  root: "maker",
-  nodes: { maker: { parent: null, description: "make report" } },
+  terminal: "maker",
+  nodes: { maker: { description: "make report" } },
 }
 export default async function orchestrate(ctx) {
   await ctx.run("maker", {
@@ -70,8 +70,8 @@ export default async function orchestrate(ctx) {
     const source = `
 export const team = {
   mission_id: "m1",
-  root: "leaf",
-  nodes: { leaf: { parent: null, description: "leaf" } },
+  terminal: "leaf",
+  nodes: { leaf: { description: "leaf" } },
 }
 export default async function orchestrate(ctx) {
   await ctx.run("leaf", {
@@ -93,8 +93,8 @@ export default async function orchestrate(ctx) {
     const source = `
 export const team = {
   mission_id: "m1",
-  root: "leaf",
-  nodes: { leaf: { parent: null, description: "leaf" } },
+  terminal: "leaf",
+  nodes: { leaf: { description: "leaf" } },
 }
 `
     const result = await dryRunMissionScriptSource(source, "m1")

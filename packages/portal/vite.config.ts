@@ -29,7 +29,7 @@ export default defineConfig(({ mode }) => {
   const portalAdminApi = portalAdminApiFromEnv(env)
 
   return {
-    root: ".",
+    terminal: ".",
     publicDir: "public",
     envPrefix: ["VITE_", "GATEHOUSE_"],
     server: middlewareMode

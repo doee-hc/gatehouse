@@ -7,10 +7,10 @@ import { requireMission } from "../missions/lifecycle.ts"
 import { requireActiveMissionId } from "../missions/scope.ts"
 import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
 
-function rollupReadinessPayload(missionId: string, registry: Awaited<ReturnType<typeof getRegistryStore>>) {
+function retroSummaryReadinessPayload(missionId: string, registry: Awaited<ReturnType<typeof getRegistryStore>>) {
   const readiness = registry.retroCompleteReadiness(missionId)
   return {
-    rollup_ready: readiness.ready,
+    retro_summary_ready: readiness.ready,
     ...(readiness.pending.length > 0 && { remaining: readiness.pending.length }),
   }
 }
@@ -18,7 +18,7 @@ function rollupReadinessPayload(missionId: string, registry: Awaited<ReturnType<
 export function retroSummaryRecordTool(input: PluginInput) {
   return tool({
     description:
-      "profile architect only: register architect retro summary after writing architect-summary.md. When rollup is complete (and curator summary if skill domains were assigned), Gatehouse auto-notifies profile lead and publishes architect-summary to Portal under the mission.",
+      "profile architect only: register architect retro summary after writing architect-summary.md. When retro summaries are complete (and curator summary if skill domains were assigned), Gatehouse auto-notifies profile lead and publishes architect-summary to Portal under the mission.",
     args: {},
     async execute(_args, context) {
       const toolName = "gatehouse_retro_summary_record"
@@ -73,7 +73,7 @@ export function retroSummaryRecordTool(input: PluginInput) {
           output: toolOk(toolName, {
             mission_id: missionId,
             already_submitted: recorded.alreadySubmitted,
-            ...rollupReadinessPayload(missionId, registry),
+            ...retroSummaryReadinessPayload(missionId, registry),
             ...(recorded.lead_notification && { lead_notified: true }),
           }),
           ...toolMetadata(toolName),
@@ -90,7 +90,7 @@ export function retroSummaryRecordTool(input: PluginInput) {
 export function skillSummaryRecordTool(input: PluginInput) {
   return tool({
     description:
-      "profile curator only: register curator skill rollup summary after writing curator-summary.md. When architect summary is also registered, Gatehouse auto-notifies profile lead.",
+      "profile curator only: register curator skill summary after writing curator-summary.md. When architect summary is also registered, Gatehouse auto-notifies profile lead.",
     args: {},
     async execute(_args, context) {
       const toolName = "gatehouse_skill_summary_record"
@@ -145,7 +145,7 @@ export function skillSummaryRecordTool(input: PluginInput) {
           output: toolOk(toolName, {
             mission_id: missionId,
             already_submitted: recorded.alreadySubmitted,
-            ...rollupReadinessPayload(missionId, registry),
+            ...retroSummaryReadinessPayload(missionId, registry),
             ...(recorded.lead_notification && { lead_notified: true }),
           }),
           ...toolMetadata(toolName),

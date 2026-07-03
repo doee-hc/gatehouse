@@ -49,23 +49,19 @@ function outerRow(agent: RegistryAgent): GatehouseOuterAgentRow {
 }
 
 export function treeManifestLines(manifest: TreeManifest) {
-  const lines: string[] = []
-  const walk = (nodeId: string, depth: number) => {
-    const node = manifest.nodes[nodeId]
-    if (!node) return
-    const label = node.description
-      ? `${nodeId} · ${node.description}`
-      : node.display_name
-        ? `${nodeId} · ${node.display_name}`
-        : nodeId
-    lines.push(`${"  ".repeat(depth)}${label}`)
-    Object.entries(manifest.nodes)
-      .filter(([, item]) => item.parent === nodeId)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .forEach(([childId]) => walk(childId, depth + 1))
-  }
-  walk(manifest.root_node, 0)
-  return lines
+  return Object.entries(manifest.nodes)
+    .sort(([left], [right]) => {
+      if (left === manifest.terminal_node) return -1
+      if (right === manifest.terminal_node) return 1
+      return left.localeCompare(right)
+    })
+    .map(([nodeId, node]) =>
+      node.description
+        ? `${nodeId} · ${node.description}`
+        : node.display_name
+          ? `${nodeId} · ${node.display_name}`
+          : nodeId,
+    )
 }
 
 function missionSortTime(mission: MissionEntry) {

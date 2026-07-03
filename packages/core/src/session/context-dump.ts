@@ -228,7 +228,6 @@ export async function dumpSessionContext(input: {
   missionId: string
   nodeId: string
   sessionId: string
-  parent?: string | null
   profile?: string
   relDir?: string
   absDir?: string
@@ -248,7 +247,6 @@ export async function dumpSessionContext(input: {
         mission_id: input.missionId,
         node_id: input.nodeId,
         session_id: input.sessionId,
-        ...(input.parent !== undefined && { parent: input.parent }),
         ...(input.profile && { profile: input.profile }),
         dumped_at: new Date().toISOString(),
         duration_ms: sessionDurationMs(detail),
@@ -315,7 +313,6 @@ export async function dumpNodeContext(input: {
     missionId: input.missionId,
     nodeId: input.nodeId,
     sessionId: input.node.session_id,
-    parent: input.node.parent,
     profile: input.node.profile,
   })
 }

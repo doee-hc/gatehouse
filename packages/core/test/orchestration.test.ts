@@ -33,11 +33,11 @@ import { startEphemeralServer, startPortalInternalEventCapture, withPortalEnv } 
 
 const sampleTeam: TeamSpec = {
   mission_id: "orch-m1",
-  root: "root",
+  terminal: "terminal",
   nodes: {
-    root: { parent: null, description: "root" },
-    a: { parent: "root", description: "worker a" },
-    b: { parent: "a", description: "worker b" },
+    terminal: { description: "terminal" },
+    a: { description: "worker a" },
+    b: { description: "worker b" },
   },
 }
 
@@ -114,12 +114,12 @@ describe("orchestration state", () => {
       const manifest = {
         mission_id: "orch-m1",
         status: "running" as const,
-        root_node: "root",
+        terminal_node: "terminal",
         created_at: new Date().toISOString(),
         nodes: {
-          root: { session_id: "ses_root", parent: null },
-          a: { session_id: "ses_a", parent: "root" },
-          b: { session_id: "ses_b", parent: "root" },
+          terminal: { session_id: "ses_terminal"},
+          a: { session_id: "ses_a"},
+          b: { session_id: "ses_b"},
         },
       }
       const prepared = await prepareOrchestrationRuntime(dir, manifest, {
@@ -131,7 +131,7 @@ describe("orchestration state", () => {
       })
       expect(prepared.status).toBe("prepared")
       if (prepared.status !== "prepared") return
-      expect(prepared.state.nodes.root?.status).toBe("pending")
+      expect(prepared.state.nodes.terminal?.status).toBe("pending")
       expect(prepared.state.nodes.a?.status).toBe("pending")
       expect(prepared.state.nodes.b?.status).toBe("pending")
       expect(prepared.state.phase).not.toBe(AWAITING_SKILL_DOMAINS_PHASE)
@@ -168,10 +168,10 @@ describe("orchestration state", () => {
 
       const parallelTeam: TeamSpec = {
         mission_id: "parallel-m1",
-        root: "a",
+        terminal: "a",
         nodes: {
-          a: { parent: null, description: "worker a" },
-          b: { parent: null, description: "worker b" },
+          a: { description: "worker a" },
+          b: { description: "worker b" },
         },
       }
       const { engine } = createMissionContext({ plugin: pluginInput, store, team: parallelTeam })
@@ -201,7 +201,7 @@ describe("orchestration state", () => {
       expect(loaded?.nodes.a?.status).toBe("pending")
 
       const registry = new RegistryDatabase(dir, { readonly: true })
-      expect(registry.getMissionScript("orch-m1")?.team.root).toBe("root")
+      expect(registry.getMissionScript("orch-m1")?.team.terminal).toBe("terminal")
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
@@ -249,8 +249,8 @@ describe("mission.script fixture", () => {
       await Bun.write(path.join(destRoot, "mission.script.ts"), Bun.file(fixtureScript))
 
       const script = await loadMissionScript(dir, missionId)
-      expect(script?.team.root).toBe("node-root")
-      expect(script?.team.nodes["node-doc"]?.parent).toBe("node-root")
+      expect(script?.team.terminal).toBe("node-root")
+      expect(script?.team.nodes["node-doc"]?.description).toBe("文档执行成员，负责 README 示例章节")
       expect(script?.meta?.name).toBe("core-example-smoke-v1")
       expect(script?.orchestrateSource).toContain("node-doc")
       expect(script?.scriptHash.length).toBe(64)

@@ -114,12 +114,11 @@ trees:
       path.join(dir, ".gatehouse/internal/exports/trees/m1/manifest.yaml"),
       `mission_id: m1
 status: archived
-root_node: node-root
+terminal_node: node-root
 created_at: 2026-06-12T00:00:00.000Z
 nodes:
   node-root:
     session_id: ses-exec
-    parent: null
     display_name: root
 `,
     )
@@ -197,12 +196,11 @@ trees:
       path.join(dir, ".gatehouse/internal/exports/trees/m1/manifest.yaml"),
       `mission_id: m1
 status: running
-root_node: node-root
+terminal_node: node-root
 created_at: 2026-06-12T00:00:00.000Z
 nodes:
   node-root:
     session_id: ses-exec
-    parent: null
     display_name: root
 `,
     )
@@ -289,12 +287,11 @@ trees:
       path.join(dir, ".gatehouse/internal/exports/trees/m1/manifest.yaml"),
       `mission_id: m1
 status: archived
-root_node: root
+terminal_node: root
 created_at: 2026-06-12T00:00:00.000Z
 nodes:
   root:
     session_id: ses-archived
-    parent: null
     display_name: root
 `,
     )
@@ -346,11 +343,11 @@ test("buildMissionStats aggregates inner node sessions", () => {
   const manifest: TreeManifest = {
     mission_id: "m1",
     status: "archived",
-    root_node: "root",
+    terminal_node: "root",
     created_at: "2026-05-29T09:00:00Z",
     nodes: {
-      root: { session_id: "ses-root", parent: null, display_name: "m1 · root" },
-      leaf: { session_id: "ses-leaf", parent: "root", display_name: "m1 · leaf" },
+      terminal: { session_id: "ses-root", display_name: "m1 · root" },
+      leaf: { session_id: "ses-leaf", display_name: "m1 · leaf" },
     },
   }
   const usage = new Map([
@@ -377,10 +374,10 @@ test("buildMissionStats includes retro extract and verify sessions", () => {
   const manifest: TreeManifest = {
     mission_id: "m1",
     status: "running",
-    root_node: "node-root",
+    terminal_node: "node-root",
     created_at: "2026-06-12T00:00:00.000Z",
     nodes: {
-      "node-root": { session_id: "ses-exec", parent: null, display_name: "m1 · root" },
+      "node-root": { session_id: "ses-exec", display_name: "m1 · root" },
     },
   }
   const retro = {
@@ -441,7 +438,7 @@ test("buildOuterOverview lists active outer agents", () => {
       sessionId: "ses-inner",
       displayName: "worker",
       missionId: "m1",
-      nodeId: "root",
+      nodeId: "terminal",
       status: "active",
       createdAt: now,
       updatedAt: now,

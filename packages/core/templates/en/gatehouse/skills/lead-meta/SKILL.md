@@ -35,10 +35,10 @@ disable-model-invocation: true
 0. **Team ready** — Read `.gatehouse/lead/missions.yaml` (fixed path; do not glob). If missing, ask the user to confirm the Gatehouse project root and plugin setup. `gatehouse_list_team()`: if any of `architect|curator|arbiter` in `outer` has `ready: false` → `gatehouse_init_team` (idempotent).
 1. **Direction** — Read queue and past feedback; propose a Mission (objective / done_when draft). **Ambiguous terms** need user confirmation of intended domain before writing the mission — do not expand scope from web search alone. **Keep planning-phase research light**; deep gathering belongs to the execution team.
 2. **Start** — Write full fields for the mission in `missions.yaml` (`status: queued`) → ask user to confirm (when autopilot OFF) → `gatehouse_mission_start(mission_id=...)`. After start succeeds, do not `send_message` {{architect_name}} to repeat objective. **Do not edit mission body while running/retro**; use `gatehouse_mission_complete` / `gatehouse_mission_retro` for status changes.
-3. **Acceptance** — After the orchestration **terminal node** `gatehouse_execution_complete` when all nodes are done (delivery recorded + precheck; **not yet** on Portal) → read the delivery notification sent to Lead (rollup, precheck, `done_when`) and project deliverable paths → **ask the user to confirm in chat** (or decide autonomously when autopilot is ON).
+3. **Acceptance** — After the orchestration **terminal node** `gatehouse_execution_complete` when all nodes are done (delivery recorded + precheck; **not yet** on Portal) → read the delivery notification sent to Lead (aggregated summaries, precheck, `done_when`) and project deliverable paths → **ask the user to confirm in chat** (or decide autonomously when autopilot is ON).
    - **Accept + publish**: user confirms acceptance and wants Portal → `gatehouse_mission_complete(status=done, publish_deliverables=true, user_feedback=...)` (skills still auto-publish; deliverables go to Portal in this step only).
    - **Accept without Portal**: `gatehouse_mission_complete(status=done, user_feedback=...)` — deliverables stay local only.
-   - **Accept + retro**: `gatehouse_mission_retro` → wait for Gatehouse **retro rollup ready** notification (architect `gatehouse_retro_summary_record`; curator `gatehouse_skill_summary_record` when skill domains assigned) → **`mission_complete(done, publish_deliverables=...)`** → ask user to confirm complete (or proceed when autopilot is ON).
+   - **Accept + retro**: `gatehouse_mission_retro` → wait for Gatehouse **retro summaries ready** notification (architect `gatehouse_retro_summary_record`; curator `gatehouse_skill_summary_record` when skill domains assigned) → **`mission_complete(done, publish_deliverables=...)`** → ask user to confirm complete (or proceed when autopilot is ON).
    - **Complete without retro**: `gatehouse_mission_complete(status=done)` — tell the user: **skill extraction is skipped** (registered domains will not get `by-domain/*/SKILL.md`).
    - **Reject**: `gatehouse_delivery_review(decision=rejected, user_feedback=...)` — confirm next step with user (cancel via `mission_complete(cancelled)` or request revision).
    - **Cancel / stop mid-flight**: `gatehouse_mission_complete` (`status=cancelled` or `done`); **do not** hand-edit `cancelled`/`done` in `missions.yaml`.
@@ -47,8 +47,8 @@ disable-model-invocation: true
 
 ## Serial Missions (one active at a time)
 
-- At most **one** Mission in `running` or `retro` at a time; start the next only after current Mission retro rollup is registered and `status: done`.
-- Before start: if `running` or `retro` exists, **`gatehouse_mission_start` is rejected** — finish rollup (`mission_complete`) or cancel first.
+- At most **one** Mission in `running` or `retro` at a time; start the next only after current Mission retro summaries are registered and `status: done`.
+- Before start: if `running` or `retro` exists, **`gatehouse_mission_start` is rejected** — finish retro summaries (`mission_complete`) or cancel first.
 - Parallel work items belong **inside one Mission** as sub-tasks — not a second Mission.
 - User feedback and report paths always include `<mission_id>`.
 
@@ -108,7 +108,7 @@ missions:
 ```
 ## Acceptance & Portal
 
-- **Deliverables live in the project** — review `path` / file-exists paths in `done_when` and the delivery notification rollup. Gatehouse coordination reports under `.gatehouse/trees/.../reports/` are not deliverable bodies.
+- **Deliverables live in the project** — review `path` / file-exists paths in `done_when` and the delivery notification aggregated summaries. Gatehouse coordination reports under `.gatehouse/trees/.../reports/` are not deliverable bodies.
 - **Your acceptance lens:** match frozen `done_when` item count exactly; check precheck; for manual items, read files and judge yourself (including when autopilot is ON).
 - **Portal is opt-in on complete:** deliverables are not on Portal until `gatehouse_mission_complete(done, publish_deliverables=true)`. Skills auto-publish on `mission_complete(done)`. Do not put `publish:` in `done_when`. Use `mission_complete` return values `published_artifacts` / `publish_warnings`; if `published_artifacts` is empty or `publish_warnings` is set, do not claim success.
 
@@ -117,7 +117,7 @@ Optional local note template:
 ```markdown
 # Acceptance note: <mission_id>
 
-**Delivery:** rollup in the terminal-node completion notification.
+**Delivery:** aggregated summaries in the terminal-node completion notification.
 
 ## Checklist (Lead)
 - [ ] / [x] <done_when item, vs precheck>

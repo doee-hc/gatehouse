@@ -7,13 +7,14 @@ import {
   buildPortalOrchestrationFlowEdges,
   type PortalOrchestrationFlowEdge,
 } from "./orchestration-flow-edges.ts"
+import { activationOrderFromPlan } from "./orchestration-plan-layout.ts"
+import { listPlanRunActivations } from "../orchestration/plan-graph.ts"
 
 export type { PortalOrchestrationFlowEdge } from "./orchestration-flow-edges.ts"
 
 export type PortalOrchestrationNode = {
   node_id: string
   display_name: string
-  parent: string | null
   skill_domain?: string
   status: OrchestrationNodeStatus
   round?: number
@@ -43,8 +44,10 @@ export type PortalOrchestration = {
   phases: PortalOrchestrationPhase[]
   steps: PortalOrchestrationStep[]
   flow_edges: PortalOrchestrationFlowEdge[]
+  /** Plan dispatch order for graph layout (fork tracks included). */
+  activation_order: string[]
   nodes: PortalOrchestrationNode[]
-  root_node: string
+  terminal_node: string
 }
 
 function stepLabel(step: { op: PlanStepOp; node_id?: string }) {
@@ -106,7 +109,6 @@ export function buildPortalOrchestration(
     return {
       node_id: node.node_id,
       display_name: portalNodeDisplayName(node.node_id, node.display_name),
-      parent: node.parent,
       ...(node.skill_domain && { skill_domain: node.skill_domain }),
       status,
       ...(round !== undefined && { round }),
@@ -138,16 +140,14 @@ export function buildPortalOrchestration(
     }
   })
 
-  const parentByNode = new Map<string, string | null>()
-  for (const node of tree.nodes) {
-    parentByNode.set(node.node_id, node.parent)
-  }
-  const flow_edges = buildPortalOrchestrationFlowEdges(
-    planSteps,
-    stepStates,
-    parentByNode,
-    tree.root_node,
-  )
+  const flow_edges = buildPortalOrchestrationFlowEdges(planSteps, stepStates)
+  const activation_order = plan
+    ? listPlanRunActivations(plan).map((activation) => activation.targetNodeId)
+    : activationOrderFromPlan(
+        nodes.map((node) => node.node_id),
+        flow_edges,
+        steps.map((step) => step.node_id),
+      )
 
   const missionRunning = tree.status === "running"
   const hasRuntime = Boolean(script || orchState || plan)
@@ -163,8 +163,9 @@ export function buildPortalOrchestration(
     phases,
     steps,
     flow_edges,
+    activation_order,
     nodes,
-    root_node: tree.root_node,
+    terminal_node: tree.terminal_node,
   }
 }
 

@@ -4,7 +4,7 @@ import { submitDeliveryRecord } from "./store.ts"
 import type { DeliveryEvidence } from "./types.ts"
 import { readActiveMissionContract } from "../missions/contract.ts"
 import { readMissionsDocument } from "../missions/store.ts"
-import { synthesizeRootDeliveryMarkdown } from "../orchestration/completion.ts"
+import { synthesizeTerminalDeliveryMarkdown } from "../orchestration/completion.ts"
 import { readOrchestrationState } from "../orchestration/state.ts"
 import { readLocaleSync } from "../locale.ts"
 import { LEAD_OPENCODE } from "../registry/types.ts"
@@ -12,7 +12,7 @@ import type { RegistryStore } from "../registry/store.ts"
 import { RegistryDatabase } from "../registry/db.ts"
 import { notifyWatchdogDeliveryEvent } from "../watchdog/notify.ts"
 
-export async function submitDeliveryOnRootComplete(input: {
+export async function submitDeliveryOnTerminalComplete(input: {
   plugin: PluginInput
   store: RegistryStore
   missionId: string
@@ -44,17 +44,19 @@ export async function submitDeliveryOnRootComplete(input: {
   })
 
   const orchState = readOrchestrationState(input.plugin.directory, input.missionId)
-  const team = new RegistryDatabase(input.plugin.directory, { readonly: true }).getMissionScript(
-    input.missionId,
-  )?.team
-  const rollupText =
-    orchState && team
-      ? synthesizeRootDeliveryMarkdown(
+  const registryDb = new RegistryDatabase(input.plugin.directory, { readonly: true })
+  const script = registryDb.getMissionScript(input.missionId)
+  const team = script?.team
+  const plan = registryDb.getLatestOrchestrationPlan(input.missionId)
+  const aggregatedSummaryText =
+    orchState && team && plan
+      ? synthesizeTerminalDeliveryMarkdown(
           readLocaleSync(input.plugin.directory),
           input.missionId,
           input.nodeId,
           orchState,
           team,
+          plan,
         ).trim()
       : input.summary.trim()
 
@@ -69,7 +71,7 @@ export async function submitDeliveryOnRootComplete(input: {
     record: submitted.record,
     contract,
     summary: input.summary,
-    rollupText,
+    aggregatedSummaryText,
   })
 
   const notify = await input.store.deliverSystemNotification({
@@ -89,6 +91,6 @@ export async function submitDeliveryOnRootComplete(input: {
     record: submitted.record,
     relPath: submitted.relPath,
     lead_delivery: notify.status,
-    rollupText,
+    aggregatedSummaryText,
   }
 }

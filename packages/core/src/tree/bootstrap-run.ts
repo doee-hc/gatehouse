@@ -1,7 +1,7 @@
 import type { PluginInput } from "@opencode-ai/plugin"
 import { getRegistryStore } from "../registry/context.ts"
 import { manifestExportPath, nodeDisplayLabel } from "../paths.ts"
-import { topologicalNodeOrder, validateTeamSpec, resolveInnerProfile } from "./parse.ts"
+import { validateTeamSpec, resolveInnerProfile } from "./parse.ts"
 import { readManifest, upsertTreesIndex, writeManifest } from "./store.ts"
 import type { TeamSpec, TreeManifest } from "./types.ts"
 import { loadGatehouseConfig } from "../gatehouse-config.ts"
@@ -15,13 +15,13 @@ import { scheduleOfficeLayoutSync } from "../portal/office-layout-schedule.ts"
 import { buildBootstrapSystemForNode } from "../execution/node-session.ts"
 import { readNodeBriefRegistry } from "../execution/artifacts.ts"
 import { loadMissionScript } from "../orchestration/script-load.ts"
-import { resolveTerminalNode } from "../orchestration/plan-graph.ts"
+import { resolveTerminalNode, teamNodeOrder } from "../orchestration/plan-graph.ts"
 import { prepareOrchestrationRuntime, startOrchestrationRuntime } from "../orchestration/runtime.ts"
 
 export type BootstrapRunResult = {
   mission_id: string
-  root_node: string
-  root_session_id: string
+  terminal_node: string
+  terminal_session_id: string
   node_count: number
   manifest_path: string
   orchestration_runtime?: Awaited<ReturnType<typeof startOrchestrationRuntime>>
@@ -42,6 +42,9 @@ export async function runBootstrapTree(
   if (!script) {
     throw new Error(`Mission ${spec.mission_id} requires mission.script.ts`)
   }
+  if (!script.plan) {
+    throw new Error(`Mission ${spec.mission_id} requires a compiled orchestration plan`)
+  }
 
   const createdAt = new Date().toISOString()
   const nodes: TreeManifest["nodes"] = {}
@@ -49,14 +52,11 @@ export async function runBootstrapTree(
   const models = loadGatehouseConfig(input.directory).models
   const contract = readActiveMissionContract(input.directory, spec.mission_id)
 
-  for (const nodeId of topologicalNodeOrder(spec)) {
+  for (const nodeId of teamNodeOrder(spec, script.plan)) {
     const specNode = spec.nodes[nodeId]
     if (!specNode) throw new Error(`TeamSpec missing node ${nodeId}`)
-    if (specNode.parent && !sessionByNode.has(specNode.parent)) {
-      throw new Error(`parent session missing for ${nodeId}`)
-    }
     const profile = resolveInnerProfile(spec, nodeId)
-    const model = modelForInnerNode(models, spec, nodeId)
+    const model = modelForInnerNode(models, script.plan, nodeId)
     const display_name = nodeDisplayLabel(nodeId)
     const sessionId = await createSession(input.client, input.directory, {
       display_name,
@@ -66,7 +66,6 @@ export async function runBootstrapTree(
     sessionByNode.set(nodeId, sessionId)
     nodes[nodeId] = {
       session_id: sessionId,
-      parent: specNode.parent,
       display_name,
       description: specNode.description.trim(),
       profile,
@@ -76,6 +75,7 @@ export async function runBootstrapTree(
     const system = await buildBootstrapSystemForNode({
       projectDirectory: input.directory,
       spec,
+      plan: script.plan,
       nodeId,
       ...(contract && { contract }),
       agentNames: readAgentNamesSync(input.directory),
@@ -99,7 +99,7 @@ export async function runBootstrapTree(
   const manifest: TreeManifest = {
     mission_id: spec.mission_id,
     status: "running",
-    root_node: terminalNode,
+    terminal_node: terminalNode,
     created_at: createdAt,
     nodes,
   }
@@ -107,8 +107,8 @@ export async function runBootstrapTree(
   const objective = options?.objective ?? contract?.objective
   await upsertTreesIndex(input.directory, {
     mission_id: spec.mission_id,
-    root_session_id: nodes[terminalNode]?.session_id ?? "",
-    root_node: terminalNode,
+    terminal_session_id: nodes[terminalNode]?.session_id ?? "",
+    terminal_node: terminalNode,
     status: "running",
     created_at: createdAt,
     ...(objective && { objective }),
@@ -129,8 +129,8 @@ export async function runBootstrapTree(
 
   return {
     mission_id: spec.mission_id,
-    root_node: terminalNode,
-    root_session_id: nodes[terminalNode]?.session_id ?? "",
+    terminal_node: terminalNode,
+    terminal_session_id: nodes[terminalNode]?.session_id ?? "",
     node_count: Object.keys(nodes).length,
     manifest_path: manifestExportPath(input.directory, spec.mission_id),
     orchestration_runtime: orchestrationRuntime,

@@ -11,11 +11,10 @@ import type { TeamSpec } from "../src/tree/types.ts"
 
 const team: TeamSpec = {
   mission_id: "m1",
-  root: "root",
+  terminal: "a",
   nodes: {
-    root: { parent: null, description: "root" },
-    a: { parent: "root", description: "worker a" },
-    b: { parent: "root", description: "worker b" },
+    a: { description: "worker a" },
+    b: { description: "worker b" },
   },
 }
 
@@ -84,7 +83,7 @@ describe("rework dependsOn upstream", () => {
 `)
 
   test("allows downstream to rework upstream dependsOn node", () => {
-    const state = initOrchestrationState("m1", ["root", "a", "b"])
+    const state = initOrchestrationState("m1", ["a", "b"])
     state.nodes.a = { status: "running" }
     state.nodes.b = { status: "done" }
     const result = validateReworkRequest({
@@ -98,7 +97,7 @@ describe("rework dependsOn upstream", () => {
   })
 
   test("rejects rework without dependsOn edge", () => {
-    const state = initOrchestrationState("m1", ["root", "a", "b"])
+    const state = initOrchestrationState("m1", ["a", "b"])
     state.nodes.b = { status: "running" }
     state.nodes.a = { status: "done" }
     const result = validateReworkRequest({

@@ -314,7 +314,6 @@ describe("registry harness", () => {
         nodeId: "node-mid",
         profile: "build",
         sessionId: "ses_mid",
-        parentSessionId: "ses_root",
       })
       const send = sendMessageTool(pluginInput)
       const output = toolOutput(
@@ -344,7 +343,6 @@ describe("registry harness", () => {
         nodeId: "node-doc",
         profile: "build",
         sessionId: "ses_doc",
-        parentSessionId: "ses_root",
       })
       const send = sendMessageTool(pluginInput)
       const output = toolOutput(
@@ -376,7 +374,6 @@ describe("registry harness", () => {
         nodeId: "node-doc",
         profile: "build",
         sessionId: "ses_doc",
-        parentSessionId: "ses_root",
       })
       const send = sendMessageTool(pluginInput)
       const output = toolOutput(
@@ -498,7 +495,6 @@ describe("registry harness", () => {
         nodeId: "node-mid",
         profile: "build",
         sessionId: "ses_mid",
-        parentSessionId: "ses_root",
       })
       const result = await store.deliverSystemNotification({
         senderSessionId: "ses_mid",
@@ -721,10 +717,10 @@ describe("registry harness", () => {
 
       expect(store.retroStatus("m1").architectSummarySubmitted).toBe(true)
       expect(store.retroCompleteReadiness("m1").ready).toBe(true)
-      expect(store.retroStatus("m1").leadRollupNotified).toBe(true)
+      expect(store.retroStatus("m1").leadRetroSummaryNotified).toBe(true)
       const leadPrompts = promptCalls.filter((call) => call.sessionId === "ses_lead")
       expect(leadPrompts).toHaveLength(1)
-      expect(leadPrompts[0]?.text).toContain("Retro rollup ready")
+      expect(leadPrompts[0]?.text).toContain("Retro summaries ready")
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
@@ -768,7 +764,6 @@ describe("registry harness", () => {
         nodeId: "node-doc",
         profile: "build",
         sessionId: "ses_doc",
-        parentSessionId: "ses_root",
       })
       seedActiveMissionRegistry(dir, "m1")
 

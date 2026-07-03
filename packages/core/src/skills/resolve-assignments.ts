@@ -1,4 +1,5 @@
-import { childNodeIdsFromSpec } from "../tree/parse.ts"
+import type { OrchestrationPlan } from "../orchestration/plan-types.ts"
+import { coordinatorNodeIds } from "../orchestration/plan-graph.ts"
 import type { TeamSpec } from "../tree/types.ts"
 import type { SkillDomainEntry } from "./domains.ts"
 
@@ -9,15 +10,15 @@ export type ResolvedSkillDomainAssignments = {
   source: "spec" | "user_skill" | "inferred"
 }
 
-function isAcceptanceLayerNode(spec: TeamSpec, nodeId: string) {
-  return childNodeIdsFromSpec(spec, nodeId).length > 0
+function isAcceptanceLayerNode(plan: OrchestrationPlan, nodeId: string) {
+  return new Set(coordinatorNodeIds(plan)).has(nodeId)
 }
 
-/** Leaf exec nodes that may receive skill_domain (rollup/coordination nodes omitted). */
-export function nodesEligibleForSkillDomain(spec: TeamSpec) {
+/** Leaf exec nodes that may receive skill_domain (coordination nodes omitted). */
+export function nodesEligibleForSkillDomain(spec: TeamSpec, plan: OrchestrationPlan) {
   return Object.keys(spec.nodes).filter((nodeId) => {
-    if (nodeId === spec.root) return false
-    if (isAcceptanceLayerNode(spec, nodeId)) return false
+    if (nodeId === spec.terminal) return false
+    if (isAcceptanceLayerNode(plan, nodeId)) return false
     return true
   })
 }
@@ -76,11 +77,15 @@ function scoreDomainMatch(description: string, domain: SkillDomainEntry) {
   return score
 }
 
-export function inferAssignmentsFromDomains(spec: TeamSpec, domains: SkillDomainEntry[]) {
+export function inferAssignmentsFromDomains(
+  spec: TeamSpec,
+  plan: OrchestrationPlan,
+  domains: SkillDomainEntry[],
+) {
   if (domains.length === 0) return undefined
 
   const assignments: SkillDomainAssignments = { ...assignmentsFromSpec(spec) }
-  for (const nodeId of nodesEligibleForSkillDomain(spec)) {
+  for (const nodeId of nodesEligibleForSkillDomain(spec, plan)) {
     if (assignments[nodeId]) continue
     const description = spec.nodes[nodeId]?.description ?? ""
     let best: { id: string; score: number } | undefined
@@ -101,14 +106,19 @@ export function inferAssignmentsFromDomains(spec: TeamSpec, domains: SkillDomain
   return assignments
 }
 
-export function skillAssignmentsReady(spec: TeamSpec, assignments: SkillDomainAssignments) {
-  const eligible = nodesEligibleForSkillDomain(spec)
+export function skillAssignmentsReady(
+  spec: TeamSpec,
+  plan: OrchestrationPlan,
+  assignments: SkillDomainAssignments,
+) {
+  const eligible = nodesEligibleForSkillDomain(spec, plan)
   if (eligible.length === 0) return true
   return eligible.every((nodeId) => Boolean(assignments[nodeId]?.trim()))
 }
 
 export function resolveSkillDomainAssignments(
   spec: TeamSpec,
+  plan: OrchestrationPlan,
   input: { userSkill?: string; domains: SkillDomainEntry[] },
 ): ResolvedSkillDomainAssignments | undefined {
   let assignments = assignmentsFromSpec(spec)
@@ -120,9 +130,9 @@ export function resolveSkillDomainAssignments(
     source = "user_skill"
   }
 
-  if (!skillAssignmentsReady(spec, assignments)) {
-    const inferred = inferAssignmentsFromDomains(spec, input.domains)
-    if (!inferred || !skillAssignmentsReady(spec, inferred)) return undefined
+  if (!skillAssignmentsReady(spec, plan, assignments)) {
+    const inferred = inferAssignmentsFromDomains(spec, plan, input.domains)
+    if (!inferred || !skillAssignmentsReady(spec, plan, inferred)) return undefined
     assignments = inferred
     source = "inferred"
   }

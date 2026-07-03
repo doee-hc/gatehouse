@@ -35,28 +35,24 @@ const DEMO_TREE_NODES = [
   {
     node_id: "lead",
     session_id: "ses_demo_lead",
-    parent: null as string | null,
     display_name: "执行组长",
     title: "coordinator",
   },
   {
     node_id: "worker-a",
     session_id: "ses_demo_worker_a",
-    parent: "lead",
     display_name: "执行 A",
     skill_domain: "impl",
   },
   {
     node_id: "worker-b",
     session_id: "ses_demo_worker_b",
-    parent: "lead",
     display_name: "执行 B",
     skill_domain: "impl",
   },
   {
     node_id: "worker-c",
     session_id: "ses_demo_worker_c",
-    parent: "lead",
     display_name: "执行 C",
     skill_domain: "review",
   },
@@ -275,19 +271,17 @@ function buildDemoSnapshot() {
   const phase = currentPhase()
   const tree = {
     mission_id: DEMO_MISSION,
-    root_node: "lead",
+    terminal_node: "lead",
     status: "running",
     nodes: DEMO_TREE_NODES.map((node) => {
       const entry: {
         node_id: string
         session_id: string
-        parent: string | null
         display_name: string
         skill_domain?: string
       } = {
         node_id: node.node_id,
         session_id: node.session_id,
-        parent: node.parent,
         display_name: node.display_name,
       }
       if ("skill_domain" in node) entry.skill_domain = node.skill_domain

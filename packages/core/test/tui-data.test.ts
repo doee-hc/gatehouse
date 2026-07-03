@@ -33,19 +33,17 @@ describe("gatehouse tui data", () => {
     const manifest = parseTreeManifest(`
 mission_id: demo
 status: running
-root_node: root
+terminal_node: root
 created_at: "2026-01-01T00:00:00Z"
 nodes:
   root:
     session_id: ses_root
-    parent: null
     display_name: 任务协调者
   leaf:
     session_id: ses_leaf
-    parent: root
     display_name: 执行成员
 `)
-    expect(treeManifestLines(manifest)).toEqual(["root · 任务协调者", "  leaf · 执行成员"])
+    expect(treeManifestLines(manifest)).toEqual(["root · 任务协调者", "leaf · 执行成员"])
   })
 
   test("loadGatehouseSidebarState reads outer agents and session owner", async () => {
@@ -92,8 +90,8 @@ nodes:
           trees: [
             {
               mission_id: "m-done",
-              root_session_id: "ses_root",
-              root_node: "root",
+              terminal_session_id: "ses_root",
+              terminal_node: "root",
               status: "running",
               created_at: "2026-01-01T00:00:00Z",
             },

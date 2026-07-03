@@ -37,17 +37,15 @@ missions:
       path.join(trees(id), "manifest.yaml"),
       `mission_id: ${id}
 status: ${status}
-root_node: root
+terminal_node: terminal
 created_at: "2026-05-31T12:00:00Z"
 nodes:
-  root:
-    session_id: ses-${id}-root
-    parent: null
-    display_name: "${id} · root"
+  terminal:
+    session_id: ses-${id}-terminal
+    display_name: "${id} · terminal"
     description: "${id} 任务协调者"
   leaf:
     session_id: ses-${id}-leaf
-    parent: root
     display_name: "${id} · leaf"
     description: "${id} 执行成员"
 `,
@@ -72,13 +70,13 @@ nodes:
         updatedAt: now,
       },
       {
-        agentId: "inner:m-a:root",
+        agentId: "inner:m-a:terminal",
         scope: "inner",
         profile: "build",
-        sessionId: "ses-m-a-root",
-        displayName: "m-a root",
+        sessionId: "ses-m-a-terminal",
+        displayName: "m-a terminal",
         missionId: "m-a",
-        nodeId: "root",
+        nodeId: "terminal",
         status: "active",
         createdAt: now,
         updatedAt: now,
@@ -96,13 +94,13 @@ nodes:
         updatedAt: now,
       },
       {
-        agentId: "inner:m-b:root",
+        agentId: "inner:m-b:terminal",
         scope: "inner",
         profile: "build",
-        sessionId: "ses-m-b-root",
-        displayName: "m-b root",
+        sessionId: "ses-m-b-terminal",
+        displayName: "m-b terminal",
         missionId: "m-b",
-        nodeId: "root",
+        nodeId: "terminal",
         status: "active",
         createdAt: now,
         updatedAt: now,
@@ -176,8 +174,8 @@ test("buildPortalSnapshot includes inner agents only for active mission", async 
 
 test("buildPortalSnapshot uses manifest description for inner agents", async () => {
   const snap = await buildPortalSnapshot(dir)
-  const root = snap.agents.find((agent) => agent.agent_id === "inner:m-b:root")
-  expect(root?.description).toBe("m-b 任务协调者")
+  const terminal = snap.agents.find((agent) => agent.agent_id === "inner:m-b:terminal")
+  expect(terminal?.description).toBe("m-b 任务协调者")
   expect(snap.tree?.nodes.find((node) => node.node_id === "leaf")?.description).toBe("m-b 执行成员")
 })
 
@@ -208,17 +206,15 @@ missions:
     path.join(lingeringTreeDir, "manifest.yaml"),
     `mission_id: m-last
 status: archived
-root_node: root
+terminal_node: terminal
 created_at: "2026-05-31T12:00:00Z"
 nodes:
-  root:
-    session_id: ses-m-last-root
-    parent: null
-    display_name: "m-last · root"
+  terminal:
+    session_id: ses-m-last-terminal
+    display_name: "m-last · terminal"
     description: "m-last 任务协调者"
   leaf:
     session_id: ses-m-last-leaf
-    parent: root
     display_name: "m-last · leaf"
     description: "m-last 执行成员"
 `,
@@ -240,13 +236,13 @@ nodes:
         updatedAt: now,
       },
       {
-        agentId: "inner:m-last:root",
+        agentId: "inner:m-last:terminal",
         scope: "inner",
         profile: "build",
-        sessionId: "ses-m-last-root",
-        displayName: "m-last root",
+        sessionId: "ses-m-last-terminal",
+        displayName: "m-last terminal",
         missionId: "m-last",
-        nodeId: "root",
+        nodeId: "terminal",
         status: "completed",
         createdAt: now,
         updatedAt: now,
@@ -289,7 +285,7 @@ nodes:
   expect(snap.lingering_mission_id).toBe("m-last")
   expect(snap.tree?.mission_id).toBe("m-last")
   const innerIds = snap.agents.filter((agent) => agent.scope === "inner").map((agent) => agent.agent_id)
-  expect(innerIds.sort()).toEqual(["inner:m-last:leaf", "inner:m-last:root"])
+  expect(innerIds.sort()).toEqual(["inner:m-last:leaf", "inner:m-last:terminal"])
   expect(snap.agents.every((agent) => agent.scope !== "inner" || agent.lingering === true)).toBe(true)
   expect(snap.agents.every((agent) => agent.scope !== "inner" || agent.status === "idle")).toBe(true)
   await Bun.$`rm -rf ${lingeringDir}`.quiet()
@@ -312,13 +308,12 @@ missions:
     path.join(retroTreeDir, "manifest.yaml"),
     `mission_id: m-retro
 status: running
-root_node: root
+terminal_node: terminal
 created_at: "2026-06-01T12:00:00Z"
 nodes:
-  root:
-    session_id: ses-m-retro-root
-    parent: null
-    display_name: "retro root"
+  terminal:
+    session_id: ses-m-retro-terminal
+    display_name: "retro terminal"
 `,
   )
   const registry = new RegistryDatabase(retroDir)

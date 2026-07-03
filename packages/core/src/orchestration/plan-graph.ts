@@ -1,7 +1,14 @@
 import { extractDependsOnFromStatement, type NormalizedDependsOn } from "./depends-on.ts"
 import type { OrchestrationPlan } from "./plan-types.ts"
+import { parenBraceDepthBefore } from "./source-depth.ts"
+import type { TeamSpec } from "../tree/types.ts"
 import { RegistryDatabase } from "../registry/db.ts"
 import type { RegistryAgent } from "../registry/types.ts"
+
+export type PlanExecutionTrack = {
+  trackId: string
+  nodeIds: string[]
+}
 
 export type PlanRunActivation = {
   targetNodeId: string
@@ -33,8 +40,8 @@ function extractNestedRunStatements(source: string) {
   return statements
 }
 
-/** Ordered run activations from a compiled plan (includes nested fork tracks). */
-export function listPlanRunActivations(plan: OrchestrationPlan): PlanRunActivation[] {
+/** Ordered run activations from plan steps (includes nested fork tracks). */
+export function listPlanRunActivations(plan: Pick<OrchestrationPlan, "steps">): PlanRunActivation[] {
   const activations: PlanRunActivation[] = []
 
   for (const step of plan.steps) {
@@ -111,4 +118,257 @@ export function isTerminalInnerAgent(projectDirectory: string, agent: RegistryAg
   const db = new RegistryDatabase(projectDirectory, { readonly: true })
   const plan = db.getLatestOrchestrationPlan(agent.missionId)
   return isMissionTerminalNode(agent.nodeId, plan)
+}
+
+function findCallEnd(source: string, openParenIndex: number) {
+  let depth = 0
+  for (let i = openParenIndex; i < source.length; i += 1) {
+    const ch = source[i]
+    if (ch === "(") depth += 1
+    else if (ch === ")") {
+      depth -= 1
+      if (depth === 0) return i
+    }
+  }
+  return source.length
+}
+
+function findMatchingBracket(source: string, openBracketIndex: number) {
+  let depth = 0
+  for (let i = openBracketIndex; i < source.length; i += 1) {
+    const ch = source[i]!
+    if (ch === "[") depth += 1
+    else if (ch === "]") {
+      depth -= 1
+      if (depth === 0) return i
+    }
+  }
+  return source.length
+}
+
+function splitTopLevelCommaList(body: string) {
+  const items: string[] = []
+  let start = 0
+  let depth = 0
+  let inString: '"' | "'" | "`" | null = null
+  let escape = false
+
+  for (let i = 0; i < body.length; i += 1) {
+    const ch = body[i]!
+    if (escape) {
+      escape = false
+      continue
+    }
+    if (inString) {
+      if (ch === "\\") escape = true
+      else if (ch === inString) inString = null
+      continue
+    }
+    if (ch === '"' || ch === "'" || ch === "`") {
+      inString = ch
+      continue
+    }
+    if (ch === "(" || ch === "{" || ch === "[") depth += 1
+    else if (ch === ")" || ch === "}" || ch === "]") depth -= 1
+    else if (ch === "," && depth === 0) {
+      const chunk = body.slice(start, i).trim()
+      if (chunk) items.push(chunk)
+      start = i + 1
+    }
+  }
+
+  const last = body.slice(start).trim()
+  if (last) items.push(last)
+  return items
+}
+
+function findMatchingBrace(source: string, openBraceIndex: number) {
+  let depth = 0
+  for (let i = openBraceIndex; i < source.length; i += 1) {
+    const ch = source[i]!
+    if (ch === "{") depth += 1
+    else if (ch === "}") {
+      depth -= 1
+      if (depth === 0) return i
+    }
+  }
+  return source.length
+}
+
+function extractForkTrackBodies(statement: string) {
+  const forkMatch = /\bctx\.fork\s*\(/.exec(statement)
+  if (!forkMatch) return null
+
+  const openParenIndex = statement.indexOf("(", forkMatch.index)
+  if (openParenIndex < 0) return null
+
+  const closeParenIndex = findCallEnd(statement, openParenIndex)
+  const forkArgs = statement.slice(openParenIndex + 1, closeParenIndex).trim()
+  const openBracketIndex = forkArgs.indexOf("[")
+  if (openBracketIndex < 0) return null
+
+  const closeBracketIndex = findMatchingBracket(forkArgs, openBracketIndex)
+  const arrayBody = forkArgs.slice(openBracketIndex + 1, closeBracketIndex)
+  return splitTopLevelCommaList(arrayBody)
+}
+
+function extractAsyncArrowBody(trackSource: string) {
+  const arrowBodyMatch = /=>\s*\{/.exec(trackSource)
+  if (!arrowBodyMatch) return trackSource.trim()
+
+  const openBraceIndex = trackSource.indexOf("{", arrowBodyMatch.index)
+  if (openBraceIndex < 0) return trackSource.trim()
+
+  const closeBraceIndex = findMatchingBrace(trackSource, openBraceIndex)
+  return trackSource.slice(openBraceIndex + 1, closeBraceIndex).trim()
+}
+
+function extractTopLevelAwaitStatements(source: string) {
+  const trimmed = source.trim()
+  const boundaryPattern = /\bawait\s+ctx\.(?:run|fork)\s*\(/gm
+  const starts: number[] = []
+  let match: RegExpExecArray | null
+  while ((match = boundaryPattern.exec(trimmed)) !== null) {
+    if (parenBraceDepthBefore(trimmed, match.index) === 0) {
+      starts.push(match.index)
+    }
+  }
+  if (starts.length === 0) return []
+
+  const statements: string[] = []
+  for (let i = 0; i < starts.length; i += 1) {
+    const start = starts[i]!
+    const end = i + 1 < starts.length ? starts[i + 1]! : trimmed.length
+    const chunk = trimmed.slice(start, end).trim()
+    if (chunk) statements.push(chunk)
+  }
+  return statements
+}
+
+/** Ordered run activations from a compiled plan (includes nested fork tracks). */
+export function activatedNodeIds(plan: OrchestrationPlan) {
+  return new Set(listPlanRunActivations(plan).map((activation) => activation.targetNodeId))
+}
+
+/** Summary dependsOn sources declared for activations targeting `nodeId`. */
+export function dependsOnSummaryNodes(plan: Pick<OrchestrationPlan, "steps">, nodeId: string) {
+  const sources = new Set<string>()
+  for (const activation of listPlanRunActivations(plan)) {
+    if (activation.targetNodeId !== nodeId) continue
+    for (const dep of activation.dependsOn) {
+      if (dep.summary && dep.node !== nodeId) sources.add(dep.node)
+    }
+  }
+  return [...sources]
+}
+
+export function planChildNodeIds(plan: Pick<OrchestrationPlan, "steps">, nodeId: string) {
+  return dependsOnSummaryNodes(plan, nodeId)
+}
+
+export function dependsOnSummarySubtreeNodeIds(plan: Pick<OrchestrationPlan, "steps">, nodeId: string) {
+  const ids = new Set<string>([nodeId])
+  const queue = [nodeId]
+  while (queue.length > 0) {
+    const current = queue.shift()!
+    for (const source of dependsOnSummaryNodes(plan, current)) {
+      if (ids.has(source)) continue
+      ids.add(source)
+      queue.push(source)
+    }
+  }
+  return [...ids]
+}
+
+export function coordinatorNodeIds(plan: Pick<OrchestrationPlan, "steps">) {
+  const ids = new Set<string>()
+  for (const activation of listPlanRunActivations(plan)) {
+    if (activation.dependsOn.some((dep) => dep.summary)) ids.add(activation.targetNodeId)
+  }
+  return ids
+}
+
+export function planLeafNodeIds(team: TeamSpec, plan: Pick<OrchestrationPlan, "steps">) {
+  const coordinators = coordinatorNodeIds(plan)
+  return Object.keys(team.nodes).filter((nodeId) => nodeId !== team.terminal && !coordinators.has(nodeId))
+}
+
+export function isPlanLeafNode(team: TeamSpec, plan: Pick<OrchestrationPlan, "steps">, nodeId: string) {
+  return planLeafNodeIds(team, plan).includes(nodeId)
+}
+
+export function listPlanExecutionTracks(plan: OrchestrationPlan): PlanExecutionTrack[] {
+  const tracks: PlanExecutionTrack[] = []
+  let mainTrack: string[] = []
+
+  for (const step of plan.steps) {
+    if (step.op === "fork") {
+      if (mainTrack.length > 0) {
+        tracks.push({ trackId: mainTrack[0]!, nodeIds: [...mainTrack] })
+        mainTrack = []
+      }
+      for (const trackSource of extractForkTrackBodies(step.statement) ?? []) {
+        const nodeIds = extractTopLevelAwaitStatements(extractAsyncArrowBody(trackSource))
+          .map((statement) => extractRunTargetFromStatement(statement))
+          .filter((nodeId): nodeId is string => Boolean(nodeId))
+        if (nodeIds.length > 0) tracks.push({ trackId: nodeIds[0]!, nodeIds })
+      }
+      continue
+    }
+    if (step.op === "run") {
+      const nodeId = step.nodeId ?? extractRunTargetFromStatement(step.statement)
+      if (nodeId) mainTrack.push(nodeId)
+    }
+  }
+
+  if (mainTrack.length > 0) tracks.push({ trackId: mainTrack[0]!, nodeIds: [...mainTrack] })
+  return tracks
+}
+
+/** Parallel track id for lint; null for terminal node. */
+export function planTrackForNode(plan: OrchestrationPlan, team: TeamSpec, nodeId: string): string | null {
+  if (nodeId === team.terminal) return null
+
+  for (const track of listPlanExecutionTracks(plan)) {
+    if (track.nodeIds.includes(nodeId)) return track.trackId
+  }
+
+  for (const activation of listPlanRunActivations(plan)) {
+    for (const dep of activation.dependsOn) {
+      if (dep.summary && dep.node === nodeId) return activation.targetNodeId
+    }
+  }
+
+  if (dependsOnSummaryNodes(plan, nodeId).length > 0) return nodeId
+  return nodeId
+}
+
+export function teamNodeOrder(team: TeamSpec, plan?: OrchestrationPlan) {
+  const nodeIds = Object.keys(team.nodes)
+  if (!plan) return [team.terminal, ...nodeIds.filter((nodeId) => nodeId !== team.terminal).sort()]
+
+  const ordered: string[] = []
+  const seen = new Set<string>()
+  for (const activation of listPlanRunActivations(plan)) {
+    if (seen.has(activation.targetNodeId) || !team.nodes[activation.targetNodeId]) continue
+    seen.add(activation.targetNodeId)
+    ordered.push(activation.targetNodeId)
+  }
+  for (const nodeId of nodeIds) {
+    if (!seen.has(nodeId)) ordered.push(nodeId)
+  }
+  return ordered
+}
+
+export function planSummaryDescendantNodeIds(plan: Pick<OrchestrationPlan, "steps">, nodeId: string) {
+  return dependsOnSummarySubtreeNodeIds(plan, nodeId).filter((id) => id !== nodeId)
+}
+
+export function innerNodeShowsMissionContract(
+  team: TeamSpec,
+  nodeId: string,
+  plan: Pick<OrchestrationPlan, "steps">,
+) {
+  if (nodeId === team.terminal) return true
+  return dependsOnSummaryNodes(plan, nodeId).length > 0
 }

@@ -81,12 +81,11 @@ describe("domain skill kickoff", () => {
     const manifest = parseTreeManifest(`
 mission_id: m1
 status: running
-root_node: node-leaf
+terminal_node: node-leaf
 created_at: "2026-01-01T00:00:00Z"
 nodes:
   node-leaf:
     session_id: s2
-    parent: null
     skill_domain: scan
 `)
     expect(resolveExecSkillDomain(manifest, "node-leaf", {})).toBe("scan")
@@ -97,12 +96,11 @@ nodes:
     const manifest = parseTreeManifest(`
 mission_id: m1
 status: running
-root_node: node-leaf
+terminal_node: node-leaf
 created_at: "2026-01-01T00:00:00Z"
 nodes:
   node-leaf:
     session_id: s2
-    parent: null
 `)
     expect(resolveExecSkillDomain(manifest, "node-leaf", { briefDomainIds: ["dft"] })).toBeUndefined()
   })

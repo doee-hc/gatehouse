@@ -5,7 +5,7 @@ import type { ExtractManifest, RetroManifest, TreeManifest, TreeNode, TreesIndex
 type TreeRow = {
   mission_id: string
   status: string
-  root_node: string
+  terminal_node: string
   created_at: string
   archived_at: string | null
 }
@@ -14,7 +14,6 @@ type TreeNodeRow = {
   mission_id: string
   node_id: string
   session_id: string
-  parent_node_id: string | null
   display_name: string | null
   description: string | null
   profile: string | null
@@ -70,7 +69,6 @@ function rowsToManifest(tree: TreeRow, nodeRows: TreeNodeRow[]): TreeManifest {
   for (const row of nodeRows) {
     nodes[row.node_id] = {
       session_id: row.session_id,
-      parent: row.parent_node_id,
       ...(row.display_name && { display_name: row.display_name }),
       ...(row.description && { description: row.description }),
       ...(row.profile && { profile: row.profile }),
@@ -80,7 +78,7 @@ function rowsToManifest(tree: TreeRow, nodeRows: TreeNodeRow[]): TreeManifest {
   return {
     mission_id: tree.mission_id,
     status: tree.status as TreeManifest["status"],
-    root_node: tree.root_node,
+    terminal_node: tree.terminal_node,
     created_at: tree.created_at,
     nodes,
     ...(tree.archived_at && { archived_at: tree.archived_at }),
@@ -138,18 +136,18 @@ export function saveTreeManifest(db: Database, manifest: TreeManifest) {
   db.exec("BEGIN")
   try {
     const upsertTree = db.prepare(`
-      INSERT INTO registry_tree (mission_id, status, root_node, created_at, archived_at)
-      VALUES ($mission_id, $status, $root_node, $created_at, $archived_at)
+      INSERT INTO registry_tree (mission_id, status, terminal_node, created_at, archived_at)
+      VALUES ($mission_id, $status, $terminal_node, $created_at, $archived_at)
       ON CONFLICT(mission_id) DO UPDATE SET
         status = excluded.status,
-        root_node = excluded.root_node,
+        terminal_node = excluded.terminal_node,
         created_at = excluded.created_at,
         archived_at = excluded.archived_at
     `)
     upsertTree.run({
       $mission_id: manifest.mission_id,
       $status: manifest.status,
-      $root_node: manifest.root_node,
+      $terminal_node: manifest.terminal_node,
       $created_at: manifest.created_at,
       $archived_at: manifest.archived_at ?? null,
     })
@@ -158,9 +156,9 @@ export function saveTreeManifest(db: Database, manifest: TreeManifest) {
     })
     const insertNode = db.prepare(`
       INSERT INTO registry_tree_node (
-        mission_id, node_id, session_id, parent_node_id, display_name, description, profile, skill_domain
+        mission_id, node_id, session_id, display_name, description, profile, skill_domain
       ) VALUES (
-        $mission_id, $node_id, $session_id, $parent_node_id, $display_name, $description, $profile, $skill_domain
+        $mission_id, $node_id, $session_id, $display_name, $description, $profile, $skill_domain
       )
     `)
     for (const [nodeId, node] of Object.entries(manifest.nodes)) {
@@ -168,7 +166,6 @@ export function saveTreeManifest(db: Database, manifest: TreeManifest) {
         $mission_id: manifest.mission_id,
         $node_id: nodeId,
         $session_id: node.session_id,
-        $parent_node_id: node.parent,
         $display_name: node.display_name ?? null,
         $description: node.description ?? null,
         $profile: node.profile ?? null,
@@ -196,31 +193,31 @@ export function listTreeMissionIds(db: Database, status?: TreeManifest["status"]
 type TreesIndexRow = {
   mission_id: string
   status: string
-  root_node: string
+  terminal_node: string
   created_at: string
-  root_session_id: string | null
+  terminal_session_id: string | null
   objective: string | null
 }
 
 export function listTreesIndex(db: Database): TreesIndex {
   const rows = db
     .query(
-      `SELECT t.mission_id, t.status, t.root_node, t.created_at,
-              n.session_id AS root_session_id, m.objective AS objective
+      `SELECT t.mission_id, t.status, t.terminal_node, t.created_at,
+              n.session_id AS terminal_session_id, m.objective AS objective
        FROM registry_tree t
        LEFT JOIN registry_tree_node n
-         ON n.mission_id = t.mission_id AND n.node_id = t.root_node
+         ON n.mission_id = t.mission_id AND n.node_id = t.terminal_node
        LEFT JOIN registry_mission m ON m.mission_id = t.mission_id
        ORDER BY t.created_at DESC`,
     )
     .all() as TreesIndexRow[]
   const trees = rows
     .map((row): TreesIndexEntry | undefined => {
-      if (!row.root_session_id) return undefined
+      if (!row.terminal_session_id) return undefined
       return {
         mission_id: row.mission_id,
-        root_session_id: row.root_session_id,
-        root_node: row.root_node,
+        terminal_session_id: row.terminal_session_id,
+        terminal_node: row.terminal_node,
         status: row.status,
         created_at: row.created_at,
         ...(row.objective && { objective: row.objective }),
@@ -439,7 +436,7 @@ export const TREE_MANIFEST_SCHEMA_SQL = `
     CREATE TABLE IF NOT EXISTS registry_tree (
       mission_id TEXT PRIMARY KEY,
       status TEXT NOT NULL,
-      root_node TEXT NOT NULL,
+      terminal_node TEXT NOT NULL,
       created_at TEXT NOT NULL,
       archived_at TEXT
     );
@@ -449,7 +446,6 @@ export const TREE_MANIFEST_SCHEMA_SQL = `
       mission_id TEXT NOT NULL,
       node_id TEXT NOT NULL,
       session_id TEXT NOT NULL,
-      parent_node_id TEXT,
       display_name TEXT,
       description TEXT,
       profile TEXT,

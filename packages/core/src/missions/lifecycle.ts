@@ -189,12 +189,12 @@ export async function waitForAllMissionAgentsIdle(input: {
   throw new Error(lastNotIdle?.message ?? "Timed out waiting for mission agents to become idle")
 }
 
-/** When missions.yaml is retro and Lead calls mission_complete(done), both retro rollup tracks must finish. */
+/** When missions.yaml is retro and Lead calls mission_complete(done), retro summary registration must finish. */
 export function assertRetroReadyForComplete(registry: RegistryStore, missionId: string) {
   const readiness = registry.retroCompleteReadiness(missionId)
   if (readiness.ready) return readiness
   throw new Error(
-    `Mission ${missionId} retro rollup incomplete; wait for architect/curator summary registration before mission_complete(done): ${readiness.pending.join(", ")}`,
+    `Mission ${missionId} retro summaries incomplete; wait for architect/curator summary registration before mission_complete(done): ${readiness.pending.join(", ")}`,
   )
 }
 

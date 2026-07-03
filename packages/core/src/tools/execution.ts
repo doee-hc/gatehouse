@@ -11,7 +11,7 @@ import {
   runDeliveryPrecheck,
 } from "../delivery/criteria.ts"
 import { parseEvidenceInput } from "../delivery/evidence.ts"
-import { submitDeliveryOnRootComplete } from "../delivery/root-complete.ts"
+import { submitDeliveryOnTerminalComplete } from "../delivery/terminal-complete.ts"
 import { buildCriteriaForMission } from "../delivery/store.ts"
 import { readMissionsDocument } from "../missions/store.ts"
 import { RegistryDatabase } from "../registry/db.ts"
@@ -28,7 +28,7 @@ function allOtherNodesDone(
 export function executionCompleteTool(input: PluginInput) {
   return tool({
     description:
-      "Signal that this execution node finished its Node Brief work. Advances orchestration (unblocks nodes waiting on you). Structural root: when all nodes are done, runs done_when precheck, records delivery, and notifies lead automatically. Put deliverables in the project tree; pass artifact paths with descriptions in artifacts.",
+      "Signal that this execution node finished its Node Brief work. Advances orchestration (unblocks nodes waiting on you). Terminal node: when all nodes are done, runs done_when precheck, records delivery, and notifies lead automatically. Put deliverables in the project tree; pass artifact paths with descriptions in artifacts.",
     args: {
       summary: tool.schema.string().min(1).describe("Short completion summary (required)"),
       artifacts: tool.schema
@@ -44,7 +44,7 @@ export function executionCompleteTool(input: PluginInput) {
       force_reason: tool.schema
         .string()
         .optional()
-        .describe("Structural root only, final delivery: required when done_when precheck has unmet items"),
+        .describe("Terminal node only, final delivery: required when done_when precheck has unmet items"),
       evidence: tool.schema
         .array(
           tool.schema.object({
@@ -54,7 +54,7 @@ export function executionCompleteTool(input: PluginInput) {
           }),
         )
         .optional()
-        .describe("Structural root only, final delivery: evidence per criterion"),
+        .describe("Terminal node only, final delivery: evidence per criterion"),
     },
     async execute(args, context) {
       const toolName = "gatehouse_execution_complete"
@@ -101,9 +101,9 @@ export function executionCompleteTool(input: PluginInput) {
 
         const state = readOrchestrationState(input.directory, missionId)
         const node = state?.nodes[nodeId]
-        const finalRootDelivery = Boolean(isTerminal && state && allOtherNodesDone(state, nodeId))
+        const finalTerminalDelivery = Boolean(isTerminal && state && allOtherNodesDone(state, nodeId))
 
-        if (finalRootDelivery) {
+        if (finalTerminalDelivery) {
           const missionsDoc = await readMissionsDocument(input.directory)
           const mission = missionsDoc.missions.find((entry) => entry.id === missionId)
           if (!mission) {
@@ -187,11 +187,11 @@ export function executionCompleteTool(input: PluginInput) {
         }
 
         let delivery:
-          | Awaited<ReturnType<typeof submitDeliveryOnRootComplete>>
+          | Awaited<ReturnType<typeof submitDeliveryOnTerminalComplete>>
           | undefined
         if (isTerminal && result.all_done) {
           try {
-            delivery = await submitDeliveryOnRootComplete({
+            delivery = await submitDeliveryOnTerminalComplete({
               plugin: input,
               store,
               missionId,

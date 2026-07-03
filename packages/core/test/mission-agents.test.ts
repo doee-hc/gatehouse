@@ -30,7 +30,7 @@ describe("mission inner agent lifecycle", () => {
           sessionId: "ses-a",
           displayName: "m-a root",
           missionId: "m-a",
-          nodeId: "root",
+          nodeId: "terminal",
           status: "active",
           createdAt: now,
           updatedAt: now,
@@ -77,10 +77,10 @@ describe("mission inner agent lifecycle", () => {
       stringifyYaml({
         mission_id: "m-a",
         status: "running",
-        root_node: "root",
+        terminal_node: "root",
         created_at: new Date().toISOString(),
         nodes: {
-          root: { session_id: "ses-root", parent: null, display_name: "root", profile: "build" },
+          terminal: { session_id: "ses-root", display_name: "root", profile: "build" },
         },
       }),
     )
@@ -96,7 +96,7 @@ describe("mission inner agent lifecycle", () => {
           sessionId: "ses-root",
           displayName: "m-a root",
           missionId: "m-a",
-          nodeId: "root",
+          nodeId: "terminal",
           status: "active",
           createdAt: now,
           updatedAt: now,

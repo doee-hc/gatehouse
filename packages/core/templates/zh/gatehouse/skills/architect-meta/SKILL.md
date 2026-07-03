@@ -17,8 +17,8 @@ disable-model-invocation: true
 | ---------------------------- | ----------------------------------------------------------------- |
 | `gatehouse_submit_orchestration`   | 校验并提交 `mission.script.ts` 编排方案                                       |
 | `gatehouse_mission_info`  | 只读刷新任务快照（objective / done_when / must_not / notes / user_topology） |
-| `gatehouse_send_message`     | 协调消息（勿用于复盘/skill rollup 登记）                                              |
-| `gatehouse_retro_summary_record` | 登记 `architect-summary.md`；rollup 就绪后 Gatehouse 自动通知 {{lead_name}} |
+| `gatehouse_send_message`     | 协调消息（勿用于复盘/skill 摘要登记）                                              |
+| `gatehouse_retro_summary_record` | 登记 `architect-summary.md`；复盘摘要就绪后 Gatehouse 自动通知 {{lead_name}} |
 | `gatehouse_list_team`        | 无参数：外层 contacts + 当前任务执行树（及 retro 节点若存在）                          |
 | `gatehouse_session_snapshot` | **单次诊断**（异常排查），禁止循环轮询                                             |
 
@@ -47,7 +47,7 @@ disable-model-invocation: true
 
 | 导出                                               | 用途                                                                          |
 | ------------------------------------------------ | --------------------------------------------------------------------------- |
-| `export const team`                              | 执行团队名册：`node_id`、`parent`（Portal/汇报线）、`description` 一句话职责；`root` = terminal 节点 id |
+| `export const team`                              | 执行团队名册：`node_id` + `description` 一句话职责；`root` = terminal 节点 id |
 | `export const meta`                              | 可选：进度 `phases`（`name` 可选）                                                |
 | `export default async function orchestrate(ctx)` | 编排时序：`ctx.run` / `ctx.fork` / `dependsOn` |
 
@@ -72,14 +72,12 @@ await ctx.run("researcher-a", {
 ```typescript
 export const team = {
   mission_id: "<id>",
-  root: "<terminal-node-id>",
+  terminal: "<terminal-node-id>",
   nodes: {
     "<leaf-id>": {
-      parent: "<terminal-node-id>",
       description: "负责 <具体产出> 的执行成员",
     },
     "<terminal-node-id>": {
-      parent: null,
       description: "产出 Mission 最终交付物",
     },
   },
@@ -112,8 +110,8 @@ export default async function orchestrate(ctx) {
 
 **团队与编排：**
 
-- `team.root` **必须等于 terminal 节点**（`parent: null`）。使用有意义的 node id — **勿**默认添加名为 `root` 的通用节点。
-- `team.nodes` 列出成员与 `parent`（仅 Portal/清单用）。**时序与依赖**只写在 `orchestrate()` 的 `ctx.run` / `dependsOn` — **勿**从 `parent` 推断执行顺序。
+- `team.terminal` **必须等于 terminal 节点**。使用有意义的 node id — **勿**默认添加名为 `root` 的通用节点。
+- `team.nodes` 只列出成员与一句话职责。**时序与依赖**只写在 `orchestrate()` 的 `ctx.run` / `dependsOn`，结构以该 plan 为准。
 - **Terminal 节点**：编排 plan 的依赖 sink（plan 最后一个无下游依赖的 `ctx.run` 目标）。全树 done 且 terminal `gatehouse_execution_complete` 时系统自动通知 {{lead_name}}。
 - 仅在工作拆分确实需要时添加中间汇总节点。节点需等待上游交付物时，在 `dependsOn` 用 `summary: true`；Curator 是否分配 `skill_domain` 由其判断，脚本不写。
 
@@ -166,7 +164,7 @@ await ctx.fork([
     })
   },
 ])
-// 仅当 Mission 确实需要跨 track 最终整合时添加；team.root 指向该节点。
+// 仅当 Mission 确实需要跨 track 最终整合时添加；team.terminal 指向该节点。
 await ctx.run("<terminal-node-id>", {
   brief: { your_work: ["…"], acceptance_slice: ["…"] },
   text: ctx.template.workOrder("<terminal-node-id>"),
@@ -174,7 +172,7 @@ await ctx.run("<terminal-node-id>", {
 })
 ```
 
-若最后一个工作节点已满足 `done_when`，直接令其担任 terminal（`team.root`，`parent: null`）— 勿再套一层包装节点。
+若最后一个工作节点已满足 `done_when`，直接令其担任 terminal（`team.terminal`）— 勿再套一层包装节点。
 
 **脚本写作限制：**
 
@@ -204,7 +202,7 @@ await ctx.run("<terminal-node-id>", {
 1. 阅读 `.gatehouse/trees/<id>/reports/retro-summary.md`（retro-analyst 产出）。
 2. 审核结论，迭代 **architect-meta** skill。
 3. 按 `architect-summary.template.md` 写 `.gatehouse/trees/<id>/reports/architect-summary.md`。
-4. 调用 **`gatehouse_retro_summary_record`**（勿用 `send_message` 通知 {{lead_name}} 完成 rollup）。
+4. 调用 **`gatehouse_retro_summary_record`**（勿用 `send_message` 通知 {{lead_name}} 完成摘要登记）。
 
 ## 路径
 

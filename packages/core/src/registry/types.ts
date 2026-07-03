@@ -1,4 +1,4 @@
-export const REGISTRY_SCHEMA_VERSION = 10
+export const REGISTRY_SCHEMA_VERSION = 11
 
 export const OUTER_LEAD_ID = "outer:lead"
 export const OUTER_ARCHITECT_ID = "outer:architect"
@@ -40,7 +40,6 @@ export type RegistryAgent = {
   displayName: string
   missionId?: string
   nodeId?: string
-  parentSessionId?: string
   projectRootSessionId?: string
   status: RegistryStatus
   createdAt: string
@@ -70,8 +69,8 @@ export type RegistryRetroRun = {
   architectNotifiedAt?: string
   /** Set when profile architect calls gatehouse_retro_summary_record. */
   architectLeadNotifiedAt?: string
-  /** Set when Gatehouse auto-notifies profile lead that retro rollup is complete. */
-  leadRollupNotifiedAt?: string
+  /** Set when Gatehouse auto-notifies profile lead that retro summaries are complete. */
+  leadRetroSummaryNotifiedAt?: string
 }
 
 export type RegistrySkillExtractRun = {
@@ -146,7 +145,6 @@ export type RegisterAgentInput = {
   displayName: string
   missionId?: string
   nodeId?: string
-  parentSessionId?: string
   projectRootSessionId?: string
   status?: RegistryStatus
 }

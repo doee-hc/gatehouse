@@ -16,7 +16,7 @@ import {
 import { getRegistryStore } from "../src/registry/context.ts"
 import type { RegistryStore } from "../src/registry/store.ts"
 import type { GatehouseClient } from "../src/session/client.ts"
-import { topologicalNodeOrder } from "../src/tree/parse.ts"
+import { teamNodeOrder } from "../src/orchestration/plan-graph.ts"
 import type { TeamSpec, TreeManifest } from "../src/tree/types.ts"
 
 export type ReplayTestEnv = {
@@ -69,18 +69,17 @@ export function countPromptMarkers(promptTexts: readonly string[], marker: strin
 
 export function teamManifest(team: TeamSpec): TreeManifest {
   const nodes: TreeManifest["nodes"] = {}
-  for (const nodeId of topologicalNodeOrder(team)) {
+  for (const nodeId of teamNodeOrder(team)) {
     const spec = team.nodes[nodeId]!
     nodes[nodeId] = {
       session_id: `ses_${nodeId}`,
-      parent: spec.parent,
       description: spec.description,
     }
   }
   return {
     mission_id: team.mission_id,
     status: "running",
-    root_node: team.root,
+    terminal_node: team.terminal,
     created_at: new Date().toISOString(),
     nodes,
   }
@@ -147,18 +146,18 @@ export async function createReplayTestEnv(input: {
   const script = await loadMissionScript(dir, input.missionId)
   if (!script) throw new Error("failed to load mission script")
 
-  for (const nodeId of topologicalNodeOrder(script.team)) {
+  for (const nodeId of teamNodeOrder(script.team)) {
     const sessionId = `ses_${nodeId}`
     bindSession(nodeId, sessionId)
     store.registerInnerNode({
       missionId: input.missionId,
       nodeId,
       sessionId,
-      profile: nodeId === script.team.root ? "build" : "build",
+      profile: nodeId === script.team.terminal ? "build" : "build",
     })
   }
 
-  writeOrchestrationState(dir, initOrchestrationState(input.missionId, topologicalNodeOrder(script.team)))
+  writeOrchestrationState(dir, initOrchestrationState(input.missionId, teamNodeOrder(script.team)))
 
   saveMissionScriptRecord(dir, {
     team: script.team,
@@ -276,11 +275,11 @@ export const SCRIPT = {
     return `
 export const team = {
   mission_id: "${missionId}",
-  root: "n3",
+  terminal: "n3",
   nodes: {
-    n3: { parent: null, description: "root coordinator" },
-    n2: { parent: "n3", description: "mid coordinator" },
-    n1: { parent: "n2", description: "leaf worker" },
+    n3: { description: "root coordinator" },
+    n2: { description: "mid coordinator" },
+    n1: { description: "leaf worker" },
   },
 }
 export default async function orchestrate(ctx) {
@@ -303,8 +302,8 @@ export default async function orchestrate(ctx) {
     return `
 export const team = {
   mission_id: "${missionId}",
-  root: "a",
-  nodes: { a: { parent: null, description: "worker" } },
+  terminal: "a",
+  nodes: { a: { description: "worker" } },
 }
 export default async function orchestrate(ctx) {
   await ctx.run("a", { brief: { your_work: ["wave1"], acceptance_slice: [] }, text: "marker:wave1" })
@@ -317,11 +316,11 @@ export default async function orchestrate(ctx) {
     return `
 export const team = {
   mission_id: "${missionId}",
-  root: "root",
+  terminal: "terminal",
   nodes: {
-    root: { parent: null, description: "root" },
-    a1: { parent: "root", description: "a1 leaf" },
-    a2: { parent: "a1", description: "a2 leaf" },
+    terminal: { description: "terminal" },
+    a1: { description: "a1 leaf" },
+    a2: { description: "a2 leaf" },
   },
 }
 export default async function orchestrate(ctx) {
@@ -331,7 +330,7 @@ export default async function orchestrate(ctx) {
       await ctx.run("a2", { brief: { your_work: ["a2"], acceptance_slice: [] }, text: "marker:fork-a2" })
     },
   ])
-  await ctx.run("root", {
+  await ctx.run("terminal", {
     brief: { your_work: ["final"], acceptance_slice: [] },
     text: "marker:final-root",
     dependsOn: [{ node: "a2", summary: true }],
@@ -344,8 +343,8 @@ export default async function orchestrate(ctx) {
     return `
 export const team = {
   mission_id: "${missionId}",
-  root: "a",
-  nodes: { a: { parent: null, description: "worker" } },
+  terminal: "a",
+  nodes: { a: { description: "worker" } },
 }
 export default async function orchestrate(ctx) {
   await ctx.fork([
@@ -362,11 +361,11 @@ export default async function orchestrate(ctx) {
     return `
 export const team = {
   mission_id: "${missionId}",
-  root: "root",
+  terminal: "terminal",
   nodes: {
-    root: { parent: null, description: "root" },
-    a: { parent: "root", description: "a" },
-    b: { parent: "root", description: "b" },
+    terminal: { description: "terminal" },
+    a: { description: "a" },
+    b: { description: "b" },
   },
 }
 export default async function orchestrate(ctx) {
@@ -384,8 +383,8 @@ export default async function orchestrate(ctx) {
       })
     },
   ])
-  await ctx.run("root", {
-    brief: { your_work: ["rollup"], acceptance_slice: [] },
+  await ctx.run("terminal", {
+    brief: { your_work: ["summary"], acceptance_slice: [] },
     text: "marker:rollup-root",
     dependsOn: [{ node: "a", summary: true }, { node: "b", summary: true }],
   })
@@ -398,15 +397,15 @@ export default async function orchestrate(ctx) {
     return `
 export const team = {
   mission_id: "${missionId}",
-  root: "root",
+  terminal: "terminal",
   nodes: {
-    root: { parent: null, description: "root" },
-    a: { parent: "root", description: "a coord" },
-    b: { parent: "root", description: "b coord" },
-    a1: { parent: "a", description: "a1" },
-    a2: { parent: "a", description: "a2" },
-    b1: { parent: "b", description: "b1" },
-    b2: { parent: "b", description: "b2" },
+    terminal: { description: "terminal" },
+    a: { description: "a coord" },
+    b: { description: "b coord" },
+    a1: { description: "a1" },
+    a2: { description: "a2" },
+    b1: { description: "b1" },
+    b2: { description: "b2" },
   },
 }
 export default async function orchestrate(ctx) {
@@ -430,7 +429,7 @@ export default async function orchestrate(ctx) {
       })
     },
   ])
-  await ctx.run("root", {
+  await ctx.run("terminal", {
     brief: { your_work: ["final"], acceptance_slice: [] },
     text: "marker:final-root",
     dependsOn: [{ node: "a", summary: true }, { node: "b", summary: true }],
@@ -444,15 +443,15 @@ export default async function orchestrate(ctx) {
     return `
 export const team = {
   mission_id: "${missionId}",
-  root: "root",
+  terminal: "terminal",
   nodes: {
-    root: { parent: null, description: "root" },
-    a: { parent: "root", description: "a coord" },
-    b: { parent: "root", description: "b coord" },
-    a1: { parent: "a", description: "a1" },
-    a2: { parent: "a", description: "a2" },
-    b1: { parent: "b", description: "b1" },
-    b2: { parent: "b", description: "b2" },
+    terminal: { description: "terminal" },
+    a: { description: "a coord" },
+    b: { description: "b coord" },
+    a1: { description: "a1" },
+    a2: { description: "a2" },
+    b1: { description: "b1" },
+    b2: { description: "b2" },
   },
 }
 export default async function orchestrate(ctx) {
@@ -500,7 +499,7 @@ export default async function orchestrate(ctx) {
       })
     },
   ])
-  await ctx.run("root", {
+  await ctx.run("terminal", {
     brief: { your_work: ["final"], acceptance_slice: [] },
     text: "marker:final-root",
     dependsOn: [{ node: "a", summary: true }, { node: "b", summary: true }],
@@ -514,13 +513,13 @@ export default async function orchestrate(ctx) {
     return `
 export const team = {
   mission_id: "${missionId}",
-  root: "l4",
+  terminal: "l4",
   nodes: {
-    l4: { parent: null, description: "root" },
-    l3: { parent: "l4", description: "l3 coord" },
-    l2: { parent: "l3", description: "l2 coord" },
-    l1a: { parent: "l2", description: "leaf a" },
-    l1b: { parent: "l2", description: "leaf b" },
+    l4: { description: "root" },
+    l3: { description: "l3 coord" },
+    l2: { description: "l2 coord" },
+    l1a: { description: "leaf a" },
+    l1b: { description: "leaf b" },
   },
 }
 export default async function orchestrate(ctx) {
@@ -562,11 +561,11 @@ export default async function orchestrate(ctx) {
     return `
 export const team = {
   mission_id: "${missionId}",
-  root: "coord",
+  terminal: "coord",
   nodes: {
-    coord: { parent: null, description: "coordinator" },
-    x1: { parent: "coord", description: "x1" },
-    x2: { parent: "coord", description: "x2" },
+    coord: { description: "coordinator" },
+    x1: { description: "x1" },
+    x2: { description: "x2" },
   },
 }
 export default async function orchestrate(ctx) {
@@ -606,11 +605,11 @@ export default async function orchestrate(ctx) {
     return `
 export const team = {
   mission_id: "${missionId}",
-  root: "root",
+  terminal: "terminal",
   nodes: {
-    root: { parent: null, description: "root" },
-    a: { parent: "root", description: "a" },
-    b: { parent: "root", description: "b" },
+    terminal: { description: "terminal" },
+    a: { description: "a" },
+    b: { description: "b" },
   },
 }
 export default async function orchestrate(ctx) {
@@ -622,12 +621,12 @@ export default async function orchestrate(ctx) {
       await ctx.run("b", { brief: { your_work: ["b"], acceptance_slice: [] }, text: "marker:track-b" })
     },
   ])
-  await ctx.run("root", {
+  await ctx.run("terminal", {
     brief: { your_work: ["root wave1"], acceptance_slice: [] },
     text: "marker:root-w1",
     dependsOn: [{ node: "a", summary: true }, { node: "b", summary: true }],
   })
-  await ctx.run("root", {
+  await ctx.run("terminal", {
     brief: { your_work: ["root wave2"], acceptance_slice: [] },
     text: "marker:root-w2",
   })

@@ -1,17 +1,14 @@
 export const team = {
   mission_id: "<mission_id>",
-  root: "<terminal-node-id>",
+  terminal: "<terminal-node-id>",
   nodes: {
     "<leaf-a>": {
-      parent: "<terminal-node-id>",
       description: "Executes <deliverable A>",
     },
     "<leaf-b>": {
-      parent: "<terminal-node-id>",
       description: "Executes <deliverable B>",
     },
     "<terminal-node-id>": {
-      parent: null,
       description: "Integrates upstream work into the final mission deliverable",
     },
   },

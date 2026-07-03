@@ -25,7 +25,7 @@ const COMPLETABLE_MISSION_STATUSES = new Set(["queued", "running", "retro"])
 export function missionCompleteTool(input: PluginInput) {
   return tool({
     description:
-      "profile lead only: end a mission (done or cancelled). On done, pass publish_deliverables=true only when the user confirmed Portal publish. See lead-meta for retro rollup and publish rules.",
+      "profile lead only: end a mission (done or cancelled). On done, pass publish_deliverables=true only when the user confirmed Portal publish. See lead-meta for retro summary and publish rules.",
     args: {
       mission_id: tool.schema.string().optional().describe("Mission id; default active mission"),
       status: tool.schema

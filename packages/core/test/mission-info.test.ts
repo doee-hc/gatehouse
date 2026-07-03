@@ -26,10 +26,10 @@ describe("resolveMissionInfoRoleView", () => {
       saveMissionScriptRecord(dir, {
         team: {
           mission_id: "m1",
-          root: "node-root",
+          terminal: "node-root",
           nodes: {
-            "node-root": { parent: null, description: "root" },
-            "node-leaf": { parent: "node-root", description: "leaf" },
+            "node-root": { description: "root" },
+            "node-leaf": { description: "leaf" },
           },
         },
       })
@@ -51,7 +51,7 @@ describe("resolveMissionInfoRoleView", () => {
           dir,
           agent({ scope: "inner", profile: "build", missionId: "m1", nodeId: "node-root" }),
         ),
-      ).toBe("acceptance")
+      ).toBe("execution")
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

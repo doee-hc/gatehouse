@@ -5,14 +5,12 @@
 
 export const team = {
   mission_id: "core-example-smoke-v1",
-  root: "node-root",
+  terminal: "node-root",
   nodes: {
     "node-root": {
-      parent: null,
       description: "Mission 汇总节点，汇总验收 node-doc 交付并向上汇报",
     },
     "node-doc": {
-      parent: "node-root",
       description: "文档执行成员，负责 README 示例章节",
     },
   },

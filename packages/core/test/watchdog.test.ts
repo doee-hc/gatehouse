@@ -39,15 +39,13 @@ import { seedTerminalPlan } from "./seed-terminal-plan.ts"
 const sampleManifest = parseTreeManifest(`
 mission_id: mission-a
 status: running
-root_node: root
+terminal_node: root
 created_at: "2026-01-01T00:00:00.000Z"
 nodes:
   root:
     session_id: ses_root
-    parent: null
   leaf:
     session_id: ses_leaf
-    parent: root
 `)
 
 describe("execution watchdog helpers", () => {
@@ -136,7 +134,7 @@ describe("execution watchdog helpers", () => {
 
 const missionId = "mission-a"
 
-function innerAgent(nodeId: string, parentSessionId?: string): RegistryAgent {
+function innerAgent(nodeId: string): RegistryAgent {
   return {
     agentId: `inner:${missionId}:${nodeId}`,
     scope: "inner",
@@ -145,7 +143,6 @@ function innerAgent(nodeId: string, parentSessionId?: string): RegistryAgent {
     displayName: nodeId,
     missionId,
     nodeId,
-    parentSessionId,
     status: "active",
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
@@ -188,14 +185,14 @@ describe("watchdog send_message signals", () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-watchdog-non-terminal-"))
     try {
       seedTerminalPlan(dir, missionId, "root")
-      expect(isInnerNotifyingLead(innerAgent("leaf", "ses_root"), leadAgent, missionId, dir)).toBe(false)
+      expect(isInnerNotifyingLead(innerAgent("leaf"), leadAgent, missionId, dir)).toBe(false)
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
   })
 
   test("isSendToTreeMember matches inner recipients in mission", () => {
-    expect(isSendToTreeMember(innerAgent("leaf", "ses_root"), missionId)).toBe(true)
+    expect(isSendToTreeMember(innerAgent("leaf"), missionId)).toBe(true)
     expect(isSendToTreeMember(leadAgent, missionId)).toBe(false)
   })
 
@@ -209,7 +206,7 @@ describe("watchdog send_message signals", () => {
     try {
       seedTerminalPlan(dir, missionId, "root")
       const root = innerAgent("root")
-      const leaf = innerAgent("leaf", "ses_root")
+      const leaf = innerAgent("leaf")
       const paused = watchdogSendMessageState(
         {},
         { missionId, sender: root, recipient: leadAgent, projectDirectory: dir },
@@ -241,7 +238,7 @@ describe("execution watchdog mission check", () => {
     const delivered: string[] = []
     const registry = {
       byAgentId: (agentId: string) => {
-        if (agentId === `inner:${missionId}:leaf`) return innerAgent("leaf", "ses_root")
+        if (agentId === `inner:${missionId}:leaf`) return innerAgent("leaf")
         return undefined
       },
       deliverSystemMessage: async (agent: RegistryAgent) => {

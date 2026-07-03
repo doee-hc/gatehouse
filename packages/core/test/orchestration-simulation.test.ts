@@ -18,10 +18,10 @@ describe("orchestration simulation dry-run", () => {
     const source = `
 export const team = {
   mission_id: "sim-m1",
-  root: "root",
+  terminal: "leaf",
   nodes: {
-    root: { parent: null, description: "root" },
-    leaf: { parent: "root", description: "leaf" },
+    leaf: { description: "leaf" },
+    orphan: { description: "orphan" },
   },
 }
 export default async function orchestrate(ctx) {
@@ -32,18 +32,18 @@ export default async function orchestrate(ctx) {
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.code).toBe("SCRIPT_SIMULATION_INCOMPLETE")
-    expect(result.message).toContain("root")
+    expect(result.message).toContain("orphan")
   })
 
   test("simulation completes parallel siblings when root is orchestrated", async () => {
     const source = `
 export const team = {
   mission_id: "sim-m1",
-  root: "root",
+  terminal: "terminal",
   nodes: {
-    root: { parent: null, description: "root" },
-    a: { parent: "root", description: "a" },
-    b: { parent: "root", description: "b" },
+    terminal: { description: "root" },
+    a: { description: "a" },
+    b: { description: "b" },
   },
 }
 export default async function orchestrate(ctx) {
@@ -61,9 +61,9 @@ export default async function orchestrate(ctx) {
       })
     },
   ])
-  await ctx.run("root", {
-    brief: { your_work: ["rollup"], acceptance_slice: ["done"] },
-    text: "rollup",
+  await ctx.run("terminal", {
+    brief: { your_work: ["summary"], acceptance_slice: ["done"] },
+    text: "summary",
     dependsOn: [{ node: "a", summary: true }, { node: "b", summary: true }],
   })
 }

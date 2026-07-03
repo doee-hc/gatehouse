@@ -12,11 +12,11 @@ import type { TreeManifest } from "../src/tree/types.ts"
 const sampleManifest = (): TreeManifest => ({
   mission_id: "m-tree-db",
   status: "running",
-  root_node: "root",
+  terminal_node: "terminal",
   created_at: "2026-06-01T00:00:00Z",
   nodes: {
-    root: { session_id: "ses-root", parent: null, display_name: "root", profile: "build" },
-    leaf: { session_id: "ses-leaf", parent: "root", display_name: "leaf", profile: "build", skill_domain: "docs" },
+    terminal: { session_id: "ses-root", display_name: "root", profile: "build" },
+    leaf: { session_id: "ses-leaf", display_name: "leaf", profile: "build", skill_domain: "docs" },
   },
 })
 
@@ -27,7 +27,7 @@ test("tree manifest round-trips in registry.db; yaml is export-only", async () =
     const fromDb = new RegistryDatabase(dir, { readonly: true }).getTreeManifest("m-tree-db")
     expect(fromDb?.nodes.leaf?.skill_domain).toBe("docs")
     const fromRead = await readManifest(dir, "m-tree-db")
-    expect(fromRead?.root_node).toBe("root")
+    expect(fromRead?.terminal_node).toBe("terminal")
     const yamlText = await Bun.file(
       path.join(dir, ".gatehouse/internal/exports/trees/m-tree-db/manifest.yaml"),
     ).text()
@@ -45,10 +45,10 @@ test("tree manifest round-trips in registry.db; yaml is export-only", async () =
 })
 
 test("stringifyYaml uses block style for nested mappings", () => {
-  const yaml = stringifyYaml({ mission_id: "m1", nodes: { root: { session_id: "ses-1", parent: null } } })
+  const yaml = stringifyYaml({ mission_id: "m1", nodes: { terminal: { session_id: "ses-1"} } })
   expect(yaml.includes("mission_id: m1\n")).toBe(true)
   expect(yaml.includes("nodes:\n")).toBe(true)
-  expect(yaml.includes("  root:\n")).toBe(true)
+  expect(yaml.includes("  terminal:\n")).toBe(true)
   expect(yaml.includes("nodes: {")).toBe(false)
 })
 
@@ -80,8 +80,8 @@ test("readTreesIndex derives from registry.db", async () => {
     const index = await readTreesIndex(dir)
     expect(index.trees.length).toBe(1)
     expect(index.trees[0]?.mission_id).toBe("m-tree-db")
-    expect(index.trees[0]?.root_node).toBe("root")
-    expect(index.trees[0]?.root_session_id).toBe("ses-root")
+    expect(index.trees[0]?.terminal_node).toBe("terminal")
+    expect(index.trees[0]?.terminal_session_id).toBe("ses-root")
     expect(index.trees[0]?.status).toBe("running")
   } finally {
     await rm(dir, { recursive: true, force: true })
@@ -94,7 +94,7 @@ test("findTreeManifestByExecSession queries registry.db", async () => {
     await writeManifest(dir, sampleManifest())
     const hit = new RegistryDatabase(dir, { readonly: true }).findTreeManifestByExecSession("ses-leaf")
     expect(hit?.missionId).toBe("m-tree-db")
-    expect(hit?.manifest.root_node).toBe("root")
+    expect(hit?.manifest.terminal_node).toBe("terminal")
   } finally {
     await rm(dir, { recursive: true, force: true })
   }

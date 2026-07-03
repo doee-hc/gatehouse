@@ -14,7 +14,7 @@ import type { OrchestrationPlan } from "../../core/src/orchestration/plan-types.
 import type { ParsedMissionScript } from "../../core/src/orchestration/script-parse.ts"
 import type { OrchestrationNodeStatus } from "../../core/src/orchestration/types.ts"
 import { buildPortalOrchestrationFlowEdges } from "../../core/src/portal/orchestration-flow-edges.ts"
-import { topologicalNodeOrder } from "../../core/src/tree/parse.ts"
+import { listPlanRunActivations, teamNodeOrder } from "../../core/src/orchestration/plan-graph.ts"
 import { SCRIPT } from "../../core/test/orchestration-replay-harness.ts"
 import {
   orchestrationGraphLabelScaleClientScript,
@@ -47,11 +47,11 @@ export const team = {
   mission_id: "${missionId}",
   root: "root",
   nodes: {
-    root: { parent: null, description: "root" },
-    lead: { parent: "root", description: "lead coord" },
-    a: { parent: "lead", description: "worker a" },
-    b: { parent: "lead", description: "worker b" },
-    c: { parent: "lead", description: "worker c" },
+    root: { description: "root" },
+    lead: { description: "lead coord" },
+    a: { description: "worker a" },
+    b: { description: "worker b" },
+    c: { description: "worker c" },
   },
 }
 export default async function orchestrate(ctx) {
@@ -78,11 +78,11 @@ export const team = {
   mission_id: "${missionId}",
   root: "root",
   nodes: {
-    root: { parent: null, description: "root" },
-    a: { parent: "root", description: "branch a" },
-    b: { parent: "root", description: "branch b" },
-    a1: { parent: "a", description: "a leaf" },
-    b1: { parent: "b", description: "b leaf" },
+    root: { description: "root" },
+    a: { description: "branch a" },
+    b: { description: "branch b" },
+    a1: { description: "a leaf" },
+    b1: { description: "b leaf" },
   },
 }
 export default async function orchestrate(ctx) {
@@ -120,9 +120,9 @@ export default async function orchestrate(ctx) {
   wideFanOut(missionId: string) {
     const leaves = Array.from({ length: 8 }, (_, i) => `w${i + 1}`)
     const nodeEntries = [
-      `root: { parent: null, description: "root" }`,
-      `coord: { parent: "root", description: "coordinator" }`,
-      ...leaves.map((id) => `${id}: { parent: "coord", description: "${id}" }`),
+      `root: { description: "root" }`,
+      `coord: { description: "coordinator" }`,
+      ...leaves.map((id) => `${id}: { description: "${id}" }`),
     ].join(",\n    ")
     const forkTracks = leaves
       .map(
@@ -164,13 +164,13 @@ export const team = {
   mission_id: "${missionId}",
   root: "root",
   nodes: {
-    root: { parent: null, description: "root" },
-    "research-lead": { parent: "root", description: "research lead" },
-    "analysis-lead": { parent: "root", description: "analysis lead" },
-    "gpt-researcher": { parent: "research-lead", description: "gpt" },
-    "claude-researcher": { parent: "research-lead", description: "claude" },
-    "benchmark-analyst": { parent: "analysis-lead", description: "benchmark" },
-    "pricing-analyst": { parent: "analysis-lead", description: "pricing" },
+    root: { description: "root" },
+    "research-lead": { description: "research lead" },
+    "analysis-lead": { description: "analysis lead" },
+    "gpt-researcher": { description: "gpt" },
+    "claude-researcher": { description: "claude" },
+    "benchmark-analyst": { description: "benchmark" },
+    "pricing-analyst": { description: "pricing" },
   },
 }
 export default async function orchestrate(ctx) {
@@ -209,17 +209,17 @@ export const team = {
   mission_id: "${missionId}",
   root: "l5",
   nodes: {
-    l5: { parent: null, description: "L5 root" },
-    l4a: { parent: "l5", description: "L4 branch A" },
-    l4b: { parent: "l5", description: "L4 branch B" },
-    l3a: { parent: "l4a", description: "L3 A" },
-    l3b: { parent: "l4b", description: "L3 B" },
-    l2a: { parent: "l3a", description: "L2 A" },
-    l2b: { parent: "l3b", description: "L2 B" },
-    l1a: { parent: "l2a", description: "leaf A" },
-    l1b: { parent: "l2a", description: "leaf B" },
-    l1c: { parent: "l2b", description: "leaf C" },
-    l1d: { parent: "l2b", description: "leaf D" },
+    l5: { description: "L5 root" },
+    l4a: { description: "L4 branch A" },
+    l4b: { description: "L4 branch B" },
+    l3a: { description: "L3 A" },
+    l3b: { description: "L3 B" },
+    l2a: { description: "L2 A" },
+    l2b: { description: "L2 B" },
+    l1a: { description: "leaf A" },
+    l1b: { description: "leaf B" },
+    l1c: { description: "leaf C" },
+    l1d: { description: "leaf D" },
   },
 }
 export default async function orchestrate(ctx) {
@@ -475,7 +475,7 @@ function buildGalleryOrch(
   plan: OrchestrationPlan,
   snapshot: GallerySnapshot,
 ): PortalOrchestration {
-  const nodeIds = topologicalNodeOrder(parsed.team)
+  const nodeIds = teamNodeOrder(parsed.team)
   const cursor = Math.min(snapshot.cursorStepIndex, plan.steps.length)
   const stepStates = plan.steps.map((_, index) => {
     if (index < cursor) return "done" as const
@@ -483,10 +483,8 @@ function buildGalleryOrch(
     return "pending" as const
   })
 
-  const parentByNode = new Map<string, string | null>()
-  for (const nodeId of nodeIds) {
-    parentByNode.set(nodeId, parsed.team.nodes[nodeId]?.parent ?? null)
-  }
+  const flow_edges = buildPortalOrchestrationFlowEdges(plan.steps, stepStates)
+  const activation_order = listPlanRunActivations(plan).map((activation) => activation.targetNodeId)
 
   const inferred = inferNodeStatuses(plan, cursor, nodeIds)
   const nodes = nodeIds.map((nodeId) => {
@@ -494,17 +492,9 @@ function buildGalleryOrch(
     return {
       node_id: nodeId,
       display_name: spec.description || nodeId,
-      parent: spec.parent,
       status: snapshot.nodeStatuses?.[nodeId] ?? inferred[nodeId] ?? "pending",
     }
   })
-
-  const flow_edges = buildPortalOrchestrationFlowEdges(
-    plan.steps,
-    stepStates,
-    parentByNode,
-    parsed.team.root,
-  )
 
   return {
     mission_id: parsed.team.mission_id,
@@ -520,8 +510,9 @@ function buildGalleryOrch(
       ...(step.nodeId && { node_id: step.nodeId }),
     })),
     flow_edges,
+    activation_order,
     nodes,
-    root_node: parsed.team.root,
+    terminal_node: parsed.team.terminal,
   }
 }
 

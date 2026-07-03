@@ -408,7 +408,6 @@ describe("session snapshot", () => {
         nodeId: "node-doc",
         profile: "build",
         sessionId: "ses_worker",
-        parentSessionId: "ses_root",
       })
       seedActiveMissionRegistry(dir, "m1")
 
@@ -465,7 +464,6 @@ describe("session snapshot", () => {
         nodeId: "node-doc",
         profile: "build",
         sessionId: "ses_worker",
-        parentSessionId: "ses_root",
       })
       seedActiveMissionRegistry(dir, "m1")
 

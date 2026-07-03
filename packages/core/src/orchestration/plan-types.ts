@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto"
-import type { TeamSpec } from "../tree/types.ts"
 
 export const ORCHESTRATION_PLAN_SCHEMA_VERSION = 1
 
@@ -56,18 +55,3 @@ export function emptyCursor(): OrchestrationCursor {
   return { step_index: 0, completed_step_ids: [] }
 }
 
-export function leafDescendants(team: TeamSpec, rootNodeId: string) {
-  const leaves: string[] = []
-  const walk = (nodeId: string) => {
-    const children = Object.entries(team.nodes)
-      .filter(([, node]) => node.parent === nodeId)
-      .map(([id]) => id)
-    if (children.length === 0) {
-      leaves.push(nodeId)
-      return
-    }
-    for (const child of children) walk(child)
-  }
-  walk(rootNodeId)
-  return leaves.filter((id) => id !== rootNodeId)
-}

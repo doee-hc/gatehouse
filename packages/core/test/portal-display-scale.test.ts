@@ -66,13 +66,12 @@ describe("portal browser dto", () => {
       session_status: { ses_lead: "idle" },
       tree: {
         mission_id: "m1",
-        root_node: "root",
+        terminal_node: "root",
         status: "running",
         nodes: [
           {
             node_id: "root",
             session_id: "ses_root",
-            parent: null,
             display_name: "Root",
           },
         ],

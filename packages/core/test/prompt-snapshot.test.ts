@@ -19,6 +19,7 @@ import {
 import { retroAnalysisNodeOrder } from "../src/retro/analysis-order.ts"
 import { formatSkillDomainsRegistry } from "../src/skills/domains.ts"
 import { parseTeamSpec, parseTreeManifest } from "../src/tree/parse.ts"
+import type { OrchestrationPlan } from "../src/orchestration/plan-types.ts"
 import { copyExampleMission } from "./copy-example-mission.ts"
 import { seedTerminalPlan } from "./seed-terminal-plan.ts"
 
@@ -29,10 +30,8 @@ mission_id: core-example-smoke-v1
 root: node-root
 nodes:
   node-root:
-    parent: null
     description: Mission 汇总节点，汇总验收 node-doc 交付并向上汇报
   node-doc:
-    parent: node-root
     description: 文档执行成员
 `
 
@@ -101,15 +100,13 @@ describe("prompt snapshot injections", () => {
       const manifest = parseTreeManifest(`
 mission_id: ${missionId}
 status: running
-root_node: node-root
+terminal_node: node-root
 created_at: "2026-01-01T00:00:00.000Z"
 nodes:
   node-root:
     session_id: s1
-    parent: null
   node-doc:
     session_id: s2
-    parent: node-root
 `)
       const prompt = await loadRetroKickoffPrompt(dir, {
         missionId,
@@ -171,7 +168,7 @@ nodes:
           profile: "build",
           scope: "inner",
           missionId: "m1",
-          nodeId: "root",
+          nodeId: "terminal",
           displayName: "root",
           status: "active",
           createdAt: "2026-01-01T00:00:00.000Z",
@@ -236,7 +233,23 @@ nodes:
 
   test("formatAcceptanceSubtreeSnapshot covers rollup node branch", () => {
     const spec = parseTeamSpec(teamSpecYaml)
-    const snapshot = formatAcceptanceSubtreeSnapshot(spec, "node-root", "zh")
+    const plan: OrchestrationPlan = {
+      schema_version: 1,
+      mission_id: "core-example-smoke-v1",
+      plan_version: "v1",
+      script_hash: "hash",
+      warnings: [],
+      steps: [
+        { id: "step-0", op: "run", statement: 'await ctx.run("node-doc", { text: "go" })', nodeId: "node-doc" },
+        {
+          id: "step-1",
+          op: "run",
+          statement: 'await ctx.run("node-root", { text: "summary", dependsOn: [{ node: "node-doc", summary: true }] })',
+          nodeId: "node-root",
+        },
+      ],
+    }
+    const snapshot = formatAcceptanceSubtreeSnapshot(spec, plan, "node-root", "zh")
     expect(snapshot).toContain("node-root")
     expect(snapshot).toContain("node-doc")
     expect(snapshot).toContain("子树快照")

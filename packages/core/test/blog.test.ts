@@ -47,17 +47,15 @@ missions:
     ".gatehouse/trees/mission-old/manifest.yaml",
     `mission_id: mission-old
 status: archived
-root_node: root
+terminal_node: root
 created_at: "2026-05-18T00:00:00Z"
 archived_at: "2026-05-20T12:00:00Z"
 nodes:
   root:
     session_id: ses_root
-    parent: null
     display_name: 任务协调者
   leaf-a:
     session_id: ses_a
-    parent: root
     display_name: 文档工程师
 `,
   )
@@ -66,17 +64,15 @@ nodes:
     ".gatehouse/trees/mission-new/manifest.yaml",
     `mission_id: mission-new
 status: archived
-root_node: root
+terminal_node: root
 created_at: "2026-05-26T00:00:00Z"
 archived_at: "2026-05-28T12:00:00Z"
 nodes:
   root:
     session_id: ses_root2
-    parent: null
     display_name: 任务协调者
   leaf-b:
     session_id: ses_b
-    parent: root
     display_name: 验证工程师
 `,
   )

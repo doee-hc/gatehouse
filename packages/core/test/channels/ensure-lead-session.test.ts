@@ -25,7 +25,7 @@ function writeRegistryLead(dir: string, sessionId: string) {
       mission_id TEXT,
       node_id TEXT,
       parent_session_id TEXT,
-      project_root_session_id TEXT,
+      project_terminal_session_id TEXT,
       status TEXT NOT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
@@ -35,7 +35,7 @@ function writeRegistryLead(dir: string, sessionId: string) {
     .query(
       `INSERT INTO registry_agent (
       agent_id, scope, profile, session_id, display_name,
-      project_root_session_id, status, created_at, updated_at
+      project_terminal_session_id, status, created_at, updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(

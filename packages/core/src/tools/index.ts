@@ -20,7 +20,7 @@ import {
   executionStatusTool,
 } from "./execution.ts"
 import { directionStatusTool } from "./direction-status.ts"
-import { retroSummaryRecordTool, skillSummaryRecordTool } from "./rollup-summary.ts"
+import { retroSummaryRecordTool, skillSummaryRecordTool } from "./retro-summary-record.ts"
 
 export function createGatehouseCoreTools(input: PluginInput) {
   return {

@@ -11,7 +11,7 @@ export type PortalOrchestrationFlowEdge = {
   to: string
   op: PlanStepOp
   state: "done" | "current" | "pending"
-  kind?: "activate" | "rollup" | "serial" | "depends"
+  kind?: "summary" | "serial" | "depends"
 }
 
 function extractRunTargetIds(statement: string) {
@@ -190,16 +190,6 @@ function extractTopLevelAwaitStatements(source: string) {
   return statements
 }
 
-function areSiblingNodes(
-  from: string,
-  to: string,
-  parentByNode: Map<string, string | null>,
-) {
-  const fromParent = parentByNode.get(from)
-  const toParent = parentByNode.get(to)
-  return fromParent != null && fromParent === toParent && from !== to
-}
-
 function primaryNodeForTargets(nodeId: string | undefined, statement: string) {
   if (nodeId) return nodeId
   const targets = extractRunTargetIds(statement)
@@ -215,18 +205,24 @@ type RunStatementEdgeResult = {
   primaryNode?: string
 }
 
-function wasSummaryDependsStatement(statement: string, nodeId?: string) {
+export function wasSummaryDependsStatement(statement: string, nodeId?: string) {
   const targets = nodeId ? [nodeId] : extractRunTargetIds(statement)
   const dependsOn = extractDependsOnFromStatement(statement)
   return hasSummaryDepends(dependsOn) && targets.length === 1
+}
+
+function pushEdge(
+  stepEdges: PortalOrchestrationFlowEdge[],
+  edge: PortalOrchestrationFlowEdge,
+) {
+  const exists = stepEdges.some((item) => item.from === edge.from && item.to === edge.to)
+  if (!exists) stepEdges.push(edge)
 }
 
 function buildRunStatementEdges(
   statement: string,
   stepId: string,
   state: PortalOrchestrationFlowEdge["state"],
-  parentByNode: Map<string, string | null>,
-  rootNode: string,
   nodeId?: string,
   prevPrimaryNode?: string,
   prevStatement?: string,
@@ -241,14 +237,7 @@ function buildRunStatementEdges(
     const to = targets[0]!
     for (const dep of summaryDeps) {
       if (dep.node !== to) {
-        stepEdges.push({ step_id: stepId, from: dep.node, to, op: "run", state, kind: "rollup" })
-      }
-    }
-  } else {
-    for (const target of targets) {
-      const parent = parentByNode.get(target) ?? rootNode
-      if (parent && parent !== target) {
-        stepEdges.push({ step_id: stepId, from: parent, to: target, op: "run", state, kind: "activate" })
+        pushEdge(stepEdges, { step_id: stepId, from: dep.node, to, op: "run", state, kind: "summary" })
       }
     }
   }
@@ -257,11 +246,14 @@ function buildRunStatementEdges(
     const to = targets[0]!
     for (const dep of dependsOn) {
       if (dep.node === to) continue
-      const kind = dep.summary ? "rollup" : "depends"
-      const exists = stepEdges.some((edge) => edge.from === dep.node && edge.to === to)
-      if (!exists) {
-        stepEdges.push({ step_id: stepId, from: dep.node, to, op: "run", state, kind })
-      }
+      pushEdge(stepEdges, {
+        step_id: stepId,
+        from: dep.node,
+        to,
+        op: "run",
+        state,
+        kind: dep.summary ? "summary" : "depends",
+      })
     }
   }
 
@@ -273,27 +265,22 @@ function buildRunStatementEdges(
     prevPrimaryNode &&
     prevStatement &&
     !wasSummaryDependsStatement(prevStatement) &&
-    areSiblingNodes(prevPrimaryNode, primaryNode, parentByNode)
+    prevPrimaryNode !== primaryNode
   ) {
-    const exists = stepEdges.some(
-      (edge) => edge.from === prevPrimaryNode && edge.to === primaryNode,
-    )
-    if (!exists) {
-      stepEdges.push({
-        step_id: stepId,
-        from: prevPrimaryNode,
-        to: primaryNode,
-        op: "run",
-        state,
-        kind: "serial",
-      })
-    }
+    pushEdge(stepEdges, {
+      step_id: stepId,
+      from: prevPrimaryNode,
+      to: primaryNode,
+      op: "run",
+      state,
+      kind: "serial",
+    })
   }
 
   if (stepEdges.length === 0 && prevPrimaryNode && targets.length === 1) {
     const target = targets[0]
     if (target && prevPrimaryNode !== target) {
-      stepEdges.push({
+      pushEdge(stepEdges, {
         step_id: stepId,
         from: prevPrimaryNode,
         to: target,
@@ -314,8 +301,6 @@ function buildStatementSequenceEdges(
   scope: string,
   stepId: string,
   state: PortalOrchestrationFlowEdge["state"],
-  parentByNode: Map<string, string | null>,
-  rootNode: string,
 ) {
   const edges: PortalOrchestrationFlowEdge[] = []
   let prevPrimaryNode: string | undefined
@@ -323,9 +308,7 @@ function buildStatementSequenceEdges(
 
   for (const innerStatement of extractTopLevelAwaitStatements(scope)) {
     if (/^await\s+ctx\.fork\s*\(/m.test(innerStatement)) {
-      edges.push(
-        ...buildForkStatementEdges(innerStatement, stepId, state, parentByNode, rootNode),
-      )
+      edges.push(...buildForkStatementEdges(innerStatement, stepId, state))
       prevPrimaryNode = undefined
       prevStatement = undefined
       continue
@@ -336,8 +319,6 @@ function buildStatementSequenceEdges(
         innerStatement,
         stepId,
         state,
-        parentByNode,
-        rootNode,
         undefined,
         prevPrimaryNode,
         prevStatement,
@@ -355,34 +336,23 @@ function buildForkStatementEdges(
   statement: string,
   stepId: string,
   state: PortalOrchestrationFlowEdge["state"],
-  parentByNode: Map<string, string | null>,
-  rootNode: string,
 ) {
   const tracks = extractForkTrackBodies(statement)
   if (!tracks) {
-    return buildStatementSequenceEdges(statement, stepId, state, parentByNode, rootNode)
+    return buildStatementSequenceEdges(statement, stepId, state)
   }
 
   const edges: PortalOrchestrationFlowEdge[] = []
   for (const track of tracks) {
-    edges.push(
-      ...buildStatementSequenceEdges(
-        extractAsyncArrowBody(track),
-        stepId,
-        state,
-        parentByNode,
-        rootNode,
-      ),
-    )
+    edges.push(...buildStatementSequenceEdges(extractAsyncArrowBody(track), stepId, state))
   }
   return edges
 }
 
+/** Derive directed flow edges from compiled plan steps. */
 export function buildPortalOrchestrationFlowEdges(
   planSteps: PlanStep[],
   stepStates: PortalOrchestrationFlowEdge["state"][],
-  parentByNode: Map<string, string | null>,
-  rootNode: string,
 ): PortalOrchestrationFlowEdge[] {
   const edges: PortalOrchestrationFlowEdge[] = []
 
@@ -392,26 +362,26 @@ export function buildPortalOrchestrationFlowEdges(
     const prevPrimaryNode = prevStep ? primaryNodeForStep(prevStep) : undefined
     const prevStatement =
       prevStep?.op === "run" || prevStep?.op === "fork" ? prevStep.statement : undefined
+    const prevWasPlainRun =
+      prevStep?.op === "run" &&
+      Boolean(prevStatement) &&
+      !wasSummaryDependsStatement(prevStatement!, prevStep.nodeId)
 
     if (step.op === "run") {
       const result = buildRunStatementEdges(
         step.statement,
         step.id,
         state,
-        parentByNode,
-        rootNode,
         step.nodeId,
-        prevPrimaryNode,
-        prevStatement,
+        prevWasPlainRun ? prevPrimaryNode : undefined,
+        prevWasPlainRun ? prevStatement : undefined,
       )
       edges.push(...result.edges)
       continue
     }
 
     if (step.op === "fork") {
-      edges.push(
-        ...buildForkStatementEdges(step.statement, step.id, state, parentByNode, rootNode),
-      )
+      edges.push(...buildForkStatementEdges(step.statement, step.id, state))
     }
   }
 

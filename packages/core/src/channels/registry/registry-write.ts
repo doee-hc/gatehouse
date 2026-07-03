@@ -30,7 +30,7 @@ function applyRegistrySchema(db: Database) {
       mission_id TEXT,
       node_id TEXT,
       parent_session_id TEXT,
-      project_root_session_id TEXT,
+      project_terminal_session_id TEXT,
       status TEXT NOT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
@@ -64,13 +64,13 @@ export function upsertLeadRegistryAgent(
       .query(
         `INSERT INTO registry_agent (
           agent_id, scope, profile, session_id, display_name,
-          mission_id, node_id, parent_session_id, project_root_session_id,
+          mission_id, node_id, parent_session_id, project_terminal_session_id,
           status, created_at, updated_at
         ) VALUES (?, 'outer', 'lead', ?, ?, NULL, NULL, NULL, ?, 'active', ?, ?)
         ON CONFLICT(agent_id) DO UPDATE SET
           session_id = excluded.session_id,
           display_name = excluded.display_name,
-          project_root_session_id = excluded.project_root_session_id,
+          project_terminal_session_id = excluded.project_terminal_session_id,
           status = 'active',
           updated_at = excluded.updated_at`,
       )

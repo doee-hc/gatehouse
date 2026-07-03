@@ -41,6 +41,7 @@ async function runOrchestrate(init: SandboxInitMessage) {
       missionId: init.missionId,
       locale: init.locale,
       team: init.team,
+      plan: init.plan ?? { steps: [] },
       ...(init.objective && { objective: init.objective }),
       sendRpc,
     })

@@ -62,7 +62,7 @@ const messages = {
   "orch.stepOp.fork": { zh: "并行", en: "Fork" },
   "orch.stepOp.other": { zh: "步骤", en: "Step" },
   "orch.flow.dispatch": { zh: "激活", en: "Activate" },
-  "orch.flow.rollup": { zh: "汇总", en: "Rollup" },
+  "orch.flow.summary": { zh: "汇总", en: "Rollup" },
   "orch.flow.serial": { zh: "串行", en: "Serial" },
   "orch.flow.depends": { zh: "依赖", en: "Depends" },
   "orch.sandbox.running": { zh: "沙箱运行中", en: "Sandbox running" },

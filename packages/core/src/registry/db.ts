@@ -81,7 +81,7 @@ type AgentRow = {
   mission_id: string | null
   node_id: string | null
   parent_session_id: string | null
-  project_root_session_id: string | null
+  project_terminal_session_id: string | null
   status: string
   created_at: string
   updated_at: string
@@ -113,8 +113,7 @@ function rowToAgent(row: AgentRow): RegistryAgent {
     updatedAt: row.updated_at,
     ...(row.mission_id && { missionId: row.mission_id }),
     ...(row.node_id && { nodeId: row.node_id }),
-    ...(row.parent_session_id && { parentSessionId: row.parent_session_id }),
-    ...(row.project_root_session_id && { projectRootSessionId: row.project_root_session_id }),
+    ...(row.project_terminal_session_id && { projectRootSessionId: row.project_terminal_session_id }),
   }
 }
 
@@ -181,7 +180,7 @@ export function migrateRetroAnalystSchema(db: Database) {
       retro_summary_path TEXT,
       architect_notified_at TEXT,
       architect_lead_notified_at TEXT,
-      lead_rollup_notified_at TEXT
+      lead_retro_summary_notified_at TEXT
     )
   `)
   const retroTreeCols = tableColumns(db, "registry_retro_tree")
@@ -207,8 +206,8 @@ export function migrateRetroRollupLeadNotifiedColumns(db: Database) {
   if (retroCols.size > 0 && !retroCols.has("architect_lead_notified_at")) {
     db.exec("ALTER TABLE registry_retro_run ADD COLUMN architect_lead_notified_at TEXT")
   }
-  if (retroCols.size > 0 && !retroCols.has("lead_rollup_notified_at")) {
-    db.exec("ALTER TABLE registry_retro_run ADD COLUMN lead_rollup_notified_at TEXT")
+  if (retroCols.size > 0 && !retroCols.has("lead_retro_summary_notified_at")) {
+    db.exec("ALTER TABLE registry_retro_run ADD COLUMN lead_retro_summary_notified_at TEXT")
   }
   const skillCols = tableColumns(db, "registry_skill_extract_run")
   if (skillCols.size > 0 && !skillCols.has("curator_lead_notified_at")) {
@@ -285,7 +284,7 @@ function applySchema(db: Database) {
       mission_id TEXT,
       node_id TEXT,
       parent_session_id TEXT,
-      project_root_session_id TEXT,
+      project_terminal_session_id TEXT,
       status TEXT NOT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
@@ -316,7 +315,7 @@ function applySchema(db: Database) {
       retro_summary_path TEXT,
       architect_notified_at TEXT,
       architect_lead_notified_at TEXT,
-      lead_rollup_notified_at TEXT
+      lead_retro_summary_notified_at TEXT
     );
 
     CREATE TABLE IF NOT EXISTS registry_skill_extract_run (
@@ -447,7 +446,7 @@ export class RegistryDatabase {
           retro_summary_path: string | null
           architect_notified_at: string | null
           architect_lead_notified_at: string | null
-          lead_rollup_notified_at: string | null
+          lead_retro_summary_notified_at: string | null
         }
         return {
           missionId: record.mission_id,
@@ -458,7 +457,7 @@ export class RegistryDatabase {
           ...(record.retro_summary_path && { retroSummaryPath: record.retro_summary_path }),
           ...(record.architect_notified_at && { architectNotifiedAt: record.architect_notified_at }),
           ...(record.architect_lead_notified_at && { architectLeadNotifiedAt: record.architect_lead_notified_at }),
-          ...(record.lead_rollup_notified_at && { leadRollupNotifiedAt: record.lead_rollup_notified_at }),
+          ...(record.lead_retro_summary_notified_at && { leadRetroSummaryNotifiedAt: record.lead_retro_summary_notified_at }),
         } satisfies RegistryRetroRun
       })
     const skillExtractRuns = this.db
@@ -563,11 +562,11 @@ export class RegistryDatabase {
       const insertAgent = this.db.prepare(`
         INSERT INTO registry_agent (
           agent_id, scope, profile, session_id, display_name,
-          mission_id, node_id, parent_session_id, project_root_session_id,
+          mission_id, node_id, project_terminal_session_id,
           status, created_at, updated_at
         ) VALUES (
           $agent_id, $scope, $profile, $session_id, $display_name,
-          $mission_id, $node_id, $parent_session_id, $project_root_session_id,
+          $mission_id, $node_id, $project_terminal_session_id,
           $status, $created_at, $updated_at
         )
       `)
@@ -580,8 +579,7 @@ export class RegistryDatabase {
           $display_name: agent.displayName,
           $mission_id: agent.missionId ?? null,
           $node_id: agent.nodeId ?? null,
-          $parent_session_id: agent.parentSessionId ?? null,
-          $project_root_session_id: agent.projectRootSessionId ?? null,
+          $project_terminal_session_id: agent.projectRootSessionId ?? null,
           $status: agent.status,
           $created_at: agent.createdAt,
           $updated_at: agent.updatedAt,
@@ -614,10 +612,10 @@ export class RegistryDatabase {
       const insertRetroRun = this.db.prepare(`
         INSERT INTO registry_retro_run (
           mission_id, started_at, retro_summary_submitted_at, retro_summary_path,
-          architect_notified_at, architect_lead_notified_at, lead_rollup_notified_at
+          architect_notified_at, architect_lead_notified_at, lead_retro_summary_notified_at
         ) VALUES (
           $mission_id, $started_at, $retro_summary_submitted_at, $retro_summary_path,
-          $architect_notified_at, $architect_lead_notified_at, $lead_rollup_notified_at
+          $architect_notified_at, $architect_lead_notified_at, $lead_retro_summary_notified_at
         )
       `)
       for (const run of snapshot.retroRuns) {
@@ -628,7 +626,7 @@ export class RegistryDatabase {
           $retro_summary_path: run.retroSummaryPath ?? null,
           $architect_notified_at: run.architectNotifiedAt ?? null,
           $architect_lead_notified_at: run.architectLeadNotifiedAt ?? null,
-          $lead_rollup_notified_at: run.leadRollupNotifiedAt ?? null,
+          $lead_retro_summary_notified_at: run.leadRetroSummaryNotifiedAt ?? null,
         })
       }
       const insertSkillExtractRun = this.db.prepare(`

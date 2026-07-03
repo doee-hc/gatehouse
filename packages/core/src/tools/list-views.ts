@@ -28,11 +28,9 @@ export type ListTeamOuterMember = {
 
 export type ListTeamExecutionMember = {
   node_id: string
-  parent: string | null
   description?: string
   display_name?: string
   profile?: string
-  children?: string[]
   has_retro?: boolean
   session_id?: string
 }
@@ -139,7 +137,7 @@ async function buildInnerListTeam(
     execution: executionMembers(manifest, undefined, false, input.store, missionId),
   }
   const terminalNode =
-    youNodeId !== undefined && youNodeId === manifest.root_node
+    youNodeId !== undefined && youNodeId === manifest.terminal_node
   if (terminalNode) {
     const lead = input.store.byProfile(LEAD_OPENCODE, "outer")
     if (lead) payload.outer = [{ profile: LEAD_OPENCODE, display_name: lead.displayName }]
@@ -213,12 +211,10 @@ function toExecutionMember(
 ) {
   const entry: ListTeamExecutionMember = {
     node_id: member.node_id,
-    parent: member.parent,
     ...(member.description && { description: member.description }),
     ...(member.display_name && { display_name: member.display_name }),
     ...(member.profile && { profile: member.profile }),
   }
-  if (member.child_nodes.length > 0) entry.children = member.child_nodes
   if (retroNodeIds?.has(member.node_id)) entry.has_retro = true
   if (includeSessionId) {
     const agent = store.byAgentId(`inner:${missionId}:${member.node_id}`)

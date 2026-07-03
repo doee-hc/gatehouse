@@ -5,9 +5,9 @@ import path from "node:path"
 import type { PluginInput } from "@opencode-ai/plugin"
 import {
   assertDependsOnSummaryReady,
-  formatRollupInjectionBlock,
+  formatDependsOnSummaryBlock,
   parseArtifactsInput,
-  synthesizeRootDeliveryMarkdown,
+  synthesizeTerminalDeliveryMarkdown,
 } from "../src/orchestration/completion.ts"
 import { orchestrationComplete } from "../src/orchestration/events.ts"
 import { deliverOrchestrationPrompt } from "../src/orchestration/prompt.ts"
@@ -23,14 +23,15 @@ import { OUTER_ARCHITECT_ID } from "../src/registry/types.ts"
 import { RegistryStore } from "../src/registry/store.ts"
 import type { GatehouseClient } from "../src/session/client.ts"
 import type { TeamSpec } from "../src/tree/types.ts"
+import type { OrchestrationPlan } from "../src/orchestration/plan-types.ts"
 import { startPortalInternalEventCapture, withPortalEnv } from "./portal-test-server.ts"
 
 const team: TeamSpec = {
   mission_id: "m1",
-  root: "root",
+  terminal: "terminal",
   nodes: {
-    root: { parent: null, description: "root" },
-    leaf: { parent: "root", description: "leaf" },
+    terminal: { description: "terminal" },
+    leaf: { description: "leaf" },
   },
 }
 
@@ -44,7 +45,7 @@ describe("node completion", () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-completion-"))
     try {
       saveMissionScriptRecord(dir, { team })
-      const state = initOrchestrationState("m1", ["root", "leaf"])
+      const state = initOrchestrationState("m1", ["terminal", "leaf"])
       state.nodes.leaf = { status: "running", round: 1 }
       writeOrchestrationState(dir, state)
 
@@ -92,8 +93,8 @@ describe("node completion", () => {
     }
   })
 
-  test("formatRollupInjectionBlock renders referenced completions", () => {
-    const state = initOrchestrationState("m1", ["root", "leaf"])
+  test("formatDependsOnSummaryBlock renders referenced completions", () => {
+    const state = initOrchestrationState("m1", ["terminal", "leaf"])
     state.nodes.leaf = {
       status: "done",
       completion: {
@@ -102,15 +103,15 @@ describe("node completion", () => {
         completed_at: "2026-01-01T00:00:00.000Z",
       },
     }
-    const block = formatRollupInjectionBlock("zh", state, ["leaf"])
-    expect(block).toContain("下属节点交付")
+    const block = formatDependsOnSummaryBlock("zh", state, ["leaf"])
+    expect(block).toContain("上游节点交付")
     expect(block).toContain("leaf")
     expect(block).toContain("done work")
     expect(block).toContain("docs/x.md")
   })
 
   test("assertDependsOnSummaryReady rejects missing completion", () => {
-    const state = initOrchestrationState("m1", ["root", "leaf"])
+    const state = initOrchestrationState("m1", ["terminal", "leaf"])
     state.nodes.leaf = { status: "done" }
     expect(() => assertDependsOnSummaryReady(team, state, ["leaf"])).toThrow(/completion/)
   })
@@ -121,7 +122,7 @@ describe("node completion", () => {
     const capture = await startPortalInternalEventCapture(token)
     try {
       await withPortalEnv(capture.port, token, async () => {
-        const state = initOrchestrationState("m1", ["root", "leaf"])
+        const state = initOrchestrationState("m1", ["terminal", "leaf"])
         state.nodes.leaf = {
           status: "done",
           completion: {
@@ -129,9 +130,9 @@ describe("node completion", () => {
             completed_at: new Date().toISOString(),
           },
         }
-        markNodeRunning(state, "root")
+        markNodeRunning(state, "terminal")
         writeOrchestrationState(dir, state)
-        await mergeAndSaveBrief(dir, "m1", "root", { your_work: ["rollup"] })
+        await mergeAndSaveBrief(dir, "m1", "terminal", { your_work: ["rollup"] })
 
         const mockClient: GatehouseClient = {
           session: {
@@ -160,13 +161,13 @@ describe("node completion", () => {
           displayName: "architect",
         })
         store.register({
-          agentId: "inner:m1:root",
+          agentId: "inner:m1:terminal",
           scope: "inner",
           profile: "build",
-          sessionId: "ses_root",
-          displayName: "root",
+          sessionId: "ses_terminal",
+          displayName: "terminal",
           missionId: "m1",
-          nodeId: "root",
+          nodeId: "terminal",
           status: "active",
         })
 
@@ -174,7 +175,7 @@ describe("node completion", () => {
           plugin,
           store,
           missionId: "m1",
-          nodeId: "root",
+          nodeId: "terminal",
           team,
           prompt: {
             text: "[work order]",
@@ -194,9 +195,25 @@ describe("node completion", () => {
     }
   })
 
-  test("synthesizeRootDeliveryMarkdown includes child completions", () => {
-    const state = initOrchestrationState("m1", ["root", "leaf"])
-    state.nodes.root = {
+  test("synthesizeTerminalDeliveryMarkdown includes upstream completions", () => {
+    const plan: OrchestrationPlan = {
+      schema_version: 1,
+      mission_id: "m1",
+      plan_version: "v1",
+      script_hash: "hash",
+      warnings: [],
+      steps: [
+        { id: "step-0", op: "run", statement: 'await ctx.run("leaf", { text: "go" })', nodeId: "leaf" },
+        {
+          id: "step-1",
+          op: "run",
+          statement: 'await ctx.run("terminal", { text: "rollup", dependsOn: [{ node: "leaf", summary: true }] })',
+          nodeId: "terminal",
+        },
+      ],
+    }
+    const state = initOrchestrationState("m1", ["terminal", "leaf"])
+    state.nodes.terminal = {
       status: "done",
       completion: { summary: "rolled up", completed_at: "2026-01-01T00:00:00.000Z" },
     }
@@ -208,7 +225,7 @@ describe("node completion", () => {
         completed_at: "2026-01-01T00:00:00.000Z",
       },
     }
-    const md = synthesizeRootDeliveryMarkdown("zh", "m1", "root", state, team)
+    const md = synthesizeTerminalDeliveryMarkdown("zh", "m1", "terminal", state, team, plan)
     expect(md).toContain("rolled up")
     expect(md).toContain("leaf done")
     expect(md).toContain("a.md")
@@ -218,7 +235,7 @@ describe("node completion", () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-completion-precheck-"))
     try {
       saveMissionScriptRecord(dir, { team })
-      const state = initOrchestrationState("m1", ["root", "leaf"])
+      const state = initOrchestrationState("m1", ["terminal", "leaf"])
       state.nodes.leaf = { status: "running", round: 1 }
       writeOrchestrationState(dir, state)
       await mergeAndSaveBrief(dir, "m1", "leaf", {
@@ -270,7 +287,7 @@ describe("node completion", () => {
     const rel = "docs/report.md"
     try {
       saveMissionScriptRecord(dir, { team })
-      const state = initOrchestrationState("m1", ["root", "leaf"])
+      const state = initOrchestrationState("m1", ["terminal", "leaf"])
       state.nodes.leaf = { status: "running", round: 1 }
       writeOrchestrationState(dir, state)
       await mergeAndSaveBrief(dir, "m1", "leaf", {

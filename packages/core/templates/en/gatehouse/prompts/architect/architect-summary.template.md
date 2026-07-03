@@ -1,10 +1,10 @@
-# {{architect_name}} retro rollup template
+# {{architect_name}} retro summary template
 
 Write to: `.gatehouse/trees/<mission_id>/reports/architect-summary.md`
 
 ---
 
-# {{architect_name}} retro rollup · {{mission_id}}
+# {{architect_name}} retro summary · {{mission_id}}
 
 ## Topology recap
 - Terminal: {{terminal_node}}

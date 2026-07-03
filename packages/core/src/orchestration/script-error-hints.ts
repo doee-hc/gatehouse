@@ -3,11 +3,11 @@ export function missionScriptErrorHint(code: string): string | undefined {
   switch (code) {
     case "SCRIPT_SERIAL_TRACK_BLOCK":
       return (
-        "Wrap each independent root-child track in ctx.fork([async () => { ... }, ...]); " +
+        "Wrap each independent parallel track in ctx.fork([async () => { ... }, ...]); " +
         "do not await one track's completion before dispatching the next track at top level."
       )
     case "SCRIPT_SIMULATION_INCOMPLETE":
-      return "Every node in team.nodes (including root) must be activated and completed via ctx.run."
+      return "Every node in team.nodes (including terminal) must be activated and completed via ctx.run."
     case "SCRIPT_MISSING_BRIEF":
       return "Add brief: { your_work: [...], acceptance_slice: [...] } to each ctx.run dispatch."
     case "SCRIPT_PLAN_DYNAMIC_TOP_LEVEL":

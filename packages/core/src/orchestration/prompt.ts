@@ -7,7 +7,7 @@ import { readAgentNamesSync } from "../names.ts"
 import { innerAgentId } from "../registry/types.ts"
 import type { RegistryStore } from "../registry/store.ts"
 import { promptSession } from "../session/client.ts"
-import { assertDependsOnSummaryReady, formatRollupInjectionBlock } from "./completion.ts"
+import { assertDependsOnSummaryReady, formatDependsOnSummaryBlock } from "./completion.ts"
 import {
   normalizeDependsOn,
   summaryNodeIds,
@@ -54,9 +54,9 @@ export async function deliverOrchestrationPrompt(input: {
       if (!state) throw new Error(`orchestration state missing for ${input.missionId}`)
       if (!input.team) throw new Error("dependsOn summary requires team spec for validation")
       assertDependsOnSummaryReady(input.team, state, injectSummary)
-      const rollupBlock = formatRollupInjectionBlock(locale, state, injectSummary)
-      if (rollupBlock.trim()) {
-        activationText = [activationText, "", rollupBlock].join("\n")
+      const dependsOnSummaryBlock = formatDependsOnSummaryBlock(locale, state, injectSummary)
+      if (dependsOnSummaryBlock.trim()) {
+        activationText = [activationText, "", dependsOnSummaryBlock].join("\n")
       }
     }
     const brief = await readNodeBriefRegistry(input.plugin.directory, input.missionId, input.nodeId)

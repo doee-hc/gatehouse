@@ -1165,7 +1165,7 @@ body {
   stroke-width: 1.5;
 }
 
-.orch-graph-node.orch-node-root .orch-graph-node-dot-shape {
+.orch-graph-node.orch-node-terminal .orch-graph-node-dot-shape {
   stroke: var(--architect);
   fill: rgba(196, 181, 253, 0.2);
 }
@@ -1199,7 +1199,7 @@ body {
   font-weight: 600;
 }
 
-.orch-graph-node.orch-node-root .orch-graph-node-box {
+.orch-graph-node.orch-node-terminal .orch-graph-node-box {
   stroke: var(--architect);
   fill: rgba(196, 181, 253, 0.1);
 }

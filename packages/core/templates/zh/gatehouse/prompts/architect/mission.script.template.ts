@@ -1,17 +1,14 @@
 export const team = {
   mission_id: "<mission_id>",
-  root: "<terminal-node-id>",
+  terminal: "<terminal-node-id>",
   nodes: {
     "<leaf-a>": {
-      parent: "<terminal-node-id>",
       description: "负责 <产出 A> 的执行成员",
     },
     "<leaf-b>": {
-      parent: "<terminal-node-id>",
       description: "负责 <产出 B> 的执行成员",
     },
     "<terminal-node-id>": {
-      parent: null,
       description: "整合上游成果，产出 Mission 最终交付物",
     },
   },

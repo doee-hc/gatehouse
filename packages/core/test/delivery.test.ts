@@ -217,7 +217,7 @@ test("submitDeliveryRecord exposes publishable paths via criteria without publis
     sessionId: "ses_root",
     displayName: "root",
     missionId,
-    nodeId: "root",
+    nodeId: "terminal",
     status: "active",
   })
   store.activateMission({
@@ -276,7 +276,7 @@ test("mission_complete done without publish_deliverables does not publish delive
     sessionId: "ses_root",
     displayName: "root",
     missionId,
-    nodeId: "root",
+    nodeId: "terminal",
     status: "active",
   })
   store.activateMission({
@@ -344,7 +344,7 @@ test("mission_complete done with publish_deliverables publishes done_when delive
     sessionId: "ses_root",
     displayName: "root",
     missionId,
-    nodeId: "root",
+    nodeId: "terminal",
     status: "active",
   })
   store.activateMission({
@@ -419,7 +419,7 @@ test("mission_complete publishes done_when path string prefix deliverables", asy
     sessionId: "ses_root",
     displayName: "root",
     missionId,
-    nodeId: "root",
+    nodeId: "terminal",
     status: "active",
   })
   store.activateMission({
@@ -546,7 +546,7 @@ test("delivery submit + review revision flow", async () => {
     sessionId: "ses_root",
     displayName: "root",
     missionId,
-    nodeId: "root",
+    nodeId: "terminal",
     status: "active",
   })
   store.activateMission({

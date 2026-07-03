@@ -5,7 +5,7 @@ import {
   publishArchitectSummaryBlogPost,
   publishRetroSummaryBlogPost,
 } from "../delivery/publish-artifacts.ts"
-import { architectRetroReviewReadyMessage, leadRetroRollupReadyMessage, loadRetroKickoffPrompt } from "../retro/prompt.ts"
+import { architectRetroReviewReadyMessage, leadRetroSummaryReadyMessage, loadRetroKickoffPrompt } from "../retro/prompt.ts"
 import { loadDomainSkillExtractPrompt } from "../retro/skill-kickoff.ts"
 import { loadDomainSkillVerifyPrompt } from "../extract/prompt.ts"
 import { createVerifyManifest } from "../extract/verify-setup.ts"
@@ -177,7 +177,6 @@ export class RegistryStore {
         status: agent.status,
         ...(agent.missionId && { missionId: agent.missionId }),
         ...(agent.nodeId && { nodeId: agent.nodeId }),
-        ...(agent.parentSessionId && { parentSessionId: agent.parentSessionId }),
         ...(agent.projectRootSessionId && { projectRootSessionId: agent.projectRootSessionId }),
       })
     }
@@ -245,7 +244,6 @@ export class RegistryStore {
         updatedAt,
         ...(input.missionId && { missionId: input.missionId }),
         ...(input.nodeId && { nodeId: input.nodeId }),
-        ...(input.parentSessionId && { parentSessionId: input.parentSessionId }),
         ...(input.projectRootSessionId && { projectRootSessionId: input.projectRootSessionId }),
       }
       this.agents.set(input.agentId, record)
@@ -441,14 +439,12 @@ export class RegistryStore {
       const projectRootSessionId = this.byProfile("lead", "outer")?.sessionId
       const agents: RegistryAgent[] = []
       for (const [nodeId, node] of Object.entries(manifest.nodes)) {
-        const parentSessionId = node.parent ? manifest.nodes[node.parent]?.session_id : undefined
         agents.push(
           this.registerInnerNode({
             missionId: manifest.mission_id,
             nodeId,
             sessionId: node.session_id,
             profile: node.profile ?? INNER_EXECUTION_AGENT,
-            parentSessionId,
             projectRootSessionId,
           }),
         )
@@ -463,7 +459,6 @@ export class RegistryStore {
     nodeId: string
     sessionId: string
     profile: string
-    parentSessionId?: string
     projectRootSessionId?: string
   }) {
     return this.mutate(() => {
@@ -481,7 +476,6 @@ export class RegistryStore {
         status: "active",
         createdAt: existing?.createdAt ?? updatedAt,
         updatedAt,
-        ...(input.parentSessionId && { parentSessionId: input.parentSessionId }),
         ...((input.projectRootSessionId ?? existing?.projectRootSessionId) && {
           projectRootSessionId: input.projectRootSessionId ?? existing?.projectRootSessionId,
         }),
@@ -898,7 +892,7 @@ export class RegistryStore {
       architectNotified: Boolean(run.architectNotifiedAt),
       architectSummarySubmitted: Boolean(run.architectLeadNotifiedAt),
       architectLeadNotified: Boolean(run.architectLeadNotifiedAt),
-      leadRollupNotified: Boolean(run.leadRollupNotifiedAt),
+      leadRetroSummaryNotified: Boolean(run.leadRetroSummaryNotifiedAt),
     }
   }
 
@@ -941,7 +935,7 @@ export class RegistryStore {
         this.retroRuns.set(input.missionId, { ...run, architectLeadNotifiedAt: now() })
       })
     }
-    const leadDelivery = await this.maybeNotifyLeadRetroRollupComplete(input.missionId)
+    const leadDelivery = await this.maybeNotifyLeadRetroSummaryComplete(input.missionId)
     await publishArchitectSummaryBlogPost(this.options.directory, input.missionId, input.reportPath).catch(
       () => undefined,
     )
@@ -958,7 +952,7 @@ export class RegistryStore {
   async recordCuratorSkillSummary(input: { missionId: string; reportPath: string }) {
     const skill = this.skillExtractStatus(input.missionId)
     if (skill.status !== "ok" || skill.run.expectedNodeIds.length === 0) {
-      throw new Error(`Mission ${input.missionId} has no skill extract rollup for curator`)
+      throw new Error(`Mission ${input.missionId} has no skill extract pipeline for curator`)
     }
     if (!skill.curatorNotified) {
       throw new Error(`Mission ${input.missionId} curator skill kickoff has not completed yet`)
@@ -971,7 +965,7 @@ export class RegistryStore {
         this.skillExtractRuns.set(input.missionId, { ...run, curatorLeadNotifiedAt: now() })
       })
     }
-    const leadDelivery = await this.maybeNotifyLeadRetroRollupComplete(input.missionId)
+    const leadDelivery = await this.maybeNotifyLeadRetroSummaryComplete(input.missionId)
     return {
       missionId: input.missionId,
       reportPath: input.reportPath,
@@ -982,12 +976,12 @@ export class RegistryStore {
     }
   }
 
-  private async maybeNotifyLeadRetroRollupComplete(missionId: string) {
+  private async maybeNotifyLeadRetroSummaryComplete(missionId: string) {
     const readiness = this.retroCompleteReadiness(missionId)
     if (!readiness.ready) return { status: "skipped" as const, reason: "rollup_incomplete" as const }
 
     const run = this.retroRuns.get(missionId)
-    if (run?.leadRollupNotifiedAt) {
+    if (run?.leadRetroSummaryNotifiedAt) {
       return { status: "skipped" as const, reason: "already_notified" as const }
     }
 
@@ -1002,7 +996,7 @@ export class RegistryStore {
       readiness.skill.status === "ok" && readiness.skill.run.expectedNodeIds.length > 0
     const sent = await this.deliverSystemMessage(
       lead,
-      leadRetroRollupReadyMessage(missionId, {
+      leadRetroSummaryReadyMessage(missionId, {
         architectSummaryPath: architectSummaryRelPath(missionId),
         ...(skillAssigned && { curatorSummaryPath: curatorSummaryRelPath(missionId) }),
         locale,
@@ -1017,7 +1011,7 @@ export class RegistryStore {
     this.mutate(() => {
       const current = this.retroRuns.get(missionId)
       if (!current) return
-      this.retroRuns.set(missionId, { ...current, leadRollupNotifiedAt: now() })
+      this.retroRuns.set(missionId, { ...current, leadRetroSummaryNotifiedAt: now() })
     })
     await this.flushPendingDeliveries()
     return { status: sent.status, session_id: lead.sessionId }

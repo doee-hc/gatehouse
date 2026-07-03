@@ -28,8 +28,8 @@ describe("orchestration plan compile", () => {
     const source = `
 export const team = {
   mission_id: "plan-m1",
-  root: "a",
-  nodes: { a: { parent: null, description: "a" } },
+  terminal: "a",
+  nodes: { a: { description: "a" } },
 }
 export default async function orchestrate(ctx) {
   await ctx.run("a", { brief: { your_work: ["1"], acceptance_slice: ["done"] }, text: "wave1" })
@@ -47,20 +47,20 @@ export default async function orchestrate(ctx) {
     const source = `
 export const team = {
   mission_id: "plan-m1",
-  root: "root",
+  terminal: "terminal",
   nodes: {
-    root: { parent: null, description: "root" },
-    orphan: { parent: null, description: "orphan" },
+    terminal: { description: "root" },
+    orphan: { description: "orphan" },
   },
 }
 export default async function orchestrate(ctx) {
-  await ctx.run("root", { brief: { your_work: ["w"], acceptance_slice: ["done"] }, text: "go" })
+  await ctx.run("terminal", { brief: { your_work: ["w"], acceptance_slice: ["done"] }, text: "go" })
 }
 `
     const result = await dryRunMissionScriptSource(source, "plan-m1")
     expect(result.ok).toBe(false)
     if (result.ok) return
-    expect(result.code).toBe("SCRIPT_UNREACHABLE_NODE")
+    expect(result.code).toBe("SCRIPT_SIMULATION_INCOMPLETE")
   })
 
   test("splitOrchestrateStatements splits top-level run steps", () => {
@@ -95,11 +95,11 @@ await ctx.run("b", { brief: { your_work: ["w"], acceptance_slice: ["done"] }, te
     const source = `
 export const team = {
   mission_id: "plan-m1",
-  root: "root",
+  terminal: "terminal",
   nodes: {
-    root: { parent: null, description: "root" },
-    a: { parent: "root", description: "a" },
-    b: { parent: "root", description: "b" },
+    terminal: { description: "root" },
+    a: { description: "a" },
+    b: { description: "b" },
   },
 }
 export default async function orchestrate(ctx) {
@@ -117,9 +117,9 @@ export default async function orchestrate(ctx) {
       })
     },
   ])
-  await ctx.run("root", {
-    brief: { your_work: ["rollup"], acceptance_slice: ["done"] },
-    text: "rollup",
+  await ctx.run("terminal", {
+    brief: { your_work: ["summary"], acceptance_slice: ["done"] },
+    text: "summary",
     dependsOn: [{ node: "a", summary: true }, { node: "b", summary: true }],
   })
 }
@@ -135,15 +135,15 @@ export default async function orchestrate(ctx) {
     const source = `
 export const team = {
   mission_id: "plan-m1",
-  root: "root",
+  terminal: "terminal",
   nodes: {
-    root: { parent: null, description: "root" },
-    a: { parent: "root", description: "a coord" },
-    b: { parent: "root", description: "b coord" },
-    a1: { parent: "a", description: "a1" },
-    a2: { parent: "a", description: "a2" },
-    b1: { parent: "b", description: "b1" },
-    b2: { parent: "b", description: "b2" },
+    terminal: { description: "root" },
+    a: { description: "a coord" },
+    b: { description: "b coord" },
+    a1: { description: "a1" },
+    a2: { description: "a2" },
+    b1: { description: "b1" },
+    b2: { description: "b2" },
   },
 }
 export default async function orchestrate(ctx) {
@@ -152,16 +152,16 @@ export default async function orchestrate(ctx) {
       for (const id of ["a1", "a2"]) {
         await ctx.run(id, { brief: { your_work: [id], acceptance_slice: ["done"] }, text: "go" })
       }
-      await ctx.run("a", { brief: { your_work: ["rollup a"], acceptance_slice: ["done"] }, text: "rollup", dependsOn: [{ node: "a1", summary: true }, { node: "a2", summary: true }] })
+      await ctx.run("a", { brief: { your_work: ["rollup a"], acceptance_slice: ["done"] }, text: "summary", dependsOn: [{ node: "a1", summary: true }, { node: "a2", summary: true }] })
     },
     async () => {
       for (const id of ["b1", "b2"]) {
         await ctx.run(id, { brief: { your_work: [id], acceptance_slice: ["done"] }, text: "go" })
       }
-      await ctx.run("b", { brief: { your_work: ["rollup b"], acceptance_slice: ["done"] }, text: "rollup", dependsOn: [{ node: "b1", summary: true }, { node: "b2", summary: true }] })
+      await ctx.run("b", { brief: { your_work: ["rollup b"], acceptance_slice: ["done"] }, text: "summary", dependsOn: [{ node: "b1", summary: true }, { node: "b2", summary: true }] })
     },
   ])
-  await ctx.run("root", { brief: { your_work: ["final"], acceptance_slice: ["done"] }, text: "final", dependsOn: [{ node: "a", summary: true }, { node: "b", summary: true }] })
+  await ctx.run("terminal", { brief: { your_work: ["final"], acceptance_slice: ["done"] }, text: "final", dependsOn: [{ node: "a", summary: true }, { node: "b", summary: true }] })
 }
 `
     const dryRun = await dryRunMissionScriptSource(source, "plan-m1")
@@ -177,21 +177,21 @@ await ctx.fork([
     await ctx.run("a1", { brief: { your_work: ["a1"], acceptance_slice: ["done"] }, text: "go" })
   },
 ])
-await ctx.run("root", { brief: { your_work: ["root"], acceptance_slice: ["done"] }, text: "final" })
+await ctx.run("terminal", { brief: { your_work: ["root"], acceptance_slice: ["done"] }, text: "final" })
 `
     const statements = splitOrchestrateStatements(body)
     expect(statements.length).toBe(2)
     expect(statements[0]).toContain("ctx.fork")
     expect(statements[0]).toContain('ctx.run("a1"')
-    expect(statements[1]).toContain('ctx.run("root"')
+    expect(statements[1]).toContain('ctx.run("terminal"')
   })
 
   test("allows // comments between orchestrate steps after plan-step trim", async () => {
     const source = `
 export const team = {
   mission_id: "plan-m1",
-  root: "a",
-  nodes: { a: { parent: null, description: "a" } },
+  terminal: "a",
+  nodes: { a: { description: "a" } },
 }
 export default async function orchestrate(ctx) {
   // section divider

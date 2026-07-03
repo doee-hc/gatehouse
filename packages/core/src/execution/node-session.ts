@@ -8,7 +8,8 @@ import type { RegistryStore } from "../registry/store.ts"
 import { innerAgentId } from "../registry/types.ts"
 import { promptSession } from "../session/client.ts"
 import type { TeamSpec } from "../tree/types.ts"
-import { childNodeIdsFromSpec } from "../tree/parse.ts"
+import type { OrchestrationPlan } from "../orchestration/plan-types.ts"
+import { planChildNodeIds } from "../orchestration/plan-graph.ts"
 import { skillDomainContextNote } from "../retro/skill-kickoff.ts"
 import { selectSkillsForTask, formatRetrievedSkillCatalog } from "../skills/retrieval.ts"
 import type { OuterProfile } from "../names.ts"
@@ -47,6 +48,7 @@ export function buildInnerBootstrapSystem(input: {
 export async function buildBootstrapSystemForNode(input: {
   projectDirectory: string
   spec: TeamSpec
+  plan: OrchestrationPlan
   nodeId: string
   contract?: MissionContract
   agentNames: Record<OuterProfile, string>
@@ -77,9 +79,9 @@ export async function buildBootstrapSystemForNode(input: {
     ? skillDomainContextNote(specNode.skill_domain, input.agentNames, locale, skillCatalog)
     : undefined
 
-  const isAcceptanceLayerNode = childNodeIdsFromSpec(input.spec, input.nodeId).length > 0
+  const isAcceptanceLayerNode = planChildNodeIds(input.plan, input.nodeId).length > 0
   const acceptanceSubtree = isAcceptanceLayerNode
-    ? formatAcceptanceSubtreeSnapshot(input.spec, input.nodeId, locale)
+    ? formatAcceptanceSubtreeSnapshot(input.spec, input.plan, input.nodeId, locale)
     : undefined
 
   return buildInnerBootstrapSystem({

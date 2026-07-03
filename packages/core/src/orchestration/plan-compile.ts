@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto"
-import { childNodeIdsFromSpec, topologicalNodeOrder } from "../tree/parse.ts"
 import type { TeamSpec } from "../tree/types.ts"
 import { MissionScriptParseError } from "./script-parse.ts"
 import { parenBraceDepthBefore } from "./source-depth.ts"
@@ -83,30 +82,8 @@ function classifyStatement(statement: string, team: TeamSpec): PlanStep {
 }
 
 function validateTeamGraph(team: TeamSpec) {
-  if (!team.nodes[team.root]) {
-    throw new MissionScriptParseError("SCRIPT_INVALID_TEAM", `team.root ${team.root} is not in nodes`)
-  }
-  try {
-    topologicalNodeOrder(team)
-  } catch {
-    throw new MissionScriptParseError("SCRIPT_TEAM_CYCLE", "team.nodes parent graph contains a cycle")
-  }
-
-  const reachable = new Set<string>()
-  const walk = (nodeId: string) => {
-    if (reachable.has(nodeId)) return
-    reachable.add(nodeId)
-    for (const child of childNodeIdsFromSpec(team, nodeId)) walk(child)
-  }
-  walk(team.root)
-
-  for (const nodeId of Object.keys(team.nodes)) {
-    if (!reachable.has(nodeId)) {
-      throw new MissionScriptParseError(
-        "SCRIPT_UNREACHABLE_NODE",
-        `team node ${nodeId} is not reachable from root ${team.root}`,
-      )
-    }
+  if (!team.nodes[team.terminal]) {
+    throw new MissionScriptParseError("SCRIPT_INVALID_TEAM", `team.terminal ${team.terminal} is not in nodes`)
   }
 }
 
@@ -166,6 +143,12 @@ export function compileOrchestrationPlan(input: {
     warnings,
   }
   plan.terminal_node = inferTerminalNodeFromPlan(plan)
+  if (plan.terminal_node && input.team.terminal !== plan.terminal_node) {
+    throw new MissionScriptParseError(
+      "SCRIPT_TERMINAL_MISMATCH",
+      `team.terminal (${input.team.terminal}) must equal plan terminal node (${plan.terminal_node})`,
+    )
+  }
   plan.plan_version = hashPlanVersion(plan)
   return plan
 }

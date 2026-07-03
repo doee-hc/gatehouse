@@ -52,12 +52,12 @@ describe("office layout spec", () => {
 
   test("syncWorkstationBindings keeps slots for active agents and frees finished ones", () => {
     const nodes = [
-      { mission_id: "m-a", node_id: "root", spawn_id: "root" },
+      { mission_id: "m-a", node_id: "terminal", spawn_id: "terminal" },
       { mission_id: "m-a", node_id: "leaf", spawn_id: "leaf" },
     ]
     const first = syncWorkstationBindings(nodes, undefined, 2)
     expect(first).toEqual([
-      { spawn_id: "root", slot: 0 },
+      { spawn_id: "terminal", slot: 0 },
       { spawn_id: "leaf", slot: 1 },
     ])
 
@@ -92,11 +92,11 @@ describe("office layout spec", () => {
       stringifyYaml({
         mission_id: "mission-a",
         status: "running",
-        root_node: "root",
+        terminal_node: "terminal",
         created_at: "2026-06-01T00:00:00Z",
         nodes: {
-          root: { session_id: "s-root-a", parent: null, display_name: "root", profile: "build" },
-          leaf: { session_id: "s-leaf-a", parent: "root", display_name: "leaf", profile: "build" },
+          terminal: { session_id: "s-root-a", display_name: "terminal", profile: "build" },
+          leaf: { session_id: "s-leaf-a", display_name: "leaf", profile: "build" },
         },
       }),
     )
@@ -106,12 +106,12 @@ describe("office layout spec", () => {
       stringifyYaml({
         mission_id: "mission-b",
         status: "running",
-        root_node: "root",
+        terminal_node: "terminal",
         created_at: "2026-06-01T00:00:00Z",
         nodes: {
-          root: { session_id: "s-root-b", parent: null, display_name: "root", profile: "build" },
-          impl: { session_id: "s-impl-b", parent: "root", display_name: "impl", profile: "build" },
-          qa: { session_id: "s-qa-b", parent: "root", display_name: "qa", profile: "build" },
+          terminal: { session_id: "s-root-b", display_name: "terminal", profile: "build" },
+          impl: { session_id: "s-impl-b", display_name: "impl", profile: "build" },
+          qa: { session_id: "s-qa-b", display_name: "qa", profile: "build" },
         },
       }),
     )
@@ -121,7 +121,7 @@ describe("office layout spec", () => {
     expect(workstationCountForAgents(spec.inner_nodes.length)).toBe(2)
     expect(spec.workstation_count).toBe(2)
     expect(spec.revision).toBe("ws:2")
-    expect(spec.bindings.map((entry) => entry.spawn_id).sort()).toEqual(["impl", "qa", "root"])
+    expect(spec.bindings.map((entry) => entry.spawn_id).sort()).toEqual(["impl", "qa", "terminal"])
 
     await writeFile(
       path.join(dir, ".gatehouse", "lead", "missions.yaml"),
@@ -138,7 +138,7 @@ describe("office layout spec", () => {
     const afterDone = await computeOfficeLayoutSpec(dir)
     expect(afterDone.workstation_count).toBe(2)
     expect(afterDone.revision).toBe("ws:2")
-    expect(afterDone.bindings.map((entry) => entry.spawn_id).sort()).toEqual(["leaf", "root"])
+    expect(afterDone.bindings.map((entry) => entry.spawn_id).sort()).toEqual(["leaf", "terminal"])
   })
 
   test("includes inner nodes from the newest done mission when idle", async () => {
@@ -162,17 +162,17 @@ describe("office layout spec", () => {
       stringifyYaml({
         mission_id: "mission-last",
         status: "archived",
-        root_node: "root",
+        terminal_node: "terminal",
         created_at: "2026-06-01T00:00:00Z",
         nodes: {
-          root: { session_id: "s-root", parent: null, display_name: "root", profile: "build" },
-          leaf: { session_id: "s-leaf", parent: "root", display_name: "leaf", profile: "build" },
+          terminal: { session_id: "s-root", display_name: "terminal", profile: "build" },
+          leaf: { session_id: "s-leaf", display_name: "leaf", profile: "build" },
         },
       }),
     )
 
     const spec = await computeOfficeLayoutSpec(dir)
-    expect(spec.inner_nodes.map((node) => node.node_id).sort()).toEqual(["leaf", "root"])
+    expect(spec.inner_nodes.map((node) => node.node_id).sort()).toEqual(["leaf", "terminal"])
     expect(spec.workstation_count).toBe(1)
   })
 })

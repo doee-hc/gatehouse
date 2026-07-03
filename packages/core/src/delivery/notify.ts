@@ -13,7 +13,7 @@ export function formatLeadDeliveryNotification(
     record: DeliveryRecord
     contract?: MissionContract
     summary?: string
-    rollupText?: string
+    aggregatedSummaryText?: string
   },
 ) {
   const locale = readLocaleSync(projectDirectory)
@@ -27,8 +27,8 @@ export function formatLeadDeliveryNotification(
   if (input.summary?.trim()) {
     lines.push("", gatehouseMessage("delivery.submit.summaryHeader", locale), input.summary.trim())
   }
-  if (input.rollupText?.trim()) {
-    lines.push("", gatehouseMessage("delivery.submit.rollupHeader", locale), input.rollupText.trim())
+  if (input.aggregatedSummaryText?.trim()) {
+    lines.push("", gatehouseMessage("delivery.submit.aggregatedSummaryHeader", locale), input.aggregatedSummaryText.trim())
   }
   if (input.record.precheck.length > 0) {
     lines.push(

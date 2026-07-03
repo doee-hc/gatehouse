@@ -187,10 +187,10 @@ describe("context dump", () => {
       const manifest: TreeManifest = {
         mission_id: missionId,
         status: "running",
-        root_node: "root",
+        terminal_node: "root",
         created_at: new Date().toISOString(),
         nodes: {
-          root: { session_id: "ses_root", parent: null, display_name: "root", profile: "build" },
+          terminal: { session_id: "ses_root", display_name: "root", profile: "build" },
         },
       }
 

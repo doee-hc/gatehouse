@@ -232,16 +232,16 @@ function parseTreesIndex(text: string): TreesIndex {
     .map((entry): TreesIndexEntry | undefined => {
       if (!isRecord(entry)) return
       const mission_id = readString(entry.mission_id)
-      const root_session_id = readString(entry.root_session_id)
-      const root_node = readString(entry.root_node)
+      const terminal_session_id = readString(entry.terminal_session_id)
+      const terminal_node = readString(entry.terminal_node)
       const status = readString(entry.status)
       const created_at = readString(entry.created_at)
-      if (!mission_id || !root_session_id || !root_node || !status || !created_at) return
+      if (!mission_id || !terminal_session_id || !terminal_node || !status || !created_at) return
       const objective = readString(entry.objective)
       return {
         mission_id,
-        root_session_id,
-        root_node,
+        terminal_session_id,
+        terminal_node,
         status,
         created_at,
         ...(objective && { objective }),

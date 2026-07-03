@@ -88,27 +88,27 @@ The retro analyst finished and registered \`{retro_summary_path}\`.
 
 Read retro-summary, review conclusions, and iterate **architect-meta**; write \`.gatehouse/trees/{mission_id}/reports/architect-summary.md\` per \`architect-summary.template.md\`, then call **gatehouse_retro_summary_record** to register submission.`,
   },
-  "retro.rollupReady": {
+  "retro.summaryReady": {
     zh: `[Gatehouse 复盘汇总就绪 · Mission {mission_id}]
 
-本轮复盘 rollup 已全部登记（architect 复盘摘要{curator_suffix}）。请阅读：
+本轮复盘摘要已全部登记（architect 复盘摘要{curator_suffix}）。请阅读：
 - \`{architect_summary_path}\`
 {curator_line}
 
 **下一步：** 按你的判断结案 → \`gatehouse_mission_complete(done, publish_deliverables=...)\`（如需 Portal 发布）`,
-    en: `[Gatehouse · Retro rollup ready · Mission {mission_id}]
+    en: `[Gatehouse · Retro summaries ready · Mission {mission_id}]
 
-Retro rollup is fully registered (architect summary{curator_suffix}). Read:
+Retro summaries are fully registered (architect summary{curator_suffix}). Read:
 - \`{architect_summary_path}\`
 {curator_line}
 
 **Next:** Close out when ready → \`gatehouse_mission_complete(done, publish_deliverables=...)\` (when Portal publish is wanted)`,
   },
-  "retro.rollupReady.curatorSuffix": {
+  "retro.summaryReady.curatorSuffix": {
     zh: "与 curator skill 摘要",
     en: " and curator skill summary",
   },
-  "retro.rollupReady.curatorLine": {
+  "retro.summaryReady.curatorLine": {
     zh: "- `{curator_summary_path}`",
     en: "- `{curator_summary_path}`",
   },
@@ -240,7 +240,6 @@ All nodes with skill_domain finished extract + verify and registration. Review \
   "dispatch.teamSnapshot.executionHeader": { zh: "### 执行树", en: "### Execution tree" },
   "dispatch.teamSnapshot.outerHeader": { zh: "### 外层联系人", en: "### Outer contacts" },
   "dispatch.teamSnapshot.you": { zh: "（你）", en: " (you)" },
-  "dispatch.teamSnapshot.parent": { zh: "`parent: {parent}`", en: "`parent: {parent}`" },
   "dispatch.teamSnapshot.children": { zh: "下属: {list}", en: "children: {list}" },
   "dispatch.teamSnapshot.outerHint": {
     zh: "核心团队（建队已完成）；编排 plan 的 terminal 节点在全树 done 时 `gatehouse_execution_complete` 自动通知 lead",
@@ -249,9 +248,9 @@ All nodes with skill_domain finished extract + verify and registration. Review \
   "dispatch.teamSnapshot.teamspecHeader": { zh: "### 执行团队节点", en: "### Execution team nodes" },
   "dispatch.teamSnapshot.subtreeHeader": {
     zh: "### 子树快照（启动参考）\n\n本节点在 `team` 中有下属节点；任务时序由编排脚本的 `dependsOn` 驱动，你不负责调度分支。若 brief 要求汇总验收，收到上游 completion 后按 brief 核对并 `gatehouse_execution_complete`。通知可能附带「上游节点交付」— 只引用路径，勿复述正文。",
-    en: "### Subtree snapshot (kickoff reference)\n\nThis node has child nodes in `team`; orchestration timing is driven by the mission script and `dependsOn` — you do not schedule the branch. When your brief requires rollup, verify upstream completions per brief, then call `gatehouse_execution_complete`. Upstream completions — paths only, do not copy bodies.",
+    en: "### Subtree snapshot (kickoff reference)\n\nThis node has child nodes in `team`; orchestration timing is driven by the mission script and `dependsOn` — you do not schedule the branch. When your brief requires aggregating upstream completions, verify them per brief, then call `gatehouse_execution_complete`. Upstream completions — paths only, do not copy bodies.",
   },
-  "dispatch.teamSnapshot.noNonRootNodes": { zh: "（无下属节点）", en: "(no delegate nodes)" },
+  "dispatch.teamSnapshot.noNonTerminalNodes": { zh: "（无下属节点）", en: "(no delegate nodes)" },
   "execution.nodeRole.header": {
     zh: "## 节点角色（Node Role · {node_id}）",
     en: "## Node role ({node_id})",
@@ -301,29 +300,29 @@ All nodes with skill_domain finished extract + verify and registration. Review \
     zh: "仅按上述修正要求改动；无需重做无关部分。完成后 `gatehouse_execution_complete`。",
     en: "Change only what the correction scope requires; do not redo unrelated work. Then call `gatehouse_execution_complete`.",
   },
-  "completion.rollup.header": {
-    zh: "## 下属节点交付",
+  "completion.summary.header": {
+    zh: "## 上游节点交付",
     en: "## Referenced node completions",
   },
-  "completion.rollup.hint": {
-    zh: "以下为下属节点汇报摘要；**勿**展开 artifact 正文，只引用路径与描述。",
-    en: "Child completion summaries below; **do not** paste artifact bodies — reference paths and descriptions only.",
+  "completion.summary.hint": {
+    zh: "以下为上游节点汇报摘要；**勿**展开 artifact 正文，只引用路径与描述。",
+    en: "Upstream completion summaries below; **do not** paste artifact bodies — reference paths and descriptions only.",
   },
-  "completion.rollup.nodeHeader": { zh: "节点 {node_id}", en: "Node {node_id}" },
-  "completion.rollup.artifactsHeader": { zh: "**变更 / 证据**", en: "**Changes / evidence**" },
-  "completion.rollup.risksHeader": { zh: "**未完成 / 风险**", en: "**Open items / risks**" },
-  "completion.rollup.missing": {
+  "completion.summary.nodeHeader": { zh: "节点 {node_id}", en: "Node {node_id}" },
+  "completion.summary.artifactsHeader": { zh: "**变更 / 证据**", en: "**Changes / evidence**" },
+  "completion.summary.risksHeader": { zh: "**未完成 / 风险**", en: "**Open items / risks**" },
+  "completion.summary.missing": {
     zh: "（无汇报摘要）",
     en: "(no completion summary)",
   },
-  "completion.rootDelivery.title": { zh: "任务交付索引 · {mission_id}", en: "Mission delivery index · {mission_id}" },
-  "completion.rootDelivery.generated": {
+  "completion.terminalDelivery.title": { zh: "任务交付索引 · {mission_id}", en: "Mission delivery index · {mission_id}" },
+  "completion.terminalDelivery.generated": {
     zh: "> 协调索引：列路径与摘要，供验收对照；交付正文在项目目录。",
     en: "> Coordination index: paths and summaries for acceptance review; deliverable bodies live in the project tree.",
   },
-  "completion.rootDelivery.rootSummary": { zh: "本节点摘要", en: "This node summary" },
-  "completion.rootDelivery.rootArtifacts": { zh: "**本节点产出**", en: "**This node artifacts**" },
-  "completion.rootDelivery.childRollup": { zh: "下属节点汇报", en: "Direct-report summaries" },
+  "completion.terminalDelivery.terminalSummary": { zh: "本节点摘要", en: "This node summary" },
+  "completion.terminalDelivery.terminalArtifacts": { zh: "**本节点产出**", en: "**This node artifacts**" },
+  "completion.terminalDelivery.upstreamSummaries": { zh: "上游节点汇报", en: "Upstream node summaries" },
   "mission.contract.header": { zh: "## 任务快照（冻结）", en: "## Mission snapshot (frozen)" },
   "mission.contract.missionId": { zh: "**任务 ID：** {mission_id}", en: "**Mission ID:** {mission_id}" },
   "mission.contract.objectiveHeader": { zh: "**目标：**", en: "**Objective:**" },
@@ -358,7 +357,7 @@ All nodes with skill_domain finished extract + verify and registration. Review \
     en: "**Structured record:** {record_path}",
   },
   "delivery.submit.summaryHeader": { zh: "**交付摘要：**", en: "**Summary:**" },
-  "delivery.submit.rollupHeader": { zh: "**节点汇报汇总：**", en: "**Node completion rollup:**" },
+  "delivery.submit.aggregatedSummaryHeader": { zh: "**节点汇报汇总：**", en: "**Aggregated node summaries:**" },
   "delivery.submit.precheckHeader": { zh: "**自动预检（precheck）：**", en: "**Automated precheck:**" },
   "delivery.submit.pendingPublishHeader": {
     zh: "**待发布交付物（结案时 `publish_deliverables=true` 会上 Portal）：**",
@@ -374,7 +373,7 @@ All nodes with skill_domain finished extract + verify and registration. Review \
   },
   "delivery.submit.portalHint": {
     zh: "以上汇总与 precheck 供验收对照；**不是** Portal 交付正文。用户确认接受后，调用 `gatehouse_mission_complete(done, publish_deliverables=true)` 发布 `done_when` 中的项目路径。",
-    en: "The rollup and precheck above are for review — **not** Portal deliverable bodies. After the user confirms acceptance, call `gatehouse_mission_complete(done, publish_deliverables=true)` to publish project paths from done_when.",
+    en: "The aggregated summaries and precheck above are for review — **not** Portal deliverable bodies. After the user confirms acceptance, call `gatehouse_mission_complete(done, publish_deliverables=true)` to publish project paths from done_when.",
   },
   "delivery.submit.reviewHint": {
     zh: "对照 precheck 与项目内交付路径后，在对话中请用户确认；若需上 Portal，结案时传 `publish_deliverables=true`。可选 `gatehouse_mission_retro`，再 `gatehouse_mission_complete(done)`。返工或拒绝时调用 `gatehouse_delivery_review(revision_requested | rejected)`。",
@@ -394,7 +393,7 @@ All nodes with skill_domain finished extract + verify and registration. Review \
   },
   "retro.kickoff.contextHeader": { zh: "## Mission 复盘启动快照", en: "## Mission retro kickoff snapshot" },
   "retro.kickoff.mission": { zh: "**Mission：** `{mission_id}`", en: "**Mission:** `{mission_id}`" },
-  "retro.kickoff.rootNode": { zh: "**Terminal 节点：** `{terminal_node}`", en: "**Terminal node:** `{terminal_node}`" },
+  "retro.kickoff.terminalNode": { zh: "**Terminal 节点：** `{terminal_node}`", en: "**Terminal node:** `{terminal_node}`" },
   "retro.kickoff.nodeCount": { zh: "**节点数：** {node_count}", en: "**Node count:** {node_count}" },
   "retro.kickoff.analysisOrderHeader": {
     zh: "**按编排脚本顺序分析（唯一规则）：**",

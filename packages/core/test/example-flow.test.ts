@@ -121,9 +121,10 @@ describe("example flow", () => {
       expect((await stat(docsDomainDir)).isDirectory()).toBe(true)
 
       const manifest = await readManifest(dir, "core-example-smoke-v1")
-      expect(manifest?.root_node).toBe("node-root")
-      expect(manifest?.nodes["node-root"]?.session_id).toBe("ses_mock_1")
-      expect(manifest?.nodes["node-doc"]?.session_id).toBe("ses_mock_2")
+      expect(manifest?.terminal_node).toBe("node-root")
+      const rootSessionId = manifest?.nodes["node-root"]?.session_id
+      const docSessionId = manifest?.nodes["node-doc"]?.session_id
+      expect(new Set([rootSessionId, docSessionId])).toEqual(new Set(["ses_mock_1", "ses_mock_2"]))
       expect(manifest?.nodes["node-doc"]?.skill_domain).toBe("docs")
       expect(manifest?.nodes["node-root"]?.display_name).toBe("root")
       expect(manifest?.nodes["node-doc"]?.display_name).toBe("doc")

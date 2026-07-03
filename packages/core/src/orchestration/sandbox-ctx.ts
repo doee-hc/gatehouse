@@ -1,5 +1,6 @@
-import { childNodeIdsFromSpec } from "../tree/parse.ts"
+import { planChildNodeIds, planLeafNodeIds } from "./plan-graph.ts"
 import type { GatehouseLocale } from "../locale.ts"
+import type { OrchestrationPlan } from "./plan-types.ts"
 import type { TeamSpec } from "../tree/types.ts"
 import { orchestrationFork, orchestrationRun } from "./run-fork.ts"
 import type { MissionContext, OrchestrationEngine, PromptInput } from "./types.ts"
@@ -17,10 +18,11 @@ export function createSandboxMissionContext(input: {
   missionId: string
   locale: GatehouseLocale
   team: TeamSpec
+  plan: Pick<OrchestrationPlan, "steps">
   objective?: string
   sendRpc: RpcSender
 }) {
-  const { missionId, locale, team, sendRpc } = input
+  const { missionId, locale, team, plan, sendRpc } = input
 
   const engine: OrchestrationEngine = {
     async setBrief(nodeId, partial: NodeBriefPartial) {
@@ -70,11 +72,11 @@ export function createSandboxMissionContext(input: {
     },
 
     leaves() {
-      return Object.keys(team.nodes).filter((nodeId) => childNodeIdsFromSpec(team, nodeId).length === 0)
+      return planLeafNodeIds(team, plan)
     },
 
     children(nodeId) {
-      return childNodeIdsFromSpec(team, nodeId)
+      return planChildNodeIds(plan, nodeId)
     },
 
     template: {

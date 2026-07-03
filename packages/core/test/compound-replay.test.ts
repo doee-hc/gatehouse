@@ -99,9 +99,9 @@ describe("replay policy", () => {
 describe("replay policy in mission context", () => {
   const team: TeamSpec = {
     mission_id: "compound-m1",
-    root: "a",
+    terminal: "a",
     nodes: {
-      a: { parent: null, description: "worker" },
+      a: { description: "worker" },
     },
   }
 

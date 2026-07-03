@@ -221,7 +221,7 @@ describe("orchestration replay integration", () => {
       await Bun.sleep(600)
 
       await waitForPromptMarker(env, "marker:rollup-root", { label: "rollup prompt" })
-      await completeRunningNode(env, "root")
+      await completeRunningNode(env, "terminal")
 
       await waitUntil(() => (readState(env)?.cursor_step_index ?? 0) >= 2, {
         label: "all steps complete",
@@ -344,12 +344,12 @@ describe("orchestration replay integration", () => {
 
       const tree: PortalTree = {
         mission_id: missionId,
-        root_node: "n3",
+        terminal_node: "n3",
         status: "running",
         nodes: [
-          { node_id: "n3", session_id: "ses_n3", parent: null, display_name: "N3" },
-          { node_id: "n2", session_id: "ses_n2", parent: "n3", display_name: "N2" },
-          { node_id: "n1", session_id: "ses_n1", parent: "n2", display_name: "N1" },
+          { node_id: "n3", session_id: "ses_n3", display_name: "N3" },
+          { node_id: "n2", session_id: "ses_n2", display_name: "N2" },
+          { node_id: "n1", session_id: "ses_n1", display_name: "N1" },
         ],
       }
 

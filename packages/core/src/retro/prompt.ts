@@ -45,7 +45,7 @@ export async function loadRetroKickoffPrompt(
   const retroContext = [
     gatehouseMessage("retro.kickoff.contextHeader", locale),
     gatehouseMessage("retro.kickoff.mission", locale, { mission_id: input.missionId }),
-    gatehouseMessage("retro.kickoff.rootNode", locale, { terminal_node: input.manifest.root_node }),
+    gatehouseMessage("retro.kickoff.terminalNode", locale, { terminal_node: input.manifest.terminal_node }),
     gatehouseMessage("retro.kickoff.nodeCount", locale, {
       node_count: String(Object.keys(input.manifest.nodes).length),
     }),
@@ -78,7 +78,7 @@ export function architectRetroReviewReadyMessage(
   )
 }
 
-export function leadRetroRollupReadyMessage(
+export function leadRetroSummaryReadyMessage(
   missionId: string,
   input: {
     architectSummaryPath: string
@@ -90,13 +90,13 @@ export function leadRetroRollupReadyMessage(
 ) {
   const locale = input.locale ?? DEFAULT_GATEHOUSE_LOCALE
   const curatorLine = input.curatorSummaryPath
-    ? gatehouseMessage("retro.rollupReady.curatorLine", locale, { curator_summary_path: input.curatorSummaryPath })
+    ? gatehouseMessage("retro.summaryReady.curatorLine", locale, { curator_summary_path: input.curatorSummaryPath })
     : ""
   const curatorSuffix = input.curatorSummaryPath
-    ? gatehouseMessage("retro.rollupReady.curatorSuffix", locale)
+    ? gatehouseMessage("retro.summaryReady.curatorSuffix", locale)
     : ""
   return renderGatehouseTemplate(
-    gatehouseMessage("retro.rollupReady", locale, {
+    gatehouseMessage("retro.summaryReady", locale, {
       mission_id: missionId,
       architect_summary_path: input.architectSummaryPath,
       curator_line: curatorLine,

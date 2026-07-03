@@ -76,7 +76,7 @@ describe("orchestration replay complex scenarios", () => {
       await Bun.sleep(400)
 
       await waitForPromptMarker(env, "marker:final-root")
-      await completeRunningNode(env, "root")
+      await completeRunningNode(env, "terminal")
       await waitForCursorAtLeast(env, 2)
 
       expect(Object.values(readState(env)?.nodes ?? {}).every((n) => n.status === "done")).toBe(true)
@@ -323,12 +323,12 @@ describe("orchestration replay complex scenarios", () => {
       await Bun.sleep(500)
 
       await waitForPromptMarker(env, "marker:root-w1")
-      await completeRunningNode(env, "root")
+      await completeRunningNode(env, "terminal")
       await Bun.sleep(600)
 
       await waitForPromptMarker(env, "marker:root-w2")
-      expect(readState(env)?.nodes.root?.round).toBe(2)
-      await completeRunningNode(env, "root")
+      expect(readState(env)?.nodes.terminal?.round).toBe(2)
+      await completeRunningNode(env, "terminal")
       await waitForCursorAtLeast(env, 3)
     } finally {
       await rm(env.dir, { recursive: true, force: true })

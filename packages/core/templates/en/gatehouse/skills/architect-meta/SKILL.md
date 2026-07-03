@@ -17,8 +17,8 @@ disable-model-invocation: true
 | ---------------------------- | ---------------------------------------------------------------------------------------------- |
 | `gatehouse_submit_orchestration`   | Validate and submit `mission.script.ts` for orchestration                                                   |
 | `gatehouse_mission_info`  | Read-only refresh of mission snapshot (objective / done_when / must_not / notes / user_topology) |
-| `gatehouse_send_message`     | Coordination messages (not for retro/skill rollup registration)                                                           |
-| `gatehouse_retro_summary_record` | Register `architect-summary.md` after retro rollup; Gatehouse auto-notifies {{lead_name}} when rollup is complete |
+| `gatehouse_send_message`     | Coordination messages (not for retro/skill summary registration)                                                           |
+| `gatehouse_retro_summary_record` | Register `architect-summary.md` after retro; Gatehouse auto-notifies {{lead_name}} when retro summaries are complete |
 | `gatehouse_list_team`        | No args: outer contacts + current Mission execution tree (and retro nodes if any)              |
 | `gatehouse_session_snapshot` | **One-shot diagnosis** (incident triage), no polling loops                                     |
 
@@ -46,7 +46,7 @@ Task body includes objective / done_when / must_not / notes / user_topology / us
 
 | Export | Purpose |
 |--------|---------|
-| `export const team` | Execution team roster: `node_id`, `parent` (Portal/reporting lines), one-line `description`; `root` = terminal node id |
+| `export const team` | Execution team roster: `node_id` + one-line `description`; `root` = terminal node id |
 | `export const meta` | Optional: progress `phases` (optional `name`) |
 | `export default async function orchestrate(ctx)` | Orchestration timing: `ctx.run` / `ctx.fork` / `dependsOn` |
 
@@ -70,14 +70,12 @@ await ctx.run("researcher-a", {
 ```typescript
 export const team = {
   mission_id: "<id>",
-  root: "<terminal-node-id>",
+  terminal: "<terminal-node-id>",
   nodes: {
     "<leaf-id>": {
-      parent: "<terminal-node-id>",
       description: "Executes <concrete deliverable>",
     },
     "<terminal-node-id>": {
-      parent: null,
       description: "Produces the final mission deliverable",
     },
   },
@@ -110,8 +108,8 @@ export default async function orchestrate(ctx) {
 
 **Team vs orchestration:**
 
-- `team.root` **must equal the terminal node** (`parent: null`). Use a meaningful node id — **do not** add a generic `root` node by default.
-- `team.nodes` lists members and `parent` (Portal/list views only). **Timing and dependencies** live only in `orchestrate()` via `ctx.run` / `dependsOn` — never infer execution order from `parent`.
+- `team.terminal` **must equal the terminal node**. Use a meaningful node id — **do not** add a generic `root` node by default.
+- `team.nodes` lists members and descriptions only. **Timing and dependencies** live only in `orchestrate()` via `ctx.run` / `dependsOn`; that plan defines structure.
 - **Terminal node:** the plan dependency sink (last `ctx.run` target that nothing else waits on). When all nodes are done and the terminal calls `gatehouse_execution_complete`, Gatehouse auto-notifies {{lead_name}}.
 - Add intermediate synthesis nodes only when the work split genuinely needs them. When a node waits on upstream deliverables, use `dependsOn` with `summary: true`; Curator decides `skill_domain` — do not encode it in the script.
 
@@ -162,7 +160,7 @@ await ctx.fork([
     })
   },
 ])
-// Cross-track final delivery only when the mission needs it; set team.root to this node.
+// Cross-track final delivery only when the mission needs it; set team.terminal to this node.
 await ctx.run("<terminal-node-id>", {
   brief: { your_work: ["…"], acceptance_slice: ["…"] },
   text: ctx.template.workOrder("<terminal-node-id>"),
@@ -170,7 +168,7 @@ await ctx.run("<terminal-node-id>", {
 })
 ```
 
-When the last work node already satisfies `done_when`, make it the terminal (`team.root`, `parent: null`) — no extra wrapper node.
+When the last work node already satisfies `done_when`, make it the terminal (`team.terminal`) — no extra wrapper node.
 
 **Script writing limits:**
 
@@ -200,7 +198,7 @@ When you receive the “Retro review ready” notification:
 1. Read `.gatehouse/trees/<id>/reports/retro-summary.md` (retro-analyst output).
 2. Review conclusions and iterate **architect-meta**.
 3. Write `.gatehouse/trees/<id>/reports/architect-summary.md` per `architect-summary.template.md`.
-4. Call **`gatehouse_retro_summary_record`** (do not `send_message` {{lead_name}} for rollup).
+4. Call **`gatehouse_retro_summary_record`** (do not `send_message` {{lead_name}} for summary registration).
 
 ## Paths
 

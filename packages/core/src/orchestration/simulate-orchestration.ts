@@ -1,5 +1,5 @@
 import type { GatehouseLocale } from "../locale.ts"
-import { childNodeIdsFromSpec } from "../tree/parse.ts"
+import { planChildNodeIds, planLeafNodeIds } from "./plan-graph.ts"
 import type { TeamSpec } from "../tree/types.ts"
 import { MissionScriptParseError } from "./script-parse.ts"
 import type { ParsedMissionScript } from "./script-parse.ts"
@@ -51,6 +51,7 @@ function createSimulatedMissionContext(input: {
   missionId: string
   locale: GatehouseLocale
   team: TeamSpec
+  plan: OrchestrationPlan
   objective: string
   state: OrchestrationState
   dispatchedReply: Set<string>
@@ -58,7 +59,7 @@ function createSimulatedMissionContext(input: {
   stepCount: { value: number }
   maxSteps: number
 }): MissionContext {
-  const { missionId, locale, team, state } = input
+  const { missionId, locale, team, plan, state } = input
 
   const engine: OrchestrationEngine = {
     async prompt(nodeIds, promptInput) {
@@ -158,11 +159,11 @@ function createSimulatedMissionContext(input: {
     },
 
     leaves() {
-      return Object.keys(team.nodes).filter((nodeId) => childNodeIdsFromSpec(team, nodeId).length === 0)
+      return planLeafNodeIds(team, plan)
     },
 
     children(nodeId) {
-      return childNodeIdsFromSpec(team, nodeId)
+      return planChildNodeIds(plan, nodeId)
     },
 
     template: {
@@ -247,6 +248,7 @@ export async function simulateOrchestration(input: {
     missionId,
     locale,
     team,
+    plan: input.plan,
     objective: input.objective ?? "simulation",
     state,
     dispatchedReply,

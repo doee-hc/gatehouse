@@ -3,6 +3,11 @@ import type {
   PortalOrchestrationFlowEdge,
   PortalOrchestrationNode,
 } from "../api/types.ts"
+import {
+  computePlanNodeLayers,
+  maxPlanLayoutDepth,
+  maxPlanLayoutWidth,
+} from "../../../core/src/portal/orchestration-plan-layout.ts"
 import { t } from "./i18n.ts"
 
 export type OrchestrationGraphVariant = "mini" | "expanded"
@@ -82,9 +87,9 @@ const MINI_METRICS_BASE: GraphMetrics = {
   labelGap: 3,
 }
 
-function miniMetricsForTree(nodeCount: number, maxDepth: number, maxSiblings: number): GraphMetrics {
+function miniMetricsForPlan(nodeCount: number, maxDepth: number, maxWidth: number): GraphMetrics {
   const base = MINI_METRICS_BASE
-  const verticalDensity = Math.max(nodeCount / 10, maxSiblings / 6, 1)
+  const verticalDensity = Math.max(nodeCount / 10, maxWidth / 6, 1)
   const verticalCompact = Math.min(1, 1 / Math.sqrt(verticalDensity))
   const depthBoost = Math.max(0, 3 - maxDepth) * 6
   return {
@@ -102,17 +107,48 @@ function metricsForVariant(
   _variant: OrchestrationGraphVariant,
   nodeCount: number,
   maxDepth: number,
-  maxSiblings: number,
+  maxWidth: number,
 ): GraphMetrics {
-  return miniMetricsForTree(nodeCount, maxDepth, maxSiblings)
+  return miniMetricsForPlan(nodeCount, maxDepth, maxWidth)
 }
 
-function maxSiblingCount(childrenByParent: Map<string, string[]>) {
-  let max = 0
-  for (const children of childrenByParent.values()) {
-    max = Math.max(max, children.length)
+function layoutPlanFlow(orch: PortalOrchestration, metrics: GraphMetrics) {
+  const nodeIds = orch.nodes.map((node) => node.node_id)
+  const layers = computePlanNodeLayers(nodeIds, orch.flow_edges, orch.activation_order)
+  const positions = new Map<string, LayoutPos>()
+  const blockHeight = nodeBlockHeight(metrics)
+
+  const byDepth = new Map<number, string[]>()
+  for (const nodeId of nodeIds) {
+    const layer = layers.get(nodeId) ?? { depth: 0, rank: 0 }
+    const depthNodes = byDepth.get(layer.depth) ?? []
+    depthNodes.push(nodeId)
+    byDepth.set(layer.depth, depthNodes)
   }
-  return max
+
+  for (const [depth, ids] of byDepth) {
+    ids.sort(
+      (left, right) =>
+        (layers.get(left)?.rank ?? 0) - (layers.get(right)?.rank ?? 0),
+    )
+    let top = metrics.padding
+    const x = metrics.padding + depth * metrics.levelGap + metrics.dotRadius
+
+    for (const nodeId of ids) {
+      const y = top + blockHeight / 2
+      positions.set(nodeId, {
+        x,
+        y,
+        depth,
+        labelPlacement: "above",
+        width: metrics.dotRadius * 2,
+        height: blockHeight,
+      })
+      top += blockHeight + metrics.siblingGap
+    }
+  }
+
+  return { positions, layers }
 }
 
 function stretchMiniLayoutHorizontally(positions: Map<string, LayoutPos>, metrics: GraphMetrics) {
@@ -140,92 +176,8 @@ function stretchMiniLayoutHorizontally(positions: Map<string, LayoutPos>, metric
   }
 }
 
-function maxTreeDepth(rootId: string, childrenByParent: Map<string, string[]>) {
-  const walk = (id: string): number => {
-    const kids = childrenByParent.get(id) ?? []
-    if (kids.length === 0) return 0
-    return 1 + Math.max(...kids.map((kid) => walk(kid)))
-  }
-  return walk(rootId)
-}
-
-function buildChildrenMap(orch: PortalOrchestration) {
-  const byId = new Map(orch.nodes.map((node) => [node.node_id, node]))
-  const childrenByParent = new Map<string, string[]>()
-
-  for (const node of orch.nodes) {
-    if (node.node_id === orch.root_node) continue
-    const parentId =
-      node.parent && node.parent !== node.node_id && byId.has(node.parent)
-        ? node.parent
-        : orch.root_node
-    const siblings = childrenByParent.get(parentId) ?? []
-    siblings.push(node.node_id)
-    childrenByParent.set(parentId, siblings)
-  }
-
-  for (const children of childrenByParent.values()) {
-    children.sort((a, b) => a.localeCompare(b))
-  }
-
-  return childrenByParent
-}
-
 function nodeBlockHeight(metrics: GraphMetrics) {
   return metrics.fontSize + metrics.labelGap + metrics.dotRadius * 2 + metrics.labelGap + 2
-}
-
-function layoutTreeLR(
-  rootId: string,
-  childrenByParent: Map<string, string[]>,
-  metrics: GraphMetrics,
-) {
-  const positions = new Map<string, LayoutPos>()
-  const blockHeight = nodeBlockHeight(metrics)
-
-  function place(nodeId: string, depth: number, top: number): number {
-    const children = childrenByParent.get(nodeId) ?? []
-    const x = metrics.padding + depth * metrics.levelGap + metrics.dotRadius
-
-    if (children.length === 0) {
-      const y = top + blockHeight / 2
-      positions.set(nodeId, {
-        x,
-        y,
-        depth,
-        labelPlacement: "above",
-        width: metrics.dotRadius * 2,
-        height: blockHeight,
-      })
-      return top + blockHeight + metrics.siblingGap
-    }
-
-    let cursor = top
-    const childCenters: number[] = []
-    for (const childId of children) {
-      cursor = place(childId, depth + 1, cursor)
-      const childPos = positions.get(childId)
-      if (childPos) childCenters.push(childPos.y)
-    }
-
-    const y =
-      childCenters.length === 1
-        ? childCenters[0]!
-        : (childCenters[0]! + childCenters[childCenters.length - 1]!) / 2
-
-    positions.set(nodeId, {
-      x,
-      y,
-      depth,
-      labelPlacement: "above",
-      width: metrics.dotRadius * 2,
-      height: blockHeight,
-    })
-    return cursor
-  }
-
-  place(rootId, 0, metrics.padding)
-  return positions
 }
 
 function nodeLeft(pos: LayoutPos) {
@@ -563,191 +515,53 @@ function dedupeFlowEdges(edges: PortalOrchestrationFlowEdge[]) {
   return [...byPair.values()]
 }
 
-type TreeLinkFlow = {
-  edge: PortalOrchestrationFlowEdge
-  direction: "forward" | "reverse"
-}
-
-const FLOW_STATE_RANK = { current: 3, done: 2, pending: 1 } as const
-
-function treeLinkKey(parentId: string, childId: string) {
-  return `${parentId}->${childId}`
-}
-
-function buildParentByNode(rootNode: string, childrenByParent: Map<string, string[]>) {
-  const parentByNode = new Map<string, string>()
-  for (const [parentId, childIds] of childrenByParent) {
-    for (const childId of childIds) {
-      parentByNode.set(childId, parentId)
-    }
-  }
-  parentByNode.set(rootNode, "")
-  return parentByNode
-}
-
-function mergeTreeLinkFlow(
-  map: Map<string, TreeLinkFlow>,
-  parentId: string,
-  childId: string,
-  edge: PortalOrchestrationFlowEdge,
-  direction: TreeLinkFlow["direction"],
-) {
-  const key = treeLinkKey(parentId, childId)
-  const existing = map.get(key)
-  if (!existing) {
-    map.set(key, { edge, direction })
-    return
-  }
-  if (existing.direction === "forward" && direction === "reverse") {
-    map.set(key, { edge, direction })
-    return
-  }
-  if (existing.direction === "reverse") {
-    return
-  }
-  if (FLOW_STATE_RANK[edge.state] > FLOW_STATE_RANK[existing.edge.state]) {
-    map.set(key, { edge, direction })
-  }
-}
-
-function buildFlowByTreeLink(
-  edges: PortalOrchestrationFlowEdge[],
-  parentByNode: Map<string, string>,
-) {
-  const map = new Map<string, TreeLinkFlow>()
-  for (const edge of dedupeFlowEdges(edges)) {
-    const parentOfTo = parentByNode.get(edge.to)
-    if (parentOfTo === edge.from) {
-      mergeTreeLinkFlow(map, edge.from, edge.to, edge, "forward")
-      continue
-    }
-    const parentOfFrom = parentByNode.get(edge.from)
-    if (parentOfFrom === edge.to) {
-      mergeTreeLinkFlow(map, edge.to, edge.from, edge, "reverse")
-    }
-  }
-  return map
-}
-
-function treePathBetween(
-  parentPos: LayoutPos,
-  childPos: LayoutPos,
-  direction: TreeLinkFlow["direction"],
-  obstacles: Rect[] = [],
-  offset = 0,
-  metrics: GraphMetrics,
-) {
-  if (direction === "forward") {
-    return routeHVHBetween(parentPos, childPos, 0, obstacles, metrics)
-  }
-  return routeHVHBetween(childPos, parentPos, offset, obstacles, metrics)
-}
-
-function flowEdgeKind(
-  edge: PortalOrchestrationFlowEdge,
-  parentByNode: Map<string, string>,
-): "activate" | "rollup" | "serial" | "depends" {
-  if (edge.kind) return edge.kind
-  const parentOfTo = parentByNode.get(edge.to)
-  if (parentOfTo === edge.from) return "activate"
-  const parentOfFrom = parentByNode.get(edge.from)
-  if (parentOfFrom === edge.to) return "rollup"
-  return "serial"
-}
-
-function isDeliveryFlowEdge(edge: PortalOrchestrationFlowEdge, parentByNode: Map<string, string>) {
-  return flowEdgeKind(edge, parentByNode) !== "activate"
+function flowEdgeKind(edge: PortalOrchestrationFlowEdge): "summary" | "serial" | "depends" {
+  return edge.kind ?? "serial"
 }
 
 function renderFlowPathMarkup(
   edge: PortalOrchestrationFlowEdge,
   path: string,
   idPrefix: string,
-  parentByNode: Map<string, string>,
 ) {
-  const kind = flowEdgeKind(edge, parentByNode)
-  const title = flowEdgeTitle(edge, parentByNode)
-  const marker =
-    kind === "activate" ? "" : ` marker-end="${flowMarker(edge.state, idPrefix)}"`
-  return `<path class="orch-graph-edge orch-graph-flow orch-flow-${edge.state} orch-flow-kind-${kind} orch-flow-op-${edge.op}" data-step-id="${escapeAttr(edge.step_id)}"${marker} d="${path}">
+  const kind = flowEdgeKind(edge)
+  const title = flowEdgeTitle(edge)
+  return `<path class="orch-graph-edge orch-graph-flow orch-flow-${edge.state} orch-flow-kind-${kind} orch-flow-op-${edge.op}" data-step-id="${escapeAttr(edge.step_id)}" marker-end="${flowMarker(edge.state, idPrefix)}" d="${path}">
           <title>${escapeText(title)}</title>
         </path>`
 }
 
-function markTreeLinkFlowCovered(
-  coveredFlow: Set<string>,
-  parentId: string,
-  childId: string,
-  linkFlow: TreeLinkFlow,
-) {
-  coveredFlow.add(`${linkFlow.edge.from}->${linkFlow.edge.to}`)
-  if (linkFlow.direction === "reverse") {
-    coveredFlow.add(`${parentId}->${childId}`)
-  }
-}
-
 function renderMiniGraphEdges(
   orch: PortalOrchestration,
-  childrenByParent: Map<string, string[]>,
   positions: Map<string, LayoutPos>,
   idPrefix: string,
   nodesById: Map<string, PortalOrchestrationNode>,
   metrics: GraphMetrics,
 ) {
-  const parentByNode = buildParentByNode(orch.root_node, childrenByParent)
-  const flowByTreeLink = buildFlowByTreeLink(orch.flow_edges, parentByNode)
   const nodeObstacles = buildNodeObstacleList(positions, nodesById, metrics)
-  const coveredFlow = new Set<string>()
   const markup: string[] = []
 
-  for (const [parentId, childIds] of childrenByParent) {
-    const parentPos = positions.get(parentId)
-    if (!parentPos) continue
-    for (const childId of childIds) {
-      const childPos = positions.get(childId)
-      if (!childPos) continue
-
-      const linkFlow = flowByTreeLink.get(treeLinkKey(parentId, childId))
-      const obstacles = obstaclesExcluding(nodeObstacles, [parentId, childId])
-      if (linkFlow?.direction === "reverse") {
-        const path = treePathBetween(parentPos, childPos, linkFlow.direction, obstacles, 0, metrics)
-        markup.push(renderFlowPathMarkup(linkFlow.edge, path, idPrefix, parentByNode))
-        markTreeLinkFlowCovered(coveredFlow, parentId, childId, linkFlow)
-        continue
-      }
-
-      const path = routeHVHBetween(parentPos, childPos, 0, obstacles, metrics)
-      markup.push(`<path class="orch-graph-edge orch-graph-structural" d="${path}" />`)
-    }
-  }
-
   for (const edge of dedupeFlowEdges(orch.flow_edges)) {
-    const pairKey = `${edge.from}->${edge.to}`
-    if (coveredFlow.has(pairKey)) continue
-    if (!isDeliveryFlowEdge(edge, parentByNode)) continue
-
     const fromPos = positions.get(edge.from)
     const toPos = positions.get(edge.to)
     if (!fromPos || !toPos) continue
 
     const obstacles = obstaclesExcluding(nodeObstacles, [edge.from, edge.to])
     const path = routeEdgeBetween(fromPos, toPos, 0, obstacles, metrics)
-    markup.push(renderFlowPathMarkup(edge, path, idPrefix, parentByNode))
+    markup.push(renderFlowPathMarkup(edge, path, idPrefix))
   }
 
   return markup
 }
 
-function flowEdgeTitle(edge: PortalOrchestrationFlowEdge, parentByNode: Map<string, string>) {
-  const kind = flowEdgeKind(edge, parentByNode)
+function flowEdgeTitle(edge: PortalOrchestrationFlowEdge) {
+  const kind = flowEdgeKind(edge)
   const label =
-    kind === "activate"
-      ? t("orch.flow.dispatch")
-      : kind === "rollup"
-        ? t("orch.flow.rollup")
-        : kind === "depends"
-          ? t("orch.flow.depends")
-          : t("orch.flow.serial")
+    kind === "summary"
+      ? t("orch.flow.summary")
+      : kind === "depends"
+        ? t("orch.flow.depends")
+        : t("orch.flow.serial")
   return `${label}: ${edge.from} → ${edge.to}`
 }
 
@@ -904,7 +718,7 @@ function renderMiniDotNode(
   const fullLabel = nodeLabel(node)
   const layout = labelLayout(pos, metrics)
 
-  return `<g class="orch-graph-node orch-graph-node-dot orch-status-${node.status}${isRoot ? " orch-node-root" : ""}" data-node-id="${escapeAttr(node.node_id)}">
+  return `<g class="orch-graph-node orch-graph-node-dot orch-status-${node.status}${isRoot ? " orch-node-terminal" : ""}" data-node-id="${escapeAttr(node.node_id)}">
     <title>${escapeText(`${node.node_id} · ${statusLabel}${node.skill_domain ? ` · ${node.skill_domain}` : ""}`)}</title>
     <text class="orch-graph-node-label orch-graph-node-label-outside" x="${layout.x}" y="${layout.y}" text-anchor="${layout.anchor}" dominant-baseline="${layout.baseline}" font-size="${metrics.fontSize}">${escapeText(fullLabel)}</text>
     <circle class="orch-graph-node-dot-shape" cx="${pos.x}" cy="${pos.y}" r="${metrics.dotRadius}" />
@@ -916,25 +730,25 @@ export function renderOrchestrationGraph(
   variant: OrchestrationGraphVariant,
   idPrefix = `orch-${variant}`,
 ) {
-  const childrenByParent = buildChildrenMap(orch)
-  const maxDepth = maxTreeDepth(orch.root_node, childrenByParent)
-  const maxSiblings = maxSiblingCount(childrenByParent)
-  const metrics = metricsForVariant(variant, orch.nodes.length, maxDepth, maxSiblings)
-  const positions = layoutTreeLR(orch.root_node, childrenByParent, metrics)
+  const nodeIds = orch.nodes.map((node) => node.node_id)
+  const layers = computePlanNodeLayers(nodeIds, orch.flow_edges, orch.activation_order)
+  const maxDepth = maxPlanLayoutDepth(layers)
+  const maxWidth = maxPlanLayoutWidth(layers)
+  const metrics = metricsForVariant(variant, orch.nodes.length, maxDepth, maxWidth)
+  const { positions } = layoutPlanFlow(orch, metrics)
   stretchMiniLayoutHorizontally(positions, metrics)
-  const parentByNode = buildParentByNode(orch.root_node, childrenByParent)
   resolveLabelPlacements(positions)
   const nodesById = new Map(orch.nodes.map((node) => [node.node_id, node]))
   const bounds = computeBounds(positions, metrics, nodesById)
   const viewBox = `${bounds.minX} ${bounds.minY} ${bounds.width} ${bounds.height}`
   const aspect = preserveAspectRatio()
-  const edgeMarkup = renderMiniGraphEdges(orch, childrenByParent, positions, idPrefix, nodesById, metrics)
+  const edgeMarkup = renderMiniGraphEdges(orch, positions, idPrefix, nodesById, metrics)
 
   const nodeMarkup: string[] = []
   for (const node of orch.nodes) {
     const pos = positions.get(node.node_id)
     if (!pos) continue
-    const isRoot = node.node_id === orch.root_node
+    const isRoot = node.node_id === orch.terminal_node
     nodeMarkup.push(renderMiniDotNode(node, pos, metrics, isRoot))
   }
 

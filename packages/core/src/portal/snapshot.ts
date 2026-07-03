@@ -57,7 +57,6 @@ export type PortalSkill = {
 export type PortalTreeNode = {
   node_id: string
   session_id: string
-  parent: string | null
   skill_domain?: string
   display_name: string
   description?: string
@@ -80,7 +79,7 @@ export type PortalAgent = {
 
 export type PortalTree = {
   mission_id: string
-  root_node: string
+  terminal_node: string
   status: string
   nodes: PortalTreeNode[]
 }
@@ -181,7 +180,6 @@ function treeNodes(manifest: TreeManifest) {
   return Object.entries(manifest.nodes).map(([node_id, node]) => ({
     node_id,
     session_id: node.session_id,
-    parent: node.parent,
     ...(node.skill_domain && { skill_domain: node.skill_domain }),
     display_name: portalNodeDisplayName(node_id, node.display_name),
     ...(node.description && { description: node.description }),
@@ -191,7 +189,7 @@ function treeNodes(manifest: TreeManifest) {
 function manifestToPortalTree(manifest: TreeManifest): PortalTree {
   return {
     mission_id: manifest.mission_id,
-    root_node: manifest.root_node,
+    terminal_node: manifest.terminal_node,
     status: manifest.status,
     nodes: treeNodes(manifest),
   }
