@@ -1,6 +1,6 @@
 import type { OrchestrationPlan } from "../orchestration/plan-types.ts"
-import { coordinatorNodeIds } from "../orchestration/plan-graph.ts"
-import type { TeamSpec } from "../tree/types.ts"
+import { acceptanceLayerNodeIds } from "../orchestration/plan-graph.ts"
+import type { MissionTeamSpec } from "../missions/manifest/types.ts"
 import type { SkillDomainEntry } from "./domains.ts"
 
 export type SkillDomainAssignments = Record<string, string>
@@ -11,11 +11,11 @@ export type ResolvedSkillDomainAssignments = {
 }
 
 function isAcceptanceLayerNode(plan: OrchestrationPlan, nodeId: string) {
-  return new Set(coordinatorNodeIds(plan)).has(nodeId)
+  return acceptanceLayerNodeIds(plan).has(nodeId)
 }
 
 /** Leaf exec nodes that may receive skill_domain (coordination nodes omitted). */
-export function nodesEligibleForSkillDomain(spec: TeamSpec, plan: OrchestrationPlan) {
+export function nodesEligibleForSkillDomain(spec: MissionTeamSpec, plan: OrchestrationPlan) {
   return Object.keys(spec.nodes).filter((nodeId) => {
     if (nodeId === spec.terminal) return false
     if (isAcceptanceLayerNode(plan, nodeId)) return false
@@ -23,7 +23,7 @@ export function nodesEligibleForSkillDomain(spec: TeamSpec, plan: OrchestrationP
   })
 }
 
-export function assignmentsFromSpec(spec: TeamSpec): SkillDomainAssignments {
+export function assignmentsFromSpec(spec: MissionTeamSpec): SkillDomainAssignments {
   const out: SkillDomainAssignments = {}
   for (const [nodeId, node] of Object.entries(spec.nodes)) {
     if (node.skill_domain?.trim()) out[nodeId] = node.skill_domain.trim()
@@ -78,7 +78,7 @@ function scoreDomainMatch(description: string, domain: SkillDomainEntry) {
 }
 
 export function inferAssignmentsFromDomains(
-  spec: TeamSpec,
+  spec: MissionTeamSpec,
   plan: OrchestrationPlan,
   domains: SkillDomainEntry[],
 ) {
@@ -107,7 +107,7 @@ export function inferAssignmentsFromDomains(
 }
 
 export function skillAssignmentsReady(
-  spec: TeamSpec,
+  spec: MissionTeamSpec,
   plan: OrchestrationPlan,
   assignments: SkillDomainAssignments,
 ) {
@@ -117,7 +117,7 @@ export function skillAssignmentsReady(
 }
 
 export function resolveSkillDomainAssignments(
-  spec: TeamSpec,
+  spec: MissionTeamSpec,
   plan: OrchestrationPlan,
   input: { userSkill?: string; domains: SkillDomainEntry[] },
 ): ResolvedSkillDomainAssignments | undefined {
@@ -149,7 +149,7 @@ export function resolveSkillDomainAssignments(
   return { assignments, source }
 }
 
-export function applySkillDomainAssignments(spec: TeamSpec, assignments: SkillDomainAssignments) {
+export function applySkillDomainAssignments(spec: MissionTeamSpec, assignments: SkillDomainAssignments) {
   const next = structuredClone(spec)
   for (const [nodeId, domainId] of Object.entries(assignments)) {
     const node = next.nodes[nodeId]

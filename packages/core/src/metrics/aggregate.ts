@@ -28,9 +28,9 @@ export type SessionMetrics = {
   tools: ToolAggregate
 }
 
-export type SubtreeMetrics = {
+export type BranchMetrics = {
   terminal_node_id: string
-  scope: "subtree"
+  scope: "branch"
   node_ids: string[]
   session_count: number
   assistant_messages: number
@@ -160,7 +160,7 @@ export function aggregateSessionMetrics(input: {
   }
 }
 
-export function mergeSessionMetrics(sessions: SessionMetrics[]): Omit<SubtreeMetrics, "terminal_node_id" | "scope" | "node_ids"> {
+export function mergeSessionMetrics(sessions: SessionMetrics[]): Omit<BranchMetrics, "terminal_node_id" | "scope" | "node_ids"> {
   const tokens = emptyTokens()
   let cost = 0
   let assistantMessages = 0

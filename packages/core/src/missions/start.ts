@@ -4,7 +4,7 @@ import { readMissionsDocument, writeMissionsDocument } from "./store.ts"
 import { assertCanStartRunning, type MissionEntry } from "./parse.ts"
 import { missionEntryToRecord } from "./contract.ts"
 import { writeActiveMission } from "../portal/active-mission.ts"
-import { treeDir } from "../paths.ts"
+import { missionDir } from "../paths.ts"
 import { freezeMissionContract } from "./contract-freeze.ts"
 
 export function validateMissionStartEntry(entry: MissionEntry) {
@@ -51,7 +51,7 @@ export async function startMissionFromYaml(input: {
   const record = missionEntryToRecord(entry, { lockedAt, isActive: true, status: "running" })
   input.registry.activateMission(record)
   await writeActiveMission(input.projectDirectory, input.missionId)
-  await mkdir(treeDir(input.projectDirectory, input.missionId), { recursive: true })
+  await mkdir(missionDir(input.projectDirectory, input.missionId), { recursive: true })
   // Freeze structured done_when from raw YAML after the registry row exists,
   // but before writeMissionsDocument flattens missions.yaml.
   await freezeMissionContract(input.projectDirectory, input.missionId)

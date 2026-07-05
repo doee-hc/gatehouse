@@ -32,7 +32,7 @@ disable-model-invocation: true
 
 ## 产出
 
-1. 写 `.gatehouse/trees/<mission_id>/reports/retro-summary.md`（结构见 `retro-summary.template.md`）。
+1. 写 `.gatehouse/missions/<mission_id>/reports/retro-summary.md`（结构见 `retro-summary.template.md`）。
 2. 可复用脚本写入 `.gatehouse/skills/retro-toolkit/tools/<verb-noun>/`（含 `SKILL.md`）。
 3. 调用 **`gatehouse_retro_record()`** — Gatehouse 通知 {{architect_name}} 审核并迭代 **architect-meta**。
 

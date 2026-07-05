@@ -318,7 +318,7 @@ describe("registry harness", () => {
       const send = sendMessageTool(pluginInput)
       const output = toolOutput(
         await send.execute(
-          { recipient: "lead", message: "subtree done" },
+          { recipient: "lead", message: "branch done" },
           mockToolContext(dir, "ses_mid", "build"),
         ),
       )
@@ -499,7 +499,7 @@ describe("registry harness", () => {
       const result = await store.deliverSystemNotification({
         senderSessionId: "ses_mid",
         recipientQuery: "lead",
-        message: "subtree done",
+        message: "branch done",
       })
       expect(result.status).toBe("forbidden")
       if (result.status === "forbidden") {
@@ -626,7 +626,7 @@ describe("registry harness", () => {
         sessionId: "ses_retro_root",
       })
       store.beginRetroRun("m1")
-      const reportRel = ".gatehouse/trees/m1/reports/retro-summary.md"
+      const reportRel = ".gatehouse/missions/m1/reports/retro-summary.md"
       await Bun.write(path.join(dir, reportRel), "# retro\n")
       await store.recordRetroSummary({
         missionId: "m1",
@@ -643,7 +643,7 @@ describe("registry harness", () => {
     }
   })
 
-  test("retro_summary_record notifies lead when rollup is ready", async () => {
+  test("retro_summary_record notifies lead when retro summary is ready", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-registry-retro-lead-notify-"))
     try {
       const promptCalls: { sessionId: string; text: string }[] = []
@@ -694,7 +694,7 @@ describe("registry harness", () => {
         sessionId: "ses_retro_root",
       })
       store.beginRetroRun("m1")
-      const reportRel = ".gatehouse/trees/m1/reports/retro-summary.md"
+      const reportRel = ".gatehouse/missions/m1/reports/retro-summary.md"
       await Bun.write(path.join(dir, reportRel), "# retro\n")
       await store.recordRetroSummary({
         missionId: "m1",
@@ -705,7 +705,7 @@ describe("registry harness", () => {
       const afterRetro = await readBlogPublishedDocument(dir)
       expect(afterRetro.posts.map((entry) => entry.id)).toEqual(["m1:retro:summary"])
 
-      const summaryRel = ".gatehouse/trees/m1/reports/architect-summary.md"
+      const summaryRel = ".gatehouse/missions/m1/reports/architect-summary.md"
       await Bun.write(path.join(dir, summaryRel), "# architect summary\n")
       await store.recordArchitectRetroSummary({ missionId: "m1", reportPath: summaryRel })
 
@@ -917,7 +917,7 @@ describe("applyGatehouseConfig", () => {
     expect((agents["lead"]?.permission as Record<string, string>).gatehouse_send_message).toBe("allow")
   })
 
-  test("registers build profile with task allowed", async () => {
+  test("registers build profile only (no legacy per-topology profiles)", async () => {
     const { applyGatehouseConfig } = await import("../src/setup/config.ts")
     const cfg = { profile: {} } as Record<string, unknown>
     await applyGatehouseConfig(cfg as never)

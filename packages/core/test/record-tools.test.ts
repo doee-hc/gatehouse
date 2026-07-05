@@ -8,7 +8,7 @@ import { getRegistryStore } from "../src/registry/context.ts"
 import { retroRecordTool } from "../src/tools/retro.ts"
 import { skillExtractRecordTool } from "../src/tools/skill-extract-record.ts"
 import { curatorSkillSummaryRelPath, retroSummaryRelPath } from "../src/paths.ts"
-import { writeExtractManifest } from "../src/tree/store.ts"
+import { writeExtractManifest } from "../src/missions/manifest/store.ts"
 import { RETRO_ANALYST_AGENT } from "../src/registry/types.ts"
 
 function mockToolContext(directory: string, sessionID: string, agent: string): ToolContext {

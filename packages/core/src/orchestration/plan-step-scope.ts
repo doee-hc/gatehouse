@@ -1,4 +1,4 @@
-import type { TeamSpec } from "../tree/types.ts"
+import type { MissionTeamSpec } from "../missions/manifest/types.ts"
 import { compilePlanStepStatement } from "./plan-step-compile.ts"
 import type { PlanStep } from "./plan-types.ts"
 import { orchestrationRun } from "./run.ts"
@@ -17,7 +17,7 @@ export type PlanStepScope = {
 
 export function createPlanStepScope(input: {
   baseCtx: MissionContext
-  team: TeamSpec
+  team: MissionTeamSpec
   step: PlanStep
   index: number
   sendRpc: RpcSender

@@ -43,25 +43,6 @@ describe("meta skill copies", () => {
     }
   })
 
-  test("replaces legacy symlinks with copies", async () => {
-    const dir = await mkdtemp(path.join(tmpdir(), "gh-meta-copy-migrate-"))
-    try {
-      await scaffoldGatehouse(dir)
-
-      const copyPath = path.join(dir, ".gatehouse/skills/lead-meta")
-      await rm(copyPath, { recursive: true, force: true })
-      await Bun.$`ln -s ${path.join("..", "zh", "skills", "lead-meta")} ${copyPath}`.quiet()
-
-      ensureMetaSkillCopies(dir)
-
-      expect(lstatSync(copyPath).isSymbolicLink()).toBe(false)
-      const localeText = await Bun.file(path.join(dir, ".gatehouse/zh/skills/lead-meta/SKILL.md")).text()
-      expect(await Bun.file(path.join(copyPath, "SKILL.md")).text()).toBe(localeText)
-    } finally {
-      await rm(dir, { recursive: true, force: true })
-    }
-  })
-
   test("copies from new locale when destination is missing after locale change", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-meta-copy-locale-"))
     try {

@@ -6,14 +6,14 @@ import { initOrchestrationState, markNodeRunning, writeOrchestrationState } from
 import { saveOrchestrationPlanRecord } from "../src/orchestration/plan-store.ts"
 import { compileOrchestrationPlan } from "../src/orchestration/plan-compile.ts"
 import { buildPortalOrchestration } from "../src/portal/orchestration-view.ts"
-import type { PortalTree } from "../src/portal/snapshot.ts"
+import type { PortalMissionTeam } from "../src/portal/snapshot.ts"
 
 describe("portal orchestration view", () => {
   test("merges tree structure with orchestration node status and plan steps", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-portal-orch-view-"))
     try {
       const missionId = "orch-view-m1"
-      const tree: PortalTree = {
+      const team: PortalMissionTeam = {
         mission_id: missionId,
         terminal_node: "terminal",
         status: "running",
@@ -34,7 +34,7 @@ describe("portal orchestration view", () => {
 
       const orchestrateSource = `
 await ctx.run("leaf", { brief: { your_work: ["w"], acceptance_slice: ["done"] }, text: "go" })
-await ctx.run("terminal", { brief: { your_work: ["r"], acceptance_slice: ["done"] }, text: "rollup", dependsOn: [{ node: "leaf", deliverable: true }] })
+await ctx.run("terminal", { brief: { your_work: ["r"], acceptance_slice: ["done"] }, text: "synthesize", dependsOn: [{ node: "leaf", deliverable: true }] })
 `
 
       const plan = compileOrchestrationPlan({
@@ -54,12 +54,11 @@ await ctx.run("terminal", { brief: { your_work: ["r"], acceptance_slice: ["done"
 
       const state = initOrchestrationState(missionId, ["terminal", "leaf"])
       state.phase = "阶段一"
-      state.completed_step_ids = ["step-0"]
       state.cursor_step_index = 1
       markNodeRunning(state, "leaf")
       writeOrchestrationState(dir, state)
 
-      const view = buildPortalOrchestration(dir, tree)
+      const view = buildPortalOrchestration(dir, team)
       expect(view?.mission_id).toBe(missionId)
       expect(view?.nodes.find((node) => node.node_id === "leaf")?.status).toBe("running")
       expect(view?.nodes.find((node) => node.node_id === "terminal")?.status).toBe("pending")

@@ -59,8 +59,8 @@ export default async function orchestrate(ctx) {
   await ctx.run("b", { brief: { your_work: ["b"], acceptance_slice: [] }, text: "go b" })
   await ctx.run("c", { brief: { your_work: ["c"], acceptance_slice: [] }, text: "go c" })
   await ctx.run("lead", {
-    brief: { your_work: ["rollup"], acceptance_slice: [] },
-    text: "rollup lead",
+    brief: { your_work: ["synthesize"], acceptance_slice: [] },
+    text: "synthesize lead",
     dependsOn: [{ node: "a", deliverable: true }, { node: "b", deliverable: true }, { node: "c", deliverable: true }],
   })
   await ctx.run("root", {
@@ -90,8 +90,8 @@ export default async function orchestrate(ctx) {
     async () => {
       await ctx.run("a1", { brief: { your_work: ["a1"], acceptance_slice: [] }, text: "go a1" })
       await ctx.run("a", {
-        brief: { your_work: ["rollup a"], acceptance_slice: [] },
-        text: "rollup a",
+        brief: { your_work: ["synthesize a"], acceptance_slice: [] },
+        text: "synthesize a",
         dependsOn: [{ node: "a1", deliverable: true }],
       })
     },
@@ -102,8 +102,8 @@ export default async function orchestrate(ctx) {
         dependsOn: ["a1"],
       })
       await ctx.run("b", {
-        brief: { your_work: ["rollup b"], acceptance_slice: [] },
-        text: "rollup b",
+        brief: { your_work: ["synthesize b"], acceptance_slice: [] },
+        text: "synthesize b",
         dependsOn: [{ node: "b1", deliverable: true }],
       })
     },
@@ -121,7 +121,7 @@ export default async function orchestrate(ctx) {
     const leaves = Array.from({ length: 8 }, (_, i) => `w${i + 1}`)
     const nodeEntries = [
       `root: { description: "root" }`,
-      `coord: { description: "coordinator" }`,
+      `coord: { description: "synthesis node" }`,
       ...leaves.map((id) => `${id}: { description: "${id}" }`),
     ].join(",\n    ")
     const parallelTracks = leaves
@@ -145,8 +145,8 @@ export default async function orchestrate(ctx) {
 ${parallelTracks}
   ])
   await ctx.run("coord", {
-    brief: { your_work: ["rollup"], acceptance_slice: [] },
-    text: "coord rollup",
+    brief: { your_work: ["synthesize"], acceptance_slice: [] },
+    text: "coord synthesis",
     dependsOn: [${depends}],
   })
   await ctx.run("root", {
@@ -179,8 +179,8 @@ export default async function orchestrate(ctx) {
       await ctx.run("gpt-researcher", { brief: { your_work: ["gpt"], acceptance_slice: [] }, text: "go" })
       await ctx.run("claude-researcher", { brief: { your_work: ["claude"], acceptance_slice: [] }, text: "go" })
       await ctx.run("research-lead", {
-        brief: { your_work: ["research rollup"], acceptance_slice: [] },
-        text: "rollup",
+        brief: { your_work: ["research synthesis"], acceptance_slice: [] },
+        text: "synthesize",
         dependsOn: [{ node: "gpt-researcher", deliverable: true }, { node: "claude-researcher", deliverable: true }],
       })
     },
@@ -188,8 +188,8 @@ export default async function orchestrate(ctx) {
       await ctx.run("benchmark-analyst", { brief: { your_work: ["bench"], acceptance_slice: [] }, text: "go" })
       await ctx.run("pricing-analyst", { brief: { your_work: ["price"], acceptance_slice: [] }, text: "go" })
       await ctx.run("analysis-lead", {
-        brief: { your_work: ["analysis rollup"], acceptance_slice: [] },
-        text: "rollup",
+        brief: { your_work: ["analysis synthesis"], acceptance_slice: [] },
+        text: "synthesize",
         dependsOn: [{ node: "benchmark-analyst", deliverable: true }, { node: "pricing-analyst", deliverable: true }],
       })
     },
@@ -231,17 +231,17 @@ export default async function orchestrate(ctx) {
       ])
       await ctx.run("l2a", {
         brief: { your_work: ["l2a"], acceptance_slice: [] },
-        text: "rollup",
+        text: "synthesize",
         dependsOn: [{ node: "l1a", deliverable: true }, { node: "l1b", deliverable: true }],
       })
       await ctx.run("l3a", {
         brief: { your_work: ["l3a"], acceptance_slice: [] },
-        text: "rollup",
+        text: "synthesize",
         dependsOn: [{ node: "l2a", deliverable: true }],
       })
       await ctx.run("l4a", {
         brief: { your_work: ["l4a"], acceptance_slice: [] },
-        text: "rollup",
+        text: "synthesize",
         dependsOn: [{ node: "l3a", deliverable: true }],
       })
     },
@@ -252,17 +252,17 @@ export default async function orchestrate(ctx) {
       ])
       await ctx.run("l2b", {
         brief: { your_work: ["l2b"], acceptance_slice: [] },
-        text: "rollup",
+        text: "synthesize",
         dependsOn: [{ node: "l1c", deliverable: true }, { node: "l1d", deliverable: true }],
       })
       await ctx.run("l3b", {
         brief: { your_work: ["l3b"], acceptance_slice: [] },
-        text: "rollup",
+        text: "synthesize",
         dependsOn: [{ node: "l2b", deliverable: true }],
       })
       await ctx.run("l4b", {
         brief: { your_work: ["l4b"], acceptance_slice: [] },
-        text: "rollup",
+        text: "synthesize",
         dependsOn: [{ node: "l3b", deliverable: true }],
       })
     },
@@ -283,7 +283,7 @@ export default async function orchestrate(ctx) {
 
 const GALLERY_CASES: GalleryCase[] = [
   {
-    title: "线性三层 rollup",
+    title: "线性三层汇总",
     description: "leaf → mid → root 串行汇总",
     buildScript: SCRIPT.linearThreeStep,
     snapshots: [
@@ -294,7 +294,7 @@ const GALLERY_CASES: GalleryCase[] = [
   },
   {
     title: "双轨 parallel · 轨内串行",
-    description: "两组并行，每组内 a1→a2→rollup",
+    description: "两组并行，每组内 a1→a2→汇总",
     buildScript: SCRIPT.dualTrackParallelFinal,
     snapshots: [
       { label: "parallel 启动：A/B 首步并行", cursorStepIndex: 0 },
@@ -308,17 +308,17 @@ const GALLERY_CASES: GalleryCase[] = [
     buildScript: SCRIPT.dualTrackIntraFanOut,
     snapshots: [
       { label: "四叶子并行执行", cursorStepIndex: 0 },
-      { label: "A 轨 rollup 中", cursorStepIndex: 0, nodeStatuses: { a1: "done", a2: "done", a: "running", b1: "running", b2: "pending" } },
+      { label: "A 轨汇总中", cursorStepIndex: 0, nodeStatuses: { a1: "done", a2: "done", a: "running", b1: "running", b2: "pending" } },
       { label: "全部完成", cursorStepIndex: 2 },
     ],
   },
   {
     title: "深层 4 层 hierarchy",
-    description: "底层 fan-out → 逐层 rollup 到 root",
+    description: "底层 fan-out → 逐层汇总到 terminal",
     buildScript: SCRIPT.deepHierarchyFanOut,
     snapshots: [
       { label: "叶子 fan-out", cursorStepIndex: 0 },
-      { label: "L2 rollup 中", cursorStepIndex: 1 },
+      { label: "L2 汇总中", cursorStepIndex: 1 },
       { label: "L4 最终汇总", cursorStepIndex: 3 },
     ],
   },
@@ -343,7 +343,7 @@ const GALLERY_CASES: GalleryCase[] = [
   {
     title: "三路并行 fan-out join",
     description: "三个 playbook 并行后 root 汇总",
-    buildScript: SCRIPT.fanOutJoinRollup,
+    buildScript: SCRIPT.fanOutJoin,
     snapshots: [
       { label: "a/b 完成，root 等待", cursorStepIndex: 1, nodeStatuses: { a: "done", b: "running" } },
       { label: "全部完成", cursorStepIndex: 2 },
@@ -374,7 +374,7 @@ const GALLERY_CASES: GalleryCase[] = [
     buildScript: EXTRA_SCRIPTS.siblingSerial,
     snapshots: [
       { label: "b 执行中（a 已完成）", cursorStepIndex: 1, nodeStatuses: { a: "done", b: "running" } },
-      { label: "lead rollup", cursorStepIndex: 3 },
+      { label: "lead 汇总", cursorStepIndex: 3 },
     ],
   },
   {
@@ -392,7 +392,7 @@ const GALLERY_CASES: GalleryCase[] = [
     buildScript: EXTRA_SCRIPTS.wideFanOut,
     snapshots: [
       { label: "8 叶子并行", cursorStepIndex: 0 },
-      { label: "coord rollup", cursorStepIndex: 1, nodeStatuses: { w1: "done", w2: "done", w3: "done", w4: "done", w5: "done", w6: "done", w7: "done", w8: "done", coord: "running" } },
+      { label: "coord synthesis", cursorStepIndex: 1, nodeStatuses: { w1: "done", w2: "done", w3: "done", w4: "done", w5: "done", w6: "done", w7: "done", w8: "done", coord: "running" } },
     ],
   },
   {
@@ -411,7 +411,7 @@ const GALLERY_CASES: GalleryCase[] = [
     buildScript: EXTRA_SCRIPTS.deepFiveLevel,
     snapshots: [
       { label: "底层 4 叶子并行", cursorStepIndex: 0 },
-      { label: "L2 rollup 阶段", cursorStepIndex: 0, nodeStatuses: { l1a: "done", l1b: "done", l2a: "running", l1c: "done", l1d: "running" } },
+      { label: "L2 汇总阶段", cursorStepIndex: 0, nodeStatuses: { l1a: "done", l1b: "done", l2a: "running", l1c: "done", l1d: "running" } },
       { label: "L5 最终汇总", cursorStepIndex: 1 },
     ],
   },
@@ -767,7 +767,7 @@ async function main() {
 <body>
   <header class="gallery-header">
     <h1>编排图展示测试样例</h1>
-    <p>共 ${index} 张图，覆盖线性 rollup、双轨 parallel、组内 fan-out、深层 hierarchy、跨父依赖、宽 fan-out、异常状态等结构。每张含 mini 与 expanded 两种渲染。</p>
+    <p>共 ${index} 张图，覆盖线性汇总、双轨 parallel、组内 fan-out、深层 hierarchy、跨父依赖、宽 fan-out、异常状态等结构。每张含 mini 与 expanded 两种渲染。</p>
   </header>
   <nav class="gallery-toc" aria-label="跳转序号">
     ${Array.from({ length: index }, (_, i) => `<a href="#case-${i + 1}">${i + 1}</a>`).join("\n    ")}

@@ -48,7 +48,7 @@ export async function dumpOuterSessionsForDebug(input: {
         dumped_at: new Date().toISOString(),
         note:
           "Debug-only outer agent session dump. Gatehouse runtime does not read this; " +
-          "inner execution context remains under .gatehouse/trees/<mission_id>/context/.",
+          "inner execution context remains under .gatehouse/missions/<mission_id>/context/.",
         outer: outerEntries,
       },
       null,

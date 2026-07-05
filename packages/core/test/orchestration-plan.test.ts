@@ -88,7 +88,6 @@ await ctx.run("b", { brief: { your_work: ["w"], acceptance_slice: ["done"] }, te
     expect(state.nodes.a?.status).toBe("done")
     expect(state.nodes.b?.status).toBe("pending")
     expect(state.cursor_step_index).toBe(0)
-    expect(state.completed_step_ids).toEqual([])
   })
 
   test("parallel siblings compile with parallel", async () => {
@@ -138,8 +137,8 @@ export const team = {
   terminal: "terminal",
   nodes: {
     terminal: { description: "root" },
-    a: { description: "a coord" },
-    b: { description: "b coord" },
+    a: { description: "track a synthesis" },
+    b: { description: "track b synthesis" },
     a1: { description: "a1" },
     a2: { description: "a2" },
     b1: { description: "b1" },
@@ -152,13 +151,13 @@ export default async function orchestrate(ctx) {
       for (const id of ["a1", "a2"]) {
         await ctx.run(id, { brief: { your_work: [id], acceptance_slice: ["done"] }, text: "go" })
       }
-      await ctx.run("a", { brief: { your_work: ["rollup a"], acceptance_slice: ["done"] }, text: "summary", dependsOn: [{ node: "a1", deliverable: true }, { node: "a2", deliverable: true }] })
+      await ctx.run("a", { brief: { your_work: ["synthesize a"], acceptance_slice: ["done"] }, text: "summary", dependsOn: [{ node: "a1", deliverable: true }, { node: "a2", deliverable: true }] })
     },
     async () => {
       for (const id of ["b1", "b2"]) {
         await ctx.run(id, { brief: { your_work: [id], acceptance_slice: ["done"] }, text: "go" })
       }
-      await ctx.run("b", { brief: { your_work: ["rollup b"], acceptance_slice: ["done"] }, text: "summary", dependsOn: [{ node: "b1", deliverable: true }, { node: "b2", deliverable: true }] })
+      await ctx.run("b", { brief: { your_work: ["synthesize b"], acceptance_slice: ["done"] }, text: "summary", dependsOn: [{ node: "b1", deliverable: true }, { node: "b2", deliverable: true }] })
     },
   ])
   await ctx.run("terminal", { brief: { your_work: ["final"], acceptance_slice: ["done"] }, text: "final", dependsOn: [{ node: "a", deliverable: true }, { node: "b", deliverable: true }] })

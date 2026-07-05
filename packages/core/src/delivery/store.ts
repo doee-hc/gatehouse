@@ -1,6 +1,6 @@
 import path from "node:path"
-import { deliveryDocumentPath, deliveryDocumentRelPath } from "../paths.ts"
 import { RegistryDatabase } from "../registry/db.ts"
+import { deliveryDocumentRelPath } from "../paths.ts"
 import { isRecord, parseYaml, readString } from "../yaml.ts"
 import type { MissionEntry } from "../missions/parse.ts"
 import {
@@ -44,12 +44,10 @@ function parseCriterion(raw: unknown): DeliveryRecord["criteria"][number] | unde
   const id = typeof raw.id === "number" ? raw.id : undefined
   const text = readString(raw.text)
   if (id === undefined || !text) return undefined
-  const publishPath = readString(raw.publishPath) ?? readString(raw.publish_path)
   return {
     id,
     text,
     check: parseCheck(raw.check),
-    ...(publishPath && { publishPath }),
   }
 }
 
@@ -130,9 +128,6 @@ export function parseDeliveryRecord(raw: unknown): DeliveryRecord | undefined {
     evidence,
     precheck,
     ...(readString(raw.blog_post_id) && { blog_post_id: readString(raw.blog_post_id) }),
-    ...(Array.isArray(raw.pending_publish_paths) && {
-      pending_publish_paths: raw.pending_publish_paths.filter((item): item is string => typeof item === "string"),
-    }),
     ...(Array.isArray(raw.published_artifacts) && {
       published_artifacts: raw.published_artifacts.filter((item): item is string => typeof item === "string"),
     }),
@@ -162,22 +157,9 @@ export function parseDeliveryDocument(text: string, missionId: string): Delivery
   }
 }
 
-async function readLegacyDeliveryYaml(projectDirectory: string, missionId: string) {
-  const file = Bun.file(deliveryDocumentPath(projectDirectory, missionId))
-  if (!(await file.exists())) return undefined
-  return parseDeliveryDocument(await file.text(), missionId)
-}
-
 export async function readDeliveryDocument(projectDirectory: string, missionId: string) {
   const registry = new RegistryDatabase(projectDirectory)
-  const fromDb = registry.getDeliveryDocument(missionId)
-  if (fromDb) return fromDb
-  const legacy = await readLegacyDeliveryYaml(projectDirectory, missionId)
-  if (legacy) {
-    registry.saveDeliveryDocument(legacy)
-    return legacy
-  }
-  return undefined
+  return registry.getDeliveryDocument(missionId)
 }
 
 export async function writeDeliveryDocument(projectDirectory: string, doc: DeliveryDocument) {

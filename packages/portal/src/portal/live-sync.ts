@@ -16,8 +16,8 @@ function agentDisplayName(spawnId: string) {
   const snapshot = getPortalSnapshot()
   const record = snapshot?.agents.find((item) => item.spawn_id === spawnId)
   if (record) return record.display_name
-  for (const tree of snapshot?.trees ?? (snapshot?.tree ? [snapshot.tree] : [])) {
-    const node = tree.nodes.find((item) => item.node_id.replace(/[^a-zA-Z0-9_-]/g, "-") === spawnId)
+  for (const team of snapshot?.team ? [snapshot.team] : []) {
+    const node = team.nodes.find((item) => item.node_id.replace(/[^a-zA-Z0-9_-]/g, "-") === spawnId)
     if (node) return node.display_name
   }
   return spawnId

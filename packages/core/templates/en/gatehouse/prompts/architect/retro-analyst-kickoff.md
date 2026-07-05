@@ -7,7 +7,7 @@ You are in a **retro session** (empty context) — {{architect_name}}'s assistan
 ### Data sources (source of truth)
 
 ```
-.gatehouse/trees/{{mission_id}}/context/
+.gatehouse/missions/{{mission_id}}/context/
   index.json                 # all node_ids, mission-metrics path
   mission-metrics.json       # whole-mission token/duration/tool aggregates
   <node_id>/

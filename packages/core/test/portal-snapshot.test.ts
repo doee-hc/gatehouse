@@ -8,7 +8,7 @@ import { RegistryDatabase } from "../src/registry/db.ts"
 import { REGISTRY_SCHEMA_VERSION } from "../src/registry/types.ts"
 
 const dir = path.join(import.meta.dir, ".tmp-portal-serial")
-const trees = (id: string) => path.join(dir, ".gatehouse/trees", id)
+const trees = (id: string) => path.join(dir, ".gatehouse/missions", id)
 
 beforeAll(async () => {
   await Bun.$`rm -rf ${dir} && mkdir -p ${dir}/.gatehouse/lead ${trees("m-a")} ${trees("m-b")} ${trees("m-done")}`.quiet()
@@ -28,32 +28,33 @@ missions:
     completed_at: "2026-05-29T12:00:00Z"
 `,
   )
+  const registry = new RegistryDatabase(dir)
   for (const [id, status] of [
     ["m-a", "running"],
     ["m-b", "running"],
     ["m-done", "archived"],
   ] as const) {
-    await Bun.write(
-      path.join(trees(id), "manifest.yaml"),
-      `mission_id: ${id}
-status: ${status}
-terminal_node: terminal
-created_at: "2026-05-31T12:00:00Z"
-nodes:
-  terminal:
-    session_id: ses-${id}-terminal
-    display_name: "${id} · terminal"
-    description: "${id} 任务协调者"
-  leaf:
-    session_id: ses-${id}-leaf
-    display_name: "${id} · leaf"
-    description: "${id} 执行成员"
-`,
-    )
+    registry.saveMissionManifest({
+      mission_id: id,
+      status,
+      terminal_node: "terminal",
+      created_at: "2026-05-31T12:00:00Z",
+      nodes: {
+        terminal: {
+          session_id: `ses-${id}-terminal`,
+          display_name: `${id} · terminal`,
+          description: `${id} 任务协调者`,
+        },
+        leaf: {
+          session_id: `ses-${id}-leaf`,
+          display_name: `${id} · leaf`,
+          description: `${id} 执行成员`,
+        },
+      },
+    })
   }
   await writeActiveMission(dir, "m-b")
 
-  const registry = new RegistryDatabase(dir)
   const now = new Date().toISOString()
   registry.save({
     schemaVersion: REGISTRY_SCHEMA_VERSION,
@@ -161,7 +162,7 @@ test("buildPortalSnapshot does not persist registry or office layout files", asy
 test("buildPortalSnapshot exposes only the newest running mission", async () => {
   const snap = await buildPortalSnapshot(dir)
   expect(snap.running_mission_ids?.sort()).toEqual(["m-a", "m-b"])
-  expect(snap.tree?.mission_id).toBe("m-b")
+  expect(snap.team?.mission_id).toBe("m-b")
   expect(snap.active_mission_id).toBe("m-b")
   expect("trees" in snap).toBe(false)
 })
@@ -176,7 +177,7 @@ test("buildPortalSnapshot uses manifest description for inner agents", async () 
   const snap = await buildPortalSnapshot(dir)
   const terminal = snap.agents.find((agent) => agent.agent_id === "inner:m-b:terminal")
   expect(terminal?.description).toBe("m-b 任务协调者")
-  expect(snap.tree?.nodes.find((node) => node.node_id === "leaf")?.description).toBe("m-b 执行成员")
+  expect(snap.team?.nodes.find((node) => node.node_id === "leaf")?.description).toBe("m-b 执行成员")
 })
 
 test("buildPortalSnapshot excludes inner agents for done missions while another is running", async () => {
@@ -186,7 +187,7 @@ test("buildPortalSnapshot excludes inner agents for done missions while another 
 
 test("buildPortalSnapshot includes lingering inner agents when no active mission", async () => {
   const lingeringDir = path.join(import.meta.dir, ".tmp-portal-lingering")
-  const lingeringTreeDir = path.join(lingeringDir, ".gatehouse/trees/m-last")
+  const lingeringTreeDir = path.join(lingeringDir, ".gatehouse/missions/m-last")
   await Bun.$`rm -rf ${lingeringDir} && mkdir -p ${lingeringDir}/.gatehouse/lead ${lingeringTreeDir}`.quiet()
   await Bun.write(
     path.join(lingeringDir, ".gatehouse/lead/missions.yaml"),
@@ -202,24 +203,25 @@ missions:
     completed_at: "2026-05-31T14:00:00Z"
 `,
   )
-  await Bun.write(
-    path.join(lingeringTreeDir, "manifest.yaml"),
-    `mission_id: m-last
-status: archived
-terminal_node: terminal
-created_at: "2026-05-31T12:00:00Z"
-nodes:
-  terminal:
-    session_id: ses-m-last-terminal
-    display_name: "m-last · terminal"
-    description: "m-last 任务协调者"
-  leaf:
-    session_id: ses-m-last-leaf
-    display_name: "m-last · leaf"
-    description: "m-last 执行成员"
-`,
-  )
   const registry = new RegistryDatabase(lingeringDir)
+  registry.saveMissionManifest({
+    mission_id: "m-last",
+    status: "archived",
+    terminal_node: "terminal",
+    created_at: "2026-05-31T12:00:00Z",
+    nodes: {
+      terminal: {
+        session_id: "ses-m-last-terminal",
+        display_name: "m-last · terminal",
+        description: "m-last 任务协调者",
+      },
+      leaf: {
+        session_id: "ses-m-last-leaf",
+        display_name: "m-last · leaf",
+        description: "m-last 执行成员",
+      },
+    },
+  })
   const now = new Date().toISOString()
   registry.save({
     schemaVersion: REGISTRY_SCHEMA_VERSION,
@@ -283,7 +285,7 @@ nodes:
 
   const snap = await buildPortalSnapshot(lingeringDir)
   expect(snap.lingering_mission_id).toBe("m-last")
-  expect(snap.tree?.mission_id).toBe("m-last")
+  expect(snap.team?.mission_id).toBe("m-last")
   const innerIds = snap.agents.filter((agent) => agent.scope === "inner").map((agent) => agent.agent_id)
   expect(innerIds.sort()).toEqual(["inner:m-last:leaf", "inner:m-last:terminal"])
   expect(snap.agents.every((agent) => agent.scope !== "inner" || agent.lingering === true)).toBe(true)
@@ -293,7 +295,7 @@ nodes:
 
 test("buildPortalSnapshot includes retro mission tree and agents", async () => {
   const retroDir = path.join(import.meta.dir, ".tmp-portal-retro")
-  const retroTreeDir = path.join(retroDir, ".gatehouse/trees/m-retro")
+  const retroTreeDir = path.join(retroDir, ".gatehouse/missions/m-retro")
   await Bun.$`rm -rf ${retroDir} && mkdir -p ${retroDir}/.gatehouse/lead ${retroTreeDir}`.quiet()
   await Bun.write(
     path.join(retroDir, ".gatehouse/lead/missions.yaml"),
@@ -304,19 +306,19 @@ missions:
     started_at: "2026-06-01T10:00:00Z"
 `,
   )
-  await Bun.write(
-    path.join(retroTreeDir, "manifest.yaml"),
-    `mission_id: m-retro
-status: running
-terminal_node: terminal
-created_at: "2026-06-01T12:00:00Z"
-nodes:
-  terminal:
-    session_id: ses-m-retro-terminal
-    display_name: "retro terminal"
-`,
-  )
   const registry = new RegistryDatabase(retroDir)
+  registry.saveMissionManifest({
+    mission_id: "m-retro",
+    status: "running",
+    terminal_node: "terminal",
+    created_at: "2026-06-01T12:00:00Z",
+    nodes: {
+      terminal: {
+        session_id: "ses-m-retro-terminal",
+        display_name: "retro terminal",
+      },
+    },
+  })
   const now = new Date().toISOString()
   registry.save({
     schemaVersion: REGISTRY_SCHEMA_VERSION,
@@ -345,7 +347,7 @@ nodes:
 
   const snap = await buildPortalSnapshot(retroDir)
   expect(snap.retro_mission_ids).toEqual(["m-retro"])
-  expect(snap.tree?.mission_id).toBe("m-retro")
+  expect(snap.team?.mission_id).toBe("m-retro")
   expect(snap.retro?.mission_id).toBe("m-retro")
   expect(snap.retro?.active).toBe(true)
   expect(snap.retro?.summary_submitted).toBe(false)

@@ -13,7 +13,7 @@ import {
 } from "../missions/lifecycle.ts"
 import { ensureMissionContextDumped, ensureMissionPhaseMetricsDumped } from "../session/context-dump.ts"
 import type { GatehouseClient } from "../session/client.ts"
-import { readManifest, readRetroManifest, readExtractManifest, readVerifyManifest } from "../tree/store.ts"
+import { readMissionManifest, readRetroManifest, readExtractManifest, readVerifyManifest } from "../missions/manifest/store.ts"
 import { finalizeDeliveryOnMissionComplete } from "../delivery/store.ts"
 import { publishAllSkillBlogPosts } from "../delivery/publish-artifacts.ts"
 import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
@@ -93,7 +93,7 @@ export function missionCompleteTool(input: PluginInput) {
             const message = error instanceof Error ? error.message : String(error)
             const readiness = lead.registry.retroCompleteReadiness(missionId)
             return {
-              output: toolFail(toolName, "RETRO_ROLLUP_PENDING", message, {
+              output: toolFail(toolName, "RETRO_SUMMARY_PENDING", message, {
                 pending: readiness.pending,
               }),
               ...toolMetadata(toolName),
@@ -114,7 +114,7 @@ export function missionCompleteTool(input: PluginInput) {
           })
         }
 
-        const manifest = await readManifest(input.directory, missionId)
+        const manifest = await readMissionManifest(input.directory, missionId)
         const retro = await readRetroManifest(input.directory, missionId)
         const extract = await readExtractManifest(input.directory, missionId)
         const verify = await readVerifyManifest(input.directory, missionId)

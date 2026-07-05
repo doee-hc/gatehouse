@@ -17,12 +17,12 @@ import type { RegistryAgent } from "../registry/types.ts"
 import { sessionDurationMs } from "../session/client.ts"
 import {
   readExtractManifest,
-  readManifest,
+  readMissionManifest,
   readRetroManifest,
-  readTreesIndex,
+  readMissionManifestIndex,
   readVerifyManifest,
-} from "../tree/store.ts"
-import type { ExtractManifest, RetroManifest, TreeManifest, VerifyManifest } from "../tree/types.ts"
+} from "../missions/manifest/store.ts"
+import type { MissionExtractManifest, MissionRetroManifest, MissionManifest, MissionVerifyManifest } from "../missions/manifest/types.ts"
 import { createPortalDataCache } from "./portal-cache.ts"
 import { getPortalDisplaySettings } from "./portal-display-settings.ts"
 
@@ -174,7 +174,7 @@ function missionSortTime(mission: MissionEntry) {
   return Number.isNaN(time) ? 0 : time
 }
 
-function roleLabel(manifest: TreeManifest, nodeId: string) {
+function roleLabel(manifest: MissionManifest, nodeId: string) {
   const node = manifest.nodes[nodeId]
   if (!node) return nodeId
   return portalNodeDisplayName(nodeId, node.display_name)
@@ -200,11 +200,11 @@ function pushRole(
 
 export function buildMissionStats(
   mission: MissionEntry,
-  manifest: TreeManifest | undefined,
+  manifest: MissionManifest | undefined,
   sessionUsage: Map<string, SessionUsage>,
-  retro?: RetroManifest,
-  extract?: ExtractManifest,
-  verify?: VerifyManifest,
+  retro?: MissionRetroManifest,
+  extract?: MissionExtractManifest,
+  verify?: MissionVerifyManifest,
 ) {
   const totals: SessionUsage = { tokens: emptyTokens(), cost: 0, duration_ms: 0 }
   const roles: TeamStatsRole[] = []
@@ -382,11 +382,11 @@ async function readLocalPhaseMetricsUsage(
 
 async function enrichSessionUsageFromLocalContext(
   projectDirectory: string,
-  manifests: Map<string, TreeManifest>,
+  manifests: Map<string, MissionManifest>,
   sessionUsage: Map<string, SessionUsage>,
-  retroManifests: Map<string, RetroManifest>,
-  extractManifests: Map<string, ExtractManifest>,
-  verifyManifests: Map<string, VerifyManifest>,
+  retroManifests: Map<string, MissionRetroManifest>,
+  extractManifests: Map<string, MissionExtractManifest>,
+  verifyManifests: Map<string, MissionVerifyManifest>,
 ) {
   for (const [missionId, manifest] of manifests) {
     for (const [nodeId, node] of Object.entries(manifest.nodes)) {
@@ -427,10 +427,10 @@ function teamStatsCacheKey(projectDirectory: string, opencodeUrl?: string) {
 }
 
 function collectMissionSessionIds(
-  manifest: TreeManifest | undefined,
-  retro?: RetroManifest,
-  extract?: ExtractManifest,
-  verify?: VerifyManifest,
+  manifest: MissionManifest | undefined,
+  retro?: MissionRetroManifest,
+  extract?: MissionExtractManifest,
+  verify?: MissionVerifyManifest,
 ) {
   if (manifest) return collectManifestSessionIds(manifest, retro, extract, verify)
   const ids = new Set<string>()
@@ -447,13 +447,13 @@ function collectMissionSessionIds(
 }
 
 async function loadMissionManifests(projectDirectory: string, missionIds: Set<string>) {
-  const manifests = new Map<string, TreeManifest>()
-  const retroManifests = new Map<string, RetroManifest>()
-  const extractManifests = new Map<string, ExtractManifest>()
-  const verifyManifests = new Map<string, VerifyManifest>()
+  const manifests = new Map<string, MissionManifest>()
+  const retroManifests = new Map<string, MissionRetroManifest>()
+  const extractManifests = new Map<string, MissionExtractManifest>()
+  const verifyManifests = new Map<string, MissionVerifyManifest>()
 
   for (const missionId of missionIds) {
-    const manifest = await readManifest(projectDirectory, missionId)
+    const manifest = await readMissionManifest(projectDirectory, missionId)
     if (manifest) manifests.set(missionId, manifest)
     const retro = await readRetroManifest(projectDirectory, missionId)
     if (retro) retroManifests.set(missionId, retro)
@@ -468,13 +468,13 @@ async function loadMissionManifests(projectDirectory: string, missionIds: Set<st
 
 async function loadTeamStatsSnapshot(projectDirectory: string, opencodeUrl?: string) {
   const missions = await readMissions(projectDirectory)
-  const treesIndex = await readTreesIndex(projectDirectory)
+  const missionsIndex = await readMissionManifestIndex(projectDirectory)
   const registry = new RegistryDatabase(projectDirectory, { readonly: true }).load()
   const agentNames = readAgentNamesSync(projectDirectory)
 
   const missionIds = new Set([
     ...missions.map((mission) => mission.id),
-    ...treesIndex.trees.map((entry) => entry.mission_id),
+    ...missionsIndex.missions.map((entry) => entry.mission_id),
   ])
 
   const { manifests, retroManifests, extractManifests, verifyManifests } = await loadMissionManifests(

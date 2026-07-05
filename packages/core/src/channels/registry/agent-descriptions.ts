@@ -35,7 +35,7 @@ function registryDbPath(projectDir: string) {
   return path.join(projectDir, ".gatehouse", "registry.db")
 }
 
-function readTreeNodeDescriptions(projectDir: string, missionIds: string[]) {
+function readMissionNodeDescriptions(projectDir: string, missionIds: string[]) {
   const descriptions = new Map<string, string>()
   if (missionIds.length === 0) return descriptions
   const dbPath = registryDbPath(projectDir)
@@ -44,12 +44,12 @@ function readTreeNodeDescriptions(projectDir: string, missionIds: string[]) {
   try {
     db.exec("PRAGMA busy_timeout = 5000;")
     const hasTable = db
-      .query("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'registry_tree_node' LIMIT 1")
+      .query("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'registry_execution_node' LIMIT 1")
       .get()
     if (!hasTable) return descriptions
     const query = db.query(
       `SELECT node_id, description, display_name
-       FROM registry_tree_node
+       FROM registry_execution_node
        WHERE mission_id = ?`,
     )
     for (const missionId of missionIds) {
@@ -86,7 +86,7 @@ export function resolveAgentDescription(
 export function loadAgentDescriptions(projectDir: string, agents: RegistryAgentTarget[]) {
   const outerByProfile = readOuterProfileDescriptions()
   const missionIds = [...new Set(agents.flatMap((agent) => (agent.missionId ? [agent.missionId] : [])))]
-  const treeByMissionNode = readTreeNodeDescriptions(projectDir, missionIds)
+  const treeByMissionNode = readMissionNodeDescriptions(projectDir, missionIds)
   const descriptions = new Map<string, string>()
   for (const agent of agents) {
     descriptions.set(agent.agentId, resolveAgentDescription(agent, outerByProfile, treeByMissionNode))

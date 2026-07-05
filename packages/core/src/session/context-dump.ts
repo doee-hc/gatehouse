@@ -8,10 +8,10 @@ import {
   nodeContextRelDir,
   phaseContextDir,
   type PhaseContextScope,
-  treeRelDir,
+  missionRelDir,
 } from "../paths.ts"
 import { aggregateSessionMetrics, mergeSessionMetrics, type SessionMetrics } from "../metrics/aggregate.ts"
-import type { ExtractManifest, RetroManifest, TreeManifest, TreeNode, VerifyManifest } from "../tree/types.ts"
+import type { MissionExtractManifest, MissionRetroManifest, MissionManifest, MissionNode, MissionVerifyManifest } from "../missions/manifest/types.ts"
 import type { GatehouseClient } from "./client.ts"
 import { sessionDetail, sessionDurationMs, sessionMessages } from "./client.ts"
 
@@ -305,7 +305,7 @@ export async function dumpNodeContext(input: {
   projectDirectory: string
   missionId: string
   nodeId: string
-  node: TreeNode
+  node: MissionNode
 }) {
   return dumpSessionContext({
     client: input.client,
@@ -381,9 +381,9 @@ export async function ensureMissionPhaseMetricsDumped(input: {
   client: GatehouseClient
   projectDirectory: string
   missionId: string
-  retro?: RetroManifest
-  extract?: ExtractManifest
-  verify?: VerifyManifest
+  retro?: MissionRetroManifest
+  extract?: MissionExtractManifest
+  verify?: MissionVerifyManifest
 }) {
   const results: Array<
     | { skipped: true; session_id: string; node_id: string; phase: PhaseContextScope }
@@ -435,7 +435,7 @@ export async function ensureMissionPhaseMetricsDumped(input: {
 export async function ensureMissionContextDumped(input: {
   client: GatehouseClient
   projectDirectory: string
-  manifest: TreeManifest
+  manifest: MissionManifest
 }) {
   if (missionContextAlreadyDumped(input.projectDirectory, input.manifest.mission_id)) {
     return {
@@ -451,7 +451,7 @@ export async function ensureMissionContextDumped(input: {
 export async function dumpMissionContext(input: {
   client: GatehouseClient
   projectDirectory: string
-  manifest: TreeManifest
+  manifest: MissionManifest
   analysisOrder?: string[]
 }) {
   const entries = await Promise.all(
@@ -477,7 +477,7 @@ export async function dumpMissionContext(input: {
   const missionMetrics = mergeSessionMetrics(Object.values(metricsByNode))
 
   const contextRoot = contextDir(input.projectDirectory, input.manifest.mission_id)
-  const missionMetricsRel = path.join(treeRelDir(input.manifest.mission_id), "context", "mission-metrics.json")
+  const missionMetricsRel = path.join(missionRelDir(input.manifest.mission_id), "context", "mission-metrics.json")
   await mkdir(contextRoot, { recursive: true })
   await Bun.write(
     path.join(contextRoot, "mission-metrics.json"),

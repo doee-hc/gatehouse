@@ -2,7 +2,7 @@ import { existsSync } from "node:fs"
 import path from "node:path"
 import { gatehouseRoot } from "../paths.ts"
 import { RegistryDatabase } from "../registry/db.ts"
-import type { TeamSpec } from "../tree/types.ts"
+import type { MissionTeamSpec } from "../missions/manifest/types.ts"
 import type { MissionScriptMeta } from "./types.ts"
 
 export { createMissionContext, createMissionHostHandlers, type MissionRuntime } from "./ctx-host.ts"
@@ -14,7 +14,7 @@ export function orchestrationDbExists(projectDirectory: string) {
 export function saveMissionScriptRecord(
   projectDirectory: string,
   input: {
-    team: TeamSpec
+    team: MissionTeamSpec
     meta?: MissionScriptMeta
     scriptPath?: string
     scriptHash?: string

@@ -11,7 +11,7 @@ import { stopSandboxOrchestration } from "../src/orchestration/sandbox-runtime.t
 import { loadMissionScript } from "../src/orchestration/script-load.ts"
 import { notifyArchitectOrchestrationFailure } from "../src/orchestration/notify.ts"
 import { orchestrationNeedsResume } from "../src/orchestration/resume.ts"
-import { writeManifest } from "../src/tree/store.ts"
+import { writeMissionManifest } from "../src/missions/manifest/store.ts"
 import { submitOrchestrationTool } from "../src/tools/submit-orchestration.ts"
 import { writeMissionsDocument } from "../src/missions/store.ts"
 import { seedActiveMissionRegistry } from "./copy-example-mission.ts"
@@ -71,7 +71,7 @@ describe("orchestration failure feedback", () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-orch-fail-"))
     try {
       const missionId = "orch-fail-m1"
-      const dest = path.join(dir, ".gatehouse/trees", missionId)
+      const dest = path.join(dir, ".gatehouse/missions", missionId)
       await Bun.$`mkdir -p ${dest}`.quiet()
       await Bun.write(path.join(dest, "mission.script.ts"), brokenScript)
 
@@ -127,7 +127,7 @@ describe("orchestration failure feedback", () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-orch-notify-stale-"))
     try {
       const missionId = "orch-fail-m1"
-      const dest = path.join(dir, ".gatehouse/trees", missionId)
+      const dest = path.join(dir, ".gatehouse/missions", missionId)
       await Bun.$`mkdir -p ${dest}`.quiet()
       await Bun.write(path.join(dest, "mission.script.ts"), brokenScript.replace("orch-fail-m1", missionId))
 
@@ -180,7 +180,7 @@ export default async function orchestrate(ctx) {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-orch-submit-dryrun-"))
     try {
       const missionId = "orch-fail-m1"
-      const dest = path.join(dir, ".gatehouse/trees", missionId)
+      const dest = path.join(dir, ".gatehouse/missions", missionId)
       await Bun.$`mkdir -p ${dest}`.quiet()
       await Bun.write(path.join(dest, "mission.script.ts"), brokenScript)
       await seedRunningMission(dir, missionId)
@@ -221,7 +221,7 @@ export default async function orchestrate(ctx) {
     try {
       const missionId = "orch-retry-m1"
       const fixture = path.join(import.meta.dir, "fixtures/core-example-smoke-v1/mission.script.ts")
-      const dest = path.join(dir, ".gatehouse/trees", missionId)
+      const dest = path.join(dir, ".gatehouse/missions", missionId)
       await Bun.$`mkdir -p ${dest}`.quiet()
       const fixedSource = (await Bun.file(fixture).text()).replaceAll("core-example-smoke-v1", missionId)
       await Bun.write(path.join(dest, "mission.script.ts"), fixedSource)
@@ -254,7 +254,7 @@ export default async function orchestrate(ctx) {
       store.registerInnerNode({ missionId, nodeId: "node-doc", sessionId: "ses_doc", profile: "build" })
 
       writeOrchestrationState(dir, initOrchestrationState(missionId, ["node-root", "node-doc"]))
-      await writeManifest(dir, {
+      await writeMissionManifest(dir, {
         mission_id: missionId,
         status: "running",
         terminal_node: "node-root",

@@ -1,7 +1,7 @@
 import path from "node:path"
 import { leadDir, officeLayoutSpecPath, portalOfficeDir } from "../paths.ts"
 import { parseMissionsFile, activePortalMissionIds, lingeringPortalMissionId } from "../missions/parse.ts"
-import { readManifest } from "../tree/store.ts"
+import { readMissionManifest } from "../missions/manifest/store.ts"
 import { innerAgentId } from "../registry/types.ts"
 import { OUTER_PROFILES } from "../names.ts"
 import { spawnIdForAgent } from "./spawn-id.ts"
@@ -270,7 +270,7 @@ export async function computeOfficeLayoutSpec(projectDirectory: string) {
   const activeLayout = activeMissionIds.length > 0
 
   for (const missionId of layoutMissionIds.sort()) {
-    const manifest = await readManifest(projectDirectory, missionId)
+    const manifest = await readMissionManifest(projectDirectory, missionId)
     if (!manifest) continue
     if (activeLayout && manifest.status !== "running") continue
     for (const nodeId of Object.keys(manifest.nodes).sort()) {

@@ -15,14 +15,14 @@ const messages = {
 
 {mission_contract}
 
-下一步：在 \`.gatehouse/trees/{mission_id}/\` 编写 **mission.script.ts**，完成后 **gatehouse_submit_orchestration**。若需刷新任务快照，可调用 **gatehouse_mission_info**。`,
+下一步：在 \`.gatehouse/missions/{mission_id}/\` 编写 **mission.script.ts**，完成后 **gatehouse_submit_orchestration**。若需刷新任务快照，可调用 **gatehouse_mission_info**。`,
     en: `[Gatehouse · Mission started · {mission_id}]
 
 {lead_name} started this Mission via gatehouse_mission_start.
 
 {mission_contract}
 
-Next: write **mission.script.ts** under \`.gatehouse/trees/{mission_id}/\`, then **gatehouse_submit_orchestration**. Call **gatehouse_mission_info** to refresh the snapshot if needed.`,
+Next: write **mission.script.ts** under \`.gatehouse/missions/{mission_id}/\`, then **gatehouse_submit_orchestration**. Call **gatehouse_mission_info** to refresh the snapshot if needed.`,
   },
   "mission.started.fallback": {
     zh: `[Gatehouse · Mission 已启动 · {mission_id}]
@@ -63,7 +63,7 @@ This is a notification only — no action is required from you.`,
 1. 修复 \`{script_path}\`（常见原因：双引号字符串内嵌未转义的 \`"\`；\`await ctx.*\` 步骤之间的 \`//\` 行注释会导致 plan-step 重放失败）
 2. 保存后调用 **gatehouse_submit_orchestration(mode=continue)**（若已改脚本）或 **gatehouse_submit_orchestration**（submit，仅 resume 同一脚本时）
 
-执行树 session 已保留；仅编排未启动或已中断。`,
+执行团队 session 已保留；仅编排未启动或已中断。`,
     en: `[Gatehouse · Orchestration script failed · {mission_id}]
 
 The \`orchestrate()\` body in \`{script_path}\` could not run.
@@ -74,19 +74,19 @@ The \`orchestrate()\` body in \`{script_path}\` could not run.
 1. Fix \`{script_path}\` (common causes: unescaped \`"\` inside double-quoted strings; \`//\` line comments between \`await ctx.*\` steps break plan-step replay)
 2. Save, then call **gatehouse_submit_orchestration(mode=continue)** after rewriting the script, or **gatehouse_submit_orchestration** (submit) to resume the same script
 
-Execution-tree sessions are kept; only orchestration failed to start or stalled.`,
+Execution team sessions are kept; only orchestration failed to start or stalled.`,
   },
   "retro.reviewReady": {
     zh: `[Gatehouse 复盘待审 · Mission {mission_id}]
 
 {architect_name} 助手已完成复盘分析并登记 \`{retro_summary_path}\`。
 
-请阅读 retro-summary，审核结论并迭代 **architect-meta**；按 \`architect-summary.template.md\` 撰写 \`.gatehouse/trees/{mission_id}/reports/architect-summary.md\`，再调用 **gatehouse_retro_summary_record** 提交登记。`,
+请阅读 retro-summary，审核结论并迭代 **architect-meta**；按 \`architect-summary.template.md\` 撰写 \`.gatehouse/missions/{mission_id}/reports/architect-summary.md\`，再调用 **gatehouse_retro_summary_record** 提交登记。`,
     en: `[Gatehouse · Retro review ready · Mission {mission_id}]
 
 The retro analyst finished and registered \`{retro_summary_path}\`.
 
-Read retro-summary, review conclusions, and iterate **architect-meta**; write \`.gatehouse/trees/{mission_id}/reports/architect-summary.md\` per \`architect-summary.template.md\`, then call **gatehouse_retro_summary_record** to register submission.`,
+Read retro-summary, review conclusions, and iterate **architect-meta**; write \`.gatehouse/missions/{mission_id}/reports/architect-summary.md\` per \`architect-summary.template.md\`, then call **gatehouse_retro_summary_record** to register submission.`,
   },
   "retro.summaryReady": {
     zh: `[Gatehouse 复盘汇总就绪 · Mission {mission_id}]
@@ -235,20 +235,18 @@ All nodes with skill_domain finished extract + verify and registration. Review \
     zh: "你已连续对同一目标调用 gatehouse_session_snapshot 超过 3 次。请勿重复轮询对方 session；请立即结束本轮对话，等待系统通知后再继续。",
     en: "You called gatehouse_session_snapshot on the same target more than 3 times in a row. Stop polling that session; end this turn immediately and wait for a system notification before continuing.",
   },
-  "dispatch.teamSnapshot.executionHeader": { zh: "### 执行树", en: "### Execution tree" },
+  "dispatch.teamSnapshot.executionHeader": { zh: "### 执行团队", en: "### Execution team" },
   "dispatch.teamSnapshot.outerHeader": { zh: "### 外层联系人", en: "### Outer contacts" },
   "dispatch.teamSnapshot.you": { zh: "（你）", en: " (you)" },
-  "dispatch.teamSnapshot.children": { zh: "下属: {list}", en: "children: {list}" },
   "dispatch.teamSnapshot.outerHint": {
     zh: "核心团队（建队已完成）；编排 plan 的 terminal 节点在全树 done 时 `gatehouse_execution_complete` 自动通知 lead",
     en: "Core team (team build complete); the orchestration plan terminal node auto-notifies lead on final gatehouse_execution_complete",
   },
   "dispatch.teamSnapshot.teamspecHeader": { zh: "### 执行团队节点", en: "### Execution team nodes" },
-  "dispatch.teamSnapshot.subtreeHeader": {
-    zh: "### 子树快照（启动参考）\n\n本节点在 `team` 中有下属节点；任务时序由编排脚本的 `dependsOn` 驱动，你不负责调度分支。若 brief 要求汇总验收，收到上游 completion 后按 brief 核对并 `gatehouse_execution_complete`。通知可能附带「上游节点交付」— 只引用路径，勿复述正文。",
-    en: "### Subtree snapshot (kickoff reference)\n\nThis node has child nodes in `team`; orchestration timing is driven by the mission script and `dependsOn` — you do not schedule the branch. When your brief requires aggregating upstream completions, verify them per brief, then call `gatehouse_execution_complete`. Upstream completions — paths only, do not copy bodies.",
+  "dispatch.teamSnapshot.acceptanceBranchHeader": {
+    zh: "### 分支快照（启动参考）\n\n本节点在 `team` 中有下属节点；任务时序由编排脚本的 `dependsOn` 驱动，你不负责调度分支。若 brief 要求汇总验收，收到上游 completion 后按 brief 核对并 `gatehouse_execution_complete`。通知可能附带「上游节点交付」— 只引用路径，勿复述正文。",
+    en: "### Branch snapshot (kickoff reference)\n\nThis node has child nodes in `team`; orchestration timing is driven by the mission script and `dependsOn` — you do not schedule the branch. When your brief requires aggregating upstream completions, verify them per brief, then call `gatehouse_execution_complete`. Upstream completions — paths only, do not copy bodies.",
   },
-  "dispatch.teamSnapshot.noNonTerminalNodes": { zh: "（无下属节点）", en: "(no delegate nodes)" },
   "execution.nodeRole.header": {
     zh: "## 节点角色（Node Role · {node_id}）",
     en: "## Node role ({node_id})",
@@ -420,8 +418,8 @@ All nodes with skill_domain finished extract + verify and registration. Review \
     en: "(Orchestration plan unavailable — analyze nodes in context/index.json order)",
   },
   "retro.kickoff.contextPaths": {
-    zh: "原始数据：`.gatehouse/trees/{mission_id}/context/`（messages / timeline / metrics / mission-metrics.json）。",
-    en: "Raw data: `.gatehouse/trees/{mission_id}/context/` (messages / timeline / metrics / mission-metrics.json).",
+    zh: "原始数据：`.gatehouse/missions/{mission_id}/context/`（messages / timeline / metrics / mission-metrics.json）。",
+    en: "Raw data: `.gatehouse/missions/{mission_id}/context/` (messages / timeline / metrics / mission-metrics.json).",
   },
 } satisfies MessageTable
 

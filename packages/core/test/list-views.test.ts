@@ -5,13 +5,8 @@ import { tmpdir } from "node:os"
 import { RegistryStore } from "../src/registry/store.ts"
 import { seedActiveMissionRegistry } from "./copy-example-mission.ts"
 import { buildListTeamData, type ListTeamPayload } from "../src/tools/list-views.ts"
-
-function expectPayload(data: Awaited<ReturnType<typeof buildListTeamData>>): ListTeamPayload {
-  if ("error" in data) throw new Error(data.error)
-  return data
-}
-import { parseTreeManifest } from "../src/tree/parse.ts"
-import { exportTreeManifestYaml, writeRetroManifest } from "../src/tree/store.ts"
+import { sampleMissionManifest } from "./helpers/mission-fixtures.ts"
+import { writeMissionManifest, writeRetroManifest } from "../src/missions/manifest/store.ts"
 
 async function storeWithAgents(
   agents: Array<{
@@ -41,24 +36,33 @@ async function storeWithAgents(
   return { dir, store }
 }
 
-const sampleManifestYaml = `
-mission_id: m1
-terminal_node: root
-created_at: "2026-01-01T00:00:00Z"
-status: running
-nodes:
-  root:
-    session_id: ses-root
-    description: 协调根
-    profile: build
-  leaf:
-    session_id: ses-leaf
-    description: 执行叶
-    profile: build
-`
+function expectPayload(data: Awaited<ReturnType<typeof buildListTeamData>>): ListTeamPayload {
+  if ("error" in data) throw new Error(data.error)
+  return data
+}
+
+const sampleManifest = () =>
+  sampleMissionManifest({
+    mission_id: "m1",
+    terminal_node: "root",
+    created_at: "2026-01-01T00:00:00Z",
+    status: "running",
+    nodes: {
+      root: {
+        session_id: "ses-root",
+        description: "协调根",
+        profile: "build",
+      },
+      leaf: {
+        session_id: "ses-leaf",
+        description: "执行叶",
+        profile: "build",
+      },
+    },
+  })
 
 describe("buildListTeamData", () => {
-  test("lead sees outer readiness and execution tree without session_id", async () => {
+  test("lead sees outer readiness and execution team without session_id", async () => {
     const { store, dir } = await storeWithAgents([
       {
         agentId: "outer:architect",
@@ -69,7 +73,7 @@ describe("buildListTeamData", () => {
       },
     ])
     seedActiveMissionRegistry(dir, "m1")
-    await exportTreeManifestYaml(dir, parseTreeManifest(sampleManifestYaml))
+    await writeMissionManifest(dir, sampleManifest())
     store.register({
       agentId: "inner:m1:root",
       scope: "inner",
@@ -119,7 +123,7 @@ describe("buildListTeamData", () => {
       },
     ])
     seedActiveMissionRegistry(dir, "m1")
-    await exportTreeManifestYaml(dir, parseTreeManifest(sampleManifestYaml))
+    await writeMissionManifest(dir, sampleManifest())
     const data = await buildListTeamData({
       store,
       directory: dir,
@@ -145,7 +149,7 @@ describe("buildListTeamData", () => {
       },
     ])
     seedActiveMissionRegistry(dir, "m1")
-    await exportTreeManifestYaml(dir, parseTreeManifest(sampleManifestYaml))
+    await writeMissionManifest(dir, sampleManifest())
     const data = await buildListTeamData({
       store,
       directory: dir,
@@ -168,7 +172,7 @@ describe("buildListTeamData", () => {
       },
     ])
     seedActiveMissionRegistry(dir, "m1")
-    await exportTreeManifestYaml(dir, parseTreeManifest(sampleManifestYaml))
+    await writeMissionManifest(dir, sampleManifest())
     const data = await buildListTeamData({
       store,
       directory: dir,
@@ -178,13 +182,12 @@ describe("buildListTeamData", () => {
     const payload = expectPayload(data)
     expect(payload.outer).toEqual([{ profile: "lead", display_name: "Lead" }])
     expect(payload.execution?.length).toBe(2)
-    expect(payload.subtree).toBeUndefined()
   })
 
   test("inner leaf sees execution only", async () => {
     const { store, dir } = await storeWithAgents([])
     seedActiveMissionRegistry(dir, "m1")
-    await exportTreeManifestYaml(dir, parseTreeManifest(sampleManifestYaml))
+    await writeMissionManifest(dir, sampleManifest())
     const data = await buildListTeamData({
       store,
       directory: dir,
@@ -196,29 +199,21 @@ describe("buildListTeamData", () => {
     expect(payload.execution?.length).toBe(2)
   })
 
-  test("retro analyst session sees full execution tree", async () => {
+  test("retro analyst session sees full execution team", async () => {
     const { store, dir } = await storeWithAgents([])
     seedActiveMissionRegistry(dir, "m1")
-    const manifest = parseTreeManifest(`
-mission_id: m1
-terminal_node: root
-created_at: "2026-01-01T00:00:00Z"
-status: running
-nodes:
-  root:
-    session_id: ses-root
-    description: 根
-    profile: build
-  mid:
-    session_id: ses-mid
-    description: 中层
-    profile: build
-  leaf:
-    session_id: ses-leaf
-    description: 叶
-    profile: build
-`)
-    await exportTreeManifestYaml(dir, manifest)
+    const manifest = sampleMissionManifest({
+      mission_id: "m1",
+      terminal_node: "root",
+      created_at: "2026-01-01T00:00:00Z",
+      status: "running",
+      nodes: {
+        root: { session_id: "ses-root", description: "根", profile: "build" },
+        mid: { session_id: "ses-mid", description: "中层", profile: "build" },
+        leaf: { session_id: "ses-leaf", description: "叶", profile: "build" },
+      },
+    })
+    await writeMissionManifest(dir, manifest)
     store.register({
       agentId: "retro:m1",
       scope: "retro",

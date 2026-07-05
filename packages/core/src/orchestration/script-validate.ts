@@ -1,4 +1,4 @@
-import { validateTeamSpec } from "../tree/parse.ts"
+import { validateMissionTeamSpec } from "../missions/manifest/team-spec.ts"
 import { MissionScriptParseError, parseMissionScriptSource, type ParsedMissionScript } from "./script-parse.ts"
 import { compileOrchestrationPlan } from "./plan-compile.ts"
 import type { OrchestrationPlan } from "./plan-types.ts"
@@ -6,7 +6,7 @@ import { validatePlanStepStatement } from "./plan-step-compile.ts"
 import { simulateOrchestration } from "./simulate-orchestration.ts"
 import { validateOrchestrateSyntax } from "./syntax.ts"
 import { lintOrchestrationScript, extractReferencedNodeIds } from "./orchestration-lint.ts"
-import type { TeamSpec } from "../tree/types.ts"
+import type { MissionTeamSpec } from "../missions/manifest/types.ts"
 
 export type DryRunMissionScriptResult =
   | { ok: true; parsed: ParsedMissionScript; plan: OrchestrationPlan; warnings: string[] }
@@ -18,7 +18,7 @@ export async function dryRunMissionScriptSource(
 ): Promise<DryRunMissionScriptResult> {
   try {
     const parsed = parseMissionScriptSource(source, expectedMissionId)
-    validateTeamSpec(parsed.team)
+    validateMissionTeamSpec(parsed.team)
     validateOrchestrateStaticNodes(parsed.team, parsed.orchestrateSource)
     validateNoPortalPublishReferences(parsed.orchestrateSource)
     validateOrchestrateSyntaxOrThrow(parsed.orchestrateSource)
@@ -111,7 +111,7 @@ function validateNoPortalPublishReferences(orchestrateSource?: string) {
   }
 }
 
-function validateOrchestrateStaticNodes(team: TeamSpec, orchestrateSource?: string) {
+function validateOrchestrateStaticNodes(team: MissionTeamSpec, orchestrateSource?: string) {
   if (!orchestrateSource) return
   const nodeIds = new Set(Object.keys(team.nodes))
   for (const nodeId of extractReferencedNodeIds(orchestrateSource)) {

@@ -19,42 +19,19 @@ export function isReplayStepIdComplete(
   return index >= 0 && isReplayStepComplete(state, index)
 }
 
-/** Keep completed_step_ids derived from cursor for legacy readers (Portal, etc.). */
-export function syncCompletedStepIds(state: OrchestrationState, steps: readonly PlanStep[]) {
-  const next = replayNextStepIndex(state)
-  state.completed_step_ids = steps.slice(0, next).map((step) => step.id)
-}
-
 export function advanceReplayCursor(
   state: OrchestrationState,
-  stepId: string,
+  _stepId: string,
   stepIndex: number,
-  steps: readonly PlanStep[],
+  _steps: readonly PlanStep[],
 ) {
   state.cursor_step_index = Math.max(replayNextStepIndex(state), stepIndex + 1)
-  syncCompletedStepIds(state, steps)
-  if (state.compound_replay?.step_id === stepId) {
+  if (state.compound_replay?.step_id === _stepId) {
     delete state.compound_replay
   }
 }
 
-export function normalizeReplayCursor(state: OrchestrationState, steps: readonly PlanStep[]) {
-  if (state.cursor_step_index === undefined) state.cursor_step_index = 0
-  const next = replayNextStepIndex(state)
-  const idsFromCursor = steps.slice(0, next).map((step) => step.id)
-  const legacyIds = state.completed_step_ids ?? []
-  if (legacyIds.length > idsFromCursor.length) {
-    const legacyMax = legacyIds.reduce((max, id) => {
-      const index = steps.findIndex((step) => step.id === id)
-      return index >= 0 ? Math.max(max, index + 1) : max
-    }, next)
-    state.cursor_step_index = Math.max(next, legacyMax)
-  }
-  syncCompletedStepIds(state, steps)
-}
-
 export function resetReplayCursor(state: OrchestrationState) {
   state.cursor_step_index = 0
-  state.completed_step_ids = []
   delete state.compound_replay
 }

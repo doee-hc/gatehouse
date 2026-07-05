@@ -3,7 +3,7 @@
 Review whether the skill draft from extract meets **reusable methodology** standards.
 
 **Domain:** `{{skill_domain}}`
-**Extract summary:** `.gatehouse/trees/{{mission_id}}/reports/skills/{{node_id}}-extract.md`
+**Extract summary:** `.gatehouse/missions/{{mission_id}}/reports/skills/{{node_id}}-extract.md`
 
 ## Verify checklist
 
@@ -15,7 +15,7 @@ Review whether the skill draft from extract meets **reusable methodology** stand
 ## Context (if needed)
 
 ```
-.gatehouse/trees/{{mission_id}}/context/{{node_id}}/timeline.md
+.gatehouse/missions/{{mission_id}}/context/{{node_id}}/timeline.md
 ```
 
 ## When not passing
@@ -25,7 +25,7 @@ Review whether the skill draft from extract meets **reusable methodology** stand
 
 ## Deliver
 
-1. Write `.gatehouse/trees/{{mission_id}}/reports/skills/{{node_id}}-verify.md`
+1. Write `.gatehouse/missions/{{mission_id}}/reports/skills/{{node_id}}-verify.md`
 2. After fixes, call **`gatehouse_skill_verify_record(passed=true)`** only when verification passes.
 
 Fix `SKILL.md` first before recording; do not use `passed=false`.

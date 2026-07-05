@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs"
 import path from "node:path"
 import { resolveChannelStateDir } from "@gatehouse/core/channels"
 import type { FeishuBridgeConfig } from "./feishu/types.ts"
@@ -21,10 +20,7 @@ function readEnvInt(name: string, fallback: number) {
 }
 
 function resolveFeishuStateDir(projectDir: string) {
-  const stateDir = resolveChannelStateDir(projectDir, "feishu")
-  const legacyDir = path.join(projectDir, ".gatehouse", "feishu-bridge")
-  if (!existsSync(stateDir) && existsSync(legacyDir)) return legacyDir
-  return stateDir
+  return resolveChannelStateDir(projectDir, "feishu")
 }
 
 export function loadConfig(): FeishuBridgeConfig {

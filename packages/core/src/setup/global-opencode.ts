@@ -7,8 +7,6 @@ import { injectAgentPermissionYaml } from "./permissions.ts"
 import { GATEHOUSE_NPM_PACKAGE, gatehouseTuiPluginSpec, useLocalPluginEntry } from "./package.ts"
 import { parseJsoncConfig } from "./jsonc.ts"
 import {
-  legacyProjectOpencodeConfigPath,
-  migrateLegacyProjectOpencodeConfig as migrateLegacyProjectOpencodeConfigShared,
   projectOpencodeConfigPath,
   readProjectOpencodeConfigText,
 } from "../channels/project-opencode-config.ts"
@@ -104,16 +102,12 @@ export const SYNCED_GLOBAL_AGENT_FILES = [
   "retro-analyst.md",
 ] as const
 
-export { legacyProjectOpencodeConfigPath, projectOpencodeConfigPath }
+export { projectOpencodeConfigPath }
 
 export async function readProjectOpencodeConfig(projectRoot: string) {
   const source = await readProjectOpencodeConfigText(projectRoot)
   if (!source) return {}
   return parseJsoncConfig(source.text, source.filepath)
-}
-
-export async function migrateLegacyProjectOpencodeConfig(projectRoot: string) {
-  await migrateLegacyProjectOpencodeConfigShared(projectRoot)
 }
 
 /** Sync managed Gatehouse agent definitions into ~/.config/opencode/agent/. */

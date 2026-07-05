@@ -9,7 +9,7 @@ import {
   resolveExecSkillDomain,
   skillDomainContextNote,
 } from "../src/retro/skill-kickoff.ts"
-import { parseTreeManifest } from "../src/tree/parse.ts"
+import { sampleMissionManifest } from "./helpers/mission-fixtures.ts"
 
 const scaffoldScript = path.join(import.meta.dir, "../script/scaffold.ts")
 
@@ -78,30 +78,25 @@ describe("domain skill kickoff", () => {
   })
 
   test("resolveExecSkillDomain uses manifest skill_domain only", () => {
-    const manifest = parseTreeManifest(`
-mission_id: m1
-status: running
-terminal_node: node-leaf
-created_at: "2026-01-01T00:00:00Z"
-nodes:
-  node-leaf:
-    session_id: s2
-    skill_domain: scan
-`)
+    const manifest = sampleMissionManifest({
+      mission_id: "m1",
+      terminal_node: "node-leaf",
+      nodes: {
+        "node-leaf": { session_id: "s2", skill_domain: "scan", profile: "build" },
+      },
+    })
     expect(resolveExecSkillDomain(manifest, "node-leaf", {})).toBe("scan")
     expect(resolveExecSkillDomain(manifest, "node-leaf", { briefDomainIds: ["dft"] })).toBe("scan")
   })
 
   test("resolveExecSkillDomain returns undefined without manifest skill_domain", () => {
-    const manifest = parseTreeManifest(`
-mission_id: m1
-status: running
-terminal_node: node-leaf
-created_at: "2026-01-01T00:00:00Z"
-nodes:
-  node-leaf:
-    session_id: s2
-`)
+    const manifest = sampleMissionManifest({
+      mission_id: "m1",
+      terminal_node: "node-leaf",
+      nodes: {
+        "node-leaf": { session_id: "s2", profile: "build" },
+      },
+    })
     expect(resolveExecSkillDomain(manifest, "node-leaf", { briefDomainIds: ["dft"] })).toBeUndefined()
   })
 })

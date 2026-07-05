@@ -81,7 +81,7 @@ export async function loadWatchdogSkillVerifyRecordWakePrompt(
 }
 
 export function listRunningMissionIds(projectDirectory: string) {
-  return new RegistryDatabase(projectDirectory, { readonly: true }).listTreeMissionIds("running")
+  return new RegistryDatabase(projectDirectory, { readonly: true }).listMissionIds("running")
 }
 
 export async function loadWatchdogOrchestratorStallPrompt(

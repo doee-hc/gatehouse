@@ -1,6 +1,6 @@
 # Retro summary template · {{mission_id}}
 
-Save to: `.gatehouse/trees/<mission_id>/reports/retro-summary.md`
+Save to: `.gatehouse/missions/<mission_id>/reports/retro-summary.md`
 
 ---
 

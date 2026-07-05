@@ -7,7 +7,7 @@ import type { ToolContext } from "@opencode-ai/plugin/tool"
 import { submitOrchestrationTool } from "../src/tools/submit-orchestration.ts"
 import { applySkillDomainsTool } from "../src/tools/apply-skill-domains.ts"
 import { copyExampleMission } from "./copy-example-mission.ts"
-import { readManifest } from "../src/tree/store.ts"
+import { readMissionManifest } from "../src/missions/manifest/store.ts"
 import { isRecord, parseYaml } from "../src/yaml.ts"
 import { getRegistryStore } from "../src/registry/context.ts"
 import { OUTER_ARCHITECT_ID, OUTER_CURATOR_ID } from "../src/registry/types.ts"
@@ -91,7 +91,7 @@ describe("example flow", () => {
       )
       expect(apoOutput).toContain("awaiting_skill_domains")
       expect(apoOutput).toContain("core-example-smoke-v1")
-      expect(await readManifest(dir, "core-example-smoke-v1")).toBeUndefined()
+      expect(await readMissionManifest(dir, "core-example-smoke-v1")).toBeUndefined()
       expect(sessionCounter).toBe(0)
       expect(kickoffTexts.some((text) => text.includes("skill_domain 分配"))).toBe(true)
       expect(kickoffTexts.some((text) => text.includes("gatehouse_apply_skill_domains"))).toBe(true)
@@ -120,7 +120,7 @@ describe("example flow", () => {
       const docsDomainDir = path.join(dir, ".gatehouse/skills/by-domain/docs")
       expect((await stat(docsDomainDir)).isDirectory()).toBe(true)
 
-      const manifest = await readManifest(dir, "core-example-smoke-v1")
+      const manifest = await readMissionManifest(dir, "core-example-smoke-v1")
       expect(manifest?.terminal_node).toBe("node-root")
       const rootSessionId = manifest?.nodes["node-root"]?.session_id
       const docSessionId = manifest?.nodes["node-doc"]?.session_id
@@ -240,7 +240,7 @@ describe("example flow", () => {
       )
       expect(output).toContain("MISSION_NOT_RUNNING")
       expect(output).toContain("queued")
-      expect(await readManifest(dir, "core-example-smoke-v1")).toBeUndefined()
+      expect(await readMissionManifest(dir, "core-example-smoke-v1")).toBeUndefined()
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

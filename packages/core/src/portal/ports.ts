@@ -207,9 +207,6 @@ export async function probePortalEndpoints(
   })
 }
 
-/** @deprecated Use probePortalEndpoints — kept for existing imports. */
-export const discoverPortalEndpoints = probePortalEndpoints
-
 export function applyDisplayPortalEnv(port: number) {
   process.env.GATEHOUSE_PORTAL_PORT = String(port)
   process.env.GATEHOUSE_PORTAL_URL = portalRuntimeUrl(port)

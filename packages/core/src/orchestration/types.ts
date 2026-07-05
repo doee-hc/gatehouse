@@ -1,4 +1,4 @@
-import type { TeamSpec } from "../tree/types.ts"
+import type { MissionTeamSpec } from "../missions/manifest/types.ts"
 
 export const ORCHESTRATION_STATE_SCHEMA_VERSION = 4
 
@@ -48,8 +48,6 @@ export type OrchestrationState = {
   sandbox?: OrchestrationSandboxMeta
   /** Next plan step index to execute; steps before this are complete. */
   cursor_step_index?: number
-  /** Derived from cursor_step_index for legacy readers; do not write directly. */
-  completed_step_ids?: string[]
   /** Nodes re-armed for prompt inside an in-progress compound (parallel) step. */
   compound_replay?: CompoundReplayState
   /** Frozen baseline snapshot id when continuing from prior work. */
@@ -65,7 +63,7 @@ export type MissionScriptMeta = {
 
 export type MissionScriptRecord = {
   missionId: string
-  team: TeamSpec
+  team: MissionTeamSpec
   meta?: MissionScriptMeta
   scriptPath?: string
   scriptHash?: string
@@ -137,7 +135,7 @@ export type MissionContext = {
 }
 
 export type LoadedMissionScript = {
-  team: TeamSpec
+  team: MissionTeamSpec
   meta?: MissionScriptMeta
   orchestrateSource?: string
   scriptSource: string

@@ -10,7 +10,7 @@ import {
   stopSandboxOrchestration,
 } from "../src/orchestration/sandbox-runtime.ts"
 import { markNodeRunning, mutateOrchestrationState, writeOrchestrationState } from "../src/orchestration/state.ts"
-import type { PortalTree } from "../src/portal/snapshot.ts"
+import type { PortalMissionTeam } from "../src/portal/snapshot.ts"
 import {
   completeRunningNode,
   countPromptMarkers,
@@ -57,7 +57,7 @@ describe("orchestration replay integration", () => {
       })
       await waitForPromptMarker(env, "marker:step1-n2", { label: "step1 prompt" })
 
-      expect(readState(env)?.completed_step_ids).toEqual(["step-0"])
+      expect(readState(env)?.cursor_step_index).toBe(1)
     } finally {
       await rm(env.dir, { recursive: true, force: true })
     }
@@ -76,7 +76,6 @@ describe("orchestration replay integration", () => {
       seedDoneNode(env, "n2")
       const state = readState(env)!
       state.cursor_step_index = 2
-      state.completed_step_ids = ["step-0", "step-1"]
       writeOrchestrationState(env.dir, state)
 
       await startSandboxOrchestration({
@@ -202,12 +201,12 @@ describe("orchestration replay integration", () => {
     }
   })
 
-  test("fan-out join rollup runs through all plan steps", async () => {
+  test("fan-out join synthesis runs through all plan steps", async () => {
     const missionId = "replay-fanout-m1"
     activeMissions.add(missionId)
     const env = await createReplayTestEnv({
       missionId,
-      scriptSource: SCRIPT.fanOutJoinRollup(missionId),
+      scriptSource: SCRIPT.fanOutJoin(missionId),
     })
 
     try {
@@ -220,7 +219,7 @@ describe("orchestration replay integration", () => {
       await completeRunningNode(env, "b")
       await Bun.sleep(600)
 
-      await waitForPromptMarker(env, "marker:rollup-root", { label: "rollup prompt" })
+      await waitForPromptMarker(env, "marker:join-root", { label: "join prompt" })
       await completeRunningNode(env, "terminal")
 
       await waitUntil(() => (readState(env)?.cursor_step_index ?? 0) >= 2, {
@@ -338,11 +337,10 @@ describe("orchestration replay integration", () => {
 
       const state = readState(env)!
       state.cursor_step_index = 1
-      state.completed_step_ids = ["step-0"]
       markNodeRunning(state, "n2")
       writeOrchestrationState(env.dir, state)
 
-      const tree: PortalTree = {
+      const team: PortalMissionTeam = {
         mission_id: missionId,
         terminal_node: "n3",
         status: "running",
@@ -353,7 +351,7 @@ describe("orchestration replay integration", () => {
         ],
       }
 
-      const view = buildPortalOrchestration(env.dir, tree)
+      const view = buildPortalOrchestration(env.dir, team)
       expect(view?.cursor_step_index).toBe(1)
       expect(view?.completed_steps).toBe(1)
       expect(view?.steps.find((step) => step.id === "step-0")?.state).toBe("done")
@@ -397,7 +395,6 @@ describe("orchestration replay host rpc sequences", () => {
 
       const state = readState(env)
       expect(state?.cursor_step_index).toBe(1)
-      expect(state?.completed_step_ids).toEqual(["step-0"])
       expect(state?.compound_replay).toBeUndefined()
     } finally {
       await rm(env.dir, { recursive: true, force: true })

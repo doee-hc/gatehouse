@@ -43,7 +43,7 @@ disable-model-invocation: true
   - **拒绝**：`gatehouse_delivery_review(decision=rejected, user_feedback=...)` — 与用户确认后续（`mission_complete(cancelled)` 取消，或改走返工）。
   - **取消 / 中途停止**：`gatehouse_mission_complete`（`status=cancelled` 或 `done`）；**勿**手改 `missions.yaml` 的 `cancelled`/`done`。
   - **返工**：`gatehouse_delivery_review(decision=revision_requested, failed_criteria=..., revision_brief=..., user_feedback=...)`（`revision_brief` 必填）→ 保持 `running`。默认通知 orchestration terminal 节点；若需改拓扑/编排，传 `architect_orchestrate=true` 由{{architect_name}}重写 `mission.script.ts`。
-5. **下一项任务** — 读 `.gatehouse/trees/<id>/reports/architect-summary.md`（及{{curator_name}}摘要若有），结合用户评价规划。
+5. **下一项任务** — 读 `.gatehouse/missions/<id>/reports/architect-summary.md`（及{{curator_name}}摘要若有），结合用户评价规划。
 
 ## 串行任务（同时仅一条 active）
 
@@ -82,10 +82,10 @@ disable-model-invocation: true
 | -------- | ------------------------------------------------------------------------------------------------------------------ |
 | 队列与任务正文  | `.gatehouse/lead/missions.yaml`                                                                                    |
 | 长期方向     | `.gatehouse/lead/direction.yaml`                                                                                   |
-| 交付记录     | `.gatehouse/trees/<id>/delivery.yaml`                                                                                    |
+| 交付记录     | `.gatehouse/missions/<id>/delivery.yaml`                                                                                    |
 | 交付物（项目内） | `done_when` 中 `path` / `文件存在:` 的路径；Lead 在 `mission_complete(publish_deliverables=true)` 时发布到 Portal                |
 | 可选验收记录   | `.gatehouse/lead/reports/<id>/report.md`（简短勾选 + 引用路径；用户反馈经 `mission_complete(user_feedback=...)` 写入 delivery.yaml） |
-| 任务报告（只读） | `.gatehouse/trees/<id>/reports/`                                                                                   |
+| 任务报告（只读） | `.gatehouse/missions/<id>/reports/`                                                                                   |
 
 
 模板：`.gatehouse/lead/missions.template.yaml`（若存在）或直接参照下方字段示例。
@@ -114,7 +114,7 @@ missions:
 
 ## 验收与 Portal
 
-- **交付物以项目路径为准** — 对照 `done_when` 中 `path` / `文件存在:` 与 terminal 节点完成通知中的汇总。`.gatehouse/trees/.../reports/` 下协调报告不是交付正文。
+- **交付物以项目路径为准** — 对照 `done_when` 中 `path` / `文件存在:` 与 terminal 节点完成通知中的汇总。`.gatehouse/missions/.../reports/` 下协调报告不是交付正文。
 - **你只补充验收视角** — 严格按冻结 `done_when` 条数对照；manual 条由你读文件验收（autopilot 开启时亦然）。
 - **Portal 由 Lead 结案时 opt-in** — `gatehouse_mission_complete(done, publish_deliverables=true)` 才上 Portal；Skill 在 `mission_complete(done)` 时自动发布。勿在 `done_when` 写 `publish:`。以 `mission_complete` 返回的 `published_artifacts` / `publish_warnings` 为准；`published_artifacts` 为空或有 `publish_warnings` 时不得声称已发布。
 

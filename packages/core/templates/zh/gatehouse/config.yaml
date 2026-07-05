@@ -37,7 +37,6 @@ agents:
 #   curator: opencode/deepseek-v4-flash-free
 #   arbiter: opencode/deepseek-v4-flash-free
 #   executor: opencode/big-pickle
-#   coordinator: opencode/big-pickle
 # 看门狗时间（毫秒）。顶层字段为 execution / record 共用默认值；各子项可单独覆盖。
 # 修改后需重启 OpenCode 生效。项目 .gatehouse/config.yaml 覆盖 ~/.config/gatehouse/config.yaml。
 # watchdog:

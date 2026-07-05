@@ -8,7 +8,7 @@
 ## Data sources (single source of truth)
 
 ```
-.gatehouse/trees/{{mission_id}}/context/{{node_id}}/
+.gatehouse/missions/{{mission_id}}/context/{{node_id}}/
   messages.json
   timeline.md
   metrics.json
@@ -46,7 +46,7 @@
 
 ## Delivery
 
-1. Write `.gatehouse/trees/{{mission_id}}/reports/skills/{{node_id}}-extract.md`
+1. Write `.gatehouse/missions/{{mission_id}}/reports/skills/{{node_id}}-extract.md`
 2. **`gatehouse_skill_extract_record()`**
 
 If registration is rejected, read `issues` from the tool response, fix `SKILL.md`, and retry. Remove mistaken new directories.

@@ -4,7 +4,7 @@ import {
   planTrackForNode,
 } from "./plan-graph.ts"
 import type { OrchestrationPlan } from "./plan-types.ts"
-import type { TeamSpec } from "../tree/types.ts"
+import type { MissionTeamSpec } from "../missions/manifest/types.ts"
 import { parseDependsOnArrayBody } from "./depends-on.ts"
 import { parenBraceDepthBefore } from "./source-depth.ts"
 
@@ -213,7 +213,7 @@ function lintForbiddenCtxRead(orchestrateSource: string): OrchestrationLintIssue
   ]
 }
 
-function lintBriefQuality(team: TeamSpec, plan: OrchestrationPlan, orchestrateSource: string): string[] {
+function lintBriefQuality(team: MissionTeamSpec, plan: OrchestrationPlan, orchestrateSource: string): string[] {
   const warnings: string[] = []
   for (const call of collectRunCalls(orchestrateSource)) {
     if (!runRepliesByDefault(call.body)) continue
@@ -266,17 +266,17 @@ function lintMissingAwait(orchestrateSource: string): string[] {
 }
 
 function extractRunCalls(orchestrateSource: string) {
-  const calls: Array<{ coordinator: string; body: string }> = []
+  const calls: Array<{ nodeId: string; body: string }> = []
   const runPattern = /ctx\.run\s*\(\s*["'`]([^"'`]+)["'`]/g
   for (const match of orchestrateSource.matchAll(runPattern)) {
-    const coordinator = match[1]!
+    const nodeId = match[1]!
     const body = callBodyAt(orchestrateSource, match.index!, match[0])
-    if (runRepliesByDefault(body)) calls.push({ coordinator, body })
+    if (runRepliesByDefault(body)) calls.push({ nodeId, body })
   }
   return calls
 }
 
-function lintSerialTrackBlocking(team: TeamSpec, plan: OrchestrationPlan, orchestrateSource: string): OrchestrationLintIssue[] {
+function lintSerialTrackBlocking(team: MissionTeamSpec, plan: OrchestrationPlan, orchestrateSource: string): OrchestrationLintIssue[] {
   const errors: OrchestrationLintIssue[] = []
   const topLevel = extractOrchestrationEvents(orchestrateSource).filter((event) => event.depth === 0)
   const dispatched = new Set<string>()
@@ -308,7 +308,7 @@ function lintSerialTrackBlocking(team: TeamSpec, plan: OrchestrationPlan, orches
   return errors
 }
 
-function lintDependsOn(team: TeamSpec, plan: OrchestrationPlan, orchestrateSource: string): {
+function lintDependsOn(team: MissionTeamSpec, plan: OrchestrationPlan, orchestrateSource: string): {
   errors: OrchestrationLintIssue[]
   warnings: string[]
 } {
@@ -316,7 +316,7 @@ function lintDependsOn(team: TeamSpec, plan: OrchestrationPlan, orchestrateSourc
   const warnings: string[] = []
 
   for (const call of extractRunCalls(orchestrateSource)) {
-    const nodeId = call.coordinator
+    const nodeId = call.nodeId
     if (!team.nodes[nodeId]) continue
 
     const dependsMatch = /dependsOn\s*:\s*\[([\s\S]*?)\]/m.exec(call.body)
@@ -346,7 +346,7 @@ function lintDependsOn(team: TeamSpec, plan: OrchestrationPlan, orchestrateSourc
   return { errors, warnings }
 }
 
-function lintBriefCoverage(team: TeamSpec, orchestrateSource: string): OrchestrationLintIssue[] {
+function lintBriefCoverage(team: MissionTeamSpec, orchestrateSource: string): OrchestrationLintIssue[] {
   const errors: OrchestrationLintIssue[] = []
   const briefNodes = extractSetBriefNodes(orchestrateSource)
   const dispatched = extractOrchestrationEvents(orchestrateSource).filter((event) => event.kind === "dispatch")
@@ -364,7 +364,7 @@ function lintBriefCoverage(team: TeamSpec, orchestrateSource: string): Orchestra
   return errors
 }
 
-function lintUnusedTeamNodes(team: TeamSpec, orchestrateSource: string): string[] {
+function lintUnusedTeamNodes(team: MissionTeamSpec, orchestrateSource: string): string[] {
   const referenced = extractReferencedNodeIds(orchestrateSource)
   const warnings: string[] = []
   for (const nodeId of Object.keys(team.nodes)) {
@@ -433,7 +433,7 @@ function lintForbiddenPatterns(orchestrateSource: string): OrchestrationLintIssu
   return errors
 }
 
-function lintParallelRecommended(team: TeamSpec, plan: OrchestrationPlan, orchestrateSource: string): string[] {
+function lintParallelRecommended(team: MissionTeamSpec, plan: OrchestrationPlan, orchestrateSource: string): string[] {
   const warnings: string[] = []
   const tracks = new Set<string>()
   for (const nodeId of Object.keys(team.nodes)) {
@@ -465,7 +465,7 @@ function lintParallelRecommended(team: TeamSpec, plan: OrchestrationPlan, orches
 }
 
 export function lintOrchestrationScript(
-  team: TeamSpec,
+  team: MissionTeamSpec,
   plan: OrchestrationPlan,
   orchestrateSource: string,
 ): OrchestrationLintResult {

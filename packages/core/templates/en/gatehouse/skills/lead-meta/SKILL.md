@@ -43,7 +43,7 @@ disable-model-invocation: true
    - **Reject**: `gatehouse_delivery_review(decision=rejected, user_feedback=...)` — confirm next step with user (cancel via `mission_complete(cancelled)` or request revision).
    - **Cancel / stop mid-flight**: `gatehouse_mission_complete` (`status=cancelled` or `done`); **do not** hand-edit `cancelled`/`done` in `missions.yaml`.
    - **Revision**: `gatehouse_delivery_review(decision=revision_requested, failed_criteria=..., revision_brief=..., user_feedback=...)` (`revision_brief` required) → keep `running`. Default: notifies the orchestration terminal node. For topology/orchestration changes, pass `architect_orchestrate=true` so {{architect_name}} rewrites `mission.script.ts`.
-4. **Next Mission** — Read `.gatehouse/trees/<id>/reports/architect-summary.md` (and {{curator_name}} summary if any), plan with user feedback.
+4. **Next Mission** — Read `.gatehouse/missions/<id>/reports/architect-summary.md` (and {{curator_name}} summary if any), plan with user feedback.
 
 ## Serial Missions (one active at a time)
 
@@ -80,10 +80,10 @@ Mission body expresses **user intent and acceptance only** — do not make profe
 |---------|------|
 | Queue & mission body | `.gatehouse/lead/missions.yaml` |
 | Long-term direction | `.gatehouse/lead/direction.yaml` |
-| Delivery record | `.gatehouse/trees/<id>/delivery.yaml` |
+| Delivery record | `.gatehouse/missions/<id>/delivery.yaml` |
 | Deliverables (in project) | `path` / file-exists paths in `done_when`; Lead publishes to Portal via `mission_complete(publish_deliverables=true)` |
 | Optional acceptance note | `.gatehouse/lead/reports/<id>/report.md` (short checklist + path reference; user feedback via `mission_complete(user_feedback=...)` → delivery.yaml) |
-| Mission reports (read-only) | `.gatehouse/trees/<id>/reports/` |
+| Mission reports (read-only) | `.gatehouse/missions/<id>/reports/` |
 
 Template: `.gatehouse/lead/missions.template.yaml` (if present) or field example below.
 
@@ -108,7 +108,7 @@ missions:
 ```
 ## Acceptance & Portal
 
-- **Deliverables live in the project** — review `path` / file-exists paths in `done_when` and the delivery notification aggregated summaries. Gatehouse coordination reports under `.gatehouse/trees/.../reports/` are not deliverable bodies.
+- **Deliverables live in the project** — review `path` / file-exists paths in `done_when` and the delivery notification aggregated summaries. Gatehouse coordination reports under `.gatehouse/missions/.../reports/` are not deliverable bodies.
 - **Your acceptance lens:** match frozen `done_when` item count exactly; check precheck; for manual items, read files and judge yourself (including when autopilot is ON).
 - **Portal is opt-in on complete:** deliverables are not on Portal until `gatehouse_mission_complete(done, publish_deliverables=true)`. Skills auto-publish on `mission_complete(done)`. Do not put `publish:` in `done_when`. Use `mission_complete` return values `published_artifacts` / `publish_warnings`; if `published_artifacts` is empty or `publish_warnings` is set, do not claim success.
 

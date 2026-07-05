@@ -2,10 +2,9 @@ import { mkdir } from "node:fs/promises"
 import path from "node:path"
 import { RegistryDatabase } from "../registry/db.ts"
 import {
-  parseContractRawFromYamlExport,
   parseMissionRawDoneWhenFromContractRaw,
 } from "../registry/mission-artifacts-db.ts"
-import { gatehouseRoot, internalExportsDir, missionContractPath } from "../paths.ts"
+import { gatehouseRoot, internalExportsDir } from "../paths.ts"
 import { isRecord, parseYaml, readString, stringifyYaml } from "../yaml.ts"
 import type { NodeBrief } from "./types.ts"
 
@@ -65,11 +64,6 @@ export async function readMissionRawDoneWhen(projectDirectory: string, missionId
       if (raw) return raw
     }
   }
-  const legacyFile = Bun.file(missionContractPath(projectDirectory, missionId))
-  if (await legacyFile.exists()) {
-    const parsed = parseContractRawFromYamlExport(await legacyFile.text())
-    if (parsed) return parseMissionRawDoneWhenFromContractRaw(parsed)
-  }
   return readRawMissionEntryFromYaml(projectDirectory, missionId).then((entry) =>
     entry && isRecord(entry) && Array.isArray(entry.done_when) ? entry.done_when : undefined,
   )
@@ -86,17 +80,7 @@ export async function readNodeBriefRegistry(
 
 export async function readMissionContractRawRegistry(projectDirectory: string, missionId: string) {
   const registry = await readonlyDb(projectDirectory)
-  const fromDb = registry?.getMissionContractRaw(missionId)
-  if (fromDb) return fromDb
-  const legacyFile = Bun.file(missionContractPath(projectDirectory, missionId))
-  if (await legacyFile.exists()) {
-    const parsed = parseContractRawFromYamlExport(await legacyFile.text())
-    if (parsed) {
-      db(projectDirectory).saveMissionContractRaw(missionId, parsed)
-      return parsed
-    }
-  }
-  return undefined
+  return registry?.getMissionContractRaw(missionId)
 }
 
 export type { NodeBrief }

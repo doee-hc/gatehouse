@@ -6,9 +6,10 @@
 
 ## Inputs
 
-- `.gatehouse/trees/<mission_id>/context/<node_id>/messages.json` or `timeline.md`
-- `.gatehouse/trees/<mission_id>/context/subtree-metrics.json` → `retro_nodes[<node_id>]` (subtree token/duration/tool totals)
-- `.gatehouse/trees/<mission_id>/context/<node_id>/metrics.json` (per-node totals)
+- `.gatehouse/missions/<mission_id>/context/<node_id>/messages.json` or `timeline.md`
+- `.gatehouse/missions/<mission_id>/context/mission-metrics.json` (mission-level token/duration/tool aggregates from context dump / `mergeSessionMetrics`)
+- `.gatehouse/missions/<mission_id>/context/<node_id>/metrics.json` (per-node totals)
+- `.gatehouse/missions/<mission_id>/context/index.json` (node list and `mission_metrics_path`)
 
 ## Run
 

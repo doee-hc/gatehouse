@@ -87,7 +87,7 @@ export async function countNewSkillsForMissionDomain(input: {
     if (await Bun.file(abs).exists()) {
       const extractReport = resolveProjectPath(
         input.projectDirectory,
-        `.gatehouse/trees/${input.missionId}/reports/skills`,
+        `.gatehouse/missions/${input.missionId}/reports/skills`,
       )
       const glob = new Bun.Glob("*-extract.md")
       let existedBefore = false

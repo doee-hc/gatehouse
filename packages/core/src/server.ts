@@ -10,7 +10,7 @@ import { ensureOpencodeConfig } from "./setup/project.ts"
 import { GATEHOUSE_OUTER_AGENTS } from "./registry/types.ts"
 import { createGatehouseCoreTools } from "./tools/index.ts"
 import { getPermissionArbiter, permissionEventProperties } from "./arbiter/arbiter.ts"
-import { startExecutionTreeWatchdog } from "./watchdog/execution-tree.ts"
+import { startMissionWatchdog } from "./watchdog/mission-watchdog.ts"
 import { resumeOrchestrationForRunningMissions } from "./orchestration/recover.ts"
 import { startAutopilotWatchdog } from "./watchdog/autopilot.ts"
 import { onLeadSessionUserMessage } from "./lead/chat-autopilot.ts"
@@ -76,7 +76,7 @@ export default {
     }, 15_000)
     flushInterval.unref?.()
     const watchdog = loadGatehouseConfig(input.directory).watchdog
-    startExecutionTreeWatchdog(input, registry, watchdog)
+    startMissionWatchdog(input, registry, watchdog)
     startRecordWatchdogs(input, registry, watchdog.record)
     startAutopilotWatchdog(input, registry, watchdog.autopilot)
     if (process.env.GATEHOUSE_PORTAL !== "0") {

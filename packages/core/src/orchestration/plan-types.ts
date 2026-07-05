@@ -40,17 +40,8 @@ export type OrchestrationBaseline = {
   nodes: OrchestrationBaselineNode[]
 }
 
-export type OrchestrationCursor = {
-  step_index: number
-  completed_step_ids: string[]
-}
-
 export function hashPlanVersion(plan: Pick<OrchestrationPlan, "script_hash" | "steps">) {
   const payload = `${plan.script_hash}:${plan.steps.map((step) => step.id).join(",")}`
   return createHash("sha256").update(payload).digest("hex").slice(0, 16)
-}
-
-export function emptyCursor(): OrchestrationCursor {
-  return { step_index: 0, completed_step_ids: [] }
 }
 

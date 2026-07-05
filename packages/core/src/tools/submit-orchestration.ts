@@ -1,9 +1,9 @@
 import { tool, type PluginInput } from "@opencode-ai/plugin"
 import type { ToolContext } from "@opencode-ai/plugin/tool"
 import { getRegistryStore } from "../registry/context.ts"
-import { readManifest } from "../tree/store.ts"
+import { readMissionManifest } from "../missions/manifest/store.ts"
 import { resolveTeamSource } from "../orchestration/resolve-team.ts"
-import { validateTeamSpec } from "../tree/parse.ts"
+import { validateMissionTeamSpec } from "../missions/manifest/team-spec.ts"
 import { resumeOrchestrationForActiveMission } from "../orchestration/resume.ts"
 import { continueOrchestrationWithNewScript } from "../orchestration/continuation.ts"
 import { isSandboxRunning } from "../orchestration/sandbox-runtime.ts"
@@ -18,7 +18,7 @@ import {
 import { loadMissionScript } from "../orchestration/script-load.ts"
 import { MissionScriptParseError } from "../orchestration/script-parse.ts"
 import { missionScriptErrorHint } from "../orchestration/script-error-hints.ts"
-import { runBootstrapTree } from "../tree/bootstrap-run.ts"
+import { bootstrapMission } from "../missions/bootstrap.ts"
 import { readSkillDomainsRegistry } from "../skills/domains.ts"
 import {
   applySkillDomainAssignments,
@@ -61,7 +61,7 @@ export function submitOrchestrationTool(input: PluginInput) {
           }
         }
 
-        validateTeamSpec(spec)
+        validateMissionTeamSpec(spec)
 
         const missionsDoc = await readMissionsDocument(input.directory)
         try {
@@ -73,7 +73,7 @@ export function submitOrchestrationTool(input: PluginInput) {
         }
 
         const caller = await resolveSubmitOrchestrationCaller(input, context)
-        const existing = await readManifest(input.directory, spec.mission_id)
+        const existing = await readMissionManifest(input.directory, spec.mission_id)
         const submitMode = args.mode ?? "submit"
         if (existing) {
           if (caller === "architect") {
@@ -164,7 +164,7 @@ export function submitOrchestrationTool(input: PluginInput) {
             output: toolFail(
               toolName,
               "ORCHESTRATION_ALREADY_STARTED",
-              `Mission ${spec.mission_id} already has an execution tree manifest in registry.db`,
+              `Mission ${spec.mission_id} already has an mission manifest in registry.db`,
             ),
             ...toolMetadata(toolName),
           }
@@ -195,7 +195,7 @@ export function submitOrchestrationTool(input: PluginInput) {
           if (skillReady) {
             const specWithDomains = applySkillDomainAssignments(spec, skillReady.assignments)
             await ensureSkillDomainDirs(input.directory, Object.values(skillReady.assignments))
-            const bootstrap = await runBootstrapTree(input, specWithDomains, {
+            const bootstrap = await bootstrapMission(input, specWithDomains, {
               objective: contract?.objective,
             })
             await registry.flushPendingDeliveries()
@@ -251,7 +251,7 @@ export function submitOrchestrationTool(input: PluginInput) {
 
         if (caller === "curator") {
           const contract = readActiveMissionContract(input.directory, spec.mission_id)
-          const result = await runBootstrapTree(input, spec, {
+          const result = await bootstrapMission(input, spec, {
             objective: contract?.objective,
           })
           return {

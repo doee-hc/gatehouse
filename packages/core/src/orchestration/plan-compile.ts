@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto"
-import type { TeamSpec } from "../tree/types.ts"
+import type { MissionTeamSpec } from "../missions/manifest/types.ts"
 import { MissionScriptParseError } from "./script-parse.ts"
 import { parenBraceDepthBefore } from "./source-depth.ts"
 import { inferTerminalNodeFromPlan } from "./plan-graph.ts"
@@ -57,7 +57,7 @@ function extractNodeIdFromCall(statement: string, method: string) {
   return pattern.exec(statement)?.[1]
 }
 
-function classifyStatement(statement: string, team: TeamSpec): PlanStep {
+function classifyStatement(statement: string, team: MissionTeamSpec): PlanStep {
   const trimmed = statement.trim()
   let op: PlanStepOp = "other"
   let nodeId: string | undefined
@@ -83,7 +83,7 @@ function classifyStatement(statement: string, team: TeamSpec): PlanStep {
   }
 }
 
-function validateTeamGraph(team: TeamSpec) {
+function validateTeamGraph(team: MissionTeamSpec) {
   if (!team.nodes[team.terminal]) {
     throw new MissionScriptParseError("SCRIPT_INVALID_TEAM", `team.terminal ${team.terminal} is not in nodes`)
   }
@@ -118,7 +118,7 @@ function validateWaitSequence(steps: PlanStep[]) {
 
 export function compileOrchestrationPlan(input: {
   missionId: string
-  team: TeamSpec
+  team: MissionTeamSpec
   orchestrateSource: string
   scriptHash: string
 }): OrchestrationPlan {

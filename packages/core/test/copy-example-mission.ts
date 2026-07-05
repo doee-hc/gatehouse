@@ -1,5 +1,5 @@
 import path from "node:path"
-import { leadDir, treeDir } from "../src/paths.ts"
+import { leadDir, missionDir } from "../src/paths.ts"
 import { parseMissionsFile, type MissionEntry } from "../src/missions/parse.ts"
 import { readMissionsDocument, writeMissionsDocument } from "../src/missions/store.ts"
 import { missionEntryToRecord } from "../src/missions/contract.ts"
@@ -49,7 +49,7 @@ export async function seedExampleMissionRegistry(projectDirectory: string) {
 }
 
 export async function copyExampleMission(projectDir: string) {
-  const destRoot = treeDir(projectDir, missionId)
+  const destRoot = missionDir(projectDir, missionId)
   await Bun.$`mkdir -p ${destRoot}`.quiet()
   await Bun.write(path.join(destRoot, "mission.script.ts"), Bun.file(path.join(fixtureRoot, "mission.script.ts")))
 
@@ -69,7 +69,7 @@ export async function copyExampleMission(projectDir: string) {
 
 /** Queued entry in yaml only (tests gatehouse_mission_start). */
 export async function copyExampleMissionQueued(projectDir: string) {
-  const destRoot = treeDir(projectDir, missionId)
+  const destRoot = missionDir(projectDir, missionId)
   await Bun.$`mkdir -p ${destRoot}`.quiet()
   await Bun.write(path.join(destRoot, "mission.script.ts"), Bun.file(path.join(fixtureRoot, "mission.script.ts")))
 

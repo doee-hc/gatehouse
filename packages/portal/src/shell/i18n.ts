@@ -108,11 +108,11 @@ const messages = {
   "event.missionCancelled": { zh: "任务 {id} 已取消", en: "Mission {id} cancelled" },
   "event.activeMissionChanged": { zh: "活跃任务切换为 {id}", en: "Active mission switched to {id}" },
   "event.missionLingering": { zh: "任务 {id} 已结束，团队暂留办公室", en: "Mission {id} ended — team lingering in office" },
-  "event.treeBootstrapped": {
-    zh: "任务 {id} 执行树已组建（{count} 个节点）",
-    en: "Mission {id} execution tree ready ({count} nodes)",
+  "event.teamReady": {
+    zh: "任务 {id} 执行团队已组建（{count} 个节点）",
+    en: "Mission {id} execution team ready ({count} nodes)",
   },
-  "event.agentJoined": { zh: "{name} 加入执行树", en: "{name} joined the execution tree" },
+  "event.agentJoined": { zh: "{name} 加入执行团队", en: "{name} joined the execution team" },
   "event.agentLeft": { zh: "{name} 离开办公室", en: "{name} left the office" },
   "event.agentRetroJoined": { zh: "{name} 开始复盘", en: "{name} started retro" },
   "event.agentRetroLeft": { zh: "{name} 复盘完成", en: "{name} finished retro" },
@@ -220,10 +220,10 @@ const messages = {
   "toast.bulletinToBlog": { zh: "公告栏 → 跳转到博客", en: "Bulletin board → Blog" },
   "toast.searchKeyword": { zh: "请输入搜索关键词", en: "Enter a search keyword" },
 
-  "tree.acceptance": { zh: "(验收员)", en: "(acceptance)" },
-  "tree.oneNode": { zh: "1 节点", en: "1 node" },
-  "tree.nodeCount": { zh: "{count} 节点", en: "{count} nodes" },
-  "tree.exec": { zh: "EXEC · {label}", en: "EXEC · {label}" },
+  "team.acceptance": { zh: "(验收员)", en: "(acceptance)" },
+  "team.oneNode": { zh: "1 节点", en: "1 node" },
+  "team.nodeCount": { zh: "{count} 节点", en: "{count} nodes" },
+  "team.exec": { zh: "EXEC · {label}", en: "EXEC · {label}" },
 
   "zone.hq": { zh: "HQ · 核心团队", en: "HQ · Core team" },
   "zone.missionWing": { zh: "任务区", en: "MISSION WING" },

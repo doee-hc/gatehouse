@@ -2,11 +2,8 @@ import { existsSync, readFileSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import {
-  migrateLegacyProjectOpencodeConfig as migrateLegacySources,
   projectOpencodeConfigPath,
   readProjectOpencodeConfigText,
-  removeLegacyOpencodeConfigSources,
-  resolveProjectOpencodeConfigSources,
 } from "./project-opencode-config.ts"
 
 export const CHANNELS_PLUGIN_PACKAGE = "@gatehouse/core/channels/plugin"
@@ -68,7 +65,7 @@ export async function ensureChannelsPluginInOpencodeConfig(projectDir: string, p
   const root = path.resolve(projectDir)
   const packageRoot = pluginRoot ?? gatehouseCorePackageRoot(path.dirname(fileURLToPath(import.meta.url)))
   const spec = channelsPluginSpec(packageRoot)
-  const { configPath, legacySources } = await resolveProjectOpencodeConfigSources(root)
+  const configPath = projectOpencodeConfigPath(root)
   const source = await readProjectOpencodeConfigText(root)
   const raw = source ? parseJsonc(source.text) : {}
   const config = { ...raw }
@@ -88,20 +85,14 @@ export async function ensureChannelsPluginInOpencodeConfig(projectDir: string, p
   const writeConfig = async (pluginList: unknown[], meta: { added: boolean; normalized?: boolean }) => {
     config.plugin = pluginList
     await Bun.write(configPath, `${JSON.stringify(config, null, 2)}\n`)
-    if (legacySources.length) await removeLegacyOpencodeConfigSources(legacySources)
     return { configPath, spec, ...meta }
   }
 
   if (!hasSpec) {
     return writeConfig([[spec, {}], ...kept], { added: true })
   }
-  if (kept.length !== plugins.length || legacySources.length) {
+  if (kept.length !== plugins.length) {
     return writeConfig(kept, { added: false, normalized: true })
   }
   return { configPath, added: false, spec }
-}
-
-/** Migrate legacy project config files before channels plugin registration. */
-export async function migrateLegacyProjectOpencodeConfig(projectDir: string) {
-  await migrateLegacySources(projectDir)
 }

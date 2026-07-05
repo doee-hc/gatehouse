@@ -7,10 +7,9 @@ import {
   LEAD_OPENCODE,
 } from "../registry/types.ts"
 import { activeMissionId } from "../missions/scope.ts"
-import { manifestMembers } from "../tree/parse.ts"
-import { findMissionBySession, readManifest, readRetroManifest } from "../tree/store.ts"
-import type { RetroManifest, TreeManifest, TreeMember } from "../tree/types.ts"
-import { collectSubtreeNodeIds } from "./list-members.ts"
+import { manifestMembers } from "../missions/manifest/team-spec.ts"
+import { findMissionBySession, readMissionManifest, readRetroManifest } from "../missions/manifest/store.ts"
+import type { MissionRetroManifest, MissionManifest, MissionMember } from "../missions/manifest/types.ts"
 
 const CORE_OUTER_ROLES = ["architect", "curator", "arbiter"] as const satisfies readonly OuterProfile[]
 
@@ -48,15 +47,14 @@ export type ListTeamPayload = {
   outer?: ListTeamOuterMember[]
   execution?: ListTeamExecutionMember[]
   retro?: ListTeamRetroMember[]
-  subtree?: ListTeamExecutionMember[]
 }
 
 export type ListTeamResult = ListTeamPayload | { error: string; code: string }
 
 type MissionSessionHit = {
   missionId: string
-  manifest: TreeManifest
-  retro?: RetroManifest
+  manifest: MissionManifest
+  retro?: MissionRetroManifest
 }
 
 export async function buildListTeamData(input: {
@@ -71,7 +69,7 @@ export async function buildListTeamData(input: {
     return buildRetroListTeam(input, missionHit.manifest, missionHit.retro)
   }
   if (registryAgent?.scope === "retro" && registryAgent.missionId) {
-    const manifest = await readManifest(input.directory, registryAgent.missionId)
+    const manifest = await readMissionManifest(input.directory, registryAgent.missionId)
     const retro = await readRetroManifest(input.directory, registryAgent.missionId)
     if (manifest && retro) return buildRetroListTeam(input, manifest, retro)
   }
@@ -91,7 +89,7 @@ async function buildOuterListTeam(input: {
 }) {
   const includeSessionId = input.callerProfile === ARBITER_OPENCODE
   const missionId = activeMissionId(input.store)
-  const manifest = missionId ? await readManifest(input.directory, missionId) : undefined
+  const manifest = missionId ? await readMissionManifest(input.directory, missionId) : undefined
   const retro = missionId ? await readRetroManifest(input.directory, missionId) : undefined
   return {
     you: { profile: input.callerProfile },
@@ -106,7 +104,7 @@ async function buildOuterListTeam(input: {
   } satisfies ListTeamPayload
 }
 
-function retroMembers(retro: RetroManifest, includeSessionId: boolean, store: RegistryStore) {
+function retroMembers(retro: MissionRetroManifest, includeSessionId: boolean, store: RegistryStore) {
   const agent = store.bySession(retro.retro_session_id)
   const entry: ListTeamRetroMember = { node_id: "retro-analyst" }
   if (agent?.displayName) entry.display_name = agent.displayName
@@ -123,11 +121,11 @@ async function buildInnerListTeam(
     sessionId: string
   },
   registryAgent: RegistryAgent | undefined,
-  manifestFromSession?: TreeManifest,
+  manifestFromSession?: MissionManifest,
 ) {
   const missionId = registryAgent?.missionId ?? manifestFromSession?.mission_id ?? activeMissionId(input.store)
   if (!missionId) return listTeamError("NO_ACTIVE_MISSION", "No active mission; call gatehouse_mission_start first")
-  const manifest = manifestFromSession ?? (await readManifest(input.directory, missionId))
+  const manifest = manifestFromSession ?? (await readMissionManifest(input.directory, missionId))
   if (!manifest) return listTeamError("MANIFEST_NOT_FOUND", "Could not resolve mission manifest for this session")
   const retro = await readRetroManifest(input.directory, missionId)
   const youNodeId = resolveYouNodeId(manifest, input.sessionId, registryAgent?.nodeId)
@@ -152,8 +150,8 @@ async function buildRetroListTeam(
     callerProfile: string
     sessionId: string
   },
-  manifest: TreeManifest,
-  retro: RetroManifest,
+  manifest: MissionManifest,
+  retro: MissionRetroManifest,
 ) {
   if (retro.retro_session_id !== input.sessionId) {
     return listTeamError("RETRO_NODE_UNKNOWN", "Could not resolve retro session for this session")
@@ -190,7 +188,7 @@ function outerMembers(store: RegistryStore, callerProfile: string, includeSessio
 }
 
 function executionMembers(
-  manifest: TreeManifest,
+  manifest: MissionManifest,
   retroNodeIds: Set<string> | undefined,
   includeSessionId: boolean,
   store: RegistryStore,
@@ -203,7 +201,7 @@ function executionMembers(
 }
 
 function toExecutionMember(
-  member: TreeMember,
+  member: MissionMember,
   retroNodeIds: Set<string> | undefined,
   includeSessionId: boolean,
   store: RegistryStore,
@@ -223,13 +221,13 @@ function toExecutionMember(
   return entry
 }
 
-function resolveYouNodeId(manifest: TreeManifest, sessionId: string, nodeId?: string) {
+function resolveYouNodeId(manifest: MissionManifest, sessionId: string, nodeId?: string) {
   if (nodeId) return nodeId
   const fromManifest = Object.entries(manifest.nodes).find(([, node]) => node.session_id === sessionId)?.[0]
   return fromManifest
 }
 
-function retroNodeIdForSession(retro: RetroManifest, sessionId: string) {
+function retroNodeIdForSession(retro: MissionRetroManifest, sessionId: string) {
   return retro.retro_session_id === sessionId ? "retro-analyst" : undefined
 }
 
@@ -242,7 +240,7 @@ async function resolveMissionSession(
   if (hit) return hit
   const missionId = activeMissionId(store)
   if (!missionId) return undefined
-  const manifest = await readManifest(directory, missionId)
+  const manifest = await readMissionManifest(directory, missionId)
   if (!manifest) return undefined
   const inManifest = Object.values(manifest.nodes).some((node) => node.session_id === sessionId)
   if (!inManifest) return undefined

@@ -1,6 +1,6 @@
 # {{architect_name}} retro summary template
 
-Write to: `.gatehouse/trees/<mission_id>/reports/architect-summary.md`
+Write to: `.gatehouse/missions/<mission_id>/reports/architect-summary.md`
 
 ---
 
@@ -13,7 +13,7 @@ Write to: `.gatehouse/trees/<mission_id>/reports/architect-summary.md`
 ## Task assignment & prompt constraints (from retro-summary)
 - Were assignment / done_when / node briefs effective:
 - Constraints to tighten or relax:
-- Topology (when_pair_with, hierarchy) adjustments:
+- Orchestration plan (`ctx.run`, `dependsOn`) adjustments:
 
 ## Runtime issues (cross-node)
 - Main efficiency findings from retro-analyst (cite script evidence or timeline snippets):

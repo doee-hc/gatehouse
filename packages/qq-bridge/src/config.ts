@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs"
 import path from "node:path"
 import { resolveChannelStateDir } from "@gatehouse/core/channels"
 import type { QqBridgeConfig } from "./qq/types.ts"
@@ -29,10 +28,7 @@ function readEnvBool(name: string, fallback: boolean) {
 }
 
 function resolveQqStateDir(projectDir: string) {
-  const stateDir = resolveChannelStateDir(projectDir, "qq")
-  const legacyDir = path.join(projectDir, ".gatehouse", "qq-bridge")
-  if (!existsSync(stateDir) && existsSync(legacyDir)) return legacyDir
-  return stateDir
+  return resolveChannelStateDir(projectDir, "qq")
 }
 
 export function loadConfig(): QqBridgeConfig {

@@ -1,7 +1,7 @@
 import path from "node:path"
 import { leadDir } from "../paths.ts"
-import { readManifest } from "../tree/store.ts"
-import type { TreeManifest } from "../tree/types.ts"
+import { readMissionManifest } from "../missions/manifest/store.ts"
+import type { MissionManifest } from "../missions/manifest/types.ts"
 import { isRecord, parseYaml, readString } from "../yaml.ts"
 import {
   blogPostFormatFromPath,
@@ -109,7 +109,7 @@ function sortMissionPosts(posts: BlogPost[]) {
   )
 }
 
-function missionSortTime(mission: MissionEntry, manifest?: TreeManifest) {
+function missionSortTime(mission: MissionEntry, manifest?: MissionManifest) {
   if (mission.completed_at) return mission.completed_at
   if (manifest?.archived_at) return manifest.archived_at
   return manifest?.created_at ?? ""
@@ -155,7 +155,7 @@ async function loadBlogSnapshot(projectDirectory: string) {
   const missionGroups = await Promise.all(
     [...missionPosts.entries()].map(async ([missionId, groupPosts]) => {
       const mission = missionById.get(missionId)!
-      const manifest = await readManifest(projectDirectory, missionId)
+      const manifest = await readMissionManifest(projectDirectory, missionId)
       return {
         kind: "mission" as const,
         id: missionId,

@@ -6,7 +6,7 @@ import { requireSenderMissionId } from "../missions/scope.ts"
 import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
 import { runSkillQualityGate } from "../skills/quality-gate.ts"
 import { recordSkillExtract } from "../skills/utility.ts"
-import { readExtractManifest } from "../tree/store.ts"
+import { readExtractManifest } from "../missions/manifest/store.ts"
 import { dumpPhaseSessionMetrics } from "../session/context-dump.ts"
 import type { GatehouseClient } from "../session/client.ts"
 

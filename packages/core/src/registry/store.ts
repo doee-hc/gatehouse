@@ -11,8 +11,8 @@ import { loadDomainSkillVerifyPrompt } from "../extract/prompt.ts"
 import { createVerifyManifest } from "../extract/verify-setup.ts"
 import { loadCuratorSkillAssignKickoff, curatorSkillExtractBatchReadyMessage } from "../curator/prompt.ts"
 import { archiveLowUtilitySkills } from "../skills/utility.ts"
-import { readExtractManifest, writeVerifyManifest } from "../tree/store.ts"
-import type { ExtractManifest, TeamSpec, VerifyManifest } from "../tree/types.ts"
+import { readExtractManifest, writeVerifyManifest } from "../missions/manifest/store.ts"
+import type { MissionExtractManifest, MissionTeamSpec, MissionVerifyManifest } from "../missions/manifest/types.ts"
 import { loadArchitectPrompt } from "../prompt/architect.ts"
 import { loadArbiterPrompt } from "../prompt/arbiter.ts"
 import { loadCuratorPrompt } from "../prompt/curator.ts"
@@ -53,7 +53,7 @@ import {
   verifyAgentId,
 } from "./types.ts"
 import { isTerminalInnerAgent } from "../orchestration/plan-graph.ts"
-import type { RetroManifest, TreeManifest } from "../tree/types.ts"
+import type { MissionRetroManifest, MissionManifest } from "../missions/manifest/types.ts"
 import type { OrchestrationPlan } from "../orchestration/plan-types.ts"
 import {
   createSession,
@@ -294,7 +294,7 @@ export class RegistryStore {
     }
   }
 
-  syncRetroFromManifest(retro: RetroManifest) {
+  syncRetroFromManifest(retro: MissionRetroManifest) {
     return this.mutate(() => {
       const projectRootSessionId = this.byProfile("lead", "outer")?.sessionId
       return this.registerRetroAnalyst({
@@ -395,7 +395,7 @@ export class RegistryStore {
     })
   }
 
-  syncExtractFromManifest(extract: ExtractManifest, manifest: TreeManifest) {
+  syncExtractFromManifest(extract: MissionExtractManifest, manifest: MissionManifest) {
     return this.mutate(() => {
       const projectRootSessionId = this.byProfile("lead", "outer")?.sessionId
       const synced: RegistryAgent[] = []
@@ -415,7 +415,7 @@ export class RegistryStore {
     })
   }
 
-  syncVerifyFromManifest(verify: VerifyManifest) {
+  syncVerifyFromManifest(verify: MissionVerifyManifest) {
     return this.mutate(() => {
       const projectRootSessionId = this.byProfile("lead", "outer")?.sessionId
       const synced: RegistryAgent[] = []
@@ -434,7 +434,7 @@ export class RegistryStore {
     })
   }
 
-  syncInnerFromManifest(manifest: TreeManifest) {
+  syncInnerFromManifest(manifest: MissionManifest) {
     const synced = this.mutate(() => {
       const projectRootSessionId = this.byProfile("lead", "outer")?.sessionId
       const agents: RegistryAgent[] = []
@@ -944,7 +944,7 @@ export class RegistryStore {
       reportPath: input.reportPath,
       alreadySubmitted,
       retro_status: this.retroStatus(input.missionId),
-      rollup_readiness: this.retroCompleteReadiness(input.missionId),
+      retro_readiness: this.retroCompleteReadiness(input.missionId),
       lead_notification: leadDelivery,
     }
   }
@@ -971,14 +971,14 @@ export class RegistryStore {
       reportPath: input.reportPath,
       alreadySubmitted,
       skill_status: this.skillExtractStatus(input.missionId),
-      rollup_readiness: this.retroCompleteReadiness(input.missionId),
+      retro_readiness: this.retroCompleteReadiness(input.missionId),
       lead_notification: leadDelivery,
     }
   }
 
   private async maybeNotifyLeadRetroSummaryComplete(missionId: string) {
     const readiness = this.retroCompleteReadiness(missionId)
-    if (!readiness.ready) return { status: "skipped" as const, reason: "rollup_incomplete" as const }
+    if (!readiness.ready) return { status: "skipped" as const, reason: "retro_incomplete" as const }
 
     const run = this.retroRuns.get(missionId)
     if (run?.leadRetroSummaryNotifiedAt) {
@@ -1059,7 +1059,7 @@ export class RegistryStore {
     })
   }
 
-  async kickoffCuratorSkillAssignment(input: { missionId: string; objective?: string; spec: TeamSpec }) {
+  async kickoffCuratorSkillAssignment(input: { missionId: string; objective?: string; spec: MissionTeamSpec }) {
     const curator = this.byProfile("curator", "outer")
     if (!curator?.sessionId) {
       return {
@@ -1099,7 +1099,7 @@ export class RegistryStore {
     }
   }
 
-  async kickoffExtractSkillSessions(extract: ExtractManifest) {
+  async kickoffExtractSkillSessions(extract: MissionExtractManifest) {
     this.beginSkillExtractRun(extract.mission_id, extract.extract_order)
     const deliveries: Array<{ nodeId: string; skillDomain: string; delivery: "sent" | "queued" | "failed"; error?: string }> = []
     for (const nodeId of extract.extract_order) {
@@ -1131,7 +1131,7 @@ export class RegistryStore {
     return deliveries
   }
 
-  async kickoffSkillVerifySessions(verify: VerifyManifest) {
+  async kickoffSkillVerifySessions(verify: MissionVerifyManifest) {
     const deliveries: Array<{ nodeId: string; skillDomain: string; delivery: "sent" | "queued" | "failed"; error?: string }> = []
     for (const nodeId of verify.verify_order) {
       const verifyNode = verify.nodes[nodeId]
@@ -1162,7 +1162,7 @@ export class RegistryStore {
     return deliveries
   }
 
-  async kickoffRetroSession(manifest: TreeManifest, plan?: OrchestrationPlan) {
+  async kickoffRetroSession(manifest: MissionManifest, plan?: OrchestrationPlan) {
     const recipient = this.byAgentId(retroAgentId(manifest.mission_id))
     if (!recipient) {
       return { delivery: "failed" as const, error: "retro analyst not in registry" }
@@ -1650,7 +1650,7 @@ function sendPolicyViolation(
   if (sender.profile === "curator") {
     if (recipient.scope === "outer" && recipient.profile === "lead") return undefined
     if (recipient.scope === "inner") return undefined
-    return `profile curator (${names.curator}) may only message lead (${names.lead}) or execution-tree sessions`
+    return `profile curator (${names.curator}) may only message lead (${names.lead}) or execution team sessions`
   }
   return "sender is not allowed to use gatehouse_send_message"
 }

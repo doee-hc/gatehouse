@@ -111,7 +111,7 @@ GATEHOUSE_SNAPSHOT_POLL_MS=2000 \
 bun run dev:ui
 ```
 
-Simulates an **execution tree** (lead + 3 inner workers) plus four outer roles. Phases: bootstrap idle → kickoff → parallel busy → research → in-tree chat → wind-down → handoff chat. Inner agents **work at their bound cubicle** when busy/research and **wander the office** when idle; outer roles stay at dedicated boss desks. If the UI lags terminal 1 logs, the bug is Portal API ↔ Web UI (not OpenCode).
+Simulates an **execution team** (lead + 3 inner workers) plus four outer roles. Phases: bootstrap idle → kickoff → parallel busy → research → in-tree chat → wind-down → handoff chat. Inner agents **work at their bound cubicle** when busy/research and **wander the office** when idle; outer roles stay at dedicated boss desks. If the UI lags terminal 1 logs, the bug is Portal API ↔ Web UI (not OpenCode).
 
 ## Scripts
 

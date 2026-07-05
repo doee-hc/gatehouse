@@ -44,7 +44,7 @@ describe("detectOrchestrationStall", () => {
     expect(detectOrchestrationStall({ state, sandboxRunning: true, now })).toBe(null)
   })
 
-  test("detects sandbox_dead even with running executor nodes", () => {
+  test("detects sandbox_dead even with running inner nodes", () => {
     const state = orchState({
       updated_at: staleUpdatedAt,
       nodes: {
@@ -58,7 +58,7 @@ describe("detectOrchestrationStall", () => {
     expect((stall?.staleMs ?? 0) > ORCHESTRATION_STALL_THRESHOLD_MS).toBe(true)
   })
 
-  test("returns null for running sandbox with active executor nodes", () => {
+  test("returns null for running sandbox with active inner nodes", () => {
     const state = orchState({
       updated_at: staleUpdatedAt,
       nodes: {
@@ -69,7 +69,7 @@ describe("detectOrchestrationStall", () => {
     expect(detectOrchestrationStall({ state, sandboxRunning: true, now })).toBe(null)
   })
 
-  test("detects orchestrator_stuck when sandbox runs but no executor is active", () => {
+  test("detects orchestrator_stuck when sandbox runs but no inner node is active", () => {
     const state = orchState({
       updated_at: staleUpdatedAt,
       nodes: {

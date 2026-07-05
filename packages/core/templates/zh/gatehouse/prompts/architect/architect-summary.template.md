@@ -1,6 +1,6 @@
 # {{architect_name}}复盘汇总模板
 
-落盘：`.gatehouse/trees/<mission_id>/reports/architect-summary.md`
+落盘：`.gatehouse/missions/<mission_id>/reports/architect-summary.md`
 
 ---
 
@@ -13,7 +13,7 @@
 ## 任务分配与 prompt 约束（来自 retro-summary）
 - 任务分配 / done_when / node brief 是否有效：
 - 哪些约束措辞需收紧或放宽：
-- 拓扑（when_pair_with、层级）调整建议：
+- 编排 plan（`ctx.run`、`dependsOn`）调整建议：
 
 ## 运行时问题汇总（跨节点）
 - retro-analyst 发现的主要效率问题（引用其脚本证据或 timeline 片段）：

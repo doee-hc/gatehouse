@@ -1,10 +1,10 @@
 import { missionScriptPath } from "../paths.ts"
-import type { TeamSpec } from "../tree/types.ts"
+import type { MissionTeamSpec } from "../missions/manifest/types.ts"
 import { loadMissionScript } from "./script-load.ts"
 import type { LoadedMissionScript, MissionScriptMeta } from "./types.ts"
 
 export type ResolvedTeamSource = {
-  spec: TeamSpec
+  spec: MissionTeamSpec
   script: LoadedMissionScript
 }
 

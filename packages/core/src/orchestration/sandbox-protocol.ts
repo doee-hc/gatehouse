@@ -1,6 +1,6 @@
 import type { GatehouseLocale } from "../locale.ts"
 import type { MissionScriptMeta, PromptInput } from "./types.ts"
-import type { TeamSpec } from "../tree/types.ts"
+import type { MissionTeamSpec } from "../missions/manifest/types.ts"
 import type { PlanStep } from "./plan-types.ts"
 
 export type SandboxInitMessage = {
@@ -8,7 +8,7 @@ export type SandboxInitMessage = {
   orchestrateSource: string
   missionId: string
   locale: GatehouseLocale
-  team: TeamSpec
+  team: MissionTeamSpec
   objective?: string
   meta?: MissionScriptMeta
   plan?: {

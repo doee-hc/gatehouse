@@ -16,7 +16,6 @@ import {
 import {
   detectGlobalOpencodeConfigPath,
   globalOpencodeConfigDir,
-  migrateLegacyProjectOpencodeConfig,
   projectOpencodeConfigPath,
   syncGlobalOpencodeAgents,
 } from "./global-opencode.ts"
@@ -82,8 +81,6 @@ export async function ensureOpencodeConfig(
   const packageRoot = path.resolve(pluginRoot ?? gatehousePackageRoot())
   const configPath = projectOpencodeConfigPath(root)
   const pluginSpec = gatehouseCorePluginSpec(packageRoot)
-
-  await migrateLegacyProjectOpencodeConfig(root)
 
   const config = (await Bun.file(configPath).exists())
     ? parseJsoncConfig(await Bun.file(configPath).text(), configPath)

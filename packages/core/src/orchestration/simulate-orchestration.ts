@@ -1,6 +1,6 @@
 import type { GatehouseLocale } from "../locale.ts"
 import { planChildNodeIds, planLeafNodeIds } from "./plan-graph.ts"
-import type { TeamSpec } from "../tree/types.ts"
+import type { MissionTeamSpec } from "../missions/manifest/types.ts"
 import { MissionScriptParseError } from "./script-parse.ts"
 import type { ParsedMissionScript } from "./script-parse.ts"
 import type { OrchestrationPlan } from "./plan-types.ts"
@@ -49,7 +49,7 @@ function bumpStep(stepCount: { value: number }, maxSteps: number) {
 function createSimulatedMissionContext(input: {
   missionId: string
   locale: GatehouseLocale
-  team: TeamSpec
+  team: MissionTeamSpec
   plan: OrchestrationPlan
   objective: string
   state: OrchestrationState

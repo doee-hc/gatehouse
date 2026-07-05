@@ -10,6 +10,8 @@ import { waitForAllMissionAgentsIdle, missionEndedOuterMessage } from "../src/mi
 import { getRegistryStore } from "../src/registry/context.ts"
 import { OUTER_LEAD_ID, OUTER_ARCHITECT_ID, OUTER_CURATOR_ID } from "../src/registry/types.ts"
 import { stringifyYaml, isRecord, parseYaml } from "../src/yaml.ts"
+import { RegistryDatabase } from "../src/registry/db.ts"
+import { writeMissionManifest } from "../src/missions/manifest/store.ts"
 import { seedActiveMissionRegistry } from "./copy-example-mission.ts"
 import { seedSubmittedDelivery } from "./seed-delivery.ts"
 
@@ -67,20 +69,16 @@ describe("mission lifecycle tools", () => {
     try {
       await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
       const missionId = "m-busy"
-      const treeDir = path.join(dir, ".gatehouse/trees", missionId)
-      await mkdir(treeDir, { recursive: true })
-      await Bun.write(
-        path.join(treeDir, "manifest.yaml"),
-        stringifyYaml({
-          mission_id: missionId,
-          status: "running",
-          terminal_node: "root",
-          created_at: new Date().toISOString(),
-          nodes: {
-            terminal: { session_id: "ses_root", display_name: "root", profile: "build" },
-          },
-        }),
-      )
+      const manifest = {
+        mission_id: missionId,
+        status: "running" as const,
+        terminal_node: "terminal",
+        created_at: new Date().toISOString(),
+        nodes: {
+          terminal: { session_id: "ses_root", display_name: "root", profile: "build" },
+        },
+      }
+      await writeMissionManifest(dir, manifest)
       await Bun.write(
         path.join(dir, ".gatehouse/lead/missions.yaml"),
         stringifyYaml({
@@ -90,15 +88,7 @@ describe("mission lifecycle tools", () => {
       )
 
       const registry = await getRegistryStore({ directory: dir } as PluginInput)
-      registry.syncInnerFromManifest({
-        mission_id: missionId,
-        status: "running",
-        terminal_node: "root",
-        created_at: new Date().toISOString(),
-        nodes: {
-          terminal: { session_id: "ses_root", display_name: "root", profile: "build" },
-        },
-      })
+      registry.syncInnerFromManifest(manifest)
 
       seedActiveMissionRegistry(dir, missionId)
       await seedSubmittedDelivery(dir, missionId)
@@ -140,15 +130,17 @@ describe("mission lifecycle tools", () => {
       await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
       const missionId = "m-transient-busy"
       const registry = await getRegistryStore({ directory: dir } as PluginInput)
-      registry.syncInnerFromManifest({
+      const manifest = {
         mission_id: missionId,
-        status: "running",
-        terminal_node: "root",
+        status: "running" as const,
+        terminal_node: "terminal",
         created_at: new Date().toISOString(),
         nodes: {
           terminal: { session_id: "ses_root", display_name: "root", profile: "build" },
         },
-      })
+      }
+      await writeMissionManifest(dir, manifest)
+      registry.syncInnerFromManifest(manifest)
 
       let polls = 0
       const mockClient = {
@@ -183,12 +175,12 @@ describe("mission lifecycle tools", () => {
     }
   })
 
-  test("mission_complete rejects retro done when architect rollup pending", async () => {
+  test("mission_complete rejects retro done when architect summary pending", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-mission-complete-retro-"))
     try {
       await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
       const missionId = "m-retro-pending"
-      const reportRel = `.gatehouse/trees/${missionId}/reports/retro-summary.md`
+      const reportRel = `.gatehouse/missions/${missionId}/reports/retro-summary.md`
       await mkdir(path.dirname(path.join(dir, reportRel)), { recursive: true })
       await Bun.write(path.join(dir, reportRel), "# retro\n")
       await Bun.write(
@@ -245,7 +237,7 @@ describe("mission lifecycle tools", () => {
         error?: { code: string; details?: { pending?: string[] } }
       }
       expect(parsed.ok).toBe(false)
-      expect(parsed.error?.code).toBe("RETRO_ROLLUP_PENDING")
+      expect(parsed.error?.code).toBe("RETRO_SUMMARY_PENDING")
       expect(parsed.error?.details?.pending).toContain("architect_retro_summary")
     } finally {
       await rm(dir, { recursive: true, force: true })
@@ -274,20 +266,16 @@ describe("mission lifecycle tools", () => {
     try {
       await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
       const missionId = "m-done"
-      const treeDir = path.join(dir, ".gatehouse/trees", missionId)
-      await mkdir(treeDir, { recursive: true })
-      await Bun.write(
-        path.join(treeDir, "manifest.yaml"),
-        stringifyYaml({
-          mission_id: missionId,
-          status: "running",
-          terminal_node: "root",
-          created_at: new Date().toISOString(),
-          nodes: {
-            terminal: { session_id: "ses_root", display_name: "root", profile: "build" },
-          },
-        }),
-      )
+      const manifest = {
+        mission_id: missionId,
+        status: "running" as const,
+        terminal_node: "terminal",
+        created_at: new Date().toISOString(),
+        nodes: {
+          terminal: { session_id: "ses_root", display_name: "root", profile: "build" },
+        },
+      }
+      await writeMissionManifest(dir, manifest)
       await Bun.write(
         path.join(dir, ".gatehouse/lead/missions.yaml"),
         stringifyYaml({
@@ -323,15 +311,7 @@ describe("mission lifecycle tools", () => {
       } as unknown as PluginInput
 
       const registry = await getRegistryStore(pluginInput)
-      registry.syncInnerFromManifest({
-        mission_id: missionId,
-        status: "running",
-        terminal_node: "root",
-        created_at: new Date().toISOString(),
-        nodes: {
-          terminal: { session_id: "ses_root", display_name: "root", profile: "build" },
-        },
-      })
+      registry.syncInnerFromManifest(manifest)
       await registerOuterTeam(pluginInput)
 
       const complete = missionCompleteTool(pluginInput)
@@ -347,7 +327,7 @@ describe("mission lifecycle tools", () => {
       expect(promptCalls).toContain("ses_curator")
       expect(deleteCalls).toContain("ses_root")
 
-      const contextIndex = path.join(dir, ".gatehouse/trees", missionId, "context/index.json")
+      const contextIndex = path.join(dir, ".gatehouse/missions", missionId, "context/index.json")
       expect(await Bun.file(contextIndex).exists()).toBe(true)
 
       const missions = parseYaml(await Bun.file(path.join(dir, ".gatehouse/lead/missions.yaml")).text())
@@ -355,12 +335,8 @@ describe("mission lifecycle tools", () => {
       const entry = missions.missions.find((item) => isRecord(item) && item.id === missionId)
       expect(isRecord(entry) && entry.status).toBe("cancelled")
 
-      const manifest = parseYaml(
-        await Bun.file(
-          path.join(dir, ".gatehouse/internal/exports/trees", missionId, "manifest.yaml"),
-        ).text(),
-      )
-      expect(isRecord(manifest) && manifest.status).toBe("archived")
+      const manifestFromDb = new RegistryDatabase(dir, { readonly: true }).getMissionManifest(missionId)
+      expect(manifestFromDb?.status).toBe("archived")
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

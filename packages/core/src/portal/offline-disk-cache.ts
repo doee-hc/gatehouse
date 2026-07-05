@@ -303,15 +303,6 @@ export async function readPortalOfflineDiskBundle(
   return bundle
 }
 
-/** @deprecated Prefer mergeSkillCacheIncremental — kept for tests. */
-export async function buildPortalOfflineSkillsCache(
-  projectDirectory: string,
-  skills: PortalSkill[],
-): Promise<PortalOfflineSkillsCache> {
-  const { skills: merged } = await mergeSkillCacheIncremental(projectDirectory, skills, undefined, undefined)
-  return merged
-}
-
 async function mergePortalOfflineDiskCacheUnlocked(
   projectDirectory: string,
   patch: PortalOfflineDiskPatch,

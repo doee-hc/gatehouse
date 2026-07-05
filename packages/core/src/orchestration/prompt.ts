@@ -15,7 +15,7 @@ import { deliverableNodeIds, normalizeDependsOn } from "./depends-on.ts"
 import { readOrchestrationState } from "./state.ts"
 import { runMissingBriefError } from "./run.ts"
 import type { PromptInput } from "./types.ts"
-import type { TeamSpec } from "../tree/types.ts"
+import type { MissionTeamSpec } from "../missions/manifest/types.ts"
 
 export async function deliverOrchestrationPrompt(input: {
   plugin: PluginInput
@@ -23,7 +23,7 @@ export async function deliverOrchestrationPrompt(input: {
   missionId: string
   nodeId: string
   prompt: PromptInput
-  team?: TeamSpec
+  team?: MissionTeamSpec
 }) {
   const recipient = input.store.byAgentId(innerAgentId(input.missionId, input.nodeId))
   if (!recipient) return { status: "failed" as const, error: `node not in registry: ${input.nodeId}` }

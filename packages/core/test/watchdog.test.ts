@@ -2,17 +2,17 @@ import { describe, expect, test } from "bun:test"
 import path from "node:path"
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
-import { parseTreeManifest } from "../src/tree/parse.ts"
+import { sampleMissionManifest } from "./helpers/mission-fixtures.ts"
 import { orchestrationProblemNodeIds, initOrchestrationState } from "../src/orchestration/state.ts"
 import {
   allSessionsIdle,
   checkExecutionWatchdogMission,
-} from "../src/watchdog/execution-tree.ts"
+} from "../src/watchdog/mission-watchdog.ts"
 import { WATCHDOG_IDLE_THRESHOLD_MS, WATCHDOG_WAKE_COOLDOWN_MS } from "../src/watchdog/prompt.ts"
 import { WATCHDOG_POLL_MS } from "../src/watchdog/tick.ts"
 import {
   isInnerNotifyingLead,
-  isSendToTreeMember,
+  isSendToMissionMember,
   mergeWatchdogTickState,
   watchdogDeliveryEventState,
   watchdogSendMessageState,
@@ -25,7 +25,7 @@ import {
   resetWatchdogStateStoreForTests,
   setMissionWatchState,
 } from "../src/watchdog/state-store.ts"
-import { ExecutionTreeWatchdog } from "../src/watchdog/execution-tree.ts"
+import { MissionWatchdog } from "../src/watchdog/mission-watchdog.ts"
 import { ORCHESTRATION_STALL_THRESHOLD_MS } from "../src/orchestration/stall.ts"
 import {
   ORCHESTRATION_STALL_NOTIFY_COOLDOWN_MS,
@@ -36,17 +36,15 @@ import type { RegistryAgent } from "../src/registry/types.ts"
 import { RegistryDatabase } from "../src/registry/db.ts"
 import { seedTerminalPlan } from "./seed-terminal-plan.ts"
 
-const sampleManifest = parseTreeManifest(`
-mission_id: mission-a
-status: running
-terminal_node: root
-created_at: "2026-01-01T00:00:00.000Z"
-nodes:
-  root:
-    session_id: ses_root
-  leaf:
-    session_id: ses_leaf
-`)
+const sampleManifest = sampleMissionManifest({
+  mission_id: "mission-a",
+  status: "running",
+  terminal_node: "root",
+  nodes: {
+    root: { session_id: "ses_root", profile: "build" },
+    leaf: { session_id: "ses_leaf", profile: "build" },
+  },
+})
 
 describe("execution watchdog helpers", () => {
   test("allSessionsIdle treats absent sessions as idle (OpenCode status API omits idle)", () => {
@@ -191,9 +189,9 @@ describe("watchdog send_message signals", () => {
     }
   })
 
-  test("isSendToTreeMember matches inner recipients in mission", () => {
-    expect(isSendToTreeMember(innerAgent("leaf"), missionId)).toBe(true)
-    expect(isSendToTreeMember(leadAgent, missionId)).toBe(false)
+  test("isSendToMissionMember matches inner recipients in mission", () => {
+    expect(isSendToMissionMember(innerAgent("leaf"), missionId)).toBe(true)
+    expect(isSendToMissionMember(leadAgent, missionId)).toBe(false)
   })
 
   test("watchdogDeliveryEventState pauses on submit and resumes on revision", () => {
@@ -295,7 +293,7 @@ describe("execution watchdog integration", () => {
     try {
       seedTerminalPlan(dir, missionId, "root")
       const registry = { byAgentId: () => undefined } as unknown as import("../src/registry/store.ts").RegistryStore
-    const watchdog = new ExecutionTreeWatchdog(
+    const watchdog = new MissionWatchdog(
       { directory: dir, client: {} } as import("@opencode-ai/plugin").PluginInput,
       registry,
       {

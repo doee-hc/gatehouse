@@ -1,7 +1,7 @@
 import { planChildNodeIds, planLeafNodeIds } from "./plan-graph.ts"
 import type { GatehouseLocale } from "../locale.ts"
 import type { OrchestrationPlan } from "./plan-types.ts"
-import type { TeamSpec } from "../tree/types.ts"
+import type { MissionTeamSpec } from "../missions/manifest/types.ts"
 import { orchestrationRun } from "./run.ts"
 import { orchestrationParallel } from "./primitives.ts"
 import { orchestrationPipeline } from "./primitives.ts"
@@ -15,7 +15,7 @@ type RpcSender = (request: Omit<SandboxRpcRequest, "type" | "id">) => Promise<un
 export function createSandboxMissionContext(input: {
   missionId: string
   locale: GatehouseLocale
-  team: TeamSpec
+  team: MissionTeamSpec
   plan: Pick<OrchestrationPlan, "steps">
   objective?: string
   sendRpc: RpcSender

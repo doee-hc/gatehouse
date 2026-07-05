@@ -3,7 +3,7 @@ import type { PlanStep } from "../src/orchestration/plan-types.ts"
 import { buildPortalOrchestrationFlowEdges } from "../src/portal/orchestration-flow-edges.ts"
 
 describe("portal orchestration flow edges", () => {
-  test("builds rollup arrows from plan steps", () => {
+  test("builds synthesize arrows from plan steps", () => {
     const planSteps: PlanStep[] = [
       {
         id: "step-0",
@@ -111,7 +111,7 @@ describe("portal orchestration flow edges", () => {
     ])
   })
 
-  test("extracts nested run steps inside ctx.parallel for rollup and serial arrows", () => {
+  test("extracts nested run steps inside ctx.parallel for synthesize and serial arrows", () => {
     const planSteps: PlanStep[] = [
       {
         id: "step-0",

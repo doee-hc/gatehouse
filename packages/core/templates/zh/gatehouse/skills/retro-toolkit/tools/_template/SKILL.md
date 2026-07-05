@@ -6,9 +6,10 @@
 
 ## 输入
 
-- `.gatehouse/trees/<mission_id>/context/<node_id>/messages.json` 或 `timeline.md`
-- `.gatehouse/trees/<mission_id>/context/subtree-metrics.json` → `retro_nodes[<node_id>]`（子树 token/耗时/工具汇总）
-- `.gatehouse/trees/<mission_id>/context/<node_id>/metrics.json`（单节点汇总）
+- `.gatehouse/missions/<mission_id>/context/<node_id>/messages.json` 或 `timeline.md`
+- `.gatehouse/missions/<mission_id>/context/mission-metrics.json`（context dump / `mergeSessionMetrics` 产出的 Mission 级 token/耗时/工具聚合）
+- `.gatehouse/missions/<mission_id>/context/<node_id>/metrics.json`（单节点汇总）
+- `.gatehouse/missions/<mission_id>/context/index.json`（节点列表与 `mission_metrics_path`）
 
 ## 运行
 

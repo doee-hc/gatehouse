@@ -4,7 +4,7 @@ Mission **{{mission_id}}** orchestration has been stalled for **{{stale_minutes}
 
 ## Act now
 
-1. Read `.gatehouse/trees/{{mission_id}}/mission.script.ts` — fix unescaped `"` inside double-quoted strings; use `ctx.parallel` for parallel tracks and `ctx.run` with `dependsOn` for ordering.
+1. Read `.gatehouse/missions/{{mission_id}}/mission.script.ts` — fix unescaped `"` inside double-quoted strings; use `ctx.parallel` for parallel tracks and `ctx.run` with `dependsOn` for ordering.
 2. After fixes, call **gatehouse_submit_orchestration**.
 3. If submit fails after major script changes, fix the script or ask {{lead_name}} before restarting.
 4. Use **gatehouse_execution_status** to check node state.

@@ -3,7 +3,7 @@ import { gatehouseLog } from "../log.ts"
 import { readMissionsDocument } from "../missions/store.ts"
 import { runningMissionIds } from "../missions/parse.ts"
 import type { RegistryStore } from "../registry/store.ts"
-import { readManifest } from "../tree/store.ts"
+import { readMissionManifest } from "../missions/manifest/store.ts"
 import { hasOrchestrationRuntime } from "./state.ts"
 import { resumeOrchestrationRuntime } from "./resume.ts"
 export async function resumeOrchestrationForRunningMissions(input: PluginInput, store: RegistryStore) {
@@ -13,7 +13,7 @@ export async function resumeOrchestrationForRunningMissions(input: PluginInput, 
 
   for (const missionId of missionIds) {
     if (!hasOrchestrationRuntime(input.directory, missionId)) continue
-    const manifest = await readManifest(input.directory, missionId)
+    const manifest = await readMissionManifest(input.directory, missionId)
     if (!manifest) continue
 
     const result = await resumeOrchestrationRuntime(input, store, manifest, missionId)

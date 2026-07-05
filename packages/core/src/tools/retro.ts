@@ -2,12 +2,12 @@ import { tool, type PluginInput } from "@opencode-ai/plugin"
 import { retroSessionTitle, retroSummaryRelPath, resolveProjectPath } from "../paths.ts"
 import { getRegistryStore } from "../registry/context.ts"
 import {
-  readManifest,
+  readMissionManifest,
   readRetroManifest,
   writeRetroManifest,
   writeExtractManifest,
-} from "../tree/store.ts"
-import type { RetroManifest } from "../tree/types.ts"
+} from "../missions/manifest/store.ts"
+import type { MissionRetroManifest } from "../missions/manifest/types.ts"
 import type { RegistryStore } from "../registry/store.ts"
 import { createExtractManifest } from "../extract/setup.ts"
 import { resolveTeamSource } from "../orchestration/resolve-team.ts"
@@ -26,7 +26,7 @@ import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
 function retroAlreadyStartedResponse(
   toolName: string,
   missionId: string,
-  retro: RetroManifest,
+  retro: MissionRetroManifest,
   registry: RegistryStore,
 ) {
   const retroStatus = registry.retroStatus(missionId)
@@ -98,7 +98,7 @@ export function missionRetroTool(input: PluginInput) {
           return retroAlreadyStartedResponse(toolName, missionId, existingRetro, lead.registry)
         }
 
-        const manifest = await readManifest(input.directory, missionId)
+        const manifest = await readMissionManifest(input.directory, missionId)
         if (!manifest) {
           return {
             output: toolFail(toolName, "MANIFEST_NOT_FOUND", `No manifest for mission ${missionId}`),
@@ -159,7 +159,7 @@ export function missionRetroTool(input: PluginInput) {
           created_at: new Date().toISOString(),
           retro_session_id: retroSessionId,
           analysis_order: analysisOrder,
-        } satisfies RetroManifest
+        } satisfies MissionRetroManifest
 
         await writeRetroManifest(input.directory, retro)
         registry.syncRetroFromManifest(retro)

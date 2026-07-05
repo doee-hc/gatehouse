@@ -370,7 +370,7 @@
 <body>
   <header class="gallery-header">
     <h1>编排图展示测试样例</h1>
-    <p>共 36 张图，覆盖线性 rollup、双轨 parallel、组内 fan-out、深层 hierarchy、跨父依赖、宽 fan-out、异常状态等结构。每张含 mini 与 expanded 两种渲染。</p>
+    <p>共 36 张图，覆盖线性汇总、双轨 parallel、组内 fan-out、深层 hierarchy、跨父依赖、宽 fan-out、异常状态等结构。每张含 mini 与 expanded 两种渲染。</p>
   </header>
   <nav class="gallery-toc" aria-label="跳转序号">
     <a href="#case-1">1</a>
@@ -414,7 +414,7 @@
   <header class="gallery-panel-head">
     <span class="gallery-index">1</span>
     <div>
-      <h2>线性三层 rollup</h2>
+      <h2>线性三层汇总</h2>
       <p class="gallery-desc">leaf → mid → root 串行汇总 · 步骤 0：叶子执行中</p>
       <p class="gallery-meta">cursor=0 · nodes=3 · edges=2 · steps=3</p>
     </div>
@@ -423,7 +423,7 @@
     <figure class="gallery-figure">
       <figcaption>mini 预览</figcaption>
       <div class="gallery-graph-host gallery-graph-mini" data-graph-host><div class="orch-graph-wrap orch-graph-wrap-mini">
-    <svg class="orch-graph-svg orch-graph-svg-mini" viewBox="-32.9 -10 210.3 68" preserveAspectRatio="xMidYMid meet" role="img" aria-label="编排拓扑图">
+    <svg class="orch-graph-svg orch-graph-svg-mini" viewBox="-32.9 -10 204.5 68" preserveAspectRatio="xMidYMid meet" role="img" aria-label="编排拓扑图">
       <defs>
         <marker id="gallery-1-mini-arrow-done" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="4.5" markerHeight="4.5" orient="auto-start-reverse">
           <path d="M 0 0 L 8 4 L 0 8 z" class="orch-marker-done" />
@@ -436,13 +436,13 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-1-mini-arrow-pending)" d="M 22 26 L 41 26 L 41 26 L 60 26">
-          <title>汇总: n1 → n2</title>
+          <title>交付: n1 → n2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-2" marker-end="url(#gallery-1-mini-arrow-pending)" d="M 70 26 L 89 26 L 89 26 L 108 26">
-          <title>汇总: n2 → n3</title>
+          <title>交付: n2 → n3</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="n3">
     <title>n3 · 待启动</title>
-    <text class="orch-graph-node-label orch-graph-node-label-outside" x="113" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">root coordinator</text>
+    <text class="orch-graph-node-label orch-graph-node-label-outside" x="113" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">root synthesis</text>
     <circle class="orch-graph-node-dot-shape" cx="113" cy="26" r="5" />
   </g><g class="orch-graph-node orch-graph-node-dot orch-status-running" data-node-id="n1">
     <title>n1 · 执行中</title>
@@ -450,7 +450,7 @@
     <circle class="orch-graph-node-dot-shape" cx="17" cy="26" r="5" />
   </g><g class="orch-graph-node orch-graph-node-dot orch-status-pending" data-node-id="n2">
     <title>n2 · 待启动</title>
-    <text class="orch-graph-node-label orch-graph-node-label-outside" x="65" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">mid coordinator</text>
+    <text class="orch-graph-node-label orch-graph-node-label-outside" x="65" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">mid synthesis</text>
     <circle class="orch-graph-node-dot-shape" cx="65" cy="26" r="5" />
   </g></g>
     </svg>
@@ -459,7 +459,7 @@
     <figure class="gallery-figure">
       <figcaption>expanded 展开</figcaption>
       <div class="gallery-graph-host gallery-graph-expanded" data-graph-host><div class="orch-graph-wrap orch-graph-wrap-expanded">
-    <svg class="orch-graph-svg orch-graph-svg-expanded" viewBox="-32.9 -10 210.3 68" preserveAspectRatio="xMidYMid meet" role="img" aria-label="编排拓扑图">
+    <svg class="orch-graph-svg orch-graph-svg-expanded" viewBox="-32.9 -10 204.5 68" preserveAspectRatio="xMidYMid meet" role="img" aria-label="编排拓扑图">
       <defs>
         <marker id="gallery-1-expanded-arrow-done" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
           <path d="M 0 0 L 8 4 L 0 8 z" class="orch-marker-done" />
@@ -472,13 +472,13 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-1-expanded-arrow-pending)" d="M 22 26 L 41 26 L 41 26 L 60 26">
-          <title>汇总: n1 → n2</title>
+          <title>交付: n1 → n2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-2" marker-end="url(#gallery-1-expanded-arrow-pending)" d="M 70 26 L 89 26 L 89 26 L 108 26">
-          <title>汇总: n2 → n3</title>
+          <title>交付: n2 → n3</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="n3">
     <title>n3 · 待启动</title>
-    <text class="orch-graph-node-label orch-graph-node-label-outside" x="113" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">root coordinator</text>
+    <text class="orch-graph-node-label orch-graph-node-label-outside" x="113" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">root synthesis</text>
     <circle class="orch-graph-node-dot-shape" cx="113" cy="26" r="5" />
   </g><g class="orch-graph-node orch-graph-node-dot orch-status-running" data-node-id="n1">
     <title>n1 · 执行中</title>
@@ -486,7 +486,7 @@
     <circle class="orch-graph-node-dot-shape" cx="17" cy="26" r="5" />
   </g><g class="orch-graph-node orch-graph-node-dot orch-status-pending" data-node-id="n2">
     <title>n2 · 待启动</title>
-    <text class="orch-graph-node-label orch-graph-node-label-outside" x="65" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">mid coordinator</text>
+    <text class="orch-graph-node-label orch-graph-node-label-outside" x="65" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">mid synthesis</text>
     <circle class="orch-graph-node-dot-shape" cx="65" cy="26" r="5" />
   </g></g>
     </svg>
@@ -498,7 +498,7 @@
   <header class="gallery-panel-head">
     <span class="gallery-index">2</span>
     <div>
-      <h2>线性三层 rollup</h2>
+      <h2>线性三层汇总</h2>
       <p class="gallery-desc">leaf → mid → root 串行汇总 · 步骤 1：中层汇总中</p>
       <p class="gallery-meta">cursor=1 · nodes=3 · edges=2 · steps=3</p>
     </div>
@@ -507,7 +507,7 @@
     <figure class="gallery-figure">
       <figcaption>mini 预览</figcaption>
       <div class="gallery-graph-host gallery-graph-mini" data-graph-host><div class="orch-graph-wrap orch-graph-wrap-mini">
-    <svg class="orch-graph-svg orch-graph-svg-mini" viewBox="-32.9 -10 210.3 68" preserveAspectRatio="xMidYMid meet" role="img" aria-label="编排拓扑图">
+    <svg class="orch-graph-svg orch-graph-svg-mini" viewBox="-32.9 -10 204.5 68" preserveAspectRatio="xMidYMid meet" role="img" aria-label="编排拓扑图">
       <defs>
         <marker id="gallery-2-mini-arrow-done" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="4.5" markerHeight="4.5" orient="auto-start-reverse">
           <path d="M 0 0 L 8 4 L 0 8 z" class="orch-marker-done" />
@@ -520,13 +520,13 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-2-mini-arrow-current)" d="M 22 26 L 41 26 L 41 26 L 60 26">
-          <title>汇总: n1 → n2</title>
+          <title>交付: n1 → n2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-2" marker-end="url(#gallery-2-mini-arrow-pending)" d="M 70 26 L 89 26 L 89 26 L 108 26">
-          <title>汇总: n2 → n3</title>
+          <title>交付: n2 → n3</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="n3">
     <title>n3 · 待启动</title>
-    <text class="orch-graph-node-label orch-graph-node-label-outside" x="113" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">root coordinator</text>
+    <text class="orch-graph-node-label orch-graph-node-label-outside" x="113" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">root synthesis</text>
     <circle class="orch-graph-node-dot-shape" cx="113" cy="26" r="5" />
   </g><g class="orch-graph-node orch-graph-node-dot orch-status-done" data-node-id="n1">
     <title>n1 · 已完成</title>
@@ -534,7 +534,7 @@
     <circle class="orch-graph-node-dot-shape" cx="17" cy="26" r="5" />
   </g><g class="orch-graph-node orch-graph-node-dot orch-status-running" data-node-id="n2">
     <title>n2 · 执行中</title>
-    <text class="orch-graph-node-label orch-graph-node-label-outside" x="65" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">mid coordinator</text>
+    <text class="orch-graph-node-label orch-graph-node-label-outside" x="65" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">mid synthesis</text>
     <circle class="orch-graph-node-dot-shape" cx="65" cy="26" r="5" />
   </g></g>
     </svg>
@@ -543,7 +543,7 @@
     <figure class="gallery-figure">
       <figcaption>expanded 展开</figcaption>
       <div class="gallery-graph-host gallery-graph-expanded" data-graph-host><div class="orch-graph-wrap orch-graph-wrap-expanded">
-    <svg class="orch-graph-svg orch-graph-svg-expanded" viewBox="-32.9 -10 210.3 68" preserveAspectRatio="xMidYMid meet" role="img" aria-label="编排拓扑图">
+    <svg class="orch-graph-svg orch-graph-svg-expanded" viewBox="-32.9 -10 204.5 68" preserveAspectRatio="xMidYMid meet" role="img" aria-label="编排拓扑图">
       <defs>
         <marker id="gallery-2-expanded-arrow-done" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
           <path d="M 0 0 L 8 4 L 0 8 z" class="orch-marker-done" />
@@ -556,13 +556,13 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-2-expanded-arrow-current)" d="M 22 26 L 41 26 L 41 26 L 60 26">
-          <title>汇总: n1 → n2</title>
+          <title>交付: n1 → n2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-2" marker-end="url(#gallery-2-expanded-arrow-pending)" d="M 70 26 L 89 26 L 89 26 L 108 26">
-          <title>汇总: n2 → n3</title>
+          <title>交付: n2 → n3</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="n3">
     <title>n3 · 待启动</title>
-    <text class="orch-graph-node-label orch-graph-node-label-outside" x="113" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">root coordinator</text>
+    <text class="orch-graph-node-label orch-graph-node-label-outside" x="113" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">root synthesis</text>
     <circle class="orch-graph-node-dot-shape" cx="113" cy="26" r="5" />
   </g><g class="orch-graph-node orch-graph-node-dot orch-status-done" data-node-id="n1">
     <title>n1 · 已完成</title>
@@ -570,7 +570,7 @@
     <circle class="orch-graph-node-dot-shape" cx="17" cy="26" r="5" />
   </g><g class="orch-graph-node orch-graph-node-dot orch-status-running" data-node-id="n2">
     <title>n2 · 执行中</title>
-    <text class="orch-graph-node-label orch-graph-node-label-outside" x="65" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">mid coordinator</text>
+    <text class="orch-graph-node-label orch-graph-node-label-outside" x="65" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">mid synthesis</text>
     <circle class="orch-graph-node-dot-shape" cx="65" cy="26" r="5" />
   </g></g>
     </svg>
@@ -582,7 +582,7 @@
   <header class="gallery-panel-head">
     <span class="gallery-index">3</span>
     <div>
-      <h2>线性三层 rollup</h2>
+      <h2>线性三层汇总</h2>
       <p class="gallery-desc">leaf → mid → root 串行汇总 · 全部完成</p>
       <p class="gallery-meta">cursor=3 · nodes=3 · edges=2 · steps=3</p>
     </div>
@@ -591,7 +591,7 @@
     <figure class="gallery-figure">
       <figcaption>mini 预览</figcaption>
       <div class="gallery-graph-host gallery-graph-mini" data-graph-host><div class="orch-graph-wrap orch-graph-wrap-mini">
-    <svg class="orch-graph-svg orch-graph-svg-mini" viewBox="-32.9 -10 210.3 68" preserveAspectRatio="xMidYMid meet" role="img" aria-label="编排拓扑图">
+    <svg class="orch-graph-svg orch-graph-svg-mini" viewBox="-32.9 -10 204.5 68" preserveAspectRatio="xMidYMid meet" role="img" aria-label="编排拓扑图">
       <defs>
         <marker id="gallery-3-mini-arrow-done" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="4.5" markerHeight="4.5" orient="auto-start-reverse">
           <path d="M 0 0 L 8 4 L 0 8 z" class="orch-marker-done" />
@@ -604,13 +604,13 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-3-mini-arrow-done)" d="M 22 26 L 41 26 L 41 26 L 60 26">
-          <title>汇总: n1 → n2</title>
+          <title>交付: n1 → n2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-2" marker-end="url(#gallery-3-mini-arrow-done)" d="M 70 26 L 89 26 L 89 26 L 108 26">
-          <title>汇总: n2 → n3</title>
+          <title>交付: n2 → n3</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-done orch-node-terminal" data-node-id="n3">
     <title>n3 · 已完成</title>
-    <text class="orch-graph-node-label orch-graph-node-label-outside" x="113" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">root coordinator</text>
+    <text class="orch-graph-node-label orch-graph-node-label-outside" x="113" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">root synthesis</text>
     <circle class="orch-graph-node-dot-shape" cx="113" cy="26" r="5" />
   </g><g class="orch-graph-node orch-graph-node-dot orch-status-done" data-node-id="n1">
     <title>n1 · 已完成</title>
@@ -618,7 +618,7 @@
     <circle class="orch-graph-node-dot-shape" cx="17" cy="26" r="5" />
   </g><g class="orch-graph-node orch-graph-node-dot orch-status-done" data-node-id="n2">
     <title>n2 · 已完成</title>
-    <text class="orch-graph-node-label orch-graph-node-label-outside" x="65" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">mid coordinator</text>
+    <text class="orch-graph-node-label orch-graph-node-label-outside" x="65" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">mid synthesis</text>
     <circle class="orch-graph-node-dot-shape" cx="65" cy="26" r="5" />
   </g></g>
     </svg>
@@ -627,7 +627,7 @@
     <figure class="gallery-figure">
       <figcaption>expanded 展开</figcaption>
       <div class="gallery-graph-host gallery-graph-expanded" data-graph-host><div class="orch-graph-wrap orch-graph-wrap-expanded">
-    <svg class="orch-graph-svg orch-graph-svg-expanded" viewBox="-32.9 -10 210.3 68" preserveAspectRatio="xMidYMid meet" role="img" aria-label="编排拓扑图">
+    <svg class="orch-graph-svg orch-graph-svg-expanded" viewBox="-32.9 -10 204.5 68" preserveAspectRatio="xMidYMid meet" role="img" aria-label="编排拓扑图">
       <defs>
         <marker id="gallery-3-expanded-arrow-done" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
           <path d="M 0 0 L 8 4 L 0 8 z" class="orch-marker-done" />
@@ -640,13 +640,13 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-3-expanded-arrow-done)" d="M 22 26 L 41 26 L 41 26 L 60 26">
-          <title>汇总: n1 → n2</title>
+          <title>交付: n1 → n2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-2" marker-end="url(#gallery-3-expanded-arrow-done)" d="M 70 26 L 89 26 L 89 26 L 108 26">
-          <title>汇总: n2 → n3</title>
+          <title>交付: n2 → n3</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-done orch-node-terminal" data-node-id="n3">
     <title>n3 · 已完成</title>
-    <text class="orch-graph-node-label orch-graph-node-label-outside" x="113" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">root coordinator</text>
+    <text class="orch-graph-node-label orch-graph-node-label-outside" x="113" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">root synthesis</text>
     <circle class="orch-graph-node-dot-shape" cx="113" cy="26" r="5" />
   </g><g class="orch-graph-node orch-graph-node-dot orch-status-done" data-node-id="n1">
     <title>n1 · 已完成</title>
@@ -654,7 +654,7 @@
     <circle class="orch-graph-node-dot-shape" cx="17" cy="26" r="5" />
   </g><g class="orch-graph-node orch-graph-node-dot orch-status-done" data-node-id="n2">
     <title>n2 · 已完成</title>
-    <text class="orch-graph-node-label orch-graph-node-label-outside" x="65" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">mid coordinator</text>
+    <text class="orch-graph-node-label orch-graph-node-label-outside" x="65" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">mid synthesis</text>
     <circle class="orch-graph-node-dot-shape" cx="65" cy="26" r="5" />
   </g></g>
     </svg>
@@ -667,7 +667,7 @@
     <span class="gallery-index">4</span>
     <div>
       <h2>双轨 parallel · 轨内串行</h2>
-      <p class="gallery-desc">两组并行，每组内 a1→a2→rollup · parallel 启动：A/B 首步并行</p>
+      <p class="gallery-desc">两组并行，每组内 a1→a2→汇总 · parallel 启动：A/B 首步并行</p>
       <p class="gallery-meta">cursor=0 · nodes=7 · edges=8 · steps=2</p>
     </div>
   </header>
@@ -690,19 +690,19 @@
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-4-mini-arrow-current)" d="M 22 26 L 38 26 L 38 26 L 54 26">
           <title>串行: a1 → a2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-4-mini-arrow-current)" d="M 17 31 L 17 37 L 101 37 L 101 31">
-          <title>汇总: a1 → a</title>
+          <title>交付: a1 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-4-mini-arrow-current)" d="M 64 26 L 80 26 L 80 26 L 96 26">
-          <title>汇总: a2 → a</title>
+          <title>交付: a2 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-4-mini-arrow-current)" d="M 22 58 L 38 58 L 38 58 L 54 58">
           <title>串行: b1 → b2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-4-mini-arrow-current)" d="M 17 63 L 17 69 L 101 69 L 101 63">
-          <title>汇总: b1 → b</title>
+          <title>交付: b1 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-4-mini-arrow-current)" d="M 64 58 L 80 58 L 80 58 L 96 58">
-          <title>汇总: b2 → b</title>
+          <title>交付: b2 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-4-mini-arrow-pending)" d="M 106 26 L 122 26 L 122 26 L 138 26">
-          <title>汇总: a → terminal</title>
+          <title>交付: a → terminal</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-4-mini-arrow-pending)" d="M 106 58 L 122 58 L 122 26 L 138 26">
-          <title>汇总: b → terminal</title>
+          <title>交付: b → terminal</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="terminal">
     <title>terminal · 待启动</title>
@@ -754,19 +754,19 @@
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-4-expanded-arrow-current)" d="M 22 26 L 38 26 L 38 26 L 54 26">
           <title>串行: a1 → a2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-4-expanded-arrow-current)" d="M 17 31 L 17 37 L 101 37 L 101 31">
-          <title>汇总: a1 → a</title>
+          <title>交付: a1 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-4-expanded-arrow-current)" d="M 64 26 L 80 26 L 80 26 L 96 26">
-          <title>汇总: a2 → a</title>
+          <title>交付: a2 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-4-expanded-arrow-current)" d="M 22 58 L 38 58 L 38 58 L 54 58">
           <title>串行: b1 → b2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-4-expanded-arrow-current)" d="M 17 63 L 17 69 L 101 69 L 101 63">
-          <title>汇总: b1 → b</title>
+          <title>交付: b1 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-4-expanded-arrow-current)" d="M 64 58 L 80 58 L 80 58 L 96 58">
-          <title>汇总: b2 → b</title>
+          <title>交付: b2 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-4-expanded-arrow-pending)" d="M 106 26 L 122 26 L 122 26 L 138 26">
-          <title>汇总: a → terminal</title>
+          <title>交付: a → terminal</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-4-expanded-arrow-pending)" d="M 106 58 L 122 58 L 122 26 L 138 26">
-          <title>汇总: b → terminal</title>
+          <title>交付: b → terminal</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="terminal">
     <title>terminal · 待启动</title>
@@ -807,7 +807,7 @@
     <span class="gallery-index">5</span>
     <div>
       <h2>双轨 parallel · 轨内串行</h2>
-      <p class="gallery-desc">两组并行，每组内 a1→a2→rollup · A 轨完成，B 轨执行中</p>
+      <p class="gallery-desc">两组并行，每组内 a1→a2→汇总 · A 轨完成，B 轨执行中</p>
       <p class="gallery-meta">cursor=0 · nodes=7 · edges=8 · steps=2</p>
     </div>
   </header>
@@ -830,19 +830,19 @@
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-5-mini-arrow-current)" d="M 22 26 L 38 26 L 38 26 L 54 26">
           <title>串行: a1 → a2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-5-mini-arrow-current)" d="M 17 31 L 17 37 L 101 37 L 101 31">
-          <title>汇总: a1 → a</title>
+          <title>交付: a1 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-5-mini-arrow-current)" d="M 64 26 L 80 26 L 80 26 L 96 26">
-          <title>汇总: a2 → a</title>
+          <title>交付: a2 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-5-mini-arrow-current)" d="M 22 58 L 38 58 L 38 58 L 54 58">
           <title>串行: b1 → b2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-5-mini-arrow-current)" d="M 17 63 L 17 69 L 101 69 L 101 63">
-          <title>汇总: b1 → b</title>
+          <title>交付: b1 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-5-mini-arrow-current)" d="M 64 58 L 80 58 L 80 58 L 96 58">
-          <title>汇总: b2 → b</title>
+          <title>交付: b2 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-5-mini-arrow-pending)" d="M 106 26 L 122 26 L 122 26 L 138 26">
-          <title>汇总: a → terminal</title>
+          <title>交付: a → terminal</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-5-mini-arrow-pending)" d="M 106 58 L 122 58 L 122 26 L 138 26">
-          <title>汇总: b → terminal</title>
+          <title>交付: b → terminal</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="terminal">
     <title>terminal · 待启动</title>
@@ -894,19 +894,19 @@
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-5-expanded-arrow-current)" d="M 22 26 L 38 26 L 38 26 L 54 26">
           <title>串行: a1 → a2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-5-expanded-arrow-current)" d="M 17 31 L 17 37 L 101 37 L 101 31">
-          <title>汇总: a1 → a</title>
+          <title>交付: a1 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-5-expanded-arrow-current)" d="M 64 26 L 80 26 L 80 26 L 96 26">
-          <title>汇总: a2 → a</title>
+          <title>交付: a2 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-5-expanded-arrow-current)" d="M 22 58 L 38 58 L 38 58 L 54 58">
           <title>串行: b1 → b2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-5-expanded-arrow-current)" d="M 17 63 L 17 69 L 101 69 L 101 63">
-          <title>汇总: b1 → b</title>
+          <title>交付: b1 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-5-expanded-arrow-current)" d="M 64 58 L 80 58 L 80 58 L 96 58">
-          <title>汇总: b2 → b</title>
+          <title>交付: b2 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-5-expanded-arrow-pending)" d="M 106 26 L 122 26 L 122 26 L 138 26">
-          <title>汇总: a → terminal</title>
+          <title>交付: a → terminal</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-5-expanded-arrow-pending)" d="M 106 58 L 122 58 L 122 26 L 138 26">
-          <title>汇总: b → terminal</title>
+          <title>交付: b → terminal</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="terminal">
     <title>terminal · 待启动</title>
@@ -947,7 +947,7 @@
     <span class="gallery-index">6</span>
     <div>
       <h2>双轨 parallel · 轨内串行</h2>
-      <p class="gallery-desc">两组并行，每组内 a1→a2→rollup · 双轨完成，root 汇总中</p>
+      <p class="gallery-desc">两组并行，每组内 a1→a2→汇总 · 双轨完成，root 汇总中</p>
       <p class="gallery-meta">cursor=1 · nodes=7 · edges=8 · steps=2</p>
     </div>
   </header>
@@ -970,19 +970,19 @@
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-6-mini-arrow-done)" d="M 22 26 L 38 26 L 38 26 L 54 26">
           <title>串行: a1 → a2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-6-mini-arrow-done)" d="M 17 31 L 17 37 L 101 37 L 101 31">
-          <title>汇总: a1 → a</title>
+          <title>交付: a1 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-6-mini-arrow-done)" d="M 64 26 L 80 26 L 80 26 L 96 26">
-          <title>汇总: a2 → a</title>
+          <title>交付: a2 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-6-mini-arrow-done)" d="M 22 58 L 38 58 L 38 58 L 54 58">
           <title>串行: b1 → b2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-6-mini-arrow-done)" d="M 17 63 L 17 69 L 101 69 L 101 63">
-          <title>汇总: b1 → b</title>
+          <title>交付: b1 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-6-mini-arrow-done)" d="M 64 58 L 80 58 L 80 58 L 96 58">
-          <title>汇总: b2 → b</title>
+          <title>交付: b2 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-6-mini-arrow-current)" d="M 106 26 L 122 26 L 122 26 L 138 26">
-          <title>汇总: a → terminal</title>
+          <title>交付: a → terminal</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-6-mini-arrow-current)" d="M 106 58 L 122 58 L 122 26 L 138 26">
-          <title>汇总: b → terminal</title>
+          <title>交付: b → terminal</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-running orch-node-terminal" data-node-id="terminal">
     <title>terminal · 执行中</title>
@@ -1034,19 +1034,19 @@
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-6-expanded-arrow-done)" d="M 22 26 L 38 26 L 38 26 L 54 26">
           <title>串行: a1 → a2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-6-expanded-arrow-done)" d="M 17 31 L 17 37 L 101 37 L 101 31">
-          <title>汇总: a1 → a</title>
+          <title>交付: a1 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-6-expanded-arrow-done)" d="M 64 26 L 80 26 L 80 26 L 96 26">
-          <title>汇总: a2 → a</title>
+          <title>交付: a2 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-6-expanded-arrow-done)" d="M 22 58 L 38 58 L 38 58 L 54 58">
           <title>串行: b1 → b2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-6-expanded-arrow-done)" d="M 17 63 L 17 69 L 101 69 L 101 63">
-          <title>汇总: b1 → b</title>
+          <title>交付: b1 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-6-expanded-arrow-done)" d="M 64 58 L 80 58 L 80 58 L 96 58">
-          <title>汇总: b2 → b</title>
+          <title>交付: b2 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-6-expanded-arrow-current)" d="M 106 26 L 122 26 L 122 26 L 138 26">
-          <title>汇总: a → terminal</title>
+          <title>交付: a → terminal</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-6-expanded-arrow-current)" d="M 106 58 L 122 58 L 122 26 L 138 26">
-          <title>汇总: b → terminal</title>
+          <title>交付: b → terminal</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-running orch-node-terminal" data-node-id="terminal">
     <title>terminal · 执行中</title>
@@ -1108,17 +1108,17 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-7-mini-arrow-current)" d="M 17 26 L 49.2 26 L 49.2 26 L 81.4 26">
-          <title>汇总: a1 → a</title>
+          <title>交付: a1 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-7-mini-arrow-current)" d="M 17 58 L 49.2 58 L 49.2 26 L 81.4 26">
-          <title>汇总: a2 → a</title>
+          <title>交付: a2 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-7-mini-arrow-current)" d="M 17 90 L 49.2 90 L 49.2 58 L 81.4 58">
-          <title>汇总: b1 → b</title>
+          <title>交付: b1 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-7-mini-arrow-current)" d="M 17 122 L 49.2 122 L 49.2 58 L 81.4 58">
-          <title>汇总: b2 → b</title>
+          <title>交付: b2 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-7-mini-arrow-pending)" d="M 91.4 26 L 123.60000000000001 26 L 123.60000000000001 26 L 155.8 26">
-          <title>汇总: a → terminal</title>
+          <title>交付: a → terminal</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-7-mini-arrow-pending)" d="M 91.4 58 L 123.60000000000001 58 L 123.60000000000001 26 L 155.8 26">
-          <title>汇总: b → terminal</title>
+          <title>交付: b → terminal</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="terminal">
     <title>terminal · 待启动</title>
@@ -1168,17 +1168,17 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-7-expanded-arrow-current)" d="M 17 26 L 49.2 26 L 49.2 26 L 81.4 26">
-          <title>汇总: a1 → a</title>
+          <title>交付: a1 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-7-expanded-arrow-current)" d="M 17 58 L 49.2 58 L 49.2 26 L 81.4 26">
-          <title>汇总: a2 → a</title>
+          <title>交付: a2 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-7-expanded-arrow-current)" d="M 17 90 L 49.2 90 L 49.2 58 L 81.4 58">
-          <title>汇总: b1 → b</title>
+          <title>交付: b1 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-7-expanded-arrow-current)" d="M 17 122 L 49.2 122 L 49.2 58 L 81.4 58">
-          <title>汇总: b2 → b</title>
+          <title>交付: b2 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-7-expanded-arrow-pending)" d="M 91.4 26 L 123.60000000000001 26 L 123.60000000000001 26 L 155.8 26">
-          <title>汇总: a → terminal</title>
+          <title>交付: a → terminal</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-7-expanded-arrow-pending)" d="M 91.4 58 L 123.60000000000001 58 L 123.60000000000001 26 L 155.8 26">
-          <title>汇总: b → terminal</title>
+          <title>交付: b → terminal</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="terminal">
     <title>terminal · 待启动</title>
@@ -1219,7 +1219,7 @@
     <span class="gallery-index">8</span>
     <div>
       <h2>双轨 · 组内 fan-out</h2>
-      <p class="gallery-desc">双轨 parallel，每轨内叶子并行后 join · A 轨 rollup 中</p>
+      <p class="gallery-desc">双轨 parallel，每轨内叶子并行后 join · A 轨汇总中</p>
       <p class="gallery-meta">cursor=0 · nodes=7 · edges=6 · steps=2</p>
     </div>
   </header>
@@ -1240,17 +1240,17 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-8-mini-arrow-current)" d="M 17 26 L 49.2 26 L 49.2 26 L 81.4 26">
-          <title>汇总: a1 → a</title>
+          <title>交付: a1 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-8-mini-arrow-current)" d="M 17 58 L 49.2 58 L 49.2 26 L 81.4 26">
-          <title>汇总: a2 → a</title>
+          <title>交付: a2 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-8-mini-arrow-current)" d="M 17 90 L 49.2 90 L 49.2 58 L 81.4 58">
-          <title>汇总: b1 → b</title>
+          <title>交付: b1 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-8-mini-arrow-current)" d="M 17 122 L 49.2 122 L 49.2 58 L 81.4 58">
-          <title>汇总: b2 → b</title>
+          <title>交付: b2 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-8-mini-arrow-pending)" d="M 91.4 26 L 123.60000000000001 26 L 123.60000000000001 26 L 155.8 26">
-          <title>汇总: a → terminal</title>
+          <title>交付: a → terminal</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-8-mini-arrow-pending)" d="M 91.4 58 L 123.60000000000001 58 L 123.60000000000001 26 L 155.8 26">
-          <title>汇总: b → terminal</title>
+          <title>交付: b → terminal</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="terminal">
     <title>terminal · 待启动</title>
@@ -1300,17 +1300,17 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-8-expanded-arrow-current)" d="M 17 26 L 49.2 26 L 49.2 26 L 81.4 26">
-          <title>汇总: a1 → a</title>
+          <title>交付: a1 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-8-expanded-arrow-current)" d="M 17 58 L 49.2 58 L 49.2 26 L 81.4 26">
-          <title>汇总: a2 → a</title>
+          <title>交付: a2 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-8-expanded-arrow-current)" d="M 17 90 L 49.2 90 L 49.2 58 L 81.4 58">
-          <title>汇总: b1 → b</title>
+          <title>交付: b1 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-8-expanded-arrow-current)" d="M 17 122 L 49.2 122 L 49.2 58 L 81.4 58">
-          <title>汇总: b2 → b</title>
+          <title>交付: b2 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-8-expanded-arrow-pending)" d="M 91.4 26 L 123.60000000000001 26 L 123.60000000000001 26 L 155.8 26">
-          <title>汇总: a → terminal</title>
+          <title>交付: a → terminal</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-8-expanded-arrow-pending)" d="M 91.4 58 L 123.60000000000001 58 L 123.60000000000001 26 L 155.8 26">
-          <title>汇总: b → terminal</title>
+          <title>交付: b → terminal</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="terminal">
     <title>terminal · 待启动</title>
@@ -1372,17 +1372,17 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-9-mini-arrow-done)" d="M 17 26 L 49.2 26 L 49.2 26 L 81.4 26">
-          <title>汇总: a1 → a</title>
+          <title>交付: a1 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-9-mini-arrow-done)" d="M 17 58 L 49.2 58 L 49.2 26 L 81.4 26">
-          <title>汇总: a2 → a</title>
+          <title>交付: a2 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-9-mini-arrow-done)" d="M 17 90 L 49.2 90 L 49.2 58 L 81.4 58">
-          <title>汇总: b1 → b</title>
+          <title>交付: b1 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-9-mini-arrow-done)" d="M 17 122 L 49.2 122 L 49.2 58 L 81.4 58">
-          <title>汇总: b2 → b</title>
+          <title>交付: b2 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-9-mini-arrow-done)" d="M 91.4 26 L 123.60000000000001 26 L 123.60000000000001 26 L 155.8 26">
-          <title>汇总: a → terminal</title>
+          <title>交付: a → terminal</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-9-mini-arrow-done)" d="M 91.4 58 L 123.60000000000001 58 L 123.60000000000001 26 L 155.8 26">
-          <title>汇总: b → terminal</title>
+          <title>交付: b → terminal</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-done orch-node-terminal" data-node-id="terminal">
     <title>terminal · 已完成</title>
@@ -1432,17 +1432,17 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-9-expanded-arrow-done)" d="M 17 26 L 49.2 26 L 49.2 26 L 81.4 26">
-          <title>汇总: a1 → a</title>
+          <title>交付: a1 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-9-expanded-arrow-done)" d="M 17 58 L 49.2 58 L 49.2 26 L 81.4 26">
-          <title>汇总: a2 → a</title>
+          <title>交付: a2 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-9-expanded-arrow-done)" d="M 17 90 L 49.2 90 L 49.2 58 L 81.4 58">
-          <title>汇总: b1 → b</title>
+          <title>交付: b1 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-9-expanded-arrow-done)" d="M 17 122 L 49.2 122 L 49.2 58 L 81.4 58">
-          <title>汇总: b2 → b</title>
+          <title>交付: b2 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-9-expanded-arrow-done)" d="M 91.4 26 L 123.60000000000001 26 L 123.60000000000001 26 L 155.8 26">
-          <title>汇总: a → terminal</title>
+          <title>交付: a → terminal</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-9-expanded-arrow-done)" d="M 91.4 58 L 123.60000000000001 58 L 123.60000000000001 26 L 155.8 26">
-          <title>汇总: b → terminal</title>
+          <title>交付: b → terminal</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-done orch-node-terminal" data-node-id="terminal">
     <title>terminal · 已完成</title>
@@ -1483,7 +1483,7 @@
     <span class="gallery-index">10</span>
     <div>
       <h2>深层 4 层 hierarchy</h2>
-      <p class="gallery-desc">底层 fan-out → 逐层 rollup 到 root · 叶子 fan-out</p>
+      <p class="gallery-desc">底层 fan-out → 逐层汇总到 terminal · 叶子 fan-out</p>
       <p class="gallery-meta">cursor=0 · nodes=5 · edges=4 · steps=4</p>
     </div>
   </header>
@@ -1504,13 +1504,13 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-10-mini-arrow-pending)" d="M 22 26 L 38 26 L 38 26 L 54 26">
-          <title>汇总: l1a → l2</title>
+          <title>交付: l1a → l2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-10-mini-arrow-pending)" d="M 22 58 L 38 58 L 38 26 L 54 26">
-          <title>汇总: l1b → l2</title>
+          <title>交付: l1b → l2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-2" marker-end="url(#gallery-10-mini-arrow-pending)" d="M 64 26 L 80 26 L 80 26 L 96 26">
-          <title>汇总: l2 → l3</title>
+          <title>交付: l2 → l3</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-3" marker-end="url(#gallery-10-mini-arrow-pending)" d="M 106 26 L 122 26 L 122 26 L 138 26">
-          <title>汇总: l3 → l4</title>
+          <title>交付: l3 → l4</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="l4">
     <title>l4 · 待启动</title>
@@ -1552,13 +1552,13 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-10-expanded-arrow-pending)" d="M 22 26 L 38 26 L 38 26 L 54 26">
-          <title>汇总: l1a → l2</title>
+          <title>交付: l1a → l2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-10-expanded-arrow-pending)" d="M 22 58 L 38 58 L 38 26 L 54 26">
-          <title>汇总: l1b → l2</title>
+          <title>交付: l1b → l2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-2" marker-end="url(#gallery-10-expanded-arrow-pending)" d="M 64 26 L 80 26 L 80 26 L 96 26">
-          <title>汇总: l2 → l3</title>
+          <title>交付: l2 → l3</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-3" marker-end="url(#gallery-10-expanded-arrow-pending)" d="M 106 26 L 122 26 L 122 26 L 138 26">
-          <title>汇总: l3 → l4</title>
+          <title>交付: l3 → l4</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="l4">
     <title>l4 · 待启动</title>
@@ -1591,7 +1591,7 @@
     <span class="gallery-index">11</span>
     <div>
       <h2>深层 4 层 hierarchy</h2>
-      <p class="gallery-desc">底层 fan-out → 逐层 rollup 到 root · L2 rollup 中</p>
+      <p class="gallery-desc">底层 fan-out → 逐层汇总到 terminal · L2 汇总中</p>
       <p class="gallery-meta">cursor=1 · nodes=5 · edges=4 · steps=4</p>
     </div>
   </header>
@@ -1612,13 +1612,13 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-11-mini-arrow-current)" d="M 22 26 L 38 26 L 38 26 L 54 26">
-          <title>汇总: l1a → l2</title>
+          <title>交付: l1a → l2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-11-mini-arrow-current)" d="M 22 58 L 38 58 L 38 26 L 54 26">
-          <title>汇总: l1b → l2</title>
+          <title>交付: l1b → l2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-2" marker-end="url(#gallery-11-mini-arrow-pending)" d="M 64 26 L 80 26 L 80 26 L 96 26">
-          <title>汇总: l2 → l3</title>
+          <title>交付: l2 → l3</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-3" marker-end="url(#gallery-11-mini-arrow-pending)" d="M 106 26 L 122 26 L 122 26 L 138 26">
-          <title>汇总: l3 → l4</title>
+          <title>交付: l3 → l4</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="l4">
     <title>l4 · 待启动</title>
@@ -1660,13 +1660,13 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-11-expanded-arrow-current)" d="M 22 26 L 38 26 L 38 26 L 54 26">
-          <title>汇总: l1a → l2</title>
+          <title>交付: l1a → l2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-11-expanded-arrow-current)" d="M 22 58 L 38 58 L 38 26 L 54 26">
-          <title>汇总: l1b → l2</title>
+          <title>交付: l1b → l2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-2" marker-end="url(#gallery-11-expanded-arrow-pending)" d="M 64 26 L 80 26 L 80 26 L 96 26">
-          <title>汇总: l2 → l3</title>
+          <title>交付: l2 → l3</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-3" marker-end="url(#gallery-11-expanded-arrow-pending)" d="M 106 26 L 122 26 L 122 26 L 138 26">
-          <title>汇总: l3 → l4</title>
+          <title>交付: l3 → l4</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="l4">
     <title>l4 · 待启动</title>
@@ -1699,7 +1699,7 @@
     <span class="gallery-index">12</span>
     <div>
       <h2>深层 4 层 hierarchy</h2>
-      <p class="gallery-desc">底层 fan-out → 逐层 rollup 到 root · L4 最终汇总</p>
+      <p class="gallery-desc">底层 fan-out → 逐层汇总到 terminal · L4 最终汇总</p>
       <p class="gallery-meta">cursor=3 · nodes=5 · edges=4 · steps=4</p>
     </div>
   </header>
@@ -1720,13 +1720,13 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-12-mini-arrow-done)" d="M 22 26 L 38 26 L 38 26 L 54 26">
-          <title>汇总: l1a → l2</title>
+          <title>交付: l1a → l2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-12-mini-arrow-done)" d="M 22 58 L 38 58 L 38 26 L 54 26">
-          <title>汇总: l1b → l2</title>
+          <title>交付: l1b → l2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-2" marker-end="url(#gallery-12-mini-arrow-done)" d="M 64 26 L 80 26 L 80 26 L 96 26">
-          <title>汇总: l2 → l3</title>
+          <title>交付: l2 → l3</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-3" marker-end="url(#gallery-12-mini-arrow-current)" d="M 106 26 L 122 26 L 122 26 L 138 26">
-          <title>汇总: l3 → l4</title>
+          <title>交付: l3 → l4</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-running orch-node-terminal" data-node-id="l4">
     <title>l4 · 执行中</title>
@@ -1768,13 +1768,13 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-12-expanded-arrow-done)" d="M 22 26 L 38 26 L 38 26 L 54 26">
-          <title>汇总: l1a → l2</title>
+          <title>交付: l1a → l2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-12-expanded-arrow-done)" d="M 22 58 L 38 58 L 38 26 L 54 26">
-          <title>汇总: l1b → l2</title>
+          <title>交付: l1b → l2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-2" marker-end="url(#gallery-12-expanded-arrow-done)" d="M 64 26 L 80 26 L 80 26 L 96 26">
-          <title>汇总: l2 → l3</title>
+          <title>交付: l2 → l3</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-3" marker-end="url(#gallery-12-expanded-arrow-current)" d="M 106 26 L 122 26 L 122 26 L 138 26">
-          <title>汇总: l3 → l4</title>
+          <title>交付: l3 → l4</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-running orch-node-terminal" data-node-id="l4">
     <title>l4 · 执行中</title>
@@ -1815,7 +1815,7 @@
     <figure class="gallery-figure">
       <figcaption>mini 预览</figcaption>
       <div class="gallery-graph-host gallery-graph-mini" data-graph-host><div class="orch-graph-wrap orch-graph-wrap-mini">
-    <svg class="orch-graph-svg orch-graph-svg-mini" viewBox="-6.800000000000001 -10 127.7 100" preserveAspectRatio="xMidYMid meet" role="img" aria-label="编排拓扑图">
+    <svg class="orch-graph-svg orch-graph-svg-mini" viewBox="-6.800000000000001 -10 136.39999999999998 100" preserveAspectRatio="xMidYMid meet" role="img" aria-label="编排拓扑图">
       <defs>
         <marker id="gallery-13-mini-arrow-done" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="4.5" markerHeight="4.5" orient="auto-start-reverse">
           <path d="M 0 0 L 8 4 L 0 8 z" class="orch-marker-done" />
@@ -1828,13 +1828,13 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-13-mini-arrow-current)" d="M 22 26 L 44 26 L 44 26 L 66 26">
-          <title>汇总: x1 → coord</title>
+          <title>交付: x1 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-13-mini-arrow-current)" d="M 22 58 L 44 58 L 44 26 L 66 26">
-          <title>汇总: x2 → coord</title>
+          <title>交付: x2 → coord</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-running orch-node-terminal" data-node-id="coord">
     <title>coord · 执行中</title>
-    <text class="orch-graph-node-label orch-graph-node-label-outside" x="71" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">coordinator</text>
+    <text class="orch-graph-node-label orch-graph-node-label-outside" x="71" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">synthesis node</text>
     <circle class="orch-graph-node-dot-shape" cx="71" cy="26" r="5" />
   </g><g class="orch-graph-node orch-graph-node-dot orch-status-running" data-node-id="x1">
     <title>x1 · 执行中</title>
@@ -1851,7 +1851,7 @@
     <figure class="gallery-figure">
       <figcaption>expanded 展开</figcaption>
       <div class="gallery-graph-host gallery-graph-expanded" data-graph-host><div class="orch-graph-wrap orch-graph-wrap-expanded">
-    <svg class="orch-graph-svg orch-graph-svg-expanded" viewBox="-6.800000000000001 -10 127.7 100" preserveAspectRatio="xMidYMid meet" role="img" aria-label="编排拓扑图">
+    <svg class="orch-graph-svg orch-graph-svg-expanded" viewBox="-6.800000000000001 -10 136.39999999999998 100" preserveAspectRatio="xMidYMid meet" role="img" aria-label="编排拓扑图">
       <defs>
         <marker id="gallery-13-expanded-arrow-done" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
           <path d="M 0 0 L 8 4 L 0 8 z" class="orch-marker-done" />
@@ -1864,13 +1864,13 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-13-expanded-arrow-current)" d="M 22 26 L 44 26 L 44 26 L 66 26">
-          <title>汇总: x1 → coord</title>
+          <title>交付: x1 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-13-expanded-arrow-current)" d="M 22 58 L 44 58 L 44 26 L 66 26">
-          <title>汇总: x2 → coord</title>
+          <title>交付: x2 → coord</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-running orch-node-terminal" data-node-id="coord">
     <title>coord · 执行中</title>
-    <text class="orch-graph-node-label orch-graph-node-label-outside" x="71" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">coordinator</text>
+    <text class="orch-graph-node-label orch-graph-node-label-outside" x="71" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">synthesis node</text>
     <circle class="orch-graph-node-dot-shape" cx="71" cy="26" r="5" />
   </g><g class="orch-graph-node orch-graph-node-dot orch-status-running" data-node-id="x1">
     <title>x1 · 执行中</title>
@@ -1899,7 +1899,7 @@
     <figure class="gallery-figure">
       <figcaption>mini 预览</figcaption>
       <div class="gallery-graph-host gallery-graph-mini" data-graph-host><div class="orch-graph-wrap orch-graph-wrap-mini">
-    <svg class="orch-graph-svg orch-graph-svg-mini" viewBox="-6.800000000000001 -10 127.7 100" preserveAspectRatio="xMidYMid meet" role="img" aria-label="编排拓扑图">
+    <svg class="orch-graph-svg orch-graph-svg-mini" viewBox="-6.800000000000001 -10 136.39999999999998 100" preserveAspectRatio="xMidYMid meet" role="img" aria-label="编排拓扑图">
       <defs>
         <marker id="gallery-14-mini-arrow-done" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="4.5" markerHeight="4.5" orient="auto-start-reverse">
           <path d="M 0 0 L 8 4 L 0 8 z" class="orch-marker-done" />
@@ -1912,13 +1912,13 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-14-mini-arrow-current)" d="M 22 26 L 44 26 L 44 26 L 66 26">
-          <title>汇总: x1 → coord</title>
+          <title>交付: x1 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-14-mini-arrow-current)" d="M 22 58 L 44 58 L 44 26 L 66 26">
-          <title>汇总: x2 → coord</title>
+          <title>交付: x2 → coord</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-running orch-node-terminal" data-node-id="coord">
     <title>coord · 执行中</title>
-    <text class="orch-graph-node-label orch-graph-node-label-outside" x="71" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">coordinator</text>
+    <text class="orch-graph-node-label orch-graph-node-label-outside" x="71" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">synthesis node</text>
     <circle class="orch-graph-node-dot-shape" cx="71" cy="26" r="5" />
   </g><g class="orch-graph-node orch-graph-node-dot orch-status-done" data-node-id="x1">
     <title>x1 · 已完成</title>
@@ -1935,7 +1935,7 @@
     <figure class="gallery-figure">
       <figcaption>expanded 展开</figcaption>
       <div class="gallery-graph-host gallery-graph-expanded" data-graph-host><div class="orch-graph-wrap orch-graph-wrap-expanded">
-    <svg class="orch-graph-svg orch-graph-svg-expanded" viewBox="-6.800000000000001 -10 127.7 100" preserveAspectRatio="xMidYMid meet" role="img" aria-label="编排拓扑图">
+    <svg class="orch-graph-svg orch-graph-svg-expanded" viewBox="-6.800000000000001 -10 136.39999999999998 100" preserveAspectRatio="xMidYMid meet" role="img" aria-label="编排拓扑图">
       <defs>
         <marker id="gallery-14-expanded-arrow-done" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
           <path d="M 0 0 L 8 4 L 0 8 z" class="orch-marker-done" />
@@ -1948,13 +1948,13 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-14-expanded-arrow-current)" d="M 22 26 L 44 26 L 44 26 L 66 26">
-          <title>汇总: x1 → coord</title>
+          <title>交付: x1 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-14-expanded-arrow-current)" d="M 22 58 L 44 58 L 44 26 L 66 26">
-          <title>汇总: x2 → coord</title>
+          <title>交付: x2 → coord</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-running orch-node-terminal" data-node-id="coord">
     <title>coord · 执行中</title>
-    <text class="orch-graph-node-label orch-graph-node-label-outside" x="71" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">coordinator</text>
+    <text class="orch-graph-node-label orch-graph-node-label-outside" x="71" y="8" text-anchor="middle" dominant-baseline="hanging" font-size="10">synthesis node</text>
     <circle class="orch-graph-node-dot-shape" cx="71" cy="26" r="5" />
   </g><g class="orch-graph-node orch-graph-node-dot orch-status-done" data-node-id="x1">
     <title>x1 · 已完成</title>
@@ -1996,9 +1996,9 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-15-mini-arrow-pending)" d="M 22 26 L 44 26 L 44 26 L 66 26">
-          <title>汇总: a → terminal</title>
+          <title>交付: a → terminal</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-15-mini-arrow-pending)" d="M 22 58 L 44 58 L 44 26 L 66 26">
-          <title>汇总: b → terminal</title>
+          <title>交付: b → terminal</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="terminal">
     <title>terminal · 待启动</title>
@@ -2032,9 +2032,9 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-15-expanded-arrow-pending)" d="M 22 26 L 44 26 L 44 26 L 66 26">
-          <title>汇总: a → terminal</title>
+          <title>交付: a → terminal</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-15-expanded-arrow-pending)" d="M 22 58 L 44 58 L 44 26 L 66 26">
-          <title>汇总: b → terminal</title>
+          <title>交付: b → terminal</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="terminal">
     <title>terminal · 待启动</title>
@@ -2080,9 +2080,9 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-16-mini-arrow-done)" d="M 22 26 L 44 26 L 44 26 L 66 26">
-          <title>汇总: a → terminal</title>
+          <title>交付: a → terminal</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-16-mini-arrow-done)" d="M 22 58 L 44 58 L 44 26 L 66 26">
-          <title>汇总: b → terminal</title>
+          <title>交付: b → terminal</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-running orch-node-terminal" data-node-id="terminal">
     <title>terminal · 执行中</title>
@@ -2116,9 +2116,9 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-16-expanded-arrow-done)" d="M 22 26 L 44 26 L 44 26 L 66 26">
-          <title>汇总: a → terminal</title>
+          <title>交付: a → terminal</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-16-expanded-arrow-done)" d="M 22 58 L 44 58 L 44 26 L 66 26">
-          <title>汇总: b → terminal</title>
+          <title>交付: b → terminal</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-running orch-node-terminal" data-node-id="terminal">
     <title>terminal · 执行中</title>
@@ -2164,9 +2164,9 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-17-mini-arrow-current)" d="M 22 26 L 44 26 L 44 26 L 66 26">
-          <title>汇总: a → terminal</title>
+          <title>交付: a → terminal</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-17-mini-arrow-current)" d="M 22 58 L 44 58 L 44 26 L 66 26">
-          <title>汇总: b → terminal</title>
+          <title>交付: b → terminal</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-running orch-node-terminal" data-node-id="terminal">
     <title>terminal · 执行中</title>
@@ -2200,9 +2200,9 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-17-expanded-arrow-current)" d="M 22 26 L 44 26 L 44 26 L 66 26">
-          <title>汇总: a → terminal</title>
+          <title>交付: a → terminal</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-17-expanded-arrow-current)" d="M 22 58 L 44 58 L 44 26 L 66 26">
-          <title>汇总: b → terminal</title>
+          <title>交付: b → terminal</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-running orch-node-terminal" data-node-id="terminal">
     <title>terminal · 执行中</title>
@@ -2248,9 +2248,9 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-18-mini-arrow-done)" d="M 22 26 L 44 26 L 44 26 L 66 26">
-          <title>汇总: a → terminal</title>
+          <title>交付: a → terminal</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-18-mini-arrow-done)" d="M 22 58 L 44 58 L 44 26 L 66 26">
-          <title>汇总: b → terminal</title>
+          <title>交付: b → terminal</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-done orch-node-terminal" data-node-id="terminal">
     <title>terminal · 已完成</title>
@@ -2284,9 +2284,9 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-18-expanded-arrow-done)" d="M 22 26 L 44 26 L 44 26 L 66 26">
-          <title>汇总: a → terminal</title>
+          <title>交付: a → terminal</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-18-expanded-arrow-done)" d="M 22 58 L 44 58 L 44 26 L 66 26">
-          <title>汇总: b → terminal</title>
+          <title>交付: b → terminal</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-done orch-node-terminal" data-node-id="terminal">
     <title>terminal · 已完成</title>
@@ -2334,7 +2334,7 @@
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-19-mini-arrow-current)" d="M 22 26 L 41 26 L 41 26 L 60 26">
           <title>串行: a1 → a2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-19-mini-arrow-pending)" d="M 70 26 L 89 26 L 89 26 L 108 26">
-          <title>汇总: a2 → terminal</title>
+          <title>交付: a2 → terminal</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="terminal">
     <title>terminal · 待启动</title>
@@ -2370,7 +2370,7 @@
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-19-expanded-arrow-current)" d="M 22 26 L 41 26 L 41 26 L 60 26">
           <title>串行: a1 → a2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-19-expanded-arrow-pending)" d="M 70 26 L 89 26 L 89 26 L 108 26">
-          <title>汇总: a2 → terminal</title>
+          <title>交付: a2 → terminal</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="terminal">
     <title>terminal · 待启动</title>
@@ -2418,7 +2418,7 @@
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-20-mini-arrow-current)" d="M 22 26 L 41 26 L 41 26 L 60 26">
           <title>串行: a1 → a2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-20-mini-arrow-pending)" d="M 70 26 L 89 26 L 89 26 L 108 26">
-          <title>汇总: a2 → terminal</title>
+          <title>交付: a2 → terminal</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="terminal">
     <title>terminal · 待启动</title>
@@ -2454,7 +2454,7 @@
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-20-expanded-arrow-current)" d="M 22 26 L 41 26 L 41 26 L 60 26">
           <title>串行: a1 → a2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-20-expanded-arrow-pending)" d="M 70 26 L 89 26 L 89 26 L 108 26">
-          <title>汇总: a2 → terminal</title>
+          <title>交付: a2 → terminal</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="terminal">
     <title>terminal · 待启动</title>
@@ -2502,7 +2502,7 @@
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-21-mini-arrow-done)" d="M 22 26 L 41 26 L 41 26 L 60 26">
           <title>串行: a1 → a2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-21-mini-arrow-current)" d="M 70 26 L 89 26 L 89 26 L 108 26">
-          <title>汇总: a2 → terminal</title>
+          <title>交付: a2 → terminal</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-running orch-node-terminal" data-node-id="terminal">
     <title>terminal · 执行中</title>
@@ -2538,7 +2538,7 @@
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-21-expanded-arrow-done)" d="M 22 26 L 41 26 L 41 26 L 60 26">
           <title>串行: a1 → a2</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-21-expanded-arrow-current)" d="M 70 26 L 89 26 L 89 26 L 108 26">
-          <title>汇总: a2 → terminal</title>
+          <title>交付: a2 → terminal</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-running orch-node-terminal" data-node-id="terminal">
     <title>terminal · 执行中</title>
@@ -2708,13 +2708,13 @@
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-serial orch-flow-op-run" data-step-id="step-2" marker-end="url(#gallery-24-mini-arrow-pending)" d="M 64 26 L 80 26 L 80 26 L 96 26">
           <title>串行: b → c</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-3" marker-end="url(#gallery-24-mini-arrow-pending)" d="M 17 31 L 17 37 L 143 37 L 143 31">
-          <title>汇总: a → lead</title>
+          <title>交付: a → lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-3" marker-end="url(#gallery-24-mini-arrow-pending)" d="M 59 31 L 59 37 L 143 37 L 143 31">
-          <title>汇总: b → lead</title>
+          <title>交付: b → lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-3" marker-end="url(#gallery-24-mini-arrow-pending)" d="M 106 26 L 122 26 L 122 26 L 138 26">
-          <title>汇总: c → lead</title>
+          <title>交付: c → lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-4" marker-end="url(#gallery-24-mini-arrow-pending)" d="M 148 26 L 164 26 L 164 26 L 180 26">
-          <title>汇总: lead → root</title>
+          <title>交付: lead → root</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="root">
     <title>root · 待启动</title>
@@ -2760,13 +2760,13 @@
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-serial orch-flow-op-run" data-step-id="step-2" marker-end="url(#gallery-24-expanded-arrow-pending)" d="M 64 26 L 80 26 L 80 26 L 96 26">
           <title>串行: b → c</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-3" marker-end="url(#gallery-24-expanded-arrow-pending)" d="M 17 31 L 17 37 L 143 37 L 143 31">
-          <title>汇总: a → lead</title>
+          <title>交付: a → lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-3" marker-end="url(#gallery-24-expanded-arrow-pending)" d="M 59 31 L 59 37 L 143 37 L 143 31">
-          <title>汇总: b → lead</title>
+          <title>交付: b → lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-3" marker-end="url(#gallery-24-expanded-arrow-pending)" d="M 106 26 L 122 26 L 122 26 L 138 26">
-          <title>汇总: c → lead</title>
+          <title>交付: c → lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-4" marker-end="url(#gallery-24-expanded-arrow-pending)" d="M 148 26 L 164 26 L 164 26 L 180 26">
-          <title>汇总: lead → root</title>
+          <title>交付: lead → root</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="root">
     <title>root · 待启动</title>
@@ -2799,7 +2799,7 @@
     <span class="gallery-index">25</span>
     <div>
       <h2>兄弟节点串行</h2>
-      <p class="gallery-desc">同父下 a→b→c 串行后 lead/root 汇总 · lead rollup</p>
+      <p class="gallery-desc">同父下 a→b→c 串行后 lead/root 汇总 · lead 汇总</p>
       <p class="gallery-meta">cursor=3 · nodes=5 · edges=6 · steps=5</p>
     </div>
   </header>
@@ -2824,13 +2824,13 @@
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-serial orch-flow-op-run" data-step-id="step-2" marker-end="url(#gallery-25-mini-arrow-done)" d="M 64 26 L 80 26 L 80 26 L 96 26">
           <title>串行: b → c</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-3" marker-end="url(#gallery-25-mini-arrow-current)" d="M 17 31 L 17 37 L 143 37 L 143 31">
-          <title>汇总: a → lead</title>
+          <title>交付: a → lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-3" marker-end="url(#gallery-25-mini-arrow-current)" d="M 59 31 L 59 37 L 143 37 L 143 31">
-          <title>汇总: b → lead</title>
+          <title>交付: b → lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-3" marker-end="url(#gallery-25-mini-arrow-current)" d="M 106 26 L 122 26 L 122 26 L 138 26">
-          <title>汇总: c → lead</title>
+          <title>交付: c → lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-4" marker-end="url(#gallery-25-mini-arrow-pending)" d="M 148 26 L 164 26 L 164 26 L 180 26">
-          <title>汇总: lead → root</title>
+          <title>交付: lead → root</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="root">
     <title>root · 待启动</title>
@@ -2876,13 +2876,13 @@
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-serial orch-flow-op-run" data-step-id="step-2" marker-end="url(#gallery-25-expanded-arrow-done)" d="M 64 26 L 80 26 L 80 26 L 96 26">
           <title>串行: b → c</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-3" marker-end="url(#gallery-25-expanded-arrow-current)" d="M 17 31 L 17 37 L 143 37 L 143 31">
-          <title>汇总: a → lead</title>
+          <title>交付: a → lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-3" marker-end="url(#gallery-25-expanded-arrow-current)" d="M 59 31 L 59 37 L 143 37 L 143 31">
-          <title>汇总: b → lead</title>
+          <title>交付: b → lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-3" marker-end="url(#gallery-25-expanded-arrow-current)" d="M 106 26 L 122 26 L 122 26 L 138 26">
-          <title>汇总: c → lead</title>
+          <title>交付: c → lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-4" marker-end="url(#gallery-25-expanded-arrow-pending)" d="M 148 26 L 164 26 L 164 26 L 180 26">
-          <title>汇总: lead → root</title>
+          <title>交付: lead → root</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="root">
     <title>root · 待启动</title>
@@ -2936,15 +2936,15 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-26-mini-arrow-current)" d="M 22 26 L 38 26 L 38 26 L 54 26">
-          <title>汇总: a1 → a</title>
+          <title>交付: a1 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-depends orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-26-mini-arrow-current)" d="M 22 26 L 38 26 L 38 58 L 54 58">
           <title>依赖: a1 → b1</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-26-mini-arrow-current)" d="M 64 58 L 80 58 L 80 26 L 96 26">
-          <title>汇总: b1 → b</title>
+          <title>交付: b1 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-26-mini-arrow-pending)" d="M 59 31 L 59 37 L 143 37 L 143 31">
-          <title>汇总: a → root</title>
+          <title>交付: a → root</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-26-mini-arrow-pending)" d="M 106 26 L 122 26 L 122 26 L 138 26">
-          <title>汇总: b → root</title>
+          <title>交付: b → root</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="root">
     <title>root · 待启动</title>
@@ -2986,15 +2986,15 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-26-expanded-arrow-current)" d="M 22 26 L 38 26 L 38 26 L 54 26">
-          <title>汇总: a1 → a</title>
+          <title>交付: a1 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-depends orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-26-expanded-arrow-current)" d="M 22 26 L 38 26 L 38 58 L 54 58">
           <title>依赖: a1 → b1</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-26-expanded-arrow-current)" d="M 64 58 L 80 58 L 80 26 L 96 26">
-          <title>汇总: b1 → b</title>
+          <title>交付: b1 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-26-expanded-arrow-pending)" d="M 59 31 L 59 37 L 143 37 L 143 31">
-          <title>汇总: a → root</title>
+          <title>交付: a → root</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-26-expanded-arrow-pending)" d="M 106 26 L 122 26 L 122 26 L 138 26">
-          <title>汇总: b → root</title>
+          <title>交付: b → root</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="root">
     <title>root · 待启动</title>
@@ -3048,15 +3048,15 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-27-mini-arrow-current)" d="M 22 26 L 38 26 L 38 26 L 54 26">
-          <title>汇总: a1 → a</title>
+          <title>交付: a1 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-depends orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-27-mini-arrow-current)" d="M 22 26 L 38 26 L 38 58 L 54 58">
           <title>依赖: a1 → b1</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-27-mini-arrow-current)" d="M 64 58 L 80 58 L 80 26 L 96 26">
-          <title>汇总: b1 → b</title>
+          <title>交付: b1 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-27-mini-arrow-pending)" d="M 59 31 L 59 37 L 143 37 L 143 31">
-          <title>汇总: a → root</title>
+          <title>交付: a → root</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-27-mini-arrow-pending)" d="M 106 26 L 122 26 L 122 26 L 138 26">
-          <title>汇总: b → root</title>
+          <title>交付: b → root</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="root">
     <title>root · 待启动</title>
@@ -3098,15 +3098,15 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-27-expanded-arrow-current)" d="M 22 26 L 38 26 L 38 26 L 54 26">
-          <title>汇总: a1 → a</title>
+          <title>交付: a1 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-depends orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-27-expanded-arrow-current)" d="M 22 26 L 38 26 L 38 58 L 54 58">
           <title>依赖: a1 → b1</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-27-expanded-arrow-current)" d="M 64 58 L 80 58 L 80 26 L 96 26">
-          <title>汇总: b1 → b</title>
+          <title>交付: b1 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-27-expanded-arrow-pending)" d="M 59 31 L 59 37 L 143 37 L 143 31">
-          <title>汇总: a → root</title>
+          <title>交付: a → root</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-27-expanded-arrow-pending)" d="M 106 26 L 122 26 L 122 26 L 138 26">
-          <title>汇总: b → root</title>
+          <title>交付: b → root</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="root">
     <title>root · 待启动</title>
@@ -3160,23 +3160,23 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-28-mini-arrow-pending)" d="M 15 23.5 L 91.375 23.5 L 91.375 23.5 L 167.75 23.5">
-          <title>汇总: w1 → coord</title>
+          <title>交付: w1 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-28-mini-arrow-pending)" d="M 15 53.5 L 91.375 53.5 L 91.375 23.5 L 167.75 23.5">
-          <title>汇总: w2 → coord</title>
+          <title>交付: w2 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-28-mini-arrow-pending)" d="M 15 83.5 L 91.375 83.5 L 91.375 23.5 L 167.75 23.5">
-          <title>汇总: w3 → coord</title>
+          <title>交付: w3 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-28-mini-arrow-pending)" d="M 15 113.5 L 91.375 113.5 L 91.375 23.5 L 167.75 23.5">
-          <title>汇总: w4 → coord</title>
+          <title>交付: w4 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-28-mini-arrow-pending)" d="M 15 143.5 L 91.375 143.5 L 91.375 23.5 L 167.75 23.5">
-          <title>汇总: w5 → coord</title>
+          <title>交付: w5 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-28-mini-arrow-pending)" d="M 15 173.5 L 91.375 173.5 L 91.375 23.5 L 167.75 23.5">
-          <title>汇总: w6 → coord</title>
+          <title>交付: w6 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-28-mini-arrow-pending)" d="M 10 198.5 L 10 184.5 L 172.75 184.5 L 172.75 28.5">
-          <title>汇总: w7 → coord</title>
+          <title>交付: w7 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-28-mini-arrow-pending)" d="M 10 228.5 L 10 214.5 L 172.75 214.5 L 172.75 28.5">
-          <title>汇总: w8 → coord</title>
+          <title>交付: w8 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-2" marker-end="url(#gallery-28-mini-arrow-pending)" d="M 177.75 23.5 L 254.125 23.5 L 254.125 23.5 L 330.5 23.5">
-          <title>汇总: coord → root</title>
+          <title>交付: coord → root</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="root">
     <title>root · 待启动</title>
@@ -3184,7 +3184,7 @@
     <circle class="orch-graph-node-dot-shape" cx="335.5" cy="23.5" r="5" />
   </g><g class="orch-graph-node orch-graph-node-dot orch-status-pending" data-node-id="coord">
     <title>coord · 待启动</title>
-    <text class="orch-graph-node-label orch-graph-node-label-outside" x="172.75" y="6.5" text-anchor="middle" dominant-baseline="hanging" font-size="9">coordinator</text>
+    <text class="orch-graph-node-label orch-graph-node-label-outside" x="172.75" y="6.5" text-anchor="middle" dominant-baseline="hanging" font-size="9">synthesis node</text>
     <circle class="orch-graph-node-dot-shape" cx="172.75" cy="23.5" r="5" />
   </g><g class="orch-graph-node orch-graph-node-dot orch-status-running" data-node-id="w1">
     <title>w1 · 执行中</title>
@@ -3238,23 +3238,23 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-28-expanded-arrow-pending)" d="M 15 23.5 L 91.375 23.5 L 91.375 23.5 L 167.75 23.5">
-          <title>汇总: w1 → coord</title>
+          <title>交付: w1 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-28-expanded-arrow-pending)" d="M 15 53.5 L 91.375 53.5 L 91.375 23.5 L 167.75 23.5">
-          <title>汇总: w2 → coord</title>
+          <title>交付: w2 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-28-expanded-arrow-pending)" d="M 15 83.5 L 91.375 83.5 L 91.375 23.5 L 167.75 23.5">
-          <title>汇总: w3 → coord</title>
+          <title>交付: w3 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-28-expanded-arrow-pending)" d="M 15 113.5 L 91.375 113.5 L 91.375 23.5 L 167.75 23.5">
-          <title>汇总: w4 → coord</title>
+          <title>交付: w4 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-28-expanded-arrow-pending)" d="M 15 143.5 L 91.375 143.5 L 91.375 23.5 L 167.75 23.5">
-          <title>汇总: w5 → coord</title>
+          <title>交付: w5 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-28-expanded-arrow-pending)" d="M 15 173.5 L 91.375 173.5 L 91.375 23.5 L 167.75 23.5">
-          <title>汇总: w6 → coord</title>
+          <title>交付: w6 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-28-expanded-arrow-pending)" d="M 10 198.5 L 10 184.5 L 172.75 184.5 L 172.75 28.5">
-          <title>汇总: w7 → coord</title>
+          <title>交付: w7 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-28-expanded-arrow-pending)" d="M 10 228.5 L 10 214.5 L 172.75 214.5 L 172.75 28.5">
-          <title>汇总: w8 → coord</title>
+          <title>交付: w8 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-2" marker-end="url(#gallery-28-expanded-arrow-pending)" d="M 177.75 23.5 L 254.125 23.5 L 254.125 23.5 L 330.5 23.5">
-          <title>汇总: coord → root</title>
+          <title>交付: coord → root</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="root">
     <title>root · 待启动</title>
@@ -3262,7 +3262,7 @@
     <circle class="orch-graph-node-dot-shape" cx="335.5" cy="23.5" r="5" />
   </g><g class="orch-graph-node orch-graph-node-dot orch-status-pending" data-node-id="coord">
     <title>coord · 待启动</title>
-    <text class="orch-graph-node-label orch-graph-node-label-outside" x="172.75" y="6.5" text-anchor="middle" dominant-baseline="hanging" font-size="9">coordinator</text>
+    <text class="orch-graph-node-label orch-graph-node-label-outside" x="172.75" y="6.5" text-anchor="middle" dominant-baseline="hanging" font-size="9">synthesis node</text>
     <circle class="orch-graph-node-dot-shape" cx="172.75" cy="23.5" r="5" />
   </g><g class="orch-graph-node orch-graph-node-dot orch-status-running" data-node-id="w1">
     <title>w1 · 执行中</title>
@@ -3307,7 +3307,7 @@
     <span class="gallery-index">29</span>
     <div>
       <h2>8 路宽 fan-out</h2>
-      <p class="gallery-desc">同一协调节点下 8 个并行叶子 · coord rollup</p>
+      <p class="gallery-desc">同一协调节点下 8 个并行叶子 · coord synthesis</p>
       <p class="gallery-meta">cursor=1 · nodes=10 · edges=9 · steps=3</p>
     </div>
   </header>
@@ -3328,23 +3328,23 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-29-mini-arrow-current)" d="M 15 23.5 L 91.375 23.5 L 91.375 23.5 L 167.75 23.5">
-          <title>汇总: w1 → coord</title>
+          <title>交付: w1 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-29-mini-arrow-current)" d="M 15 53.5 L 91.375 53.5 L 91.375 23.5 L 167.75 23.5">
-          <title>汇总: w2 → coord</title>
+          <title>交付: w2 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-29-mini-arrow-current)" d="M 15 83.5 L 91.375 83.5 L 91.375 23.5 L 167.75 23.5">
-          <title>汇总: w3 → coord</title>
+          <title>交付: w3 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-29-mini-arrow-current)" d="M 15 113.5 L 91.375 113.5 L 91.375 23.5 L 167.75 23.5">
-          <title>汇总: w4 → coord</title>
+          <title>交付: w4 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-29-mini-arrow-current)" d="M 15 143.5 L 91.375 143.5 L 91.375 23.5 L 167.75 23.5">
-          <title>汇总: w5 → coord</title>
+          <title>交付: w5 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-29-mini-arrow-current)" d="M 15 173.5 L 91.375 173.5 L 91.375 23.5 L 167.75 23.5">
-          <title>汇总: w6 → coord</title>
+          <title>交付: w6 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-29-mini-arrow-current)" d="M 10 198.5 L 10 184.5 L 172.75 184.5 L 172.75 28.5">
-          <title>汇总: w7 → coord</title>
+          <title>交付: w7 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-29-mini-arrow-current)" d="M 10 228.5 L 10 214.5 L 172.75 214.5 L 172.75 28.5">
-          <title>汇总: w8 → coord</title>
+          <title>交付: w8 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-2" marker-end="url(#gallery-29-mini-arrow-pending)" d="M 177.75 23.5 L 254.125 23.5 L 254.125 23.5 L 330.5 23.5">
-          <title>汇总: coord → root</title>
+          <title>交付: coord → root</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="root">
     <title>root · 待启动</title>
@@ -3352,7 +3352,7 @@
     <circle class="orch-graph-node-dot-shape" cx="335.5" cy="23.5" r="5" />
   </g><g class="orch-graph-node orch-graph-node-dot orch-status-running" data-node-id="coord">
     <title>coord · 执行中</title>
-    <text class="orch-graph-node-label orch-graph-node-label-outside" x="172.75" y="6.5" text-anchor="middle" dominant-baseline="hanging" font-size="9">coordinator</text>
+    <text class="orch-graph-node-label orch-graph-node-label-outside" x="172.75" y="6.5" text-anchor="middle" dominant-baseline="hanging" font-size="9">synthesis node</text>
     <circle class="orch-graph-node-dot-shape" cx="172.75" cy="23.5" r="5" />
   </g><g class="orch-graph-node orch-graph-node-dot orch-status-done" data-node-id="w1">
     <title>w1 · 已完成</title>
@@ -3406,23 +3406,23 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-29-expanded-arrow-current)" d="M 15 23.5 L 91.375 23.5 L 91.375 23.5 L 167.75 23.5">
-          <title>汇总: w1 → coord</title>
+          <title>交付: w1 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-29-expanded-arrow-current)" d="M 15 53.5 L 91.375 53.5 L 91.375 23.5 L 167.75 23.5">
-          <title>汇总: w2 → coord</title>
+          <title>交付: w2 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-29-expanded-arrow-current)" d="M 15 83.5 L 91.375 83.5 L 91.375 23.5 L 167.75 23.5">
-          <title>汇总: w3 → coord</title>
+          <title>交付: w3 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-29-expanded-arrow-current)" d="M 15 113.5 L 91.375 113.5 L 91.375 23.5 L 167.75 23.5">
-          <title>汇总: w4 → coord</title>
+          <title>交付: w4 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-29-expanded-arrow-current)" d="M 15 143.5 L 91.375 143.5 L 91.375 23.5 L 167.75 23.5">
-          <title>汇总: w5 → coord</title>
+          <title>交付: w5 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-29-expanded-arrow-current)" d="M 15 173.5 L 91.375 173.5 L 91.375 23.5 L 167.75 23.5">
-          <title>汇总: w6 → coord</title>
+          <title>交付: w6 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-29-expanded-arrow-current)" d="M 10 198.5 L 10 184.5 L 172.75 184.5 L 172.75 28.5">
-          <title>汇总: w7 → coord</title>
+          <title>交付: w7 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-29-expanded-arrow-current)" d="M 10 228.5 L 10 214.5 L 172.75 214.5 L 172.75 28.5">
-          <title>汇总: w8 → coord</title>
+          <title>交付: w8 → coord</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-2" marker-end="url(#gallery-29-expanded-arrow-pending)" d="M 177.75 23.5 L 254.125 23.5 L 254.125 23.5 L 330.5 23.5">
-          <title>汇总: coord → root</title>
+          <title>交付: coord → root</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="root">
     <title>root · 待启动</title>
@@ -3430,7 +3430,7 @@
     <circle class="orch-graph-node-dot-shape" cx="335.5" cy="23.5" r="5" />
   </g><g class="orch-graph-node orch-graph-node-dot orch-status-running" data-node-id="coord">
     <title>coord · 执行中</title>
-    <text class="orch-graph-node-label orch-graph-node-label-outside" x="172.75" y="6.5" text-anchor="middle" dominant-baseline="hanging" font-size="9">coordinator</text>
+    <text class="orch-graph-node-label orch-graph-node-label-outside" x="172.75" y="6.5" text-anchor="middle" dominant-baseline="hanging" font-size="9">synthesis node</text>
     <circle class="orch-graph-node-dot-shape" cx="172.75" cy="23.5" r="5" />
   </g><g class="orch-graph-node orch-graph-node-dot orch-status-done" data-node-id="w1">
     <title>w1 · 已完成</title>
@@ -3498,19 +3498,19 @@
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-30-mini-arrow-current)" d="M 22 26 L 38 26 L 38 26 L 54 26">
           <title>串行: gpt-researcher → claude-researcher</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-30-mini-arrow-current)" d="M 17 31 L 17 37 L 101 37 L 101 31">
-          <title>汇总: gpt-researcher → research-lead</title>
+          <title>交付: gpt-researcher → research-lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-30-mini-arrow-current)" d="M 64 26 L 80 26 L 80 26 L 96 26">
-          <title>汇总: claude-researcher → research-lead</title>
+          <title>交付: claude-researcher → research-lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-30-mini-arrow-current)" d="M 22 58 L 38 58 L 38 58 L 54 58">
           <title>串行: benchmark-analyst → pricing-analyst</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-30-mini-arrow-current)" d="M 17 63 L 17 69 L 101 69 L 101 63">
-          <title>汇总: benchmark-analyst → analysis-lead</title>
+          <title>交付: benchmark-analyst → analysis-lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-30-mini-arrow-current)" d="M 64 58 L 80 58 L 80 58 L 96 58">
-          <title>汇总: pricing-analyst → analysis-lead</title>
+          <title>交付: pricing-analyst → analysis-lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-30-mini-arrow-pending)" d="M 106 26 L 122 26 L 122 26 L 138 26">
-          <title>汇总: research-lead → root</title>
+          <title>交付: research-lead → root</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-30-mini-arrow-pending)" d="M 106 58 L 122 58 L 122 26 L 138 26">
-          <title>汇总: analysis-lead → root</title>
+          <title>交付: analysis-lead → root</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="root">
     <title>root · 待启动</title>
@@ -3562,19 +3562,19 @@
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-30-expanded-arrow-current)" d="M 22 26 L 38 26 L 38 26 L 54 26">
           <title>串行: gpt-researcher → claude-researcher</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-30-expanded-arrow-current)" d="M 17 31 L 17 37 L 101 37 L 101 31">
-          <title>汇总: gpt-researcher → research-lead</title>
+          <title>交付: gpt-researcher → research-lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-30-expanded-arrow-current)" d="M 64 26 L 80 26 L 80 26 L 96 26">
-          <title>汇总: claude-researcher → research-lead</title>
+          <title>交付: claude-researcher → research-lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-30-expanded-arrow-current)" d="M 22 58 L 38 58 L 38 58 L 54 58">
           <title>串行: benchmark-analyst → pricing-analyst</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-30-expanded-arrow-current)" d="M 17 63 L 17 69 L 101 69 L 101 63">
-          <title>汇总: benchmark-analyst → analysis-lead</title>
+          <title>交付: benchmark-analyst → analysis-lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-30-expanded-arrow-current)" d="M 64 58 L 80 58 L 80 58 L 96 58">
-          <title>汇总: pricing-analyst → analysis-lead</title>
+          <title>交付: pricing-analyst → analysis-lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-30-expanded-arrow-pending)" d="M 106 26 L 122 26 L 122 26 L 138 26">
-          <title>汇总: research-lead → root</title>
+          <title>交付: research-lead → root</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-30-expanded-arrow-pending)" d="M 106 58 L 122 58 L 122 26 L 138 26">
-          <title>汇总: analysis-lead → root</title>
+          <title>交付: analysis-lead → root</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="root">
     <title>root · 待启动</title>
@@ -3638,19 +3638,19 @@
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-31-mini-arrow-current)" d="M 22 26 L 38 26 L 38 26 L 54 26">
           <title>串行: gpt-researcher → claude-researcher</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-31-mini-arrow-current)" d="M 17 31 L 17 37 L 101 37 L 101 31">
-          <title>汇总: gpt-researcher → research-lead</title>
+          <title>交付: gpt-researcher → research-lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-31-mini-arrow-current)" d="M 64 26 L 80 26 L 80 26 L 96 26">
-          <title>汇总: claude-researcher → research-lead</title>
+          <title>交付: claude-researcher → research-lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-31-mini-arrow-current)" d="M 22 58 L 38 58 L 38 58 L 54 58">
           <title>串行: benchmark-analyst → pricing-analyst</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-31-mini-arrow-current)" d="M 17 63 L 17 69 L 101 69 L 101 63">
-          <title>汇总: benchmark-analyst → analysis-lead</title>
+          <title>交付: benchmark-analyst → analysis-lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-31-mini-arrow-current)" d="M 64 58 L 80 58 L 80 58 L 96 58">
-          <title>汇总: pricing-analyst → analysis-lead</title>
+          <title>交付: pricing-analyst → analysis-lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-31-mini-arrow-pending)" d="M 106 26 L 122 26 L 122 26 L 138 26">
-          <title>汇总: research-lead → root</title>
+          <title>交付: research-lead → root</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-31-mini-arrow-pending)" d="M 106 58 L 122 58 L 122 26 L 138 26">
-          <title>汇总: analysis-lead → root</title>
+          <title>交付: analysis-lead → root</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="root">
     <title>root · 待启动</title>
@@ -3702,19 +3702,19 @@
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-31-expanded-arrow-current)" d="M 22 26 L 38 26 L 38 26 L 54 26">
           <title>串行: gpt-researcher → claude-researcher</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-31-expanded-arrow-current)" d="M 17 31 L 17 37 L 101 37 L 101 31">
-          <title>汇总: gpt-researcher → research-lead</title>
+          <title>交付: gpt-researcher → research-lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-31-expanded-arrow-current)" d="M 64 26 L 80 26 L 80 26 L 96 26">
-          <title>汇总: claude-researcher → research-lead</title>
+          <title>交付: claude-researcher → research-lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-31-expanded-arrow-current)" d="M 22 58 L 38 58 L 38 58 L 54 58">
           <title>串行: benchmark-analyst → pricing-analyst</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-31-expanded-arrow-current)" d="M 17 63 L 17 69 L 101 69 L 101 63">
-          <title>汇总: benchmark-analyst → analysis-lead</title>
+          <title>交付: benchmark-analyst → analysis-lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-31-expanded-arrow-current)" d="M 64 58 L 80 58 L 80 58 L 96 58">
-          <title>汇总: pricing-analyst → analysis-lead</title>
+          <title>交付: pricing-analyst → analysis-lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-31-expanded-arrow-pending)" d="M 106 26 L 122 26 L 122 26 L 138 26">
-          <title>汇总: research-lead → root</title>
+          <title>交付: research-lead → root</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-31-expanded-arrow-pending)" d="M 106 58 L 122 58 L 122 26 L 138 26">
-          <title>汇总: analysis-lead → root</title>
+          <title>交付: analysis-lead → root</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="root">
     <title>root · 待启动</title>
@@ -3778,19 +3778,19 @@
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-32-mini-arrow-done)" d="M 22 26 L 38 26 L 38 26 L 54 26">
           <title>串行: gpt-researcher → claude-researcher</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-32-mini-arrow-done)" d="M 17 31 L 17 37 L 101 37 L 101 31">
-          <title>汇总: gpt-researcher → research-lead</title>
+          <title>交付: gpt-researcher → research-lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-32-mini-arrow-done)" d="M 64 26 L 80 26 L 80 26 L 96 26">
-          <title>汇总: claude-researcher → research-lead</title>
+          <title>交付: claude-researcher → research-lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-32-mini-arrow-done)" d="M 22 58 L 38 58 L 38 58 L 54 58">
           <title>串行: benchmark-analyst → pricing-analyst</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-32-mini-arrow-done)" d="M 17 63 L 17 69 L 101 69 L 101 63">
-          <title>汇总: benchmark-analyst → analysis-lead</title>
+          <title>交付: benchmark-analyst → analysis-lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-32-mini-arrow-done)" d="M 64 58 L 80 58 L 80 58 L 96 58">
-          <title>汇总: pricing-analyst → analysis-lead</title>
+          <title>交付: pricing-analyst → analysis-lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-32-mini-arrow-current)" d="M 106 26 L 122 26 L 122 26 L 138 26">
-          <title>汇总: research-lead → root</title>
+          <title>交付: research-lead → root</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-32-mini-arrow-current)" d="M 106 58 L 122 58 L 122 26 L 138 26">
-          <title>汇总: analysis-lead → root</title>
+          <title>交付: analysis-lead → root</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-running orch-node-terminal" data-node-id="root">
     <title>root · 执行中</title>
@@ -3842,19 +3842,19 @@
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-32-expanded-arrow-done)" d="M 22 26 L 38 26 L 38 26 L 54 26">
           <title>串行: gpt-researcher → claude-researcher</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-32-expanded-arrow-done)" d="M 17 31 L 17 37 L 101 37 L 101 31">
-          <title>汇总: gpt-researcher → research-lead</title>
+          <title>交付: gpt-researcher → research-lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-32-expanded-arrow-done)" d="M 64 26 L 80 26 L 80 26 L 96 26">
-          <title>汇总: claude-researcher → research-lead</title>
+          <title>交付: claude-researcher → research-lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-serial orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-32-expanded-arrow-done)" d="M 22 58 L 38 58 L 38 58 L 54 58">
           <title>串行: benchmark-analyst → pricing-analyst</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-32-expanded-arrow-done)" d="M 17 63 L 17 69 L 101 69 L 101 63">
-          <title>汇总: benchmark-analyst → analysis-lead</title>
+          <title>交付: benchmark-analyst → analysis-lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-32-expanded-arrow-done)" d="M 64 58 L 80 58 L 80 58 L 96 58">
-          <title>汇总: pricing-analyst → analysis-lead</title>
+          <title>交付: pricing-analyst → analysis-lead</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-32-expanded-arrow-current)" d="M 106 26 L 122 26 L 122 26 L 138 26">
-          <title>汇总: research-lead → root</title>
+          <title>交付: research-lead → root</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-32-expanded-arrow-current)" d="M 106 58 L 122 58 L 122 26 L 138 26">
-          <title>汇总: analysis-lead → root</title>
+          <title>交付: analysis-lead → root</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-running orch-node-terminal" data-node-id="root">
     <title>root · 执行中</title>
@@ -3916,25 +3916,25 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-33-mini-arrow-current)" d="M 21 25 L 37 25 L 37 25 L 53 25">
-          <title>汇总: l1a → l2a</title>
+          <title>交付: l1a → l2a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-33-mini-arrow-current)" d="M 21 57 L 37 57 L 37 25 L 53 25">
-          <title>汇总: l1b → l2a</title>
+          <title>交付: l1b → l2a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-33-mini-arrow-current)" d="M 63 25 L 79 25 L 79 25 L 95 25">
-          <title>汇总: l2a → l3a</title>
+          <title>交付: l2a → l3a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-33-mini-arrow-current)" d="M 105 25 L 121 25 L 121 25 L 137 25">
-          <title>汇总: l3a → l4a</title>
+          <title>交付: l3a → l4a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-33-mini-arrow-current)" d="M 21 89 L 37 89 L 37 57 L 53 57">
-          <title>汇总: l1c → l2b</title>
+          <title>交付: l1c → l2b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-33-mini-arrow-current)" d="M 16 116 L 16 100 L 58 100 L 58 62">
-          <title>汇总: l1d → l2b</title>
+          <title>交付: l1d → l2b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-33-mini-arrow-current)" d="M 63 57 L 79 57 L 79 57 L 95 57">
-          <title>汇总: l2b → l3b</title>
+          <title>交付: l2b → l3b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-33-mini-arrow-current)" d="M 105 57 L 121 57 L 121 57 L 137 57">
-          <title>汇总: l3b → l4b</title>
+          <title>交付: l3b → l4b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-33-mini-arrow-pending)" d="M 147 25 L 163 25 L 163 25 L 179 25">
-          <title>汇总: l4a → l5</title>
+          <title>交付: l4a → l5</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-33-mini-arrow-pending)" d="M 147 57 L 163 57 L 163 25 L 179 25">
-          <title>汇总: l4b → l5</title>
+          <title>交付: l4b → l5</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="l5">
     <title>l5 · 待启动</title>
@@ -4000,25 +4000,25 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-33-expanded-arrow-current)" d="M 21 25 L 37 25 L 37 25 L 53 25">
-          <title>汇总: l1a → l2a</title>
+          <title>交付: l1a → l2a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-33-expanded-arrow-current)" d="M 21 57 L 37 57 L 37 25 L 53 25">
-          <title>汇总: l1b → l2a</title>
+          <title>交付: l1b → l2a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-33-expanded-arrow-current)" d="M 63 25 L 79 25 L 79 25 L 95 25">
-          <title>汇总: l2a → l3a</title>
+          <title>交付: l2a → l3a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-33-expanded-arrow-current)" d="M 105 25 L 121 25 L 121 25 L 137 25">
-          <title>汇总: l3a → l4a</title>
+          <title>交付: l3a → l4a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-33-expanded-arrow-current)" d="M 21 89 L 37 89 L 37 57 L 53 57">
-          <title>汇总: l1c → l2b</title>
+          <title>交付: l1c → l2b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-33-expanded-arrow-current)" d="M 16 116 L 16 100 L 58 100 L 58 62">
-          <title>汇总: l1d → l2b</title>
+          <title>交付: l1d → l2b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-33-expanded-arrow-current)" d="M 63 57 L 79 57 L 79 57 L 95 57">
-          <title>汇总: l2b → l3b</title>
+          <title>交付: l2b → l3b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-33-expanded-arrow-current)" d="M 105 57 L 121 57 L 121 57 L 137 57">
-          <title>汇总: l3b → l4b</title>
+          <title>交付: l3b → l4b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-33-expanded-arrow-pending)" d="M 147 25 L 163 25 L 163 25 L 179 25">
-          <title>汇总: l4a → l5</title>
+          <title>交付: l4a → l5</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-33-expanded-arrow-pending)" d="M 147 57 L 163 57 L 163 25 L 179 25">
-          <title>汇总: l4b → l5</title>
+          <title>交付: l4b → l5</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="l5">
     <title>l5 · 待启动</title>
@@ -4075,7 +4075,7 @@
     <span class="gallery-index">34</span>
     <div>
       <h2>5 层深 + 双分支</h2>
-      <p class="gallery-desc">两棵深树并行 fan-in 到 L5 · L2 rollup 阶段</p>
+      <p class="gallery-desc">两棵深树并行 fan-in 到 L5 · L2 汇总阶段</p>
       <p class="gallery-meta">cursor=0 · nodes=11 · edges=10 · steps=2</p>
     </div>
   </header>
@@ -4096,25 +4096,25 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-34-mini-arrow-current)" d="M 21 25 L 37 25 L 37 25 L 53 25">
-          <title>汇总: l1a → l2a</title>
+          <title>交付: l1a → l2a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-34-mini-arrow-current)" d="M 21 57 L 37 57 L 37 25 L 53 25">
-          <title>汇总: l1b → l2a</title>
+          <title>交付: l1b → l2a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-34-mini-arrow-current)" d="M 63 25 L 79 25 L 79 25 L 95 25">
-          <title>汇总: l2a → l3a</title>
+          <title>交付: l2a → l3a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-34-mini-arrow-current)" d="M 105 25 L 121 25 L 121 25 L 137 25">
-          <title>汇总: l3a → l4a</title>
+          <title>交付: l3a → l4a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-34-mini-arrow-current)" d="M 21 89 L 37 89 L 37 57 L 53 57">
-          <title>汇总: l1c → l2b</title>
+          <title>交付: l1c → l2b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-34-mini-arrow-current)" d="M 16 116 L 16 100 L 58 100 L 58 62">
-          <title>汇总: l1d → l2b</title>
+          <title>交付: l1d → l2b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-34-mini-arrow-current)" d="M 63 57 L 79 57 L 79 57 L 95 57">
-          <title>汇总: l2b → l3b</title>
+          <title>交付: l2b → l3b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-34-mini-arrow-current)" d="M 105 57 L 121 57 L 121 57 L 137 57">
-          <title>汇总: l3b → l4b</title>
+          <title>交付: l3b → l4b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-34-mini-arrow-pending)" d="M 147 25 L 163 25 L 163 25 L 179 25">
-          <title>汇总: l4a → l5</title>
+          <title>交付: l4a → l5</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-34-mini-arrow-pending)" d="M 147 57 L 163 57 L 163 25 L 179 25">
-          <title>汇总: l4b → l5</title>
+          <title>交付: l4b → l5</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="l5">
     <title>l5 · 待启动</title>
@@ -4180,25 +4180,25 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-34-expanded-arrow-current)" d="M 21 25 L 37 25 L 37 25 L 53 25">
-          <title>汇总: l1a → l2a</title>
+          <title>交付: l1a → l2a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-34-expanded-arrow-current)" d="M 21 57 L 37 57 L 37 25 L 53 25">
-          <title>汇总: l1b → l2a</title>
+          <title>交付: l1b → l2a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-34-expanded-arrow-current)" d="M 63 25 L 79 25 L 79 25 L 95 25">
-          <title>汇总: l2a → l3a</title>
+          <title>交付: l2a → l3a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-34-expanded-arrow-current)" d="M 105 25 L 121 25 L 121 25 L 137 25">
-          <title>汇总: l3a → l4a</title>
+          <title>交付: l3a → l4a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-34-expanded-arrow-current)" d="M 21 89 L 37 89 L 37 57 L 53 57">
-          <title>汇总: l1c → l2b</title>
+          <title>交付: l1c → l2b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-34-expanded-arrow-current)" d="M 16 116 L 16 100 L 58 100 L 58 62">
-          <title>汇总: l1d → l2b</title>
+          <title>交付: l1d → l2b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-34-expanded-arrow-current)" d="M 63 57 L 79 57 L 79 57 L 95 57">
-          <title>汇总: l2b → l3b</title>
+          <title>交付: l2b → l3b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-34-expanded-arrow-current)" d="M 105 57 L 121 57 L 121 57 L 137 57">
-          <title>汇总: l3b → l4b</title>
+          <title>交付: l3b → l4b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-34-expanded-arrow-pending)" d="M 147 25 L 163 25 L 163 25 L 179 25">
-          <title>汇总: l4a → l5</title>
+          <title>交付: l4a → l5</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-34-expanded-arrow-pending)" d="M 147 57 L 163 57 L 163 25 L 179 25">
-          <title>汇总: l4b → l5</title>
+          <title>交付: l4b → l5</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="l5">
     <title>l5 · 待启动</title>
@@ -4276,25 +4276,25 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-35-mini-arrow-done)" d="M 21 25 L 37 25 L 37 25 L 53 25">
-          <title>汇总: l1a → l2a</title>
+          <title>交付: l1a → l2a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-35-mini-arrow-done)" d="M 21 57 L 37 57 L 37 25 L 53 25">
-          <title>汇总: l1b → l2a</title>
+          <title>交付: l1b → l2a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-35-mini-arrow-done)" d="M 63 25 L 79 25 L 79 25 L 95 25">
-          <title>汇总: l2a → l3a</title>
+          <title>交付: l2a → l3a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-35-mini-arrow-done)" d="M 105 25 L 121 25 L 121 25 L 137 25">
-          <title>汇总: l3a → l4a</title>
+          <title>交付: l3a → l4a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-35-mini-arrow-done)" d="M 21 89 L 37 89 L 37 57 L 53 57">
-          <title>汇总: l1c → l2b</title>
+          <title>交付: l1c → l2b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-35-mini-arrow-done)" d="M 16 116 L 16 100 L 58 100 L 58 62">
-          <title>汇总: l1d → l2b</title>
+          <title>交付: l1d → l2b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-35-mini-arrow-done)" d="M 63 57 L 79 57 L 79 57 L 95 57">
-          <title>汇总: l2b → l3b</title>
+          <title>交付: l2b → l3b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-35-mini-arrow-done)" d="M 105 57 L 121 57 L 121 57 L 137 57">
-          <title>汇总: l3b → l4b</title>
+          <title>交付: l3b → l4b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-35-mini-arrow-current)" d="M 147 25 L 163 25 L 163 25 L 179 25">
-          <title>汇总: l4a → l5</title>
+          <title>交付: l4a → l5</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-35-mini-arrow-current)" d="M 147 57 L 163 57 L 163 25 L 179 25">
-          <title>汇总: l4b → l5</title>
+          <title>交付: l4b → l5</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-running orch-node-terminal" data-node-id="l5">
     <title>l5 · 执行中</title>
@@ -4360,25 +4360,25 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-35-expanded-arrow-done)" d="M 21 25 L 37 25 L 37 25 L 53 25">
-          <title>汇总: l1a → l2a</title>
+          <title>交付: l1a → l2a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-35-expanded-arrow-done)" d="M 21 57 L 37 57 L 37 25 L 53 25">
-          <title>汇总: l1b → l2a</title>
+          <title>交付: l1b → l2a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-35-expanded-arrow-done)" d="M 63 25 L 79 25 L 79 25 L 95 25">
-          <title>汇总: l2a → l3a</title>
+          <title>交付: l2a → l3a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-35-expanded-arrow-done)" d="M 105 25 L 121 25 L 121 25 L 137 25">
-          <title>汇总: l3a → l4a</title>
+          <title>交付: l3a → l4a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-35-expanded-arrow-done)" d="M 21 89 L 37 89 L 37 57 L 53 57">
-          <title>汇总: l1c → l2b</title>
+          <title>交付: l1c → l2b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-35-expanded-arrow-done)" d="M 16 116 L 16 100 L 58 100 L 58 62">
-          <title>汇总: l1d → l2b</title>
+          <title>交付: l1d → l2b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-35-expanded-arrow-done)" d="M 63 57 L 79 57 L 79 57 L 95 57">
-          <title>汇总: l2b → l3b</title>
+          <title>交付: l2b → l3b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-done orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-35-expanded-arrow-done)" d="M 105 57 L 121 57 L 121 57 L 137 57">
-          <title>汇总: l3b → l4b</title>
+          <title>交付: l3b → l4b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-35-expanded-arrow-current)" d="M 147 25 L 163 25 L 163 25 L 179 25">
-          <title>汇总: l4a → l5</title>
+          <title>交付: l4a → l5</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-35-expanded-arrow-current)" d="M 147 57 L 163 57 L 163 25 L 179 25">
-          <title>汇总: l4b → l5</title>
+          <title>交付: l4b → l5</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-running orch-node-terminal" data-node-id="l5">
     <title>l5 · 执行中</title>
@@ -4456,17 +4456,17 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-36-mini-arrow-current)" d="M 17 26 L 49.2 26 L 49.2 26 L 81.4 26">
-          <title>汇总: a1 → a</title>
+          <title>交付: a1 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-36-mini-arrow-current)" d="M 17 58 L 49.2 58 L 49.2 26 L 81.4 26">
-          <title>汇总: a2 → a</title>
+          <title>交付: a2 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-36-mini-arrow-current)" d="M 17 90 L 49.2 90 L 49.2 58 L 81.4 58">
-          <title>汇总: b1 → b</title>
+          <title>交付: b1 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-36-mini-arrow-current)" d="M 17 122 L 49.2 122 L 49.2 58 L 81.4 58">
-          <title>汇总: b2 → b</title>
+          <title>交付: b2 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-36-mini-arrow-pending)" d="M 91.4 26 L 123.60000000000001 26 L 123.60000000000001 26 L 155.8 26">
-          <title>汇总: a → terminal</title>
+          <title>交付: a → terminal</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-36-mini-arrow-pending)" d="M 91.4 58 L 123.60000000000001 58 L 123.60000000000001 26 L 155.8 26">
-          <title>汇总: b → terminal</title>
+          <title>交付: b → terminal</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="terminal">
     <title>terminal · 待启动</title>
@@ -4516,17 +4516,17 @@
         </marker>
       </defs>
       <g class="orch-graph-edge-layer"><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-36-expanded-arrow-current)" d="M 17 26 L 49.2 26 L 49.2 26 L 81.4 26">
-          <title>汇总: a1 → a</title>
+          <title>交付: a1 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-36-expanded-arrow-current)" d="M 17 58 L 49.2 58 L 49.2 26 L 81.4 26">
-          <title>汇总: a2 → a</title>
+          <title>交付: a2 → a</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-36-expanded-arrow-current)" d="M 17 90 L 49.2 90 L 49.2 58 L 81.4 58">
-          <title>汇总: b1 → b</title>
+          <title>交付: b1 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-current orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-0" marker-end="url(#gallery-36-expanded-arrow-current)" d="M 17 122 L 49.2 122 L 49.2 58 L 81.4 58">
-          <title>汇总: b2 → b</title>
+          <title>交付: b2 → b</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-36-expanded-arrow-pending)" d="M 91.4 26 L 123.60000000000001 26 L 123.60000000000001 26 L 155.8 26">
-          <title>汇总: a → terminal</title>
+          <title>交付: a → terminal</title>
         </path><path class="orch-graph-edge orch-graph-flow orch-flow-pending orch-flow-kind-deliverable orch-flow-op-run" data-step-id="step-1" marker-end="url(#gallery-36-expanded-arrow-pending)" d="M 91.4 58 L 123.60000000000001 58 L 123.60000000000001 26 L 155.8 26">
-          <title>汇总: b → terminal</title>
+          <title>交付: b → terminal</title>
         </path></g>
       <g class="orch-graph-node-layer"><g class="orch-graph-node orch-graph-node-dot orch-status-pending orch-node-terminal" data-node-id="terminal">
     <title>terminal · 待启动</title>

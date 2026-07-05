@@ -260,7 +260,7 @@ describe("gatehouse path permissions", () => {
 
   test("architect allows mission trees but not lead queue", () => {
     const read = architectSessionPermissions.read as Record<string, string>
-    expect(read[".gatehouse/trees/**"]).toBe("allow")
+    expect(read[".gatehouse/missions/**"]).toBe("allow")
     expect(read[".gatehouse/lead/**"]).toBe("deny")
     expect(read[".gatehouse/skills/curator-meta/**"]).toBe("deny")
     expect(read[".gatehouse/en/prompts/architect/**"]).toBe("allow")
@@ -269,7 +269,7 @@ describe("gatehouse path permissions", () => {
   test("curator allows by-domain skills and blocks architect prompts except extract template", () => {
     const read = curatorSessionPermissions.read as Record<string, string>
     expect(read[".gatehouse/skills/by-domain/**"]).toBe("allow")
-    expect(read[".gatehouse/trees/**/mission.script.ts"]).toBe("deny")
+    expect(read[".gatehouse/missions/**/mission.script.ts"]).toBe("deny")
     expect(read[".gatehouse/en/prompts/architect/domain-skill-extract.md"]).toBe("allow")
     expect(read[".gatehouse/en/prompts/architect/**"]).toBe("deny")
     expect(read[".gatehouse/lead/**"]).toBe("deny")
@@ -277,14 +277,14 @@ describe("gatehouse path permissions", () => {
 
   test("retro analyst allows retro summary and context reads only under trees", () => {
     const read = retroAnalystPermissions.read as Record<string, string>
-    expect(read[".gatehouse/trees/**/context/**"]).toBe("allow")
-    expect(read[".gatehouse/trees/**/reports/retro-summary.md"]).toBe("allow")
+    expect(read[".gatehouse/missions/**/context/**"]).toBe("allow")
+    expect(read[".gatehouse/missions/**/reports/retro-summary.md"]).toBe("allow")
     expect(read[".gatehouse/**"]).toBe("deny")
   })
 
   test("extract profile allows skill pipeline paths only", () => {
     const read = buildExtractPermissions.read as Record<string, string>
-    expect(read[".gatehouse/trees/**/reports/skills/**"]).toBe("allow")
+    expect(read[".gatehouse/missions/**/reports/skills/**"]).toBe("allow")
     expect(read[".gatehouse/skills/by-domain/**"]).toBe("allow")
     expect(read[".gatehouse/**"]).toBe("deny")
   })

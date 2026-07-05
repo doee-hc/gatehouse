@@ -1,15 +1,17 @@
 import { describe, expect, test } from "bun:test"
 import { compileOrchestrationPlan } from "../src/orchestration/plan-compile.ts"
 import {
+  acceptanceLayerNodeIds,
   inferTerminalNodeFromPlan,
   listPlanRunActivations,
+  planLeafNodeIds,
   upstreamDependsOnNodes,
 } from "../src/orchestration/plan-graph.ts"
 import { validateReworkRequest } from "../src/orchestration/rework.ts"
 import { initOrchestrationState } from "../src/orchestration/state.ts"
-import type { TeamSpec } from "../src/tree/types.ts"
+import type { MissionTeamSpec } from "../src/missions/manifest/types.ts"
 
-const team: TeamSpec = {
+const team: MissionTeamSpec = {
   mission_id: "m1",
   terminal: "a",
   nodes: {
@@ -41,7 +43,7 @@ describe("plan-graph", () => {
     expect(inferTerminalNodeFromPlan(plan)).toBe("a")
   })
 
-  test("inferTerminalNodeFromPlan handles parallel then final rollup", () => {
+  test("inferTerminalNodeFromPlan handles parallel then final synthesis", () => {
     const plan = compile(`
   await ctx.parallel([
     async () => {
@@ -69,6 +71,38 @@ describe("plan-graph", () => {
     const activations = listPlanRunActivations(plan)
     expect(activations).toHaveLength(2)
     expect(upstreamDependsOnNodes(plan, "a")).toEqual(new Set(["b"]))
+  })
+
+  test("acceptanceLayerNodeIds lists nodes with deliverable dependsOn", () => {
+    const multiTeam: MissionTeamSpec = {
+      mission_id: "m1",
+      terminal: "terminal",
+      nodes: {
+        terminal: { description: "terminal" },
+        a: { description: "track synthesis" },
+        leaf: { description: "leaf" },
+      },
+    }
+    const plan = compileOrchestrationPlan({
+      missionId: "m1",
+      team: multiTeam,
+      orchestrateSource: `
+  await ctx.run("leaf", { brief: { your_work: ["leaf"], acceptance_slice: [] }, text: "go" })
+  await ctx.run("a", {
+    brief: { your_work: ["a"], acceptance_slice: [] },
+    text: "join",
+    dependsOn: [{ node: "leaf", deliverable: true }],
+  })
+  await ctx.run("terminal", {
+    brief: { your_work: ["final"], acceptance_slice: [] },
+    text: "final",
+    dependsOn: [{ node: "a", deliverable: true }],
+  })
+`,
+      scriptHash: "hash",
+    })
+    expect([...acceptanceLayerNodeIds(plan)].sort()).toEqual(["a", "terminal"])
+    expect(planLeafNodeIds(multiTeam, plan)).toEqual(["leaf"])
   })
 })
 

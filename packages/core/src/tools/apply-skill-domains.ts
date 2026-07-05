@@ -1,8 +1,8 @@
 import { tool, type PluginInput } from "@opencode-ai/plugin"
 import { getRegistryStore } from "../registry/context.ts"
-import { readManifest, writeManifest } from "../tree/store.ts"
+import { readMissionManifest, writeMissionManifest } from "../missions/manifest/store.ts"
 import { resolveTeamSource } from "../orchestration/resolve-team.ts"
-import { runBootstrapTree } from "../tree/bootstrap-run.ts"
+import { bootstrapMission } from "../missions/bootstrap.ts"
 import { skillDomainContextNote } from "../retro/skill-kickoff.ts"
 import { selectSkillsForTask, formatRetrievedSkillCatalog } from "../skills/retrieval.ts"
 import { readLocaleSync } from "../locale.ts"
@@ -39,7 +39,7 @@ export function applySkillDomainsTool(input: PluginInput) {
 
         await ensureSkillDomainDirs(input.directory, skillDomainIdsFromAssignments(assignments))
 
-        const manifest = await readManifest(input.directory, missionId)
+        const manifest = await readMissionManifest(input.directory, missionId)
         if (!manifest) {
           const resolved = await resolveTeamSource(input.directory, missionId)
           if (!resolved) {
@@ -61,7 +61,7 @@ export function applySkillDomainsTool(input: PluginInput) {
             node.skill_domain = domainValue.trim()
           }
           const contract = readActiveMissionContract(input.directory, missionId)
-          const bootstrap = await runBootstrapTree(input, spec, {
+          const bootstrap = await bootstrapMission(input, spec, {
             objective: contract?.objective,
           })
           return {
@@ -104,7 +104,7 @@ export function applySkillDomainsTool(input: PluginInput) {
           if (result.status === "sent" || result.status === "queued") delivered += 1
         }
 
-        await writeManifest(input.directory, manifest)
+        await writeMissionManifest(input.directory, manifest)
         registry.syncInnerFromManifest(manifest)
         await registry.flushPendingDeliveries()
 

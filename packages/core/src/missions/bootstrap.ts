@@ -1,16 +1,17 @@
 import type { PluginInput } from "@opencode-ai/plugin"
 import { getRegistryStore } from "../registry/context.ts"
+import { INNER_EXECUTION_AGENT } from "../registry/types.ts"
 import { manifestExportPath, nodeDisplayLabel } from "../paths.ts"
-import { validateTeamSpec, resolveInnerProfile } from "./parse.ts"
-import { readManifest, upsertTreesIndex, writeManifest } from "./store.ts"
-import type { TeamSpec, TreeManifest } from "./types.ts"
-import { loadGatehouseConfig } from "../gatehouse-config.ts"
-import { modelForInnerNode } from "./parse.ts"
+// missions/bootstrap.ts — do not confuse with missions/store.ts (missions.yaml queue)
+import { validateMissionTeamSpec } from "./manifest/team-spec.ts"
+import { readMissionManifest, writeMissionManifest } from "./manifest/store.ts"
+import type { MissionTeamSpec, MissionManifest } from "./manifest/types.ts"
+import { loadGatehouseConfig, modelForInnerProfile } from "../gatehouse-config.ts"
 import { createSession, promptSession } from "../session/client.ts"
 import { readAgentNamesSync } from "../names.ts"
-import { readActiveMissionContract } from "../missions/contract.ts"
-import { readMissionsDocument } from "../missions/store.ts"
-import { assertMissionRunning } from "../missions/parse.ts"
+import { readActiveMissionContract } from "./contract.ts"
+import { readMissionsDocument } from "./store.ts"
+import { assertMissionRunning } from "./parse.ts"
 import { scheduleOfficeLayoutSync } from "../portal/office-layout-schedule.ts"
 import { buildBootstrapSystemForNode } from "../execution/node-session.ts"
 import { readNodeBriefRegistry } from "../execution/artifacts.ts"
@@ -18,7 +19,7 @@ import { loadMissionScript } from "../orchestration/script-load.ts"
 import { resolveTerminalNode, teamNodeOrder } from "../orchestration/plan-graph.ts"
 import { prepareOrchestrationRuntime, startOrchestrationRuntime } from "../orchestration/runtime.ts"
 
-export type BootstrapRunResult = {
+export type MissionBootstrapResult = {
   mission_id: string
   terminal_node: string
   terminal_session_id: string
@@ -27,16 +28,16 @@ export type BootstrapRunResult = {
   orchestration_runtime?: Awaited<ReturnType<typeof startOrchestrationRuntime>>
 }
 
-export async function runBootstrapTree(
+export async function bootstrapMission(
   input: PluginInput,
-  spec: TeamSpec,
+  spec: MissionTeamSpec,
   options?: { objective?: string },
 ) {
-  const existing = await readManifest(input.directory, spec.mission_id)
+  const existing = await readMissionManifest(input.directory, spec.mission_id)
   if (existing) throw new Error(`Mission ${spec.mission_id} already bootstrapped`)
 
   assertMissionRunning(await readMissionsDocument(input.directory), spec.mission_id)
-  validateTeamSpec(spec)
+  validateMissionTeamSpec(spec)
 
   const script = await loadMissionScript(input.directory, spec.mission_id)
   if (!script) {
@@ -47,16 +48,16 @@ export async function runBootstrapTree(
   }
 
   const createdAt = new Date().toISOString()
-  const nodes: TreeManifest["nodes"] = {}
+  const nodes: MissionManifest["nodes"] = {}
   const sessionByNode = new Map<string, string>()
   const models = loadGatehouseConfig(input.directory).models
   const contract = readActiveMissionContract(input.directory, spec.mission_id)
 
   for (const nodeId of teamNodeOrder(spec, script.plan)) {
     const specNode = spec.nodes[nodeId]
-    if (!specNode) throw new Error(`TeamSpec missing node ${nodeId}`)
-    const profile = resolveInnerProfile(spec, nodeId)
-    const model = modelForInnerNode(models, script.plan, nodeId)
+    if (!specNode) throw new Error(`MissionTeamSpec missing node ${nodeId}`)
+    const profile = INNER_EXECUTION_AGENT
+    const model = modelForInnerProfile(models, profile)
     const display_name = nodeDisplayLabel(nodeId)
     const sessionId = await createSession(input.client, input.directory, {
       display_name,
@@ -96,23 +97,14 @@ export async function runBootstrapTree(
     )
   }
 
-  const manifest: TreeManifest = {
+  const manifest: MissionManifest = {
     mission_id: spec.mission_id,
     status: "running",
     terminal_node: terminalNode,
     created_at: createdAt,
     nodes,
   }
-  await writeManifest(input.directory, manifest)
-  const objective = options?.objective ?? contract?.objective
-  await upsertTreesIndex(input.directory, {
-    mission_id: spec.mission_id,
-    terminal_session_id: nodes[terminalNode]?.session_id ?? "",
-    terminal_node: terminalNode,
-    status: "running",
-    created_at: createdAt,
-    ...(objective && { objective }),
-  })
+  await writeMissionManifest(input.directory, manifest)
   const registry = await getRegistryStore(input)
   registry.syncInnerFromManifest(manifest)
 

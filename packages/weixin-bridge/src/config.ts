@@ -1,5 +1,4 @@
 import path from "node:path"
-import { existsSync } from "node:fs"
 import { resolveChannelStateDir } from "@gatehouse/core/channels"
 import type { WeixinBridgeConfig } from "./ilink/types.ts"
 
@@ -21,10 +20,7 @@ function readEnvInt(name: string, fallback: number) {
 }
 
 function resolveWeixinStateDir(projectDir: string) {
-  const stateDir = resolveChannelStateDir(projectDir, "weixin")
-  const legacyDir = path.join(projectDir, ".gatehouse", "weixin-bridge")
-  if (!existsSync(stateDir) && existsSync(legacyDir)) return legacyDir
-  return stateDir
+  return resolveChannelStateDir(projectDir, "weixin")
 }
 
 export function loadConfig(): WeixinBridgeConfig {

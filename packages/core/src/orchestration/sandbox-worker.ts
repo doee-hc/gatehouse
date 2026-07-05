@@ -1,4 +1,4 @@
-import type { TeamSpec } from "../tree/types.ts"
+import type { MissionTeamSpec } from "../missions/manifest/types.ts"
 import { createSandboxMissionContext } from "./sandbox-ctx.ts"
 import { replayPlanSteps } from "./plan-replay-runner.ts"
 import type { SandboxInitMessage, SandboxRpcRequest, SandboxRpcResponse, SandboxWorkerOutbound } from "./sandbox-protocol.ts"

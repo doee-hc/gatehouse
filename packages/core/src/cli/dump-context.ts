@@ -29,7 +29,7 @@ Usage:
 Options:
   -C, --project <dir>       Gatehouse project root (default: cwd)
   --mission <id>            Mission id (default: portal/active-mission.yaml)
-  --inner                   Dump inner execution tree to .gatehouse/trees/<id>/context/
+  --inner                   Dump inner execution team to .gatehouse/missions/<id>/context/
   --outer                   Dump outer agents to .gatehouse/internal/debug/sessions/<id>/
   --all                     Dump inner and outer (default)
   --force                   Re-dump inner context even if index.json exists

@@ -10,8 +10,8 @@ import type {
 import { sessionRuntimeStatus, sessionStatusById, type SessionRuntimeStatus } from "../session/status.ts"
 import { orchestrationProblemNodeIds, readOrchestrationState } from "../orchestration/state.ts"
 import type { OrchestrationState } from "../orchestration/types.ts"
-import { readManifest, readRetroManifest } from "../tree/store.ts"
-import type { TreeManifest } from "../tree/types.ts"
+import { readMissionManifest, readRetroManifest } from "../missions/manifest/store.ts"
+import type { MissionManifest } from "../missions/manifest/types.ts"
 import { registerWatchdogDeliveryHandler, registerWatchdogSendHandler } from "./notify.ts"
 import {
   loadWatchdogNodeWakePrompt,
@@ -66,7 +66,7 @@ export async function checkExecutionWatchdogMission(input: {
   pluginInput: PluginInput
   registry: RegistryStore
   missionId: string
-  manifest: TreeManifest
+  manifest: MissionManifest
   orchState: OrchestrationState
   statusMap: Map<string, SessionRuntimeStatus>
   now: number
@@ -158,7 +158,7 @@ export async function checkExecutionWatchdogMission(input: {
 
 const stopByDirectory = new Map<string, () => void>()
 
-export class ExecutionTreeWatchdog {
+export class MissionWatchdog {
   private tickTail: Promise<void> = Promise.resolve()
 
   constructor(
@@ -231,7 +231,7 @@ export class ExecutionTreeWatchdog {
     statusMap: Map<string, SessionRuntimeStatus>,
     now: number,
   ) {
-    const manifest = await readManifest(this.input.directory, missionId)
+    const manifest = await readMissionManifest(this.input.directory, missionId)
     if (!manifest || manifest.status !== "running") {
       deleteMissionWatchState(this.input.directory, missionId)
       return
@@ -277,7 +277,7 @@ export class ExecutionTreeWatchdog {
   }
 }
 
-export function startExecutionTreeWatchdog(
+export function startMissionWatchdog(
   input: PluginInput,
   registry: RegistryStore,
   timing: {
@@ -286,7 +286,7 @@ export function startExecutionTreeWatchdog(
   },
 ) {
   stopByDirectory.get(input.directory)?.()
-  const stop = new ExecutionTreeWatchdog(
+  const stop = new MissionWatchdog(
     input,
     registry,
     timing.execution,

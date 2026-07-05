@@ -13,27 +13,27 @@ import { loadCuratorSkillAssignKickoff } from "../src/curator/prompt.ts"
 import { loadWatchdogNodeWakePrompt } from "../src/watchdog/prompt.ts"
 import { loadRetroKickoffPrompt } from "../src/retro/prompt.ts"
 import {
-  formatAcceptanceSubtreeSnapshot,
-  formatTeamSpecAssignmentSummary,
+  formatAcceptanceBranchSnapshot,
+  formatMissionTeamSpecAssignmentSummary,
 } from "../src/dispatch/team-snapshot.ts"
 import { retroAnalysisNodeOrder } from "../src/retro/analysis-order.ts"
 import { formatSkillDomainsRegistry } from "../src/skills/domains.ts"
-import { parseTeamSpec, parseTreeManifest } from "../src/tree/parse.ts"
+import { sampleMissionManifest, sampleMissionTeamSpec } from "./helpers/mission-fixtures.ts"
 import type { OrchestrationPlan } from "../src/orchestration/plan-types.ts"
 import { copyExampleMission } from "./copy-example-mission.ts"
 import { seedTerminalPlan } from "./seed-terminal-plan.ts"
 
 const scaffoldScript = path.join(import.meta.dir, "../script/scaffold.ts")
 
-const teamSpecYaml = `
-mission_id: core-example-smoke-v1
-root: node-root
-nodes:
-  node-root:
-    description: Mission 汇总节点，汇总验收 node-doc 交付并向上汇报
-  node-doc:
-    description: 文档执行成员
-`
+const exampleTeamSpec = () =>
+  sampleMissionTeamSpec({
+    mission_id: "core-example-smoke-v1",
+    terminal: "node-root",
+    nodes: {
+      "node-root": { description: "Mission 汇总节点，汇总验收 node-doc 交付并向上汇报" },
+      "node-doc": { description: "文档执行成员" },
+    },
+  })
 
 describe("prompt snapshot injections", () => {
   test("formatMissionStartedMessage embeds contract block", async () => {
@@ -58,7 +58,7 @@ describe("prompt snapshot injections", () => {
     try {
       await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
       await copyExampleMission(dir)
-      const spec = parseTeamSpec(teamSpecYaml)
+      const spec = exampleTeamSpec()
       const prompt = await loadCuratorSkillAssignKickoff(dir, {
         missionId: "core-example-smoke-v1",
         spec,
@@ -97,17 +97,14 @@ describe("prompt snapshot injections", () => {
     try {
       await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
       const missionId = "retro-m1"
-      const manifest = parseTreeManifest(`
-mission_id: ${missionId}
-status: running
-terminal_node: node-root
-created_at: "2026-01-01T00:00:00.000Z"
-nodes:
-  node-root:
-    session_id: s1
-  node-doc:
-    session_id: s2
-`)
+      const manifest = sampleMissionManifest({
+        mission_id: missionId,
+        terminal_node: "node-root",
+        nodes: {
+          "node-root": { session_id: "s1", profile: "build" },
+          "node-doc": { session_id: "s2", profile: "build" },
+        },
+      })
       const prompt = await loadRetroKickoffPrompt(dir, {
         missionId,
         manifest,
@@ -126,7 +123,7 @@ nodes:
       expect(prompt).toContain("node-doc")
       expect(prompt).toContain("node-root")
       expect(prompt).not.toContain("{{retro_context_snapshot}}")
-      expect(prompt).toContain(".gatehouse/trees/retro-m1/context/")
+      expect(prompt).toContain(".gatehouse/missions/retro-m1/context/")
       expect(prompt).toContain("retro-summary.md")
       expect(prompt).toContain("编排脚本顺序")
     } finally {
@@ -231,8 +228,8 @@ nodes:
     }
   })
 
-  test("formatAcceptanceSubtreeSnapshot covers rollup node branch", () => {
-    const spec = parseTeamSpec(teamSpecYaml)
+  test("formatAcceptanceBranchSnapshot covers acceptance layer node branch", () => {
+    const spec = exampleTeamSpec()
     const plan: OrchestrationPlan = {
       schema_version: 1,
       mission_id: "core-example-smoke-v1",
@@ -249,15 +246,15 @@ nodes:
         },
       ],
     }
-    const snapshot = formatAcceptanceSubtreeSnapshot(spec, plan, "node-root", "zh")
+    const snapshot = formatAcceptanceBranchSnapshot(spec, plan, "node-root", "zh")
     expect(snapshot).toContain("node-root")
     expect(snapshot).toContain("node-doc")
-    expect(snapshot).toContain("子树快照")
+    expect(snapshot).toContain("分支快照")
   })
 
-  test("formatTeamSpecAssignmentSummary lists node descriptions", () => {
-    const spec = parseTeamSpec(teamSpecYaml)
-    const summary = formatTeamSpecAssignmentSummary(spec, "zh")
+  test("formatMissionTeamSpecAssignmentSummary lists node descriptions", () => {
+    const spec = exampleTeamSpec()
+    const summary = formatMissionTeamSpecAssignmentSummary(spec, "zh")
     expect(summary).toContain("Mission 汇总节点，汇总验收 node-doc 交付并向上汇报")
     expect(summary).toContain("文档执行成员")
   })

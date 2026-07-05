@@ -147,7 +147,7 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
               </For>
             </box>
           </Show>
-          <For each={state()?.trees}>
+          <For each={state()?.teams}>
             {(tree) => (
               <box marginTop={1}>
                 <text fg={theme().textMuted}>

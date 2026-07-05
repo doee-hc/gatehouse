@@ -4,13 +4,13 @@ import { requireActiveMissionContract } from "../missions/contract.ts"
 import { gatehouseMessage } from "../i18n.ts"
 import { DEFAULT_GATEHOUSE_LOCALE, readLocaleSync, type GatehouseLocale } from "../locale.ts"
 import { defaultAgentNames, readAgentNamesSync, renderGatehouseTemplate, type OuterProfile } from "../names.ts"
-import { formatTeamSpecAssignmentSummary } from "../dispatch/team-snapshot.ts"
+import { formatMissionTeamSpecAssignmentSummary } from "../dispatch/team-snapshot.ts"
 import { formatSkillDomainsRegistry, readSkillDomainsRegistry } from "../skills/domains.ts"
-import type { TeamSpec } from "../tree/types.ts"
+import type { MissionTeamSpec } from "../missions/manifest/types.ts"
 
 export async function loadCuratorSkillAssignKickoff(
   projectDirectory: string,
-  input: { missionId: string; objective?: string; spec: TeamSpec },
+  input: { missionId: string; objective?: string; spec: MissionTeamSpec },
 ) {
   const locale = readLocaleSync(projectDirectory)
   const contract = requireActiveMissionContract(projectDirectory, input.missionId)
@@ -26,7 +26,7 @@ export async function loadCuratorSkillAssignKickoff(
       input.objective ?? contract.objective ?? gatehouseMessage("mission.objectiveMissing", locale),
     )
     .replaceAll("{{mission_contract}}", formatMissionContractForRole(contract, locale, "curator"))
-    .replaceAll("{{team_structure_summary}}", formatTeamSpecAssignmentSummary(input.spec, locale))
+    .replaceAll("{{team_structure_summary}}", formatMissionTeamSpecAssignmentSummary(input.spec, locale))
     .replaceAll("{{domains_registry}}", formatSkillDomainsRegistry(domains, locale))
 }
 

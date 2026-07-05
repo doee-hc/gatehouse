@@ -1,5 +1,5 @@
 import type { PluginInput } from "@opencode-ai/plugin"
-import { formatAcceptanceSubtreeSnapshot } from "../dispatch/team-snapshot.ts"
+import { formatAcceptanceBranchSnapshot } from "../dispatch/team-snapshot.ts"
 import { gatehouseMessage } from "../i18n.ts"
 import type { GatehouseLocale } from "../locale.ts"
 import { readLocaleSync } from "../locale.ts"
@@ -7,7 +7,7 @@ import type { MissionContract } from "../missions/contract.ts"
 import type { RegistryStore } from "../registry/store.ts"
 import { innerAgentId } from "../registry/types.ts"
 import { promptSession } from "../session/client.ts"
-import type { TeamSpec } from "../tree/types.ts"
+import type { MissionTeamSpec } from "../missions/manifest/types.ts"
 import type { OrchestrationPlan } from "../orchestration/plan-types.ts"
 import { planChildNodeIds } from "../orchestration/plan-graph.ts"
 import { skillDomainContextNote } from "../retro/skill-kickoff.ts"
@@ -33,13 +33,13 @@ export function buildInnerBootstrapSystem(input: {
   description: string
   locale: GatehouseLocale
   contract?: MissionContract
-  acceptanceSubtree?: string
+  acceptanceBranchSnapshot?: string
   skillDomainNote?: string
   brief?: NodeBrief
 }) {
   const parts = [formatNodeRoleBlock(input.nodeId, input.description, input.locale)]
   if (input.skillDomainNote?.trim()) parts.push(input.skillDomainNote.trim())
-  if (input.acceptanceSubtree?.trim()) parts.push(input.acceptanceSubtree.trim())
+  if (input.acceptanceBranchSnapshot?.trim()) parts.push(input.acceptanceBranchSnapshot.trim())
   if (input.contract) parts.push(formatMissionContextBlock(input.contract, input.locale))
   if (input.brief) parts.push(formatNodeBriefBlock(input.brief, input.locale))
   return parts.join("\n\n")
@@ -47,7 +47,7 @@ export function buildInnerBootstrapSystem(input: {
 
 export async function buildBootstrapSystemForNode(input: {
   projectDirectory: string
-  spec: TeamSpec
+  spec: MissionTeamSpec
   plan: OrchestrationPlan
   nodeId: string
   contract?: MissionContract
@@ -55,7 +55,7 @@ export async function buildBootstrapSystemForNode(input: {
   brief?: NodeBrief
 }) {
   const specNode = input.spec.nodes[input.nodeId]
-  if (!specNode) throw new Error(`TeamSpec missing node ${input.nodeId}`)
+  if (!specNode) throw new Error(`MissionTeamSpec missing node ${input.nodeId}`)
 
   const locale = readLocaleSync(input.projectDirectory)
   const retrievalQuery = [
@@ -80,8 +80,8 @@ export async function buildBootstrapSystemForNode(input: {
     : undefined
 
   const isAcceptanceLayerNode = planChildNodeIds(input.plan, input.nodeId).length > 0
-  const acceptanceSubtree = isAcceptanceLayerNode
-    ? formatAcceptanceSubtreeSnapshot(input.spec, input.plan, input.nodeId, locale)
+  const acceptanceBranchSnapshot = isAcceptanceLayerNode
+    ? formatAcceptanceBranchSnapshot(input.spec, input.plan, input.nodeId, locale)
     : undefined
 
   return buildInnerBootstrapSystem({
@@ -89,7 +89,7 @@ export async function buildBootstrapSystemForNode(input: {
     description: specNode.description,
     locale,
     ...(input.contract && { contract: input.contract }),
-    ...(acceptanceSubtree && { acceptanceSubtree }),
+    ...(acceptanceBranchSnapshot && { acceptanceBranchSnapshot }),
     ...(skillDomainNote && { skillDomainNote }),
     ...(input.brief && { brief: input.brief }),
   })

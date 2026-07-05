@@ -9,6 +9,6 @@ Delivery v{{from_version}} did not pass acceptance. Re-orchestrate `mission.scri
 ## Act now
 
 1. 调用 `gatehouse_mission_info` 查看任务快照与当前执行进度（已完成节点、基线等）。
-2. Update `.gatehouse/trees/{{mission_id}}/mission.script.ts` to cover **only the revision** (skip `done` leaves; reference their output via `dependsOn` in later steps).
+2. Update `.gatehouse/missions/{{mission_id}}/mission.script.ts` to cover **only the revision** (skip `done` leaves; reference their output via `dependsOn` in later steps).
 3. Save, then **`gatehouse_submit_orchestration(mode=continue)`**.
-4. If topology adds nodes, ensure new nodes have `skill_domain` assigned before `prompt`.
+4. 若脚本新增节点，须在 `ctx.run` 激活前由 curator 通过 `gatehouse_apply_skill_domains` 分配 `skill_domain`。

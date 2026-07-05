@@ -48,7 +48,7 @@ cd /path/to/project && opencode
     ↓
 确认任务（写入 `missions.yaml` 队列）
     ↓
-Lead 启动任务 → Architect 编排执行树 → 内层 agent 执行
+Lead 启动任务 → Architect 编排执行团队 → 内层 agent 执行
     ↓
 验收 → 复盘 → 技能沉淀
     ↓

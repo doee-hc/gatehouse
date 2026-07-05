@@ -1,4 +1,4 @@
-import { cpSync, existsSync, lstatSync, rmSync } from "node:fs"
+import { cpSync, existsSync } from "node:fs"
 import path from "node:path"
 import { readLocaleSync, type GatehouseLocale } from "../locale.ts"
 import { gatehouseLocaleRoot, gatehouseRoot } from "../paths.ts"
@@ -15,7 +15,7 @@ function metaSkillCopyDest(projectDirectory: string, skillName: string) {
 /**
  * Copy `.gatehouse/<locale>/skills/<name>` → `.gatehouse/skills/<name>` so OpenCode's
  * `skills.paths: [".gatehouse"]` glob finds meta skills. Skips when the destination
- * already exists (user overrides). Replaces legacy symlinks from older Gatehouse versions.
+ * already exists (user overrides).
  */
 export function ensureMetaSkillCopies(projectDirectory: string, locale?: GatehouseLocale) {
   const loc = locale ?? readLocaleSync(projectDirectory)
@@ -25,13 +25,7 @@ export function ensureMetaSkillCopies(projectDirectory: string, locale?: Gatehou
     if (!existsSync(path.join(source, "SKILL.md"))) continue
 
     const dest = metaSkillCopyDest(projectDirectory, name)
-    if (existsSync(dest)) {
-      if (lstatSync(dest).isSymbolicLink()) {
-        rmSync(dest)
-        cpSync(source, dest, { recursive: true })
-      }
-      continue
-    }
+    if (existsSync(dest)) continue
 
     cpSync(source, dest, { recursive: true })
   }

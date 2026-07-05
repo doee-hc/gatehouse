@@ -7,11 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** remove legacy **tree / 执行树** terminology — execution team manifests use `MissionManifest`; mission artifacts live under `.gatehouse/missions/<id>/`; SQLite tables renamed (`registry_execution`, `registry_execution_node`, `registry_mission_retro`, etc.); Portal snapshot exposes `team` instead of `tree`. No migration — delete `registry.db` and move `.gatehouse/trees/` → `.gatehouse/missions/` manually.
+
 ## [0.2.1](https://github.com/doee-hc/gatehouse/releases/tag/v0.2.1) - 2026-06-15
 
 ### Changed
 
-- **Breaking:** rename **`gatehouse_bootstrap_tree`** → **`gatehouse_submit_orchestration`** — architect submits/validates `mission.script.ts` and kicks off orchestration; execution tree creation remains in `gatehouse_apply_skill_domains` when skill domains need manual assignment.
+- **Breaking:** rename **`gatehouse_bootstrap_tree`** → **`gatehouse_submit_orchestration`** — architect submits/validates `mission.script.ts` and kicks off orchestration; execution team creation remains in `gatehouse_apply_skill_domains` when skill domains need manual assignment.
 - **Autopilot replaces lead user-await** — toggle with TUI `/autopilot` or IM `/autopilot on|off`. When ON and `.gatehouse/lead/direction.yaml` is `status: confirmed`, Lead proceeds without asking after 10 minutes of user idle time. TUI sidebar shows autopilot + direction status.
 
 ### Added
@@ -36,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Mission execution: TeamSpec → orchestration script** — the biggest change in this release. Architect no longer describes the execution team as a standalone TeamSpec and relies on agents to assign work through `gatehouse_send_message`. Instead, each Mission is driven by `.gatehouse/trees/<mission_id>/mission.script.ts`: `export const team` defines the execution tree, and `export default async function orchestrate(ctx)` defines phase order. After `gatehouse_bootstrap_tree`, a sandbox orchestrator runs the script and **injects node briefs and work-order prompts** via `ctx.setBrief`, `ctx.prompt`, and `ctx.waitFor`. The platform owns timing and activation; inner agents start from orchestration-delivered prompts and read scope through `gatehouse_mission_info`. `gatehouse_send_message` is now for peer alignment and small in-flight corrections only — not the primary task-dispatch path.
+- **Mission execution: MissionTeamSpec → orchestration script** — the biggest change in this release. Architect no longer describes the execution team as a standalone MissionTeamSpec and relies on agents to assign work through `gatehouse_send_message`. Instead, each Mission is driven by `.gatehouse/missions/<mission_id>/mission.script.ts`: `export const team` defines the execution team, and `export default async function orchestrate(ctx)` defines phase order. After `gatehouse_bootstrap_tree`, a sandbox orchestrator runs the script and **injects node briefs and work-order prompts** via `ctx.setBrief`, `ctx.prompt`, and `ctx.waitFor`. The platform owns timing and activation; inner agents start from orchestration-delivered prompts and read scope through `gatehouse_mission_info`. `gatehouse_send_message` is now for peer alignment and small in-flight corrections only — not the primary task-dispatch path.
 - **IM channels merged into `@gatehouse/core`** — channel bridge logic now lives at `@gatehouse/core/channels` (`packages/core/src/channels/`).
 - **OpenCode channels plugin** — `@gatehouse/core/channels/plugin` in project `opencode.jsonc`.
 - **Docs** — unified IM guide: [docs/guide/channels.md](./docs/guide/channels.md) / [docs/guide/channels.zh.md](./docs/guide/channels.zh.md); installation docs list all synced agent files; [PUBLISH.md](./packages/core/docs/PUBLISH.md) recommends `bunx install` over `opencode plug`.

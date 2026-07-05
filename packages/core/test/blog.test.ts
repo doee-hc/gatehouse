@@ -44,7 +44,7 @@ missions:
   )
 
   await write(
-    ".gatehouse/trees/mission-old/manifest.yaml",
+    ".gatehouse/missions/mission-old/manifest.yaml",
     `mission_id: mission-old
 status: archived
 terminal_node: root
@@ -61,7 +61,7 @@ nodes:
   )
 
   await write(
-    ".gatehouse/trees/mission-new/manifest.yaml",
+    ".gatehouse/missions/mission-new/manifest.yaml",
     `mission_id: mission-new
 status: archived
 terminal_node: root
@@ -78,11 +78,11 @@ nodes:
   )
 
   await write(".gatehouse/lead/reports/mission-old/report.md", "# 旧任务验收\n\nlead 汇报。")
-  await write(".gatehouse/trees/mission-old/reports/architect-summary.md", "# 旧任务复盘\n\narchitect 汇总。")
-  await write(".gatehouse/trees/mission-old/reports/retro-summary.md", "# 旧任务 retro 汇总\n\nretro analyst。")
+  await write(".gatehouse/missions/mission-old/reports/architect-summary.md", "# 旧任务复盘\n\narchitect 汇总。")
+  await write(".gatehouse/missions/mission-old/reports/retro-summary.md", "# 旧任务 retro 汇总\n\nretro analyst。")
 
   await write(".gatehouse/lead/reports/mission-new/report.md", "# 新任务验收\n\n最新汇报。")
-  await write(".gatehouse/trees/mission-new/reports/retro-summary.md", "# 新任务 retro 汇总\n\n最新 retro。")
+  await write(".gatehouse/missions/mission-new/reports/retro-summary.md", "# 新任务 retro 汇总\n\n最新 retro。")
   await write(".gatehouse/lead/reports/mission-running/report.md", "# 进行中汇报\n\nrunning。")
 
   await publishBlogPost(dir, {
@@ -91,7 +91,7 @@ nodes:
   })
   await publishBlogPost(dir, {
     postId: "mission-new:retro:summary",
-    reportPath: ".gatehouse/trees/mission-new/reports/retro-summary.md",
+    reportPath: ".gatehouse/missions/mission-new/reports/retro-summary.md",
   })
   await publishBlogPost(dir, {
     postId: "mission-old:lead:report",
@@ -99,11 +99,11 @@ nodes:
   })
   await publishBlogPost(dir, {
     postId: "mission-old:architect:summary",
-    reportPath: ".gatehouse/trees/mission-old/reports/architect-summary.md",
+    reportPath: ".gatehouse/missions/mission-old/reports/architect-summary.md",
   })
   await publishBlogPost(dir, {
     postId: "mission-old:retro:summary",
-    reportPath: ".gatehouse/trees/mission-old/reports/retro-summary.md",
+    reportPath: ".gatehouse/missions/mission-old/reports/retro-summary.md",
   })
   await publishBlogPost(dir, {
     postId: "mission-running:lead:report",

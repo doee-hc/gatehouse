@@ -7,7 +7,7 @@ import {
   resolveSkillDomainAssignments,
 } from "../src/skills/resolve-assignments.ts"
 import type { OrchestrationPlan } from "../src/orchestration/plan-types.ts"
-import type { TeamSpec } from "../src/tree/types.ts"
+import type { MissionTeamSpec } from "../src/missions/manifest/types.ts"
 
 describe("plan step compile", () => {
   test("wrapPlanStepStatement keeps replay wrapper valid when chunk ends with // comment", () => {
@@ -22,11 +22,11 @@ describe("plan step compile", () => {
 })
 
 describe("skill domain auto resolve", () => {
-  const surveyTeam: TeamSpec = {
+  const surveyTeam: MissionTeamSpec = {
     mission_id: "m1",
-    terminal: "coordinator",
+    terminal: "terminal",
     nodes: {
-      coordinator: { description: "coord" },
+      terminal: { description: "synthesis" },
       "researcher-a": { description: "调研 Claude Code 最新动态" },
       "researcher-b": { description: "调研 Cursor 最新动态" },
     },
@@ -49,8 +49,8 @@ describe("skill domain auto resolve", () => {
         id: "step-2",
         op: "run",
         statement:
-          'await ctx.run("coordinator", { text: "summary", dependsOn: [{ node: "researcher-a", deliverable: true }, { node: "researcher-b", deliverable: true }] })',
-        nodeId: "coordinator",
+          'await ctx.run("terminal", { text: "summary", dependsOn: [{ node: "researcher-a", deliverable: true }, { node: "researcher-b", deliverable: true }] })',
+        nodeId: "terminal",
       },
     ],
   }
@@ -76,7 +76,7 @@ describe("skill domain auto resolve", () => {
   })
 
   test("resolveSkillDomainAssignments stays undefined when leaf domain is ambiguous", () => {
-    const team: TeamSpec = {
+    const team: MissionTeamSpec = {
       mission_id: "m1",
       terminal: "terminal",
       nodes: {

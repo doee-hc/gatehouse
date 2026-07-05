@@ -10,8 +10,8 @@ export const team = {
   terminal: "terminal",
   nodes: {
     terminal: { description: "root" },
-    a: { description: "a coord" },
-    b: { description: "b coord" },
+    a: { description: "track a synthesis" },
+    b: { description: "track b synthesis" },
     a1: { description: "a1" },
     b1: { description: "b1" },
   },
@@ -99,7 +99,7 @@ export default async function orchestrate(ctx) {
     expect(result.code).toBe("SCRIPT_MISSING_BRIEF")
   })
 
-  test("warns on cross-subtree dependsOn deliverable without blocking", () => {
+  test("warns on cross-branch dependsOn deliverable without blocking", () => {
     const team = {
       mission_id: "lint-m1",
       terminal: "a",
@@ -109,7 +109,7 @@ export default async function orchestrate(ctx) {
         b: { description: "b" },
       },
     }
-    const crossRollupPlan = compileOrchestrationPlan({
+    const crossSubtreePlan = compileOrchestrationPlan({
       missionId: "lint-m1",
       team,
       orchestrateSource: `
@@ -117,15 +117,15 @@ await ctx.run("a", { brief: { your_work: ["a"], acceptance_slice: ["done"] }, te
 `,
       scriptHash: "a",
     })
-    const crossRollup = lintOrchestrationScript(
+    const crossSubtree = lintOrchestrationScript(
       team,
-      crossRollupPlan,
+      crossSubtreePlan,
       `
 await ctx.run("a", { brief: { your_work: ["a"], acceptance_slice: ["done"] }, text: "go", dependsOn: [{ node: "b", deliverable: true }] })
 `,
     )
-    expect(crossRollup.errors.some((e) => e.code === "SCRIPT_UNKNOWN_NODE")).toBe(false)
-    expect(crossRollup.warnings.some((w) => w.includes("cross-subtree"))).toBe(false)
+    expect(crossSubtree.errors.some((e) => e.code === "SCRIPT_UNKNOWN_NODE")).toBe(false)
+    expect(crossSubtree.warnings.some((w) => w.includes("cross-branch"))).toBe(false)
 
     const crossAfterPlan = compileOrchestrationPlan({
       missionId: "lint-m1",

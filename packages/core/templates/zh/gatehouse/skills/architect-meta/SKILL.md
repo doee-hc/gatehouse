@@ -19,7 +19,7 @@ disable-model-invocation: true
 | `gatehouse_mission_info`  | 只读刷新任务快照（objective / done_when / must_not / notes / user_topology） |
 | `gatehouse_send_message`     | 协调消息（勿用于复盘/skill 摘要登记）                                              |
 | `gatehouse_retro_summary_record` | 登记 `architect-summary.md`；复盘摘要就绪后 Gatehouse 自动通知 {{lead_name}} |
-| `gatehouse_list_team`        | 无参数：外层 contacts + 当前任务执行树（及 retro 节点若存在）                          |
+| `gatehouse_list_team`        | 无参数：外层 contacts + 当前任务执行团队（及 retro 节点若存在）                          |
 | `gatehouse_session_snapshot` | **单次诊断**（异常排查），禁止循环轮询                                             |
 
 **禁止** `gatehouse_mission_start`、`gatehouse_mission_retro`、`gatehouse_mission_complete`、`gatehouse_apply_skill_domains`。不代替 {{lead_name}} 改任务正文、启动复盘或验收；不分配 skill_domain；执行期不跟进进度、不循环 `session_snapshot` 轮询。
@@ -42,7 +42,7 @@ disable-model-invocation: true
 
 ### 2. 建队
 
-1. 写 `.gatehouse/trees/<id>/mission.script.ts`（团队结构 + 编排时序，一个文件）：
+1. 写 `.gatehouse/missions/<id>/mission.script.ts`（团队结构 + 编排时序，一个文件）：
 
 
 | 导出                                               | 用途                                                                          |
@@ -66,7 +66,7 @@ await ctx.run("researcher-a", {
 })
 ```
 
-**勿写 `profile`** — 执行树创建时由拓扑自动分配 inner profile。
+**勿写 `profile`** — bootstrap 时所有 inner 节点均使用 `build` profile。
 
 ```typescript
 export const team = {
@@ -228,9 +228,9 @@ const results = audited.filter(Boolean)
 
 收到「Retro review ready」通知后：
 
-1. 阅读 `.gatehouse/trees/<id>/reports/retro-summary.md`（retro-analyst 产出）。
+1. 阅读 `.gatehouse/missions/<id>/reports/retro-summary.md`（retro-analyst 产出）。
 2. 审核结论，迭代 **architect-meta** skill。
-3. 按 `architect-summary.template.md` 写 `.gatehouse/trees/<id>/reports/architect-summary.md`。
+3. 按 `architect-summary.template.md` 写 `.gatehouse/missions/<id>/reports/architect-summary.md`。
 4. 调用 **`gatehouse_retro_summary_record`**（勿用 `send_message` 通知 {{lead_name}} 完成摘要登记）。
 
 ## 路径
@@ -238,7 +238,7 @@ const results = audited.filter(Boolean)
 
 | 用途             | 路径                                                                                                        |
 | -------------- | --------------------------------------------------------------------------------------------------------- |
-| 协作脚本 / reports | `.gatehouse/trees/<id>/mission.script.ts` |
+| 协作脚本 / reports | `.gatehouse/missions/<id>/mission.script.ts` |
 | 节点汇报 | 各节点 `gatehouse_execution_complete(summary=...)` |
 | 工单注入上游交付 | `ctx.run` 的 `dependsOn: [{ node: "…", deliverable: true }, …]` |
 | Prompt 模板      | `.gatehouse/<locale>/prompts/architect/`（`<locale>` 见 `config.yaml`）                                      |

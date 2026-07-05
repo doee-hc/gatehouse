@@ -27,11 +27,11 @@ import { createMissionContext } from "../src/orchestration/ctx-host.ts"
 import { saveMissionScriptRecord } from "../src/orchestration/context.ts"
 import { validateReworkRequest } from "../src/orchestration/rework.ts"
 import { notifyOrchestrationWaiters } from "../src/orchestration/wait.ts"
-import type { TeamSpec } from "../src/tree/types.ts"
+import type { MissionTeamSpec } from "../src/missions/manifest/types.ts"
 import { loadMissionScript } from "../src/orchestration/script-load.ts"
 import { startEphemeralServer, startPortalInternalEventCapture, withPortalEnv } from "./portal-test-server.ts"
 
-const sampleTeam: TeamSpec = {
+const sampleTeam: MissionTeamSpec = {
   mission_id: "orch-m1",
   terminal: "terminal",
   nodes: {
@@ -124,7 +124,7 @@ describe("orchestration state", () => {
       }
       const prepared = await prepareOrchestrationRuntime(dir, manifest, {
         team: sampleTeam,
-        scriptPath: ".gatehouse/trees/orch-m1/mission.script.ts",
+        scriptPath: ".gatehouse/missions/orch-m1/mission.script.ts",
         scriptHash: "hash123",
         scriptSource: "export default async function orchestrate(ctx) {}",
         orchestrateSource: "export default async function orchestrate(ctx) {}",
@@ -166,7 +166,7 @@ describe("orchestration state", () => {
       store.registerInnerNode({ missionId: "parallel-m1", nodeId: "a", profile: "build", sessionId: "ses_a" })
       store.registerInnerNode({ missionId: "parallel-m1", nodeId: "b", profile: "build", sessionId: "ses_b" })
 
-      const parallelTeam: TeamSpec = {
+      const parallelTeam: MissionTeamSpec = {
         mission_id: "parallel-m1",
         terminal: "a",
         nodes: {
@@ -246,7 +246,7 @@ describe("mission.script fixture", () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-orch-script-"))
     try {
       const missionId = "core-example-smoke-v1"
-      const destRoot = path.join(dir, ".gatehouse/trees", missionId)
+      const destRoot = path.join(dir, ".gatehouse/missions", missionId)
       await Bun.$`mkdir -p ${destRoot}`.quiet()
       const fixtureScript = path.join(import.meta.dir, "fixtures/core-example-smoke-v1/mission.script.ts")
       await Bun.write(path.join(destRoot, "mission.script.ts"), Bun.file(fixtureScript))

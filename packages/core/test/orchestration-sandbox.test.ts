@@ -23,15 +23,15 @@ describe("mission script sandbox parse", () => {
     const source = `
 export const team = {
   mission_id: "m1",
-  terminal: "coord",
+  terminal: "terminal",
   nodes: {
-    coord: { description: "root" },
+    terminal: { description: "terminal" },
     leaf: { description: "leaf" },
   },
 }
 export default async function orchestrate(ctx) {
   await ctx.run("leaf", { brief: { your_work: ["work"], not_your_job: [], acceptance_slice: ["done"] } })
-  await ctx.run("coord", {
+  await ctx.run("terminal", {
     text: "review",
   })
 }
@@ -40,7 +40,7 @@ export default async function orchestrate(ctx) {
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.code).toBe("SCRIPT_MISSING_BRIEF")
-    expect(result.message).toContain("coord")
+    expect(result.message).toContain("terminal")
   })
 
   test("dryRun rejects gatehouse_publish_blog references", async () => {
@@ -113,7 +113,7 @@ export const team = {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-sandbox-evil-"))
     try {
       const missionId = "evil-m1"
-      const dest = path.join(dir, ".gatehouse/trees", missionId)
+      const dest = path.join(dir, ".gatehouse/missions", missionId)
       await Bun.$`mkdir -p ${dest}`.quiet()
       await Bun.write(path.join(dest, "mission.script.ts"), Bun.file(importFsFixture))
       let thrown: unknown
@@ -132,7 +132,7 @@ export const team = {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-sandbox-smoke-"))
     try {
       const missionId = "core-example-smoke-v1"
-      const dest = path.join(dir, ".gatehouse/trees", missionId)
+      const dest = path.join(dir, ".gatehouse/missions", missionId)
       await Bun.$`mkdir -p ${dest}`.quiet()
       await Bun.write(path.join(dest, "mission.script.ts"), Bun.file(smokeFixture))
       const script = await loadMissionScript(dir, missionId)

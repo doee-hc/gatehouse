@@ -6,7 +6,7 @@ import {
   parseGatehouseModel,
 } from "../gatehouse-config.ts"
 import { DEFAULT_PORTAL_DISPLAY_PORT } from "../portal/defaults.ts"
-import { discoverPortalEndpoints } from "../portal/ports.ts"
+import { probePortalEndpoints } from "../portal/ports.ts"
 import {
   extractOpencodePluginSpecs,
   globalOpencodeAgentPath,
@@ -204,7 +204,7 @@ export async function runGatehouseDoctor(
 
   if (scope === "full" && probe) {
     try {
-      const endpoints = await discoverPortalEndpoints(root)
+      const endpoints = await probePortalEndpoints(root)
       if (endpoints.displayReachable) {
         issues.push({
           level: "ok",

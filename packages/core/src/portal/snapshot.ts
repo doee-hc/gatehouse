@@ -10,7 +10,7 @@ import {
   skillDomainsRegistryPath,
   portalOfficeDir,
 } from "../paths.ts"
-import { readManifest, readTreesIndex } from "../tree/store.ts"
+import { readMissionManifest, readMissionManifestIndex } from "../missions/manifest/store.ts"
 import { isRecord, parseYaml, readString } from "../yaml.ts"
 import { OUTER_PROFILE_SKILL_DIRS } from "../skills/constants.ts"
 import {
@@ -21,7 +21,7 @@ import {
   runningMissionIds,
 } from "../missions/parse.ts"
 import type { RegistryAgent } from "../registry/types.ts"
-import type { TreeManifest } from "../tree/types.ts"
+import type { MissionManifest } from "../missions/manifest/types.ts"
 import { readActiveMission } from "./active-mission.ts"
 import { agentSync } from "./agent-sync.ts"
 import { createPortalDataCache } from "./portal-cache.ts"
@@ -54,7 +54,7 @@ export type PortalSkill = {
   path: string
 }
 
-export type PortalTreeNode = {
+export type PortalMissionNode = {
   node_id: string
   session_id: string
   skill_domain?: string
@@ -77,11 +77,11 @@ export type PortalAgent = {
   lingering?: boolean
 }
 
-export type PortalTree = {
+export type PortalMissionTeam = {
   mission_id: string
   terminal_node: string
   status: string
-  nodes: PortalTreeNode[]
+  nodes: PortalMissionNode[]
 }
 
 export type PortalDirection = {
@@ -102,8 +102,7 @@ export type PortalSnapshot = {
   retro_mission_ids?: string[]
   missions: PortalMission[]
   agents: PortalAgent[]
-  tree?: PortalTree
-  trees?: PortalTree[]
+  team?: PortalMissionTeam
   skills: PortalSkill[]
   session_status: Record<string, string>
   opencode_reachable?: boolean
@@ -176,7 +175,7 @@ async function readSkills(projectDirectory: string) {
   return skills.sort((a, b) => a.domain.localeCompare(b.domain) || a.name.localeCompare(b.name))
 }
 
-function treeNodes(manifest: TreeManifest) {
+function treeNodes(manifest: MissionManifest) {
   return Object.entries(manifest.nodes).map(([node_id, node]) => ({
     node_id,
     session_id: node.session_id,
@@ -186,7 +185,7 @@ function treeNodes(manifest: TreeManifest) {
   }))
 }
 
-function manifestToPortalTree(manifest: TreeManifest): PortalTree {
+function manifestToPortalMissionTeam(manifest: MissionManifest): PortalMissionTeam {
   return {
     mission_id: manifest.mission_id,
     terminal_node: manifest.terminal_node,
@@ -262,14 +261,14 @@ export async function buildPortalSnapshot(projectDirectory: string, opencodeUrl?
   const persistedActive = await readActiveMission(projectDirectory)
   const activeMissionId = resolveActiveMissionId(portalIds, missions, persistedActive)
 
-  let tree: PortalTree | undefined
+  let team: PortalMissionTeam | undefined
   if (activeMissionId) {
-    const manifest = await readManifest(projectDirectory, activeMissionId)
-    if (manifest) tree = manifestToPortalTree(manifest)
+    const manifest = await readMissionManifest(projectDirectory, activeMissionId)
+    if (manifest) team = manifestToPortalMissionTeam(manifest)
   }
-  if (!tree && lingeringMissionId) {
-    const manifest = await readManifest(projectDirectory, lingeringMissionId)
-    if (manifest) tree = manifestToPortalTree(manifest)
+  if (!team && lingeringMissionId) {
+    const manifest = await readMissionManifest(projectDirectory, lingeringMissionId)
+    if (manifest) team = manifestToPortalMissionTeam(manifest)
   }
 
   const registrySnapshot = new RegistryDatabase(projectDirectory, { readonly: true }).load()
@@ -286,7 +285,7 @@ export async function buildPortalSnapshot(projectDirectory: string, opencodeUrl?
     .map((agent) =>
       mapRegistryAgentToPortalAgent({
         agent,
-        tree,
+        team,
         skills,
         agentDescriptions,
         agentNames,
@@ -302,7 +301,7 @@ export async function buildPortalSnapshot(projectDirectory: string, opencodeUrl?
         .map((agent) =>
           mapRegistryAgentToPortalAgent({
             agent,
-            tree,
+            team,
             skills,
             agentDescriptions,
             agentNames,
@@ -318,7 +317,7 @@ export async function buildPortalSnapshot(projectDirectory: string, opencodeUrl?
 
   await sync.refreshIndex(opencodeUrl)
 
-  const treesIndex = await readTreesIndex(projectDirectory)
+  const missionsIndex = await readMissionManifestIndex(projectDirectory)
 
   const layoutSpec =
     (await readOfficeLayoutSpec(projectDirectory)) ?? (await computeOfficeLayoutSpec(projectDirectory))
@@ -346,7 +345,7 @@ export async function buildPortalSnapshot(projectDirectory: string, opencodeUrl?
       }
     })()
 
-  const orchestration = buildPortalOrchestration(projectDirectory, tree)
+  const orchestration = buildPortalOrchestration(projectDirectory, team)
 
   const directionDoc = await readDirectionDocument(projectDirectory)
   const direction: PortalDirection = {
@@ -367,7 +366,7 @@ export async function buildPortalSnapshot(projectDirectory: string, opencodeUrl?
     ...(retroIds.length > 0 && { retro_mission_ids: retroIds }),
     missions,
     agents,
-    ...(tree && { tree }),
+    ...(team && { team }),
     skills,
     session_status: sessionStatus,
     opencode_reachable: reachable,
@@ -383,8 +382,8 @@ export async function buildPortalSnapshot(projectDirectory: string, opencodeUrl?
         ...(layoutManifest?.warnings && layoutManifest.warnings.length > 0 && { warnings: layoutManifest.warnings }),
       },
     }),
-    trees_index: treesIndex.trees,
-  } satisfies PortalSnapshot & { trees_index: typeof treesIndex.trees }
+    mission_manifest_index: missionsIndex.missions,
+  } satisfies PortalSnapshot & { mission_manifest_index: typeof missionsIndex.missions }
 }
 
 async function readOpencodeAgentDescriptions(_projectDirectory: string) {
@@ -409,7 +408,7 @@ function readFrontmatterDescription(text: string) {
 
 function agentPortalMeta(
   agent: RegistryAgent,
-  tree: PortalTree | undefined,
+  team: PortalMissionTeam | undefined,
   skills: PortalSkill[],
   descriptions: Map<string, string>,
 ) {
@@ -419,8 +418,8 @@ function agentPortalMeta(
       skills: OUTER_PROFILE_SKILL_DIRS[agent.profile] ?? [],
     }
   }
-  const missionTree = tree?.mission_id === agent.missionId ? tree : undefined
-  const node = missionTree?.nodes.find((entry) => entry.node_id === agent.nodeId)
+  const missionTeam = team?.mission_id === agent.missionId ? team : undefined
+  const node = missionTeam?.nodes.find((entry) => entry.node_id === agent.nodeId)
   const domain = node?.skill_domain
   return {
     description: node?.description ?? node?.display_name,
@@ -430,7 +429,7 @@ function agentPortalMeta(
 
 function mapRegistryAgentToPortalAgent(input: {
   agent: RegistryAgent
-  tree: PortalTree | undefined
+  team: PortalMissionTeam | undefined
   skills: PortalSkill[]
   agentDescriptions: Map<string, string>
   agentNames: ReturnType<typeof readAgentNamesSync>
@@ -440,10 +439,10 @@ function mapRegistryAgentToPortalAgent(input: {
   lingering?: boolean
 }) {
   const spawn_id = spawnIdForAgent(input.agent)
-  const meta = agentPortalMeta(input.agent, input.tree, input.skills, input.agentDescriptions)
-  const treeNode =
-    input.tree && input.agent.nodeId && input.tree.mission_id === input.agent.missionId
-      ? input.tree.nodes.find((entry) => entry.node_id === input.agent.nodeId)
+  const meta = agentPortalMeta(input.agent, input.team, input.skills, input.agentDescriptions)
+  const teamNode =
+    input.team && input.agent.nodeId && input.team.mission_id === input.agent.missionId
+      ? input.team.nodes.find((entry) => entry.node_id === input.agent.nodeId)
       : undefined
   const display_name =
     input.agent.scope === "outer"
@@ -452,7 +451,7 @@ function mapRegistryAgentToPortalAgent(input: {
           return profile ? agentName(input.agentNames, profile) : input.agent.displayName
         })()
       : input.agent.nodeId
-        ? (treeNode?.display_name ?? portalNodeDisplayName(input.agent.nodeId, input.agent.displayName))
+        ? (teamNode?.display_name ?? portalNodeDisplayName(input.agent.nodeId, input.agent.displayName))
         : input.agent.displayName
   return {
     agent_id: input.agent.agentId,

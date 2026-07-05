@@ -9,7 +9,7 @@ Architecture & workflow: project `.gatehouse/**/SKILL.md` prompts (scaffolded on
 | Tool | Purpose |
 |------|---------|
 | `gatehouse_init_team` | **profile lead** — register architect, curator, arbiter registry sessions (idempotent; first conversation) |
-| `gatehouse_submit_orchestration` | **profile architect** — validate `mission.script.ts`, wake curator for skill_domain assignment (no exec sessions yet). Execution tree is created inside `gatehouse_apply_skill_domains` |
+| `gatehouse_submit_orchestration` | **profile architect** — validate `mission.script.ts`, wake curator for skill_domain assignment (no exec sessions yet). Execution team is created inside `gatehouse_apply_skill_domains` |
 | `gatehouse_list_team` | Team roster (no args): outer core team only — full mission roster for lead/architect/curator; arbiter includes `session_id` for permission correlation. Inner profiles cannot call this tool |
 | `gatehouse_send_message` | Registry messaging; busy→queue in SQLite, idle/15s flush; send policy by sender scope |
 | `gatehouse_session_snapshot` | **lead / architect / arbiter** — one-off diagnostic tail (≤50 lines) + `session_status`; not for polling |
@@ -36,7 +36,7 @@ Everything else (missions queue, reports, skills) uses OpenCode **read/write** +
 
 **Autopilot:** user toggles with **TUI** `/autopilot` (picker or `/autopilot-on` / `/autopilot-off`) or **IM** `/autopilot on|off`. When ON and `direction.yaml` is `status: confirmed`, if the lead session is idle, the last message is from the assistant, and the user has not replied for **10 minutes**, Gatehouse delivers `prompts/lead/autopilot-wake.md` — full delegation; Lead proceeds without asking the user. User messages reset the idle timer. TUI sidebar shows autopilot + direction status (read-only).
 
-Personnel registry (outer + inner + retro + extract + verify agents ↔ OpenCode `session_id`) and **execution-tree manifests** (`manifest` / `retro-manifest` / `extract-manifest` / `verify-manifest`) live in **`.gatehouse/registry.db`** (SQLite). Frozen mission contract, node briefs, orchestration state, and delivery records are also stored in `registry.db`; agents read them via `gatehouse_mission_*` / `gatehouse_execution_*` tools — not plaintext under `.gatehouse/trees/`. Optional exports for human inspection live under **`.gatehouse/internal/exports/trees/<mission_id>/`**. Architects author **`.gatehouse/trees/<mission_id>/mission.script.ts`** (`export const team` + `orchestrate`); `gatehouse_submit_orchestration` validates the script and kicks off orchestration. Node briefs are written via `ctx.run(..., { brief: ... })` during orchestration and stored in `registry.db`. `gatehouse_send_message` resolves recipients and enforces who may message whom; OpenCode `task` child sessions for lead/architect are disabled. **Lead should call `gatehouse_init_team` on first conversation** to register architect/curator/arbiter; thereafter `send_message` and architect `gatehouse_submit_orchestration` require registered targets. Curator `apply_skill_domains` creates Mission execution sessions.
+Personnel registry (outer + inner + retro + extract + verify agents ↔ OpenCode `session_id`) and **mission manifests** (`manifest` / `retro-manifest` / `extract-manifest` / `verify-manifest`) live in **`.gatehouse/registry.db`** (SQLite). Frozen mission contract, node briefs, orchestration state, and delivery records are also stored in `registry.db`; agents read them via `gatehouse_mission_*` / `gatehouse_execution_*` tools — not plaintext under `.gatehouse/missions/`. Optional exports for human inspection live under **`.gatehouse/internal/exports/missions/<mission_id>/`**. Architects author **`.gatehouse/missions/<mission_id>/mission.script.ts`** (`export const team` + `orchestrate`); `gatehouse_submit_orchestration` validates the script and kicks off orchestration. Node briefs are written via `ctx.run(..., { brief: ... })` during orchestration and stored in `registry.db`. `gatehouse_send_message` resolves recipients and enforces who may message whom; OpenCode `task` child sessions for lead/architect are disabled. **Lead should call `gatehouse_init_team` on first conversation** to register architect/curator/arbiter; thereafter `send_message` and architect `gatehouse_submit_orchestration` require registered targets. Curator `apply_skill_domains` creates Mission execution sessions.
 
 **Delivery queue:** if the recipient session is `busy` or `retry`, the prompt is appended to `registry_pending_delivery` and the tool returns `delivery: queued`. The plugin flushes the FIFO queue when OpenCode emits `session.status: idle` for that session, and every 15s as a fallback.
 
@@ -123,7 +123,7 @@ Creates `.gatehouse/` with:
 - `skills/arbiter-meta/SKILL.md`（`arbiter-meta`）
 - `config.yaml` — global `~/.config/gatehouse/config.yaml` + project `.gatehouse/config.yaml` (Portal brand, ICP, **outer team display names**, per-role `models`)
 - `skills/by-domain/` + `skills/domains.yaml` (curator assigns domains after orchestration submit; Gatehouse creates extract/verify sessions and delivers skill prompts on retro)
-- empty `trees/`, `trees-index.yaml` (missions written after lead confirms)
+- empty `missions/` (mission artifacts written after lead confirms)
 
 ## Example smoke mission (core-example-smoke-v1)
 
@@ -133,8 +133,4 @@ Lightweight smoke fixture at **`test/fixtures/core-example-smoke-v1/mission.scri
 bun run --cwd packages/core test
 ```
 
-Manual OpenCode smoke: copy `test/fixtures/core-example-smoke-v1/mission.script.ts` to `.gatehouse/trees/core-example-smoke-v1/`, start the mission in `missions.yaml`, then run architect submit_orchestration → curator apply_skill_domains.
-
-## Legacy
-
-Org OS (`gatehouse-plugin`, eval, EDA) is maintained on the **`dev`** branch only; this repo does not include that code.
+Manual OpenCode smoke: copy `test/fixtures/core-example-smoke-v1/mission.script.ts` to `.gatehouse/missions/core-example-smoke-v1/`, start the mission in `missions.yaml`, then run architect submit_orchestration → curator apply_skill_domains.

@@ -37,7 +37,6 @@ agents:
 #   curator: opencode/deepseek-v4-flash-free
 #   arbiter: opencode/deepseek-v4-flash-free
 #   executor: opencode/big-pickle
-#   coordinator: opencode/big-pickle
 # Watchdog timings (milliseconds). Top-level keys are defaults for execution + record; override per kind.
 # Restart OpenCode after changes. Project .gatehouse/config.yaml overrides ~/.config/gatehouse/config.yaml.
 # watchdog:

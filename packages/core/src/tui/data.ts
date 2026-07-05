@@ -5,8 +5,8 @@ import { RegistryDatabase } from "../registry/db.ts"
 import type { RegistryAgent } from "../registry/types.ts"
 import { readPortalRuntimeSync, type PortalRuntimeInfo } from "../portal/runtime-info.ts"
 import { gatehouseRoot } from "../paths.ts"
-import { readManifestSync, readTreesIndexSync } from "../tree/store.ts"
-import type { TreeManifest } from "../tree/types.ts"
+import { readMissionManifestSync, readMissionManifestIndexSync } from "../missions/manifest/store.ts"
+import type { MissionManifest } from "../missions/manifest/types.ts"
 import { readAutopilotDocumentSync, autopilotIsEnabled } from "../lead/autopilot.ts"
 import { readDirectionDocumentSync, directionIsConfirmed } from "../lead/direction.ts"
 
@@ -22,7 +22,7 @@ export type GatehouseMissionRow = {
   objective?: string
 }
 
-export type GatehouseTreePanel = {
+export type GatehouseTeamPanel = {
   missionId: string
   status: string
   lines: string[]
@@ -31,7 +31,7 @@ export type GatehouseTreePanel = {
 export type GatehouseSidebarState = {
   outerAgents: GatehouseOuterAgentRow[]
   missions: GatehouseMissionRow[]
-  trees: GatehouseTreePanel[]
+  teams: GatehouseTeamPanel[]
   sessionOwner?: GatehouseOuterAgentRow
   portal?: PortalRuntimeInfo
   autopilot?: {
@@ -48,7 +48,7 @@ function outerRow(agent: RegistryAgent): GatehouseOuterAgentRow {
   }
 }
 
-export function treeManifestLines(manifest: TreeManifest) {
+export function missionManifestLines(manifest: MissionManifest) {
   return Object.entries(manifest.nodes)
     .sort(([left], [right]) => {
       if (left === manifest.terminal_node) return -1
@@ -94,18 +94,18 @@ export function loadGatehouseSidebarStateSync(
       ...(mission.objective && { objective: mission.objective }),
     }))
 
-  const treesIndex = readTreesIndexSync(directory)
-  const trees = treesIndex.trees
+  const missionsIndex = readMissionManifestIndexSync(directory)
+  const teams = missionsIndex.missions
     .filter((entry) => missionsDoc.missions.find((mission) => mission.id === entry.mission_id)?.status === "running")
     .slice(0, 2)
     .flatMap((entry) => {
-      const manifest = readManifestSync(directory, entry.mission_id)
+      const manifest = readMissionManifestSync(directory, entry.mission_id)
       if (!manifest) return []
       return [
         {
           missionId: entry.mission_id,
           status: manifest.status,
-          lines: treeManifestLines(manifest),
+          lines: missionManifestLines(manifest),
         },
       ]
     })
@@ -121,7 +121,7 @@ export function loadGatehouseSidebarStateSync(
   return {
     outerAgents,
     missions,
-    trees,
+    teams,
     ...(owner && { sessionOwner: outerRow(owner) }),
     ...(portal && { portal }),
     autopilot: {

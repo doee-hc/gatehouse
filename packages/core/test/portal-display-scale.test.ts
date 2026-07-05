@@ -64,7 +64,7 @@ describe("portal browser dto", () => {
       ],
       skills: [],
       session_status: { ses_lead: "idle" },
-      tree: {
+      team: {
         mission_id: "m1",
         terminal_node: "root",
         status: "running",
@@ -83,7 +83,7 @@ describe("portal browser dto", () => {
     expect("project_directory" in browser).toBe(false)
     expect("session_status" in browser).toBe(false)
     expect("session_id" in (browser.agents[0] ?? {})).toBe(false)
-    expect("session_id" in (browser.tree?.nodes[0] ?? {})).toBe(false)
+    expect("session_id" in (browser.team?.nodes[0] ?? {})).toBe(false)
   })
 
   test("toBrowserTeamStats strips session ids", () => {

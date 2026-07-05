@@ -62,16 +62,6 @@ export function skillBlogRel(domain: string, skillName: string) {
   return path.join(".gatehouse", "skills", "by-domain", domain, skillName, "SKILL.md")
 }
 
-/** @deprecated Coordination reports are not publishable; use resolveSkillBlogPostId or deliverableBlogPostId. */
-export function resolveBlogPostId(reportPath: string) {
-  const rel = reportPath.replace(/\\/g, "/").replace(/^\.\//, "")
-
-  const skillMatch = rel.match(/^\.gatehouse\/skills\/by-domain\/([^/]+)\/([^/]+)\/SKILL\.md$/)
-  if (skillMatch?.[1] && skillMatch[2]) return `skill:${skillMatch[1]}:${skillMatch[2]}`
-
-  return undefined
-}
-
 export function blogMissionIdFromPostId(postId: string) {
   if (postId.startsWith("skill:")) return undefined
   const deliverableMissionId = blogMissionIdFromDeliverablePostId(postId)

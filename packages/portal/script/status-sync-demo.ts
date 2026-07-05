@@ -2,7 +2,7 @@
 /**
  * Portal API ↔ UI status sync demo (no OpenCode).
  *
- * Simulates a running execution tree: outer roles + inner tree nodes go
+ * Simulates a running execution team: outer roles + inner tree nodes go
  * idle → kickoff → parallel busy → research → wind-down → chat.
  *
  *   GATEHOUSE_PROJECT_DIR=/path/to/project bun script/status-sync-demo.ts
@@ -36,7 +36,7 @@ const DEMO_TREE_NODES = [
     node_id: "lead",
     session_id: "ses_demo_lead",
     display_name: "执行组长",
-    title: "coordinator",
+    title: "synthesis",
   },
   {
     node_id: "worker-a",
@@ -178,7 +178,7 @@ const PHASES: DemoPhase[] = [
     ],
   },
   {
-    label: "6/8 wind-down — 执行树 idle",
+    label: "6/8 wind-down — 执行团队 idle",
     statuses: statusMap({ architect: "idle" }),
     sse: sseIdleSessions(TREE_SESSIONS),
   },
@@ -195,7 +195,7 @@ const PHASES: DemoPhase[] = [
         type: "agent.chat",
         fromSpawnId: "lead",
         toSpawnId: "architect",
-        text: "demo-mission 执行树一轮完成，请复盘",
+        text: "demo-mission 执行团队一轮完成，请复盘",
       },
     ],
   },
@@ -269,7 +269,7 @@ async function readOfficeLayoutMeta() {
 
 function buildDemoSnapshot() {
   const phase = currentPhase()
-  const tree = {
+  const team = {
     mission_id: DEMO_MISSION,
     terminal_node: "lead",
     status: "running",
@@ -298,11 +298,10 @@ function buildDemoSnapshot() {
       {
         id: DEMO_MISSION,
         status: "running",
-        objective: "执行树工作流 demo（bootstrap → 并行执行 → 收尾）",
+        objective: "执行团队工作流 demo（bootstrap → 并行执行 → 收尾）",
       },
     ],
-    tree,
-    trees: [tree],
+    team,
     agents: [
       ...DEMO_OUTER.map((agent) => ({
         agent_id: `demo:${agent.spawn_id}`,
@@ -469,7 +468,7 @@ startPhaseTimer()
 const pollMs = process.env.GATEHOUSE_SNAPSHOT_POLL_MS ?? "2000"
 
 console.log("")
-console.log("[status-sync-demo] 执行树 + 外层角色 · Portal API ↔ UI demo")
+console.log("[status-sync-demo] 执行团队 + 外层角色 · Portal API ↔ UI demo")
 console.log(`  API       http://127.0.0.1:${demoPort}/portal/api/snapshot`)
 console.log(`  outer     ${DEMO_OUTER.map((agent) => agent.spawn_id).join(", ")}`)
 console.log(`  tree      ${DEMO_TREE_NODES.map((node) => node.node_id).join(" → ")}`)

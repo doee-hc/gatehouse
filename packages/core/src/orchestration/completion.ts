@@ -3,7 +3,7 @@ import { gatehouseMessage } from "../i18n.ts"
 import type { GatehouseLocale } from "../locale.ts"
 import { dependsOnDeliverableNodes } from "./plan-graph.ts"
 import type { OrchestrationPlan } from "./plan-types.ts"
-import type { TeamSpec } from "../tree/types.ts"
+import type { MissionTeamSpec } from "../missions/manifest/types.ts"
 import type { NodeCompletion, OrchestrationState } from "./types.ts"
 import { JsonSchemaValidationError, validateJsonSchema } from "./json-schema-validate.ts"
 
@@ -53,7 +53,7 @@ export class DependsOnDeliverableValidationError extends Error {
 export async function assertDependsOnDeliverableReady(
   directory: string,
   missionId: string,
-  team: TeamSpec,
+  team: MissionTeamSpec,
   state: OrchestrationState,
   nodeIds: string[],
 ) {
@@ -154,7 +154,7 @@ export function synthesizeTerminalDeliveryMarkdown(
   missionId: string,
   terminalNodeId: string,
   state: OrchestrationState,
-  _team: TeamSpec,
+  _team: MissionTeamSpec,
   plan: OrchestrationPlan,
 ) {
   const terminalCompletion = state.nodes[terminalNodeId]?.completion

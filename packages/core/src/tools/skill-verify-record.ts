@@ -6,7 +6,7 @@ import { requireSenderMissionId } from "../missions/scope.ts"
 import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
 import { parseSkillPathsFromExtractSummary, runProgrammaticVerifier } from "../skills/quality-gate.ts"
 import { recordSkillVerifyPass } from "../skills/utility.ts"
-import { readExtractManifest } from "../tree/store.ts"
+import { readExtractManifest } from "../missions/manifest/store.ts"
 import { dumpPhaseSessionMetrics } from "../session/context-dump.ts"
 import type { GatehouseClient } from "../session/client.ts"
 
@@ -60,7 +60,7 @@ export function skillVerifyRecordTool(input: PluginInput) {
 
         const extract = await readExtractManifest(input.directory, missionId)
         const skillDomain = extract?.nodes[nodeId]?.skill_domain
-        const extractSummaryRel = `.gatehouse/trees/${missionId}/reports/skills/${nodeId}-extract.md`
+        const extractSummaryRel = `.gatehouse/missions/${missionId}/reports/skills/${nodeId}-extract.md`
         const extractSummary = await Bun.file(resolveProjectPath(input.directory, extractSummaryRel)).text().catch(() => "")
         const skillPaths = skillDomain ? parseSkillPathsFromExtractSummary(extractSummary, skillDomain) : []
         const programmatic = skillDomain

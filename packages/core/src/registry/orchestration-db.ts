@@ -3,7 +3,7 @@ import type { OrchestrationState } from "../orchestration/types.ts"
 import type { MissionScriptMeta, MissionScriptRecord } from "../orchestration/types.ts"
 import type { OrchestrationPlan } from "../orchestration/plan-types.ts"
 import type { OrchestrationBaseline } from "../orchestration/plan-types.ts"
-import type { TeamSpec } from "../tree/types.ts"
+import type { MissionTeamSpec } from "../missions/manifest/types.ts"
 
 export const ORCHESTRATION_TABLE_SQL = `
     CREATE TABLE IF NOT EXISTS registry_mission_script (
@@ -52,7 +52,7 @@ export function saveMissionScript(
   db: Database,
   input: {
     missionId: string
-    team: TeamSpec
+    team: MissionTeamSpec
     meta?: MissionScriptMeta
     scriptPath?: string
     scriptHash?: string
@@ -96,7 +96,7 @@ export function readMissionScript(db: Database, missionId: string): MissionScrip
   if (!row) return undefined
   return {
     missionId: row.mission_id,
-    team: JSON.parse(row.team_json) as TeamSpec,
+    team: JSON.parse(row.team_json) as MissionTeamSpec,
     ...(row.meta_json && { meta: JSON.parse(row.meta_json) as MissionScriptMeta }),
     ...(row.script_path && { scriptPath: row.script_path }),
     ...(row.script_hash && { scriptHash: row.script_hash }),

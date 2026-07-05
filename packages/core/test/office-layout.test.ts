@@ -2,19 +2,25 @@ import { describe, expect, test } from "bun:test"
 import { mkdtemp, writeFile, mkdir } from "node:fs/promises"
 import path from "node:path"
 import { tmpdir } from "node:os"
+import { RegistryDatabase } from "../src/registry/db.ts"
 import {
-  chairAgentSitWorld,
-  innerAgentSitWorld,
-  chairSitTileOffsetY,
   capOfficeWorkstationCount,
+  chairAgentSitWorld,
+  chairSitTileOffsetY,
   computeOfficeLayoutSpec,
+  innerAgentSitWorld,
   layoutRevisionFromWorkstationCount,
   MAX_OFFICE_WORKSTATION_COUNT,
   syncWorkstationBindings,
   writeOfficeLayoutSpec,
   workstationCountForAgents,
 } from "../src/portal/office-layout.ts"
+import type { MissionManifest } from "../src/missions/manifest/types.ts"
 import { stringifyYaml } from "../src/yaml.ts"
+
+function saveMissionManifest(dir: string, manifest: MissionManifest) {
+  new RegistryDatabase(dir).saveMissionManifest(manifest)
+}
 
 describe("office layout spec", () => {
   test("inner chair sit offsets match boss room nudge", () => {
@@ -87,34 +93,28 @@ describe("office layout spec", () => {
       }),
     )
 
-    await writeFile(
-      path.join(dir, ".gatehouse", "trees", "mission-a", "manifest.yaml"),
-      stringifyYaml({
-        mission_id: "mission-a",
-        status: "running",
-        terminal_node: "terminal",
-        created_at: "2026-06-01T00:00:00Z",
-        nodes: {
-          terminal: { session_id: "s-root-a", display_name: "terminal", profile: "build" },
-          leaf: { session_id: "s-leaf-a", display_name: "leaf", profile: "build" },
-        },
-      }),
-    )
+    saveMissionManifest(dir, {
+      mission_id: "mission-a",
+      status: "running",
+      terminal_node: "terminal",
+      created_at: "2026-06-01T00:00:00Z",
+      nodes: {
+        terminal: { session_id: "s-root-a", display_name: "terminal", profile: "build" },
+        leaf: { session_id: "s-leaf-a", display_name: "leaf", profile: "build" },
+      },
+    })
 
-    await writeFile(
-      path.join(dir, ".gatehouse", "trees", "mission-b", "manifest.yaml"),
-      stringifyYaml({
-        mission_id: "mission-b",
-        status: "running",
-        terminal_node: "terminal",
-        created_at: "2026-06-01T00:00:00Z",
-        nodes: {
-          terminal: { session_id: "s-root-b", display_name: "terminal", profile: "build" },
-          impl: { session_id: "s-impl-b", display_name: "impl", profile: "build" },
-          qa: { session_id: "s-qa-b", display_name: "qa", profile: "build" },
-        },
-      }),
-    )
+    saveMissionManifest(dir, {
+      mission_id: "mission-b",
+      status: "running",
+      terminal_node: "terminal",
+      created_at: "2026-06-01T00:00:00Z",
+      nodes: {
+        terminal: { session_id: "s-root-b", display_name: "terminal", profile: "build" },
+        impl: { session_id: "s-impl-b", display_name: "impl", profile: "build" },
+        qa: { session_id: "s-qa-b", display_name: "qa", profile: "build" },
+      },
+    })
 
     const spec = await computeOfficeLayoutSpec(dir)
     await writeOfficeLayoutSpec(dir, spec)
@@ -157,19 +157,16 @@ describe("office layout spec", () => {
       }),
     )
 
-    await writeFile(
-      path.join(dir, ".gatehouse", "trees", "mission-last", "manifest.yaml"),
-      stringifyYaml({
-        mission_id: "mission-last",
-        status: "archived",
-        terminal_node: "terminal",
-        created_at: "2026-06-01T00:00:00Z",
-        nodes: {
-          terminal: { session_id: "s-root", display_name: "terminal", profile: "build" },
-          leaf: { session_id: "s-leaf", display_name: "leaf", profile: "build" },
-        },
-      }),
-    )
+    saveMissionManifest(dir, {
+      mission_id: "mission-last",
+      status: "archived",
+      terminal_node: "terminal",
+      created_at: "2026-06-01T00:00:00Z",
+      nodes: {
+        terminal: { session_id: "s-root", display_name: "terminal", profile: "build" },
+        leaf: { session_id: "s-leaf", display_name: "leaf", profile: "build" },
+      },
+    })
 
     const spec = await computeOfficeLayoutSpec(dir)
     expect(spec.inner_nodes.map((node) => node.node_id).sort()).toEqual(["leaf", "terminal"])

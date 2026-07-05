@@ -19,7 +19,7 @@ disable-model-invocation: true
 | `gatehouse_mission_info`  | Read-only refresh of mission snapshot (objective / done_when / must_not / notes / user_topology) |
 | `gatehouse_send_message`     | Coordination messages (not for retro/skill summary registration)                                                           |
 | `gatehouse_retro_summary_record` | Register `architect-summary.md` after retro; Gatehouse auto-notifies {{lead_name}} when retro summaries are complete |
-| `gatehouse_list_team`        | No args: outer contacts + current Mission execution tree (and retro nodes if any)              |
+| `gatehouse_list_team`        | No args: outer contacts + current Mission execution team (and retro nodes if any)              |
 | `gatehouse_session_snapshot` | **One-shot diagnosis** (incident triage), no polling loops                                     |
 
 **Forbidden:** `gatehouse_mission_start`, `gatehouse_mission_retro`, `gatehouse_mission_complete`, `gatehouse_apply_skill_domains`. Do not edit mission body, start retro, or accept delivery for {{lead_name}}; do not assign skill_domain; do not track execution progress or poll `session_snapshot` in a loop.
@@ -42,7 +42,7 @@ Task body includes objective / done_when / must_not / notes / user_topology / us
 
 ### 2. Build team
 
-1. Write `.gatehouse/trees/<id>/mission.script.ts` (team structure + orchestration timing in one file):
+1. Write `.gatehouse/missions/<id>/mission.script.ts` (team structure + orchestration timing in one file):
 
 | Export | Purpose |
 |--------|---------|
@@ -64,7 +64,7 @@ await ctx.run("researcher-a", {
 })
 ```
 
-**Do not write `profile`** — topology assigns inner profiles automatically at execution-tree creation.
+**Do not write `profile`** — all inner nodes use the `build` profile at bootstrap.
 
 ```typescript
 export const team = {
@@ -132,7 +132,7 @@ Do **not** simulate peer coordination in the script — drive timing with `ctx.r
 **`dependsOn` rules:**
 
 - Each entry is a **string** (wait for completion only) or **`{ node, deliverable?: boolean }`** (inject upstream completion: prose summary plus validated JSON when present).
-- When the work order needs upstream deliverables, list every relevant node explicitly with `deliverable: true` (including all direct children when aggregating a subtree).
+- When the work order needs upstream deliverables, list every relevant node explicitly with `deliverable: true` (including all direct children when aggregating a branch).
 - **Cross-track ordering:** `dependsOn: ["other-node"]` (ordering only, no deliverable injection) — allowed anywhere, including top level and inside parallel tracks.
 - **Cross-track with upstream delivery content:** `dependsOn: [{ node: "a1", deliverable: true }]` inside parallel tracks.
 
@@ -140,7 +140,7 @@ Do **not** simulate peer coordination in the script — drive timing with `ctx.r
 
 - **Each** node_id in `team.nodes` must be activated via `ctx.run`, or dry-run fails with `SCRIPT_SIMULATION_INCOMPLETE`.
 
-**Parallel orchestration:** for independent subtrees or sibling leaves, use `ctx.parallel` with one `ctx.run` per node:
+**Parallel orchestration:** for independent branches or sibling leaves, use `ctx.parallel` with one `ctx.run` per node:
 
 ```typescript
 await ctx.parallel([
@@ -209,7 +209,7 @@ const results = audited.filter(Boolean)
 6. Recommended flow: `ctx.run(nodeId, { brief })`; pass `text` only when you need supplementary notes; parallel siblings use `ctx.parallel` with one run per node; **multi-stage per-item work** (e.g. migrate→verify per file) use `ctx.pipeline`.
 7. `ctx.objective` is available; do not use undocumented `ctx.*` properties; **do not** call `ctx.template.workOrder`.
 8. **Strings:** in `orchestrate`, prefer template literals or single quotes for `text`. **`SCRIPT_RISKY_STRING_LITERAL` applies only** when `text:` uses double quotes **and** the value contains `gatehouse_` (`run` brief and `team`/`meta` literals are exempt). Fix only the line the error cites — do not bulk-convert quote styles.
-9. **Validation & recovery:** save the script, then call `gatehouse_submit_orchestration` — the system validates and starts or resumes automatically. **Dry-run failures return errors in the tool response only**; no separate Gatehouse system message (runtime sandbox failures still notify you). Dry-run checks cross-track false serialization (`SCRIPT_SERIAL_TRACK_BLOCK`), `dependsOn` subtree validity, brief coverage, unreferenced nodes, `ctx.parallel` hints, and more; warnings are returned in `warnings`. After rewriting mid-mission: **`gatehouse_submit_orchestration(mode=continue)`**. Do not edit `mission.script.ts` during active orchestration.
+9. **Validation & recovery:** save the script, then call `gatehouse_submit_orchestration` — the system validates and starts or resumes automatically. **Dry-run failures return errors in the tool response only**; no separate Gatehouse system message (runtime sandbox failures still notify you). Dry-run checks cross-track false serialization (`SCRIPT_SERIAL_TRACK_BLOCK`), `dependsOn` branch validity, brief coverage, unreferenced nodes, `ctx.parallel` hints, and more; warnings are returned in `warnings`. After rewriting mid-mission: **`gatehouse_submit_orchestration(mode=continue)`**. Do not edit `mission.script.ts` during active orchestration.
 
 The script drives timing and work orders via `dependsOn` when upstream deliverables are needed. The **terminal node** auto-notifies {{lead_name}} via `gatehouse_execution_complete` when all nodes are done. **Portal publish happens on Lead `mission_complete(done)`** — never put “publish to Portal” or any publish tool name in `setBrief` or work orders.
 
@@ -224,9 +224,9 @@ Execution team collaborates on its own; **you do not intervene**, track progress
 
 When you receive the “Retro review ready” notification:
 
-1. Read `.gatehouse/trees/<id>/reports/retro-summary.md` (retro-analyst output).
+1. Read `.gatehouse/missions/<id>/reports/retro-summary.md` (retro-analyst output).
 2. Review conclusions and iterate **architect-meta**.
-3. Write `.gatehouse/trees/<id>/reports/architect-summary.md` per `architect-summary.template.md`.
+3. Write `.gatehouse/missions/<id>/reports/architect-summary.md` per `architect-summary.template.md`.
 4. Call **`gatehouse_retro_summary_record`** (do not `send_message` {{lead_name}} for summary registration).
 
 ## Paths
@@ -234,7 +234,7 @@ When you receive the “Retro review ready” notification:
 
 | Purpose                  | Path                                                                                                                                                     |
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Mission script / reports | `.gatehouse/trees/<id>/mission.script.ts`                                                                                                                |
+| Mission script / reports | `.gatehouse/missions/<id>/mission.script.ts`                                                                                                                |
 | Node reports | Each node `gatehouse_execution_complete(summary=...)` |
 | Upstream deliverables in work order | `dependsOn: [{ node: "…", deliverable: true }, …]` on `ctx.run` |
 | Prompt templates         | `.gatehouse/<locale>/prompts/architect/` (`<locale>` from `config.yaml`)                                                                                 |

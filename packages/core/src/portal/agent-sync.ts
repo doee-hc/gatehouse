@@ -2,7 +2,7 @@ import path from "node:path"
 import { RegistryDatabase } from "../registry/db.ts"
 import { activePortalMissionIds, parseMissionsFile } from "../missions/parse.ts"
 import { leadDir } from "../paths.ts"
-import { readManifest } from "../tree/store.ts"
+import { readMissionManifest } from "../missions/manifest/store.ts"
 import { classifyToolActivity, portalAgentStatus } from "./activity.ts"
 import { deliverPortalEvent } from "./events.ts"
 import { spawnIdForAgent } from "./spawn-id.ts"
@@ -59,7 +59,7 @@ class ProjectAgentSync {
 
     const activeMissionId = activePortalMissionIds(missionsDoc)[0]
     if (activeMissionId) {
-      const manifest = await readManifest(this.projectDirectory, activeMissionId)
+      const manifest = await readMissionManifest(this.projectDirectory, activeMissionId)
       if (manifest) {
         for (const [nodeId, node] of Object.entries(manifest.nodes)) {
           this.sessionToSpawn.set(node.session_id, nodeId.replace(/[^a-zA-Z0-9_-]/g, "-"))

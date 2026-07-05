@@ -51,7 +51,7 @@ describe("complex orchestration scripts validate", () => {
 })
 
 describe("orchestration replay complex scenarios", () => {
-  test("dual-track parallel: inter-group parallel with per-track serial rollup", async () => {
+  test("dual-track parallel: inter-group parallel with per-track serial synthesis", async () => {
     const missionId = "complex-dual-track-m1"
     activeMissions.add(missionId)
     const env = await createReplayTestEnv({
@@ -71,7 +71,7 @@ describe("orchestration replay complex scenarios", () => {
       await completeNodes(env, ["a2", "b2"])
       await Bun.sleep(400)
 
-      await waitForAllPromptMarkers(env, ["marker:trackA-rollup", "marker:trackB-rollup"])
+      await waitForAllPromptMarkers(env, ["marker:trackA-join", "marker:trackB-join"])
       await completeNodes(env, ["a", "b"])
       await Bun.sleep(400)
 
@@ -97,7 +97,7 @@ describe("orchestration replay complex scenarios", () => {
       await seedNodeBriefs(env, {
         a1: { your_work: ["a1"], acceptance_slice: [] },
         a2: { your_work: ["a2"], acceptance_slice: [] },
-        a: { your_work: ["rollup a"], acceptance_slice: [] },
+        a: { your_work: ["synthesize a"], acceptance_slice: [] },
       })
       seedDoneNodes(env, ["a1", "a2", "a"])
 
@@ -112,7 +112,7 @@ describe("orchestration replay complex scenarios", () => {
 
       expect(countPromptMarkers(env.promptTexts, "marker:trackA-a1")).toBe(0)
       expect(countPromptMarkers(env.promptTexts, "marker:trackA-a2")).toBe(0)
-      expect(countPromptMarkers(env.promptTexts, "marker:trackA-rollup")).toBe(0)
+      expect(countPromptMarkers(env.promptTexts, "marker:trackA-join")).toBe(0)
       expect(countPromptMarkers(env.promptTexts, "marker:trackB-b1")).toBe(1)
     } finally {
       await rm(env.dir, { recursive: true, force: true })
@@ -140,7 +140,7 @@ describe("orchestration replay complex scenarios", () => {
       await completeNodes(env, ["a1", "a2", "b1", "b2"])
       await Bun.sleep(500)
 
-      await waitForAllPromptMarkers(env, ["marker:trackA-rollup", "marker:trackB-rollup"])
+      await waitForAllPromptMarkers(env, ["marker:trackA-join", "marker:trackB-join"])
       await completeNodes(env, ["a", "b"])
       await Bun.sleep(400)
 
@@ -163,7 +163,7 @@ describe("orchestration replay complex scenarios", () => {
       await seedNodeBriefs(env, {
         a1: { your_work: ["a1"], acceptance_slice: [] },
         a2: { your_work: ["a2"], acceptance_slice: [] },
-        a: { your_work: ["rollup a"], acceptance_slice: [] },
+        a: { your_work: ["synthesize a"], acceptance_slice: [] },
       })
       seedDoneNodes(env, ["a1", "a2", "a"])
 
@@ -183,7 +183,7 @@ describe("orchestration replay complex scenarios", () => {
     }
   })
 
-  test("deep hierarchy: leaf fan-out then multi-level rollup chain", async () => {
+  test("deep hierarchy: leaf fan-out then multi-level synthesis chain", async () => {
     const missionId = "complex-deep-hier-m1"
     activeMissions.add(missionId)
     const env = await createReplayTestEnv({
@@ -198,15 +198,15 @@ describe("orchestration replay complex scenarios", () => {
       await completeNodes(env, ["l1a", "l1b"])
       await Bun.sleep(500)
 
-      await waitForPromptMarker(env, "marker:rollup-l2")
+      await waitForPromptMarker(env, "marker:join-l2")
       await completeRunningNode(env, "l2")
       await Bun.sleep(400)
 
-      await waitForPromptMarker(env, "marker:rollup-l3")
+      await waitForPromptMarker(env, "marker:join-l3")
       await completeRunningNode(env, "l3")
       await Bun.sleep(400)
 
-      await waitForPromptMarker(env, "marker:rollup-l4")
+      await waitForPromptMarker(env, "marker:join-l4")
       await completeRunningNode(env, "l4")
 
       expect(readState(env)?.cursor_step_index).toBe(3)
@@ -215,7 +215,7 @@ describe("orchestration replay complex scenarios", () => {
     }
   })
 
-  test("deep hierarchy resume: skips leaf fan-out, continues at mid-level rollup", async () => {
+  test("deep hierarchy resume: skips leaf fan-out, continues at mid-level synthesis", async () => {
     const missionId = "complex-deep-resume-m1"
     activeMissions.add(missionId)
     const env = await createReplayTestEnv({
@@ -227,7 +227,6 @@ describe("orchestration replay complex scenarios", () => {
       seedDoneNodes(env, ["l1a", "l1b"])
       const state = readState(env)!
       state.cursor_step_index = 1
-      state.completed_step_ids = ["step-0"]
       writeOrchestrationState(env.dir, state)
 
       await startSandboxOrchestration({
@@ -237,7 +236,7 @@ describe("orchestration replay complex scenarios", () => {
         resume: true,
       })
 
-      await waitForPromptMarker(env, "marker:rollup-l2", { label: "resume at l2 rollup" })
+      await waitForPromptMarker(env, "marker:join-l2", { label: "resume at l2 synthesis" })
 
       expect(countPromptMarkers(env.promptTexts, "marker:leaf-l1a")).toBe(0)
       expect(countPromptMarkers(env.promptTexts, "marker:leaf-l1b")).toBe(0)
@@ -246,7 +245,7 @@ describe("orchestration replay complex scenarios", () => {
     }
   })
 
-  test("intra fan-out + compound multi-round on coordinator inside parallel", async () => {
+  test("intra fan-out + compound multi-round on acceptance layer inside parallel", async () => {
     const missionId = "complex-compound-fan-m1"
     activeMissions.add(missionId)
     const env = await createReplayTestEnv({
@@ -261,12 +260,12 @@ describe("orchestration replay complex scenarios", () => {
       await completeNodes(env, ["x1", "x2"])
       await Bun.sleep(500)
 
-      await waitForPromptMarker(env, "marker:coord-r1")
-      await completeRunningNode(env, "coord")
+      await waitForPromptMarker(env, "marker:join-r1")
+      await completeRunningNode(env, "join")
       await Bun.sleep(600)
 
-      await waitForPromptMarker(env, "marker:coord-r2")
-      expect(readState(env)?.nodes.coord?.round).toBe(2)
+      await waitForPromptMarker(env, "marker:join-r2")
+      expect(readState(env)?.nodes.join?.round).toBe(2)
     } finally {
       await rm(env.dir, { recursive: true, force: true })
     }
@@ -284,10 +283,10 @@ describe("orchestration replay complex scenarios", () => {
       await seedNodeBriefs(env, {
         x1: { your_work: ["x1"], acceptance_slice: [] },
         x2: { your_work: ["x2"], acceptance_slice: [] },
-        coord: { your_work: ["round1"], acceptance_slice: [] },
+        join: { your_work: ["round1"], acceptance_slice: [] },
       })
       seedDoneNodes(env, ["x1", "x2"])
-      seedDoneNode(env, "coord", { round: 1 })
+      seedDoneNode(env, "join", { round: 1 })
 
       await startSandboxOrchestration({
         plugin: env.plugin,
@@ -296,12 +295,12 @@ describe("orchestration replay complex scenarios", () => {
         resume: true,
       })
 
-      await waitForPromptMarker(env, "marker:coord-r2")
+      await waitForPromptMarker(env, "marker:join-r2")
 
       expect(countPromptMarkers(env.promptTexts, "marker:fan-x1")).toBe(0)
       expect(countPromptMarkers(env.promptTexts, "marker:fan-x2")).toBe(0)
-      expect(countPromptMarkers(env.promptTexts, "marker:coord-r1")).toBe(0)
-      expect(readState(env)?.nodes.coord?.round).toBe(2)
+      expect(countPromptMarkers(env.promptTexts, "marker:join-r1")).toBe(0)
+      expect(readState(env)?.nodes.join?.round).toBe(2)
     } finally {
       await rm(env.dir, { recursive: true, force: true })
     }
@@ -391,7 +390,7 @@ describe("orchestration replay complex scenarios", () => {
       await waitForAllPromptMarkers(env, ["marker:leaf-l1a", "marker:leaf-l1b"])
       await completeNodes(env, ["l1a", "l1b"])
       await Bun.sleep(500)
-      await waitForPromptMarker(env, "marker:rollup-l2")
+      await waitForPromptMarker(env, "marker:join-l2")
       await completeRunningNode(env, "l2")
       await waitForCursorAtLeast(env, 2)
 
@@ -410,9 +409,9 @@ describe("orchestration replay complex scenarios", () => {
       )
       expect(resumed.status).toBe("resumed")
 
-      await waitForPromptMarker(env, "marker:rollup-l3")
+      await waitForPromptMarker(env, "marker:join-l3")
       expect(countPromptMarkers(env.promptTexts, "marker:leaf-l1a")).toBe(0)
-      expect(countPromptMarkers(env.promptTexts, "marker:rollup-l2")).toBe(0)
+      expect(countPromptMarkers(env.promptTexts, "marker:join-l2")).toBe(0)
     } finally {
       await rm(env.dir, { recursive: true, force: true })
     }

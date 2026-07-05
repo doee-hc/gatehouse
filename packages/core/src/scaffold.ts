@@ -51,7 +51,7 @@ export async function scaffoldGatehouse(projectRoot: string) {
 
   for (const dir of [
     ".gatehouse/lead/reports",
-    ".gatehouse/trees",
+    ".gatehouse/missions",
     ".gatehouse/internal/exports",
     ".gatehouse/arbiter",
     ".gatehouse/skills/by-domain",
@@ -85,11 +85,6 @@ export async function scaffoldGatehouse(projectRoot: string) {
   if ((await Bun.file(brandSrc).exists()) && !(await Bun.file(brandDest).exists())) {
     await Bun.$`mkdir -p ${path.dirname(brandDest)}`.quiet()
     await Bun.write(brandDest, await Bun.file(brandSrc).arrayBuffer())
-  }
-
-  const indexPath = path.join(root, ".gatehouse/trees-index.yaml")
-  if (!(await Bun.file(indexPath).exists())) {
-    await Bun.write(indexPath, Bun.YAML.stringify({ trees: [] }))
   }
 
   const missionsPath = path.join(root, ".gatehouse/lead/missions.yaml")

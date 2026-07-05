@@ -11,10 +11,9 @@ import {
   type ListTeamExecutionMember,
   type ListTeamOuterMember,
 } from "../tools/list-views.ts"
-import { manifestMembers } from "../tree/parse.ts"
-import type { TeamSpec, TreeManifest } from "../tree/types.ts"
+import type { MissionTeamSpec, MissionManifest } from "../missions/manifest/types.ts"
 
-function orderExecutionMembers(members: ListTeamExecutionMember[], manifest?: TreeManifest) {
+function orderExecutionMembers(members: ListTeamExecutionMember[], manifest?: MissionManifest) {
   if (!manifest) return [...members].sort((a, b) => a.node_id.localeCompare(b.node_id))
   const index = new Map(Object.keys(manifest.nodes).sort().map((nodeId, i) => [nodeId, i]))
   return [...members].sort((a, b) => (index.get(a.node_id) ?? 0) - (index.get(b.node_id) ?? 0))
@@ -33,7 +32,7 @@ function formatExecutionMemberLine(
 
 export function formatExecutionTeamSnapshot(
   members: ListTeamExecutionMember[],
-  input: { youNodeId?: string; outer?: ListTeamOuterMember[]; locale: GatehouseLocale; manifest?: TreeManifest },
+  input: { youNodeId?: string; outer?: ListTeamOuterMember[]; locale: GatehouseLocale; manifest?: MissionManifest },
 ) {
   const lines: string[] = [gatehouseMessage("dispatch.teamSnapshot.executionHeader", input.locale)]
   for (const member of orderExecutionMembers(members, input.manifest)) {
@@ -51,27 +50,7 @@ export function formatExecutionTeamSnapshot(
   return lines.join("\n")
 }
 
-export function formatExecutionTeamSnapshotFromManifest(manifest: TreeManifest, locale: GatehouseLocale) {
-  const members: ListTeamExecutionMember[] = manifestMembers(manifest).map((member) => ({
-    node_id: member.node_id,
-    ...(member.description && { description: member.description }),
-    ...(member.display_name && { display_name: member.display_name }),
-    ...(member.profile && { profile: member.profile }),
-  }))
-  return formatExecutionTeamSnapshot(members, {
-    youNodeId: manifest.terminal_node,
-    locale,
-    manifest,
-  })
-}
-
-export function formatNonTerminalNodeIdList(manifest: TreeManifest, locale: GatehouseLocale) {
-  const nodeIds = Object.keys(manifest.nodes).filter((nodeId) => nodeId !== manifest.terminal_node)
-  if (nodeIds.length === 0) return gatehouseMessage("dispatch.teamSnapshot.noNonTerminalNodes", locale)
-  return nodeIds.map((nodeId) => `- \`${nodeId}\``).join("\n")
-}
-
-export function formatTeamSpecAssignmentSummary(spec: TeamSpec, locale: GatehouseLocale) {
+export function formatMissionTeamSpecAssignmentSummary(spec: MissionTeamSpec, locale: GatehouseLocale) {
   const lines = [gatehouseMessage("dispatch.teamSnapshot.teamspecHeader", locale)]
   for (const nodeId of teamNodeOrder(spec)) {
     const node = spec.nodes[nodeId]
@@ -81,15 +60,15 @@ export function formatTeamSpecAssignmentSummary(spec: TeamSpec, locale: Gatehous
   return lines.join("\n")
 }
 
-export function formatAcceptanceSubtreeSnapshot(
-  spec: TeamSpec,
+export function formatAcceptanceBranchSnapshot(
+  spec: MissionTeamSpec,
   plan: OrchestrationPlan,
   acceptanceNodeId: string,
   locale: GatehouseLocale,
 ) {
   const allowed = new Set<string>([acceptanceNodeId, ...planDeliverableDescendantNodeIds(plan, acceptanceNodeId)])
   const nodeIds = teamNodeOrder(spec, plan).filter((nodeId) => allowed.has(nodeId))
-  const lines = [gatehouseMessage("dispatch.teamSnapshot.subtreeHeader", locale)]
+  const lines = [gatehouseMessage("dispatch.teamSnapshot.acceptanceBranchHeader", locale)]
   for (const nodeId of nodeIds) {
     const node = spec.nodes[nodeId]
     if (!node) continue
@@ -100,21 +79,4 @@ export function formatAcceptanceSubtreeSnapshot(
     lines.push(`- **${nodeId}**${you} — ${node.description.trim()}${childSuffix}`)
   }
   return lines.join("\n")
-}
-
-export function formatSubtreeSnapshotFromManifest(
-  manifest: TreeManifest,
-  acceptanceNodeId: string,
-  locale: GatehouseLocale,
-) {
-  const members = manifestMembers(manifest).filter((member) => member.node_id === acceptanceNodeId)
-  return formatExecutionTeamSnapshot(
-    members.map((member) => ({
-      node_id: member.node_id,
-      ...(member.description && { description: member.description }),
-      ...(member.display_name && { display_name: member.display_name }),
-      ...(member.profile && { profile: member.profile }),
-    })),
-    { youNodeId: acceptanceNodeId, locale, manifest },
-  )
 }

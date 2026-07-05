@@ -27,12 +27,12 @@ You are **{{architect_name}}**'s retro assistant (empty context). Your job is em
 Follow **orchestration script order** from the kickoff snapshot:
 
 1. For each `run` step → analyze that node's `context/<node_id>/`.
-2. For each `parallel` step → analyze listed siblings in declared order (parallel segment; focus on coordination/wait/rollup behavior).
+2. For each `parallel` step → analyze listed siblings in declared order (parallel segment; focus on coordination/wait/synthesis behavior).
 3. Prefer `timeline.md` + `metrics.json`; grep before reading `messages.json` fragments.
 
 ## Output
 
-1. Write `.gatehouse/trees/<mission_id>/reports/retro-summary.md` (see `retro-summary.template.md`).
+1. Write `.gatehouse/missions/<mission_id>/reports/retro-summary.md` (see `retro-summary.template.md`).
 2. Promote reusable scripts to `.gatehouse/skills/retro-toolkit/tools/<verb-noun>/` with `SKILL.md`.
 3. Call **`gatehouse_retro_record()`** — Gatehouse notifies {{architect_name}} to review and iterate **architect-meta**.
 

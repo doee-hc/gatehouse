@@ -62,16 +62,16 @@ export function leadDir(projectDirectory: string) {
   return path.join(gatehouseRoot(projectDirectory), "lead")
 }
 
-export function treesDir(projectDirectory: string) {
-  return path.join(gatehouseRoot(projectDirectory), "trees")
+export function missionsDir(projectDirectory: string) {
+  return path.join(gatehouseRoot(projectDirectory), "missions")
 }
 
-export function treeDir(projectDirectory: string, missionId: string) {
-  return path.join(treesDir(projectDirectory), missionId)
+export function missionDir(projectDirectory: string, missionId: string) {
+  return path.join(missionsDir(projectDirectory), missionId)
 }
 
-export function treeRelDir(missionId: string) {
-  return path.join(".gatehouse", "trees", missionId)
+export function missionRelDir(missionId: string) {
+  return path.join(".gatehouse", "missions", missionId)
 }
 
 /** Human/debug YAML export root — not an agent runtime interface. */
@@ -97,58 +97,39 @@ export function debugSessionIndexRelPath(missionId: string) {
 }
 
 export function manifestExportPath(projectDirectory: string, missionId: string) {
-  return path.join(internalExportsDir(projectDirectory), "trees", missionId, "manifest.yaml")
+  return path.join(internalExportsDir(projectDirectory), "missions", missionId, "manifest.yaml")
 }
 
 export function retroManifestExportPath(projectDirectory: string, missionId: string) {
-  return path.join(internalExportsDir(projectDirectory), "trees", missionId, "retro-manifest.yaml")
+  return path.join(internalExportsDir(projectDirectory), "missions", missionId, "retro-manifest.yaml")
 }
 
 export function extractManifestExportPath(projectDirectory: string, missionId: string) {
-  return path.join(internalExportsDir(projectDirectory), "trees", missionId, "extract-manifest.yaml")
+  return path.join(internalExportsDir(projectDirectory), "missions", missionId, "extract-manifest.yaml")
 }
 
 export function verifyManifestExportPath(projectDirectory: string, missionId: string) {
-  return path.join(internalExportsDir(projectDirectory), "trees", missionId, "verify-manifest.yaml")
-}
-
-/** Pre-internal-layout path; import fallback only. */
-export function legacyManifestPath(projectDirectory: string, missionId: string) {
-  return path.join(treeDir(projectDirectory, missionId), "manifest.yaml")
-}
-
-export function legacyRetroManifestPath(projectDirectory: string, missionId: string) {
-  return path.join(treeDir(projectDirectory, missionId), "retro-manifest.yaml")
-}
-
-/** @deprecated Use manifestExportPath — kept for import fallback call sites. */
-export function manifestPath(projectDirectory: string, missionId: string) {
-  return manifestExportPath(projectDirectory, missionId)
-}
-
-/** @deprecated Use retroManifestExportPath — kept for import fallback call sites. */
-export function retroManifestPath(projectDirectory: string, missionId: string) {
-  return retroManifestExportPath(projectDirectory, missionId)
+  return path.join(internalExportsDir(projectDirectory), "missions", missionId, "verify-manifest.yaml")
 }
 
 export function missionScriptPath(projectDirectory: string, missionId: string) {
-  return path.join(treeDir(projectDirectory, missionId), "mission.script.ts")
+  return path.join(missionDir(projectDirectory, missionId), "mission.script.ts")
 }
 
 export function missionScriptRelPath(missionId: string) {
-  return path.join(treeRelDir(missionId), "mission.script.ts")
+  return path.join(missionRelDir(missionId), "mission.script.ts")
 }
 
 export function missionContractPath(projectDirectory: string, missionId: string) {
-  return path.join(treeDir(projectDirectory, missionId), "mission-contract.yaml")
+  return path.join(missionDir(projectDirectory, missionId), "mission-contract.yaml")
 }
 
 export function missionContractRelPath(missionId: string) {
-  return path.join(treeRelDir(missionId), "mission-contract.yaml")
+  return path.join(missionRelDir(missionId), "mission-contract.yaml")
 }
 
 export function nodeBriefRelPath(missionId: string, nodeId: string) {
-  return path.join(treeRelDir(missionId), "node-briefs", `${nodeId}.yaml`)
+  return path.join(missionRelDir(missionId), "node-briefs", `${nodeId}.yaml`)
 }
 
 export function watchdogNodeWakePromptPath(projectDirectory: string) {
@@ -179,10 +160,6 @@ export function watchdogOrchestratorStallPromptPath(projectDirectory: string) {
   return resolveGatehouseContentPath(projectDirectory, "prompts/architect/watchdog-orchestrator-stall.md")
 }
 
-export function treesIndexPath(projectDirectory: string) {
-  return path.join(gatehouseRoot(projectDirectory), "trees-index.yaml")
-}
-
 export function nodeDisplayLabel(nodeId: string) {
   return nodeId.startsWith("node-") ? nodeId.slice(5) : nodeId
 }
@@ -202,7 +179,7 @@ export function retroSessionTitle(missionId: string) {
 }
 
 export function retroSummaryRelPath(missionId: string) {
-  return path.join(treeRelDir(missionId), "reports", "retro-summary.md")
+  return path.join(missionRelDir(missionId), "reports", "retro-summary.md")
 }
 
 export function retroSummaryTemplatePath(projectDirectory: string) {
@@ -218,7 +195,7 @@ export function verifySessionTitle(missionId: string, nodeId: string) {
 }
 
 export function contextDir(projectDirectory: string, missionId: string) {
-  return path.join(treeDir(projectDirectory, missionId), "context")
+  return path.join(missionDir(projectDirectory, missionId), "context")
 }
 
 export function nodeContextDir(projectDirectory: string, missionId: string, nodeId: string) {
@@ -237,11 +214,11 @@ export function phaseContextDir(
 }
 
 export function nodeContextRelDir(missionId: string, nodeId: string) {
-  return path.join(treeRelDir(missionId), "context", nodeId)
+  return path.join(missionRelDir(missionId), "context", nodeId)
 }
 
 export function contextIndexRelPath(missionId: string) {
-  return path.join(treeRelDir(missionId), "context", "index.json")
+  return path.join(missionRelDir(missionId), "context", "index.json")
 }
 
 export function retroKickoffPromptPath(projectDirectory: string) {
@@ -257,7 +234,7 @@ export function domainSkillVerifyPromptPath(projectDirectory: string) {
 }
 
 export function skillVerifyReportRelPath(missionId: string, nodeId: string) {
-  return path.join(treeRelDir(missionId), "reports", "skills", `${nodeId}-verify.md`)
+  return path.join(missionRelDir(missionId), "reports", "skills", `${nodeId}-verify.md`)
 }
 
 export function skillDomainDir(domainId: string) {
@@ -277,23 +254,23 @@ export function curatorSkillAssignKickoffPath(projectDirectory: string) {
 }
 
 export function curatorSkillSummaryRelPath(missionId: string, nodeId: string) {
-  return path.join(treeRelDir(missionId), "reports", "skills", `${nodeId}-extract.md`)
+  return path.join(missionRelDir(missionId), "reports", "skills", `${nodeId}-extract.md`)
 }
 
 export function architectSummaryRelPath(missionId: string) {
-  return path.join(treeRelDir(missionId), "reports", "architect-summary.md")
+  return path.join(missionRelDir(missionId), "reports", "architect-summary.md")
 }
 
 export function curatorSummaryRelPath(missionId: string) {
-  return path.join(treeRelDir(missionId), "reports", "curator-summary.md")
+  return path.join(missionRelDir(missionId), "reports", "curator-summary.md")
 }
 
 export function deliveryDocumentPath(projectDirectory: string, missionId: string) {
-  return path.join(treeDir(projectDirectory, missionId), "delivery.yaml")
+  return path.join(missionDir(projectDirectory, missionId), "delivery.yaml")
 }
 
 export function deliveryDocumentRelPath(missionId: string) {
-  return path.join(treeRelDir(missionId), "delivery.yaml")
+  return path.join(missionRelDir(missionId), "delivery.yaml")
 }
 
 export function deliveryRevisionPromptPath(projectDirectory: string) {

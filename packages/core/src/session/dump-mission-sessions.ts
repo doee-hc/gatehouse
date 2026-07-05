@@ -1,4 +1,4 @@
-import { readManifest } from "../tree/store.ts"
+import { readMissionManifest } from "../missions/manifest/store.ts"
 import type { RegistryStore } from "../registry/store.ts"
 import type { GatehouseClient } from "./client.ts"
 import {
@@ -28,7 +28,7 @@ export async function dumpMissionSessionsForDebug(input: {
     | undefined
 
   if (wantInner) {
-    const manifest = await readManifest(input.projectDirectory, input.missionId)
+    const manifest = await readMissionManifest(input.projectDirectory, input.missionId)
     if (!manifest) {
       throw new Error(`mission manifest not found: ${input.missionId}`)
     }

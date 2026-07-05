@@ -15,7 +15,7 @@ describe("sandbox worker smoke", () => {
     try {
       const fixture = path.join(import.meta.dir, "fixtures/core-example-smoke-v1/mission.script.ts")
       const missionId = "sandbox-worker-smoke-m1"
-      const dest = path.join(dir, ".gatehouse/trees", missionId)
+      const dest = path.join(dir, ".gatehouse/missions", missionId)
       await Bun.$`mkdir -p ${dest}`.quiet()
       const source = (await Bun.file(fixture).text()).replaceAll("core-example-smoke-v1", missionId)
       await Bun.write(path.join(dest, "mission.script.ts"), source)

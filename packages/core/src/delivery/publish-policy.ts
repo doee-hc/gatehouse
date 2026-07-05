@@ -49,20 +49,6 @@ export function deliverablePathsFromCriteria(criteria: DoneWhenCriterion[]) {
   return paths
 }
 
-/** @deprecated Legacy publish: metadata on criteria; prefer deliverablePathsFromCriteria. */
-export function publishPathsFromCriteria(criteria: DoneWhenCriterion[]) {
-  const paths: string[] = []
-  const seen = new Set<string>()
-  for (const criterion of criteria) {
-    if (!criterion.publishPath) continue
-    const normalized = normalizeProjectRelPath(criterion.publishPath)
-    if (seen.has(normalized)) continue
-    seen.add(normalized)
-    paths.push(normalized)
-  }
-  return paths
-}
-
 export function criterionIdForDeliverablePath(criteria: DoneWhenCriterion[], relPath: string) {
   const normalized = normalizeProjectRelPath(relPath)
   return criteria.find(

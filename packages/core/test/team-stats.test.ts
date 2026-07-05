@@ -15,7 +15,17 @@ import { RegistryDatabase } from "../src/registry/db.ts"
 import { emptyTokens } from "../src/metrics/aggregate.ts"
 import type { MissionEntry } from "../src/missions/parse.ts"
 import type { RegistryAgent } from "../src/registry/types.ts"
-import type { TreeManifest } from "../src/tree/types.ts"
+import type { MissionRetroManifest, MissionManifest } from "../src/missions/manifest/types.ts"
+
+function seedRegistryTreeData(
+  dir: string,
+  manifest: MissionManifest,
+  retro?: MissionRetroManifest,
+) {
+  const db = new RegistryDatabase(dir)
+  db.saveMissionManifest(manifest)
+  if (retro) db.saveRetroManifest(retro)
+}
 
 beforeEach(() => {
   clearTeamStatsCacheForTests()
@@ -89,7 +99,7 @@ test("buildTeamStatsSnapshot falls back to phase metrics when retro sessions are
   const dir = await mkdtemp(path.join(os.tmpdir(), "gh-team-stats-phase-"))
   try {
     await mkdir(path.join(dir, ".gatehouse/lead"), { recursive: true })
-    await mkdir(path.join(dir, ".gatehouse/trees/m1/context/retro/node-root"), { recursive: true })
+    await mkdir(path.join(dir, ".gatehouse/missions/m1/context/retro/node-root"), { recursive: true })
     await writeFile(
       path.join(dir, ".gatehouse/lead/missions.yaml"),
       `schema_version: 1
@@ -101,39 +111,27 @@ missions:
     must_not: []
 `,
     )
-    await writeFile(
-      path.join(dir, ".gatehouse/trees-index.yaml"),
-      `schema_version: 1
-trees:
-  - mission_id: m1
-    status: archived
-`,
+    seedRegistryTreeData(
+      dir,
+      {
+        mission_id: "m1",
+        status: "archived",
+        terminal_node: "node-root",
+        created_at: "2026-06-12T00:00:00.000Z",
+        nodes: {
+          "node-root": { session_id: "ses-exec", display_name: "root" },
+        },
+      },
+      {
+        mission_id: "m1",
+        created_at: "2026-06-12T01:00:00.000Z",
+        retro_session_id: "ses-retro",
+        analysis_order: ["node-root"],
+      },
     )
-    await mkdir(path.join(dir, ".gatehouse/internal/exports/trees/m1"), { recursive: true })
+    await mkdir(path.join(dir, ".gatehouse/missions/m1/context/retro/retro-analyst"), { recursive: true })
     await writeFile(
-      path.join(dir, ".gatehouse/internal/exports/trees/m1/manifest.yaml"),
-      `mission_id: m1
-status: archived
-terminal_node: node-root
-created_at: 2026-06-12T00:00:00.000Z
-nodes:
-  node-root:
-    session_id: ses-exec
-    display_name: root
-`,
-    )
-    await writeFile(
-      path.join(dir, ".gatehouse/internal/exports/trees/m1/retro-manifest.yaml"),
-      `mission_id: m1
-created_at: 2026-06-12T01:00:00.000Z
-retro_session_id: ses-retro
-analysis_order:
-  - node-root
-`,
-    )
-    await mkdir(path.join(dir, ".gatehouse/trees/m1/context/retro/retro-analyst"), { recursive: true })
-    await writeFile(
-      path.join(dir, ".gatehouse/trees/m1/context/retro/retro-analyst/metrics.json"),
+      path.join(dir, ".gatehouse/missions/m1/context/retro/retro-analyst/metrics.json"),
       JSON.stringify({
         mission_id: "m1",
         phase: "retro",
@@ -156,7 +154,6 @@ analysis_order:
       return new Response("not found", { status: 404 })
     }) as typeof fetch
 
-    new RegistryDatabase(dir)
     clearTeamStatsCacheForTests()
     const snapshot = await buildTeamStatsSnapshot(dir, "http://127.0.0.1:4096")
     const retroRole = snapshot.missions[0]?.roles.find((role) => role.session_id === "ses-retro")
@@ -183,35 +180,23 @@ missions:
     must_not: []
 `,
     )
-    await writeFile(
-      path.join(dir, ".gatehouse/trees-index.yaml"),
-      `schema_version: 1
-trees:
-  - mission_id: m1
-    status: running
-`,
-    )
-    await mkdir(path.join(dir, ".gatehouse/internal/exports/trees/m1"), { recursive: true })
-    await writeFile(
-      path.join(dir, ".gatehouse/internal/exports/trees/m1/manifest.yaml"),
-      `mission_id: m1
-status: running
-terminal_node: node-root
-created_at: 2026-06-12T00:00:00.000Z
-nodes:
-  node-root:
-    session_id: ses-exec
-    display_name: root
-`,
-    )
-    await writeFile(
-      path.join(dir, ".gatehouse/internal/exports/trees/m1/retro-manifest.yaml"),
-      `mission_id: m1
-created_at: 2026-06-12T01:00:00.000Z
-retro_session_id: ses-retro
-analysis_order:
-  - node-root
-`,
+    seedRegistryTreeData(
+      dir,
+      {
+        mission_id: "m1",
+        status: "running",
+        terminal_node: "node-root",
+        created_at: "2026-06-12T00:00:00.000Z",
+        nodes: {
+          "node-root": { session_id: "ses-exec", display_name: "root" },
+        },
+      },
+      {
+        mission_id: "m1",
+        created_at: "2026-06-12T01:00:00.000Z",
+        retro_session_id: "ses-retro",
+        analysis_order: ["node-root"],
+      },
     )
 
     globalThis.fetch = (async (input: RequestInfo | URL) => {
@@ -246,7 +231,6 @@ analysis_order:
       return new Response("not found", { status: 404 })
     }) as typeof fetch
 
-    new RegistryDatabase(dir)
     clearTeamStatsCacheForTests()
     const snapshot = await buildTeamStatsSnapshot(dir, "http://127.0.0.1:4096")
     const retroRole = snapshot.missions[0]?.roles.find((role) => role.session_id === "ses-retro")
@@ -262,7 +246,7 @@ test("buildTeamStatsSnapshot falls back to local context metrics when OpenCode s
   const dir = await mkdtemp(path.join(os.tmpdir(), "gh-team-stats-local-"))
   try {
     await mkdir(path.join(dir, ".gatehouse/lead"), { recursive: true })
-    await mkdir(path.join(dir, ".gatehouse/trees/m1/context/root"), { recursive: true })
+    await mkdir(path.join(dir, ".gatehouse/missions/m1/context/root"), { recursive: true })
     await writeFile(
       path.join(dir, ".gatehouse/lead/missions.yaml"),
       `schema_version: 1
@@ -274,29 +258,17 @@ missions:
     must_not: []
 `,
     )
+    seedRegistryTreeData(dir, {
+      mission_id: "m1",
+      status: "archived",
+      terminal_node: "root",
+      created_at: "2026-06-12T00:00:00.000Z",
+      nodes: {
+        root: { session_id: "ses-archived", display_name: "root" },
+      },
+    })
     await writeFile(
-      path.join(dir, ".gatehouse/trees-index.yaml"),
-      `schema_version: 1
-trees:
-  - mission_id: m1
-    status: archived
-`,
-    )
-    await mkdir(path.join(dir, ".gatehouse/internal/exports/trees/m1"), { recursive: true })
-    await writeFile(
-      path.join(dir, ".gatehouse/internal/exports/trees/m1/manifest.yaml"),
-      `mission_id: m1
-status: archived
-terminal_node: root
-created_at: 2026-06-12T00:00:00.000Z
-nodes:
-  root:
-    session_id: ses-archived
-    display_name: root
-`,
-    )
-    await writeFile(
-      path.join(dir, ".gatehouse/trees/m1/context/root/metrics.json"),
+      path.join(dir, ".gatehouse/missions/m1/context/root/metrics.json"),
       JSON.stringify({
         mission_id: "m1",
         node_id: "root",
@@ -318,7 +290,6 @@ nodes:
       return new Response("not found", { status: 404 })
     }) as typeof fetch
 
-    new RegistryDatabase(dir)
     clearTeamStatsCacheForTests()
     const snapshot = await buildTeamStatsSnapshot(dir, "http://127.0.0.1:4096")
     expect(snapshot.missions).toHaveLength(1)
@@ -340,7 +311,7 @@ test("buildMissionStats aggregates inner node sessions", () => {
     started_at: "2026-05-29T09:00:00Z",
     completed_at: "2026-05-29T12:00:00Z",
   }
-  const manifest: TreeManifest = {
+  const manifest: MissionManifest = {
     mission_id: "m1",
     status: "archived",
     terminal_node: "root",
@@ -371,7 +342,7 @@ test("buildMissionStats includes retro extract and verify sessions", () => {
     done_when: [],
     must_not: [],
   }
-  const manifest: TreeManifest = {
+  const manifest: MissionManifest = {
     mission_id: "m1",
     status: "running",
     terminal_node: "node-root",

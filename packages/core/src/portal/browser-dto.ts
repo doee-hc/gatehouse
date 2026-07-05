@@ -1,21 +1,20 @@
 import type { BlogSnapshot } from "./blog.ts"
 import { resolvePortalProjectSlug } from "./portal-project.ts"
-import type { PortalSnapshot, PortalAgent, PortalTree, PortalTreeNode } from "./snapshot.ts"
+import type { PortalSnapshot, PortalAgent, PortalMissionTeam, PortalMissionNode } from "./snapshot.ts"
 import type { TeamStatsSnapshot, TeamStatsMission, TeamStatsOuterRole, TeamStatsRole } from "./team-stats.ts"
 import type { PortalSkillDetail } from "./skill.ts"
 
 export type BrowserPortalAgent = Omit<PortalAgent, "session_id">
-export type BrowserPortalTreeNode = Omit<PortalTreeNode, "session_id">
-export type BrowserPortalTree = Omit<PortalTree, "nodes"> & { nodes: BrowserPortalTreeNode[] }
+export type BrowserPortalMissionNode = Omit<PortalMissionNode, "session_id">
+export type BrowserPortalMissionTeam = Omit<PortalMissionTeam, "nodes"> & { nodes: BrowserPortalMissionNode[] }
 
 export type BrowserPortalSnapshot = Omit<
   PortalSnapshot,
-  "project_directory" | "session_status" | "agents" | "tree" | "trees"
+  "project_directory" | "session_status" | "agents" | "team"
 > & {
   project: string
   agents: BrowserPortalAgent[]
-  tree?: BrowserPortalTree
-  trees?: BrowserPortalTree[]
+  team?: BrowserPortalMissionTeam
 }
 
 export type BrowserTeamStatsRole = Omit<TeamStatsRole, "session_id">
@@ -45,10 +44,10 @@ function stripAgent(agent: PortalAgent): BrowserPortalAgent {
   return rest
 }
 
-function stripTree(value: PortalTree): BrowserPortalTree {
-  const { nodes, ...treeRest } = value
+function stripTeam(value: PortalMissionTeam): BrowserPortalMissionTeam {
+  const { nodes, ...teamRest } = value
   return {
-    ...treeRest,
+    ...teamRest,
     nodes: nodes.map((node) => {
       const { session_id: _sessionId, ...nodeRest } = node
       return nodeRest
@@ -61,8 +60,7 @@ export function toBrowserSnapshot(projectDirectory: string, snapshot: PortalSnap
     project_directory: _projectDirectory,
     session_status: _sessionStatus,
     agents,
-    tree,
-    trees,
+    team,
     ...rest
   } = snapshot
 
@@ -70,8 +68,7 @@ export function toBrowserSnapshot(projectDirectory: string, snapshot: PortalSnap
     ...rest,
     project: browserProject(projectDirectory),
     agents: agents.map(stripAgent),
-    ...(tree && { tree: stripTree(tree) }),
-    ...(trees && { trees: trees.map(stripTree) }),
+    ...(team && { team: stripTeam(team) }),
   }
 }
 

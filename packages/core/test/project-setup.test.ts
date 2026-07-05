@@ -120,13 +120,12 @@ describe("project setup", () => {
     }
   })
 
-  test("ensureOpencodeConfig migrates legacy .opencode/opencode.jsonc to project root", async () => {
-    const dir = await mkdtemp(path.join(tmpdir(), "gh-legacy-config-"))
+  test("ensureOpencodeConfig reads existing root opencode.jsonc", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-config-root-"))
     const pluginRoot = path.join(import.meta.dir, "..")
     try {
-      await Bun.$`mkdir -p ${path.join(dir, ".opencode")}`.quiet()
       await Bun.write(
-        path.join(dir, ".opencode/opencode.jsonc"),
+        projectOpencodeConfigPath(dir),
         JSON.stringify({ default_agent: "architect", skills: { paths: [".gatehouse", "custom"] } }),
       )
 
@@ -139,7 +138,6 @@ describe("project setup", () => {
       expect(config.default_agent).toBe("architect")
       expect(config.skills?.paths).toContain(".gatehouse")
       expect(config.skills?.paths).toContain("custom")
-      expect(await Bun.file(path.join(dir, ".opencode/opencode.jsonc")).exists()).toBe(false)
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
@@ -317,14 +315,14 @@ describe("project setup", () => {
     }
   })
 
-  test("ensureOpencodeConfig replaces legacy gatehouse-plugin entry", async () => {
+  test("ensureOpencodeConfig replaces stale gatehouse-plugin entry", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-config-"))
     const pluginRoot = path.join(import.meta.dir, "..")
     try {
       await Bun.write(
         projectOpencodeConfigPath(dir),
         JSON.stringify({
-          plugin: [["../packages/gatehouse-plugin", { profile: "coordinator" }]],
+          plugin: [["../packages/gatehouse-plugin", { profile: "build-coordinator" }]],
         }),
       )
       await Bun.$`mkdir -p ${path.join(dir, ".gatehouse")}`.quiet()

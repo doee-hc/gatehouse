@@ -48,7 +48,7 @@ Discuss direction with Lead
     ↓
 Confirm Mission (queued in missions)
     ↓
-Lead starts Mission → Architect orchestrates execution tree → inner agents execute
+Lead starts Mission → Architect orchestrates execution team → inner agents execute
     ↓
 Review → retrospective → skill distillation
     ↓

@@ -15,7 +15,7 @@ import type { OrchestrationPlan } from "../src/orchestration/plan-types.ts"
 import { initOrchestrationState, readOrchestrationState, writeOrchestrationState } from "../src/orchestration/state.ts"
 import { RegistryStore } from "../src/registry/store.ts"
 import type { GatehouseClient } from "../src/session/client.ts"
-import type { TeamSpec } from "../src/tree/types.ts"
+import type { MissionTeamSpec } from "../src/missions/manifest/types.ts"
 
 function samplePlan(steps: OrchestrationPlan["steps"]): OrchestrationPlan {
   return {
@@ -98,7 +98,7 @@ describe("replay policy", () => {
 })
 
 describe("replay policy in mission context", () => {
-  const team: TeamSpec = {
+  const team: MissionTeamSpec = {
     mission_id: "compound-m1",
     terminal: "a",
     nodes: {

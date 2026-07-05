@@ -17,7 +17,7 @@ export type MissionWatchState = {
   /** Mission-level idle tracking for record watchdogs. */
   allIdleSince?: number
   lastWakeAt?: number
-  /** 执行树 terminal 已向 lead 发送交付通知，等待答复期间不触发看门狗 */
+  /** 执行团队 terminal 已向 lead 发送交付通知，等待答复期间不触发看门狗 */
   paused?: boolean
   /** Orchestrator stall detection cooldown / auto-resume tracking. */
   orchestratorStall?: OrchestratorStallWatchState
@@ -48,7 +48,7 @@ export function isInnerNotifyingLead(
   return true
 }
 
-export function isSendToTreeMember(recipient: RegistryAgent, missionId: string) {
+export function isSendToMissionMember(recipient: RegistryAgent, missionId: string) {
   if (recipient.scope !== "inner") return false
   if (recipient.missionId !== undefined && recipient.missionId !== missionId) return false
   return true
@@ -85,7 +85,7 @@ export function watchdogSendMessageState(
   ) {
     return { paused: true }
   }
-  if (eventMissionId && isSendToTreeMember(input.recipient, eventMissionId)) {
+  if (eventMissionId && isSendToMissionMember(input.recipient, eventMissionId)) {
     return {}
   }
   return state

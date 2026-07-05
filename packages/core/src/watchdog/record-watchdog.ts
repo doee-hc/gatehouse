@@ -5,7 +5,7 @@ import { retroAgentId, extractAgentId, verifyAgentId } from "../registry/types.t
 import { gatehouseLog } from "../log.ts"
 import type { ResolvedWatchdogPollTiming } from "../gatehouse-config.ts"
 import { sessionStatusById, type SessionRuntimeStatus } from "../session/status.ts"
-import { allSessionsIdle } from "./execution-tree.ts"
+import { allSessionsIdle } from "./mission-watchdog.ts"
 import {
   loadWatchdogRetroRecordWakePrompt,
   loadWatchdogSkillRecordWakePrompt,

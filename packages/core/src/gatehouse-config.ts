@@ -26,7 +26,7 @@ import {
 
 export const GATEHOUSE_CONFIG_SCHEMA_VERSION = 1
 
-export const GATEHOUSE_INNER_MODEL_PROFILES = ["executor", "coordinator"] as const
+export const GATEHOUSE_INNER_MODEL_PROFILES = ["executor"] as const
 export type GatehouseInnerModelProfile = (typeof GATEHOUSE_INNER_MODEL_PROFILES)[number]
 
 // Literal list — do not spread OUTER_PROFILES here (names.ts imports this module → TDZ).

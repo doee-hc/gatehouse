@@ -3,15 +3,15 @@ import { clearEventLogPlaceholder, logEvent } from "../shell/event-log.ts"
 import { t } from "../shell/i18n.ts"
 import { shouldLogAgentStatus } from "./status-log.ts"
 
-function missionTree(snapshot: PortalSnapshot | undefined, missionId: string | undefined) {
+function missionTeam(snapshot: PortalSnapshot | undefined, missionId: string | undefined) {
   if (!snapshot || !missionId) return undefined
-  if (snapshot.tree?.mission_id === missionId) return snapshot.tree
-  return snapshot.trees?.find((tree) => tree.mission_id === missionId)
+  if (snapshot.team?.mission_id === missionId) return snapshot.team
+  return undefined
 }
 
 function nodeLabel(snapshot: PortalSnapshot, missionId: string | undefined, nodeId: string) {
-  const tree = missionTree(snapshot, missionId)
-  const node = tree?.nodes.find((entry) => entry.node_id === nodeId)
+  const team = missionTeam(snapshot, missionId)
+  const node = team?.nodes.find((entry) => entry.node_id === nodeId)
   return node?.display_name || nodeId
 }
 
@@ -86,10 +86,10 @@ function logMissionEvents(prev: PortalSnapshot, next: PortalSnapshot) {
   }
 
   const activeId = next.active_mission_id
-  const prevTree = missionTree(prev, activeId)
-  const nextTree = missionTree(next, activeId)
-  if (activeId && !prevTree && nextTree && nextTree.nodes.length > 0) {
-    logEvent(() => t("event.treeBootstrapped", { id: activeId, count: String(nextTree.nodes.length) }), "evt-live")
+  const prevTeam = missionTeam(prev, activeId)
+  const nextTeam = missionTeam(next, activeId)
+  if (activeId && !prevTeam && nextTeam && nextTeam.nodes.length > 0) {
+    logEvent(() => t("event.teamReady", { id: activeId, count: String(nextTeam.nodes.length) }), "evt-live")
   }
 }
 

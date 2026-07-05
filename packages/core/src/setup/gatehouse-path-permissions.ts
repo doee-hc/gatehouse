@@ -74,10 +74,9 @@ export const leadFilesystemPermissions = filesystemPathPermissions(
   gatehouseRules(
     [
       `${GH}/config.yaml`,
-      `${GH}/trees-index.yaml`,
       `${GH}/lead/**`,
-      `${GH}/trees/**/reports/**`,
-      `${GH}/trees/**/delivery.yaml`,
+      `${GH}/missions/**/reports/**`,
+      `${GH}/missions/**/delivery.yaml`,
       `${GH}/skills/domains.yaml`,
       ...metaSkillPatterns(GATEHOUSE_ROLE_SKILLS.lead),
     ],
@@ -91,7 +90,7 @@ export const architectFilesystemPermissions = filesystemPathPermissions(
   gatehouseRules(
     [
       `${GH}/config.yaml`,
-      `${GH}/trees/**`,
+      `${GH}/missions/**`,
       ...metaSkillPatterns(GATEHOUSE_ROLE_SKILLS.architect),
       ...retroToolkitPatterns,
       ...promptRolePatterns("architect"),
@@ -107,7 +106,7 @@ export const architectFilesystemPermissions = filesystemPathPermissions(
   ),
   gatehouseRules(
     [
-      `${GH}/trees/**`,
+      `${GH}/missions/**`,
       ...retroToolkitPatterns,
       ...promptRolePatterns("architect"),
     ],
@@ -128,7 +127,7 @@ export const curatorFilesystemPermissions = filesystemPathPermissions(
       `${GH}/skills/by-domain/**`,
       `${GH}/skills/domains.yaml`,
       ...metaSkillPatterns(GATEHOUSE_ROLE_SKILLS.curator),
-      `${GH}/trees/**/reports/**`,
+      `${GH}/missions/**/reports/**`,
       ...localePatterns("prompts/architect/domain-skill-extract.md"),
       ...promptRolePatterns("curator"),
     ],
@@ -137,8 +136,8 @@ export const curatorFilesystemPermissions = filesystemPathPermissions(
       ...denyOuterPromptRoles("curator"),
       `${GH}/lead/**`,
       `${GH}/arbiter/**`,
-      `${GH}/trees/**/mission.script.ts`,
-      `${GH}/trees/**/context/**`,
+      `${GH}/missions/**/mission.script.ts`,
+      `${GH}/missions/**/context/**`,
       ...retroToolkitPatterns,
     ],
   ),
@@ -148,7 +147,7 @@ export const curatorFilesystemPermissions = filesystemPathPermissions(
       `${GH}/skills/domains.yaml`,
       ...metaSkillPatterns(GATEHOUSE_ROLE_SKILLS.curator),
       ...localePatterns("prompts/architect/domain-skill-extract.md"),
-      `${GH}/trees/**/reports/**`,
+      `${GH}/missions/**/reports/**`,
     ],
     [...denyOtherOuterMetaSkills(GATEHOUSE_ROLE_SKILLS.curator), `${GH}/lead/**`, `${GH}/arbiter/**`],
   ),
@@ -191,8 +190,8 @@ export const innerExecutionFilesystemPermissions = filesystemPathPermissions(inn
 export const innerRetroAnalystFilesystemPermissions = filesystemPathPermissions(
   gatehouseRules(
     [
-      `${GH}/trees/**/reports/retro-summary.md`,
-      `${GH}/trees/**/context/**`,
+      `${GH}/missions/**/reports/retro-summary.md`,
+      `${GH}/missions/**/context/**`,
       ...retroToolkitPatterns,
       ...localePatterns("prompts/architect/retro-summary.template.md"),
       ...localePatterns("prompts/architect/retro-analyst-kickoff.md"),
@@ -201,7 +200,7 @@ export const innerRetroAnalystFilesystemPermissions = filesystemPathPermissions(
     [...denyOtherOuterMetaSkills(GATEHOUSE_ROLE_SKILLS.architect), ...promptRolePatterns("architect")],
   ),
   gatehouseRules(
-    [`${GH}/trees/**/reports/retro-summary.md`, ...retroToolkitPatterns, ...metaSkillPatterns("retro-analyst-meta")],
+    [`${GH}/missions/**/reports/retro-summary.md`, ...retroToolkitPatterns, ...metaSkillPatterns("retro-analyst-meta")],
     [...denyOtherOuterMetaSkills(GATEHOUSE_ROLE_SKILLS.architect)],
   ),
 )
@@ -210,15 +209,15 @@ export const innerRetroAnalystFilesystemPermissions = filesystemPathPermissions(
 export const innerPipelineFilesystemPermissions = filesystemPathPermissions(
   gatehouseRules(
     [
-      `${GH}/trees/**/reports/skills/**`,
-      `${GH}/trees/**/context/**`,
+      `${GH}/missions/**/reports/skills/**`,
+      `${GH}/missions/**/context/**`,
       `${GH}/skills/by-domain/**`,
       `${GH}/skills/domains.yaml`,
     ],
     [...denyOtherOuterMetaSkills(GATEHOUSE_ROLE_SKILLS.architect), ...promptRolePatterns("architect")],
   ),
   gatehouseRules(
-    [`${GH}/trees/**/reports/skills/**`, `${GH}/skills/by-domain/**`, `${GH}/skills/domains.yaml`],
+    [`${GH}/missions/**/reports/skills/**`, `${GH}/skills/by-domain/**`, `${GH}/skills/domains.yaml`],
     [...denyOtherOuterMetaSkills(GATEHOUSE_ROLE_SKILLS.architect)],
   ),
 )

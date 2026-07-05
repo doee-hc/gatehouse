@@ -72,18 +72,15 @@ describe("mission inner agent lifecycle", () => {
         missions: [{ id: "m-a", status: "running", done_when: [], must_not: [] }],
       }),
     )
-    await writeFile(
-      path.join(dir, ".gatehouse", "trees", "m-a", "manifest.yaml"),
-      stringifyYaml({
-        mission_id: "m-a",
-        status: "running",
-        terminal_node: "root",
-        created_at: new Date().toISOString(),
-        nodes: {
-          terminal: { session_id: "ses-root", display_name: "root", profile: "build" },
-        },
-      }),
-    )
+    new RegistryDatabase(dir).saveMissionManifest({
+      mission_id: "m-a",
+      status: "running",
+      terminal_node: "terminal",
+      created_at: new Date().toISOString(),
+      nodes: {
+        terminal: { session_id: "ses-root", display_name: "root", profile: "build" },
+      },
+    })
     const now = new Date().toISOString()
     new RegistryDatabase(dir).save({
       schemaVersion: REGISTRY_SCHEMA_VERSION,
@@ -118,7 +115,7 @@ describe("mission inner agent lifecycle", () => {
     expect(lingering?.lingering).toBe(true)
     expect(lingering?.status).toBe("idle")
     expect(snap.lingering_mission_id).toBe("m-a")
-    expect(snap.tree?.mission_id).toBe("m-a")
+    expect(snap.team?.mission_id).toBe("m-a")
   })
 
   test("reconcileInactiveMissionInnerAgents handles manual missions.yaml edits", async () => {
@@ -182,7 +179,7 @@ describe("mission inner agent lifecycle", () => {
         missionId: "m-retro",
         startedAt: now,
         retroSummarySubmittedAt: now,
-        retroSummaryPath: ".gatehouse/trees/m-retro/reports/retro-summary.md",
+        retroSummaryPath: ".gatehouse/missions/m-retro/reports/retro-summary.md",
       }],
       skillExtractRuns: [],
       skillExtractCompletions: [],

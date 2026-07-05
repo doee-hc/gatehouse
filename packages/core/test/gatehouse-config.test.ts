@@ -28,8 +28,6 @@ import {
   WATCHDOG_WAKE_COOLDOWN_MS,
 } from "../src/watchdog/tick.ts"
 import { INNER_EXECUTION_AGENT } from "../src/registry/types.ts"
-import { modelForInnerNode } from "../src/tree/parse.ts"
-import type { OrchestrationPlan } from "../src/orchestration/plan-types.ts"
 
 describe("gatehouse config", () => {
   test("merges global and project config", async () => {
@@ -90,28 +88,6 @@ describe("gatehouse config", () => {
       expect(modelForOuterProfile(config.models, "lead")).toBe("openai/gpt-5")
       expect(modelForInnerProfile(config.models, INNER_EXECUTION_AGENT)).toBe("anthropic/claude-haiku-4")
       expect(modelForInnerProfile(config.models, "build-extract")).toBeUndefined()
-      const plan: OrchestrationPlan = {
-        schema_version: 1,
-        mission_id: "m1",
-        plan_version: "v1",
-        script_hash: "hash",
-        warnings: [],
-        steps: [
-          { id: "step-0", op: "run", statement: 'await ctx.run("leaf", { text: "go" })', nodeId: "leaf" },
-          {
-            id: "step-1",
-            op: "run",
-            statement: 'await ctx.run("root", { text: "summary", dependsOn: [{ node: "leaf", deliverable: true }] })',
-            nodeId: "root",
-          },
-        ],
-      }
-      expect(
-        modelForInnerNode(config.models, plan, "root"),
-      ).toBe(config.models.coordinator)
-      expect(
-        modelForInnerNode(config.models, plan, "leaf"),
-      ).toBe("anthropic/claude-haiku-4")
     } finally {
       if (prevGlobal === undefined) delete process.env.GATEHOUSE_GLOBAL_CONFIG_DIR
       else process.env.GATEHOUSE_GLOBAL_CONFIG_DIR = prevGlobal

@@ -17,7 +17,7 @@ import { getRegistryStore } from "../src/registry/context.ts"
 import type { RegistryStore } from "../src/registry/store.ts"
 import type { GatehouseClient } from "../src/session/client.ts"
 import { teamNodeOrder } from "../src/orchestration/plan-graph.ts"
-import type { TeamSpec, TreeManifest } from "../src/tree/types.ts"
+import type { MissionTeamSpec, MissionManifest } from "../src/missions/manifest/types.ts"
 
 export type ReplayTestEnv = {
   dir: string
@@ -25,7 +25,7 @@ export type ReplayTestEnv = {
   plugin: PluginInput
   store: RegistryStore
   script: LoadedMissionScript
-  manifest: TreeManifest
+  manifest: MissionManifest
   promptTexts: string[]
   promptsByNode: Map<string, string[]>
 }
@@ -67,8 +67,8 @@ export function countPromptMarkers(promptTexts: readonly string[], marker: strin
   return promptTexts.filter((text) => text.includes(marker)).length
 }
 
-export function teamManifest(team: TeamSpec): TreeManifest {
-  const nodes: TreeManifest["nodes"] = {}
+export function teamManifest(team: MissionTeamSpec): MissionManifest {
+  const nodes: MissionManifest["nodes"] = {}
   for (const nodeId of teamNodeOrder(team)) {
     const spec = team.nodes[nodeId]!
     nodes[nodeId] = {
@@ -133,7 +133,7 @@ export async function createReplayTestEnv(input: {
   scriptSource: string
 }): Promise<ReplayTestEnv> {
   const dir = await mkdtemp(path.join(tmpdir(), "gh-replay-int-"))
-  const missionDir = path.join(dir, ".gatehouse/trees", input.missionId)
+  const missionDir = path.join(dir, ".gatehouse/missions", input.missionId)
   await mkdir(missionDir, { recursive: true })
   await writeFile(path.join(missionDir, "mission.script.ts"), input.scriptSource, "utf8")
 
@@ -277,8 +277,8 @@ export const team = {
   mission_id: "${missionId}",
   terminal: "n3",
   nodes: {
-    n3: { description: "root coordinator" },
-    n2: { description: "mid coordinator" },
+    n3: { description: "root synthesis" },
+    n2: { description: "mid synthesis" },
     n1: { description: "leaf worker" },
   },
 }
@@ -357,7 +357,7 @@ export default async function orchestrate(ctx) {
 `
   },
 
-  fanOutJoinRollup(missionId: string) {
+  fanOutJoin(missionId: string) {
     return `
 export const team = {
   mission_id: "${missionId}",
@@ -385,14 +385,14 @@ export default async function orchestrate(ctx) {
   ])
   await ctx.run("terminal", {
     brief: { your_work: ["summary"], acceptance_slice: [] },
-    text: "marker:rollup-root",
+    text: "marker:join-root",
     dependsOn: [{ node: "a", deliverable: true }, { node: "b", deliverable: true }],
   })
 }
 `
   },
 
-  /** 组间并行：双轨 parallel，轨内串行 fan-in 后 rollup 到协调节点，最后 root 汇总 */
+  /** 组间并行：双轨 parallel，轨内串行 fan-in 后汇总到中间节点，最后 terminal 汇总 */
   dualTrackParallelFinal(missionId: string) {
     return `
 export const team = {
@@ -400,8 +400,8 @@ export const team = {
   terminal: "terminal",
   nodes: {
     terminal: { description: "terminal" },
-    a: { description: "a coord" },
-    b: { description: "b coord" },
+    a: { description: "track a synthesis" },
+    b: { description: "track b synthesis" },
     a1: { description: "a1" },
     a2: { description: "a2" },
     b1: { description: "b1" },
@@ -414,8 +414,8 @@ export default async function orchestrate(ctx) {
       await ctx.run("a1", { brief: { your_work: ["a1"], acceptance_slice: [] }, text: "marker:trackA-a1" })
       await ctx.run("a2", { brief: { your_work: ["a2"], acceptance_slice: [] }, text: "marker:trackA-a2" })
       await ctx.run("a", {
-        brief: { your_work: ["rollup a"], acceptance_slice: [] },
-        text: "marker:trackA-rollup",
+        brief: { your_work: ["synthesize a"], acceptance_slice: [] },
+        text: "marker:trackA-join",
         dependsOn: [{ node: "a1", deliverable: true }, { node: "a2", deliverable: true }],
       })
     },
@@ -423,8 +423,8 @@ export default async function orchestrate(ctx) {
       await ctx.run("b1", { brief: { your_work: ["b1"], acceptance_slice: [] }, text: "marker:trackB-b1" })
       await ctx.run("b2", { brief: { your_work: ["b2"], acceptance_slice: [] }, text: "marker:trackB-b2" })
       await ctx.run("b", {
-        brief: { your_work: ["rollup b"], acceptance_slice: [] },
-        text: "marker:trackB-rollup",
+        brief: { your_work: ["synthesize b"], acceptance_slice: [] },
+        text: "marker:trackB-join",
         dependsOn: [{ node: "b1", deliverable: true }, { node: "b2", deliverable: true }],
       })
     },
@@ -438,7 +438,7 @@ export default async function orchestrate(ctx) {
 `
   },
 
-  /** 组间 + 组内并行：双轨 parallel，每轨内 fan-out 叶子后 join 再 rollup */
+  /** 组间 + 组内并行：双轨 parallel，每轨内 fan-out 叶子后 join 再汇总 */
   dualTrackIntraFanOut(missionId: string) {
     return `
 export const team = {
@@ -446,8 +446,8 @@ export const team = {
   terminal: "terminal",
   nodes: {
     terminal: { description: "terminal" },
-    a: { description: "a coord" },
-    b: { description: "b coord" },
+    a: { description: "track a synthesis" },
+    b: { description: "track b synthesis" },
     a1: { description: "a1" },
     a2: { description: "a2" },
     b1: { description: "b1" },
@@ -472,8 +472,8 @@ export default async function orchestrate(ctx) {
         },
       ])
       await ctx.run("a", {
-        brief: { your_work: ["rollup a"], acceptance_slice: [] },
-        text: "marker:trackA-rollup",
+        brief: { your_work: ["synthesize a"], acceptance_slice: [] },
+        text: "marker:trackA-join",
         dependsOn: [{ node: "a1", deliverable: true }, { node: "a2", deliverable: true }],
       })
     },
@@ -493,8 +493,8 @@ export default async function orchestrate(ctx) {
         },
       ])
       await ctx.run("b", {
-        brief: { your_work: ["rollup b"], acceptance_slice: [] },
-        text: "marker:trackB-rollup",
+        brief: { your_work: ["synthesize b"], acceptance_slice: [] },
+        text: "marker:trackB-join",
         dependsOn: [{ node: "b1", deliverable: true }, { node: "b2", deliverable: true }],
       })
     },
@@ -508,7 +508,7 @@ export default async function orchestrate(ctx) {
 `
   },
 
-  /** 多层级：底层 fan-out → 逐层 rollup 到 root（4 层） */
+  /** 多层级：底层 fan-out → 逐层汇总到 terminal（4 层） */
   deepHierarchyFanOut(missionId: string) {
     return `
 export const team = {
@@ -516,8 +516,8 @@ export const team = {
   terminal: "l4",
   nodes: {
     l4: { description: "root" },
-    l3: { description: "l3 coord" },
-    l2: { description: "l2 coord" },
+    l3: { description: "l3 synthesis" },
+    l2: { description: "l2 synthesis" },
     l1a: { description: "leaf a" },
     l1b: { description: "leaf b" },
   },
@@ -538,32 +538,32 @@ export default async function orchestrate(ctx) {
     },
   ])
   await ctx.run("l2", {
-    brief: { your_work: ["l2 rollup"], acceptance_slice: [] },
-    text: "marker:rollup-l2",
+    brief: { your_work: ["l2 synthesis"], acceptance_slice: [] },
+    text: "marker:join-l2",
     dependsOn: [{ node: "l1a", deliverable: true }, { node: "l1b", deliverable: true }],
   })
   await ctx.run("l3", {
-    brief: { your_work: ["l3 rollup"], acceptance_slice: [] },
-    text: "marker:rollup-l3",
+    brief: { your_work: ["l3 synthesis"], acceptance_slice: [] },
+    text: "marker:join-l3",
     dependsOn: [{ node: "l2", deliverable: true }],
   })
   await ctx.run("l4", {
-    brief: { your_work: ["l4 rollup"], acceptance_slice: [] },
-    text: "marker:rollup-l4",
+    brief: { your_work: ["l4 synthesis"], acceptance_slice: [] },
+    text: "marker:join-l4",
     dependsOn: [{ node: "l3", deliverable: true }],
   })
 }
 `
   },
 
-  /** 组内并行 + compound 多轮：parallel 单轨内 fan-out 后对协调节点两轮 run */
+  /** 组内并行 + compound 多轮：parallel 单轨内 fan-out 后对 acceptance layer 节点两轮 run */
   intraFanOutCompoundMultiRound(missionId: string) {
     return `
 export const team = {
   mission_id: "${missionId}",
-  terminal: "coord",
+  terminal: "join",
   nodes: {
-    coord: { description: "coordinator" },
+    join: { description: "synthesis node" },
     x1: { description: "x1" },
     x2: { description: "x2" },
   },
@@ -585,14 +585,14 @@ export default async function orchestrate(ctx) {
           })
         },
       ])
-      await ctx.run("coord", {
+      await ctx.run("join", {
         brief: { your_work: ["round1"], acceptance_slice: [] },
-        text: "marker:coord-r1",
+        text: "marker:join-r1",
         dependsOn: [{ node: "x1", deliverable: true }, { node: "x2", deliverable: true }],
       })
-      await ctx.run("coord", {
+      await ctx.run("join", {
         brief: { your_work: ["round2"], acceptance_slice: [] },
-        text: "marker:coord-r2",
+        text: "marker:join-r2",
       })
     },
   ])

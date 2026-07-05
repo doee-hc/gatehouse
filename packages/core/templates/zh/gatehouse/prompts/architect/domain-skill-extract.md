@@ -8,7 +8,7 @@
 ## 数据来源（唯一真相源）
 
 ```
-.gatehouse/trees/{{mission_id}}/context/{{node_id}}/
+.gatehouse/missions/{{mission_id}}/context/{{node_id}}/
   messages.json
   timeline.md
   metrics.json
@@ -46,7 +46,7 @@
 
 ## 交付
 
-1. 写 `.gatehouse/trees/{{mission_id}}/reports/skills/{{node_id}}-extract.md`
+1. 写 `.gatehouse/missions/{{mission_id}}/reports/skills/{{node_id}}-extract.md`
 2. **`gatehouse_skill_extract_record()`**
 
 若登记被拒，读工具返回的 `issues`，修正 `SKILL.md` 后重试。误建的目录应删除。

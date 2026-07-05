@@ -8,7 +8,7 @@ import { DEFAULT_GATEHOUSE_LOCALE, readLocaleSync, type GatehouseLocale } from "
 import { defaultAgentNames, readAgentNamesSync, renderGatehouseTemplate, type OuterProfile } from "../names.ts"
 import { retroAnalysisSteps, type RetroAnalysisStep } from "./analysis-order.ts"
 import type { OrchestrationPlan } from "../orchestration/plan-types.ts"
-import type { TreeManifest } from "../tree/types.ts"
+import type { MissionManifest } from "../missions/manifest/types.ts"
 
 function formatAnalysisSteps(steps: RetroAnalysisStep[], locale: GatehouseLocale) {
   if (steps.length === 0) {
@@ -33,7 +33,7 @@ function formatAnalysisSteps(steps: RetroAnalysisStep[], locale: GatehouseLocale
 
 export async function loadRetroKickoffPrompt(
   projectDirectory: string,
-  input: { missionId: string; manifest: TreeManifest; plan?: OrchestrationPlan },
+  input: { missionId: string; manifest: MissionManifest; plan?: OrchestrationPlan },
 ) {
   const locale = readLocaleSync(projectDirectory)
   const names = readAgentNamesSync(projectDirectory)

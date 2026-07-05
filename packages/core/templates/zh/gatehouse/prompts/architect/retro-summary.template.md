@@ -1,6 +1,6 @@
 # 复盘摘要模板 · {{mission_id}}
 
-落盘：`.gatehouse/trees/<mission_id>/reports/retro-summary.md`
+落盘：`.gatehouse/missions/<mission_id>/reports/retro-summary.md`
 
 ---
 

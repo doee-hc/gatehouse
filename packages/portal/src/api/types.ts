@@ -14,7 +14,7 @@ export type PortalSkill = {
   path: string
 }
 
-export type PortalTreeNode = {
+export type PortalMissionNode = {
   node_id: string
   skill_domain?: string
   display_name: string
@@ -103,18 +103,12 @@ export type PortalSnapshot = {
   retro_mission_ids?: string[]
   missions: PortalMission[]
   agents: PortalAgent[]
-  tree?: {
+  team?: {
     mission_id: string
     terminal_node: string
     status: string
-    nodes: PortalTreeNode[]
+    nodes: PortalMissionNode[]
   }
-  trees?: Array<{
-    mission_id: string
-    terminal_node: string
-    status: string
-    nodes: PortalTreeNode[]
-  }>
   skills: PortalSkill[]
   opencode_reachable?: boolean
   office_layout?: {
@@ -222,9 +216,9 @@ export function officeAgentsFromSnapshot(snapshot: PortalSnapshot) {
   if (snapshot.agents.length === 0) return [] as OfficeAgentDef[]
 
   const nodeNames = new Map<string, string>()
-  for (const tree of snapshot.trees ?? (snapshot.tree ? [snapshot.tree] : [])) {
-    for (const node of tree.nodes) {
-      nodeNames.set(`${tree.mission_id}:${node.node_id}`, node.display_name)
+  for (const team of snapshot.team ? [snapshot.team] : []) {
+    for (const node of team.nodes) {
+      nodeNames.set(`${team.mission_id}:${node.node_id}`, node.display_name)
     }
   }
 

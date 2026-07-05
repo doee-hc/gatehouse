@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs"
 import path from "node:path"
 import { Database } from "bun:sqlite"
 import { gatehouseRoot } from "../paths.ts"
-import type { RetroManifest, TreeManifest } from "../tree/types.ts"
+import type { MissionRetroManifest, MissionManifest } from "../missions/manifest/types.ts"
 import {
   REGISTRY_SCHEMA_VERSION,
   type RegistryAgent,
@@ -16,23 +16,20 @@ import {
   type RegistrySnapshot,
 } from "./types.ts"
 import {
-  findTreeManifestByExecSession,
-  findTreeManifestByRetroSession,
+  findMissionManifestByExecSession,
+  findMissionManifestByRetroSession,
   getRetroManifest,
   getExtractManifest,
   getVerifyManifest,
-  getTreeManifest,
-  listTreeMissionIds,
-  listTreesIndex,
-  migrateTreeManifestDisplayName,
-  migrateTreeManifestProfileColumn,
-  migrateTreeManifestDescriptionColumn,
+  getMissionManifest,
+  listMissionIds,
+  listMissionManifestIndex,
   saveRetroManifest,
   saveExtractManifest,
   saveVerifyManifest,
-  saveTreeManifest,
-  TREE_MANIFEST_SCHEMA_SQL,
-} from "./tree-manifest-db.ts"
+  saveMissionManifest,
+  MISSION_MANIFEST_SCHEMA_SQL,
+} from "./mission-manifest-db.ts"
 import {
   migrateMissionArtifactsTables,
   readMissionContractRaw,
@@ -56,7 +53,7 @@ import {
 } from "./orchestration-db.ts"
 import type { OrchestrationState } from "../orchestration/types.ts"
 import type { MissionScriptMeta } from "../orchestration/types.ts"
-import type { TeamSpec } from "../tree/types.ts"
+import type { MissionTeamSpec } from "../missions/manifest/types.ts"
 import {
   deleteWatchdogState as deleteWatchdogStateRow,
   loadAllWatchdogStates,
@@ -152,43 +149,8 @@ function tableColumns(db: Database, table: string) {
 }
 
 export function migrateRetroAnalystSchema(db: Database) {
-  const version = (db.query("PRAGMA user_version").get() as { user_version: number } | undefined)?.user_version ?? 0
-  if (version >= REGISTRY_SCHEMA_VERSION) {
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS registry_retro_tree (
-        mission_id TEXT PRIMARY KEY,
-        created_at TEXT NOT NULL,
-        retro_session_id TEXT NOT NULL,
-        analysis_order_json TEXT NOT NULL
-      )
-    `)
-    db.exec(`
-      CREATE INDEX IF NOT EXISTS registry_retro_tree_session_idx
-        ON registry_retro_tree(retro_session_id)
-    `)
-    return
-  }
-
-  db.exec("DROP TABLE IF EXISTS registry_retro_completion")
-  db.exec("DROP TABLE IF EXISTS registry_retro_tree_node")
-  db.exec("DROP TABLE IF EXISTS registry_retro_run")
   db.exec(`
-    CREATE TABLE registry_retro_run (
-      mission_id TEXT PRIMARY KEY,
-      started_at TEXT NOT NULL,
-      retro_summary_submitted_at TEXT,
-      retro_summary_path TEXT,
-      architect_notified_at TEXT,
-      architect_lead_notified_at TEXT,
-      lead_retro_summary_notified_at TEXT
-    )
-  `)
-  const retroTreeCols = tableColumns(db, "registry_retro_tree")
-  if (retroTreeCols.size > 0 && retroTreeCols.has("retro_order_json")) {
-    db.exec("DROP TABLE IF EXISTS registry_retro_tree")
-  }
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS registry_retro_tree (
+    CREATE TABLE IF NOT EXISTS registry_mission_retro (
       mission_id TEXT PRIMARY KEY,
       created_at TEXT NOT NULL,
       retro_session_id TEXT NOT NULL,
@@ -196,12 +158,12 @@ export function migrateRetroAnalystSchema(db: Database) {
     )
   `)
   db.exec(`
-    CREATE INDEX IF NOT EXISTS registry_retro_tree_session_idx
-      ON registry_retro_tree(retro_session_id)
+    CREATE INDEX IF NOT EXISTS registry_mission_retro_session_idx
+      ON registry_mission_retro(retro_session_id)
   `)
 }
 
-export function migrateRetroRollupLeadNotifiedColumns(db: Database) {
+export function migrateRetroLeadNotifiedColumns(db: Database) {
   const retroCols = tableColumns(db, "registry_retro_run")
   if (retroCols.size > 0 && !retroCols.has("architect_lead_notified_at")) {
     db.exec("ALTER TABLE registry_retro_run ADD COLUMN architect_lead_notified_at TEXT")
@@ -261,12 +223,9 @@ export function migrateRegistryProfileOnly(db: Database) {
 
 function applySchema(db: Database) {
   configureSqlite(db)
-  migrateTreeManifestDisplayName(db)
-  migrateTreeManifestProfileColumn(db)
-  migrateTreeManifestDescriptionColumn(db)
   migrateRegistryProfileOnly(db)
   migrateRetroAnalystSchema(db)
-  migrateRetroRollupLeadNotifiedColumns(db)
+  migrateRetroLeadNotifiedColumns(db)
   migrateSkillPipelineTables(db)
   migrateWatchdogStateTable(db)
   migrateMissionArtifactsTables(db)
@@ -372,7 +331,7 @@ function applySchema(db: Database) {
 
     ${WATCHDOG_STATE_TABLE_SQL}
 
-    ${TREE_MANIFEST_SCHEMA_SQL}
+    ${MISSION_MANIFEST_SCHEMA_SQL}
   `)
   migrateMissionArtifactsTables(db)
 }
@@ -780,31 +739,31 @@ export class RegistryDatabase {
       .run({ $mission_id: missionId, $updated_at: new Date().toISOString() })
   }
 
-  getTreeManifest(missionId: string) {
-    return getTreeManifest(this.db, missionId)
+  getMissionManifest(missionId: string) {
+    return getMissionManifest(this.db, missionId)
   }
 
-  saveTreeManifest(manifest: TreeManifest) {
-    return saveTreeManifest(this.db, manifest)
+  saveMissionManifest(manifest: MissionManifest) {
+    return saveMissionManifest(this.db, manifest)
   }
 
-  listTreeMissionIds(status?: TreeManifest["status"]) {
-    return listTreeMissionIds(this.db, status)
+  listMissionIds(status?: MissionManifest["status"]) {
+    return listMissionIds(this.db, status)
   }
 
-  listTreesIndex() {
-    return listTreesIndex(this.db)
+  listMissionManifestIndex() {
+    return listMissionManifestIndex(this.db)
   }
 
-  findTreeManifestByExecSession(sessionId: string) {
-    return findTreeManifestByExecSession(this.db, sessionId)
+  findMissionManifestByExecSession(sessionId: string) {
+    return findMissionManifestByExecSession(this.db, sessionId)
   }
 
   getRetroManifest(missionId: string) {
     return getRetroManifest(this.db, missionId)
   }
 
-  saveRetroManifest(retro: RetroManifest) {
+  saveRetroManifest(retro: MissionRetroManifest) {
     return saveRetroManifest(this.db, retro)
   }
 
@@ -812,7 +771,7 @@ export class RegistryDatabase {
     return getExtractManifest(this.db, missionId)
   }
 
-  saveExtractManifest(extract: import("../tree/types.ts").ExtractManifest) {
+  saveExtractManifest(extract: import("../missions/manifest/types.ts").MissionExtractManifest) {
     return saveExtractManifest(this.db, extract)
   }
 
@@ -820,12 +779,12 @@ export class RegistryDatabase {
     return getVerifyManifest(this.db, missionId)
   }
 
-  saveVerifyManifest(verify: import("../tree/types.ts").VerifyManifest) {
+  saveVerifyManifest(verify: import("../missions/manifest/types.ts").MissionVerifyManifest) {
     return saveVerifyManifest(this.db, verify)
   }
 
-  findTreeManifestByRetroSession(sessionId: string) {
-    return findTreeManifestByRetroSession(this.db, sessionId)
+  findMissionManifestByRetroSession(sessionId: string) {
+    return findMissionManifestByRetroSession(this.db, sessionId)
   }
 
   loadWatchdogStates() {
@@ -862,7 +821,7 @@ export class RegistryDatabase {
 
   saveMissionScript(input: {
     missionId: string
-    team: TeamSpec
+    team: MissionTeamSpec
     meta?: MissionScriptMeta
     scriptPath?: string
     scriptHash?: string

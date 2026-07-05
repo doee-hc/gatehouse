@@ -38,7 +38,6 @@ function normalizeOrchestrationState(state: OrchestrationState): OrchestrationSt
     }
   }
   if (state.cursor_step_index === undefined) state.cursor_step_index = 0
-  if (!state.completed_step_ids) state.completed_step_ids = []
   return state
 }
 
@@ -46,8 +45,9 @@ export function isPlanStepCompleted(state: OrchestrationState, stepIndex: number
   return stepIndex < replayNextStepIndex(state)
 }
 
-export function isPlanStepIdCompleted(state: OrchestrationState, stepId: string) {
-  return state.completed_step_ids?.includes(stepId) ?? false
+export function isPlanStepIdCompleted(state: OrchestrationState, stepId: string, steps: readonly { id: string }[]) {
+  const index = steps.findIndex((step) => step.id === stepId)
+  return index >= 0 && isPlanStepCompleted(state, index)
 }
 
 export { resetReplayCursor } from "./replay-cursor.ts"
@@ -190,7 +190,6 @@ export function ensureOrchestrationNodesInitialized(
     if (current) next.nodes[nodeId] = { ...current }
   }
   next.cursor_step_index = existing.cursor_step_index ?? 0
-  next.completed_step_ids = existing.completed_step_ids ?? []
   next.compound_replay = existing.compound_replay
   next.sandbox = existing.sandbox ?? next.sandbox
   if (existing.baseline_id) next.baseline_id = existing.baseline_id

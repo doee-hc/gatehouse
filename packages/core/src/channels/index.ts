@@ -35,7 +35,6 @@ export {
   channelsPluginSpec,
   CHANNELS_PLUGIN_PACKAGE,
   ensureChannelsPluginInOpencodeConfig,
-  migrateLegacyProjectOpencodeConfig,
   projectOpencodeConfigPath,
 } from "./opencode-config.ts"
 export type { ChannelBridgeConfig, UserChatState } from "./types.ts"
@@ -122,12 +121,9 @@ export {
   gatehouseConfigPath,
   generatePortalAdminKey,
   isPortalAdminConfigured,
-  loadPortalFileConfig,
-  portalConfigPath,
   readPortalAdminKeyFromConfig,
   resolvePortalAdminKey,
 } from "./portal/config.ts"
-export type { PortalFileConfig } from "./portal/config.ts"
 export {
   clearWeixinCredentials,
   loadWeixinCredentials,

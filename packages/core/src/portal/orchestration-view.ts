@@ -1,6 +1,6 @@
 import { RegistryDatabase } from "../registry/db.ts"
 import { portalNodeDisplayName } from "../paths.ts"
-import type { PortalTree } from "./snapshot.ts"
+import type { PortalMissionTeam } from "./snapshot.ts"
 import type { PlanStepOp } from "../orchestration/plan-types.ts"
 import type { OrchestrationNodeStatus } from "../orchestration/types.ts"
 import {
@@ -87,14 +87,14 @@ function buildPhaseStrip(input: {
 
 export function buildPortalOrchestration(
   projectDirectory: string,
-  tree: PortalTree | undefined,
+  team: PortalMissionTeam | undefined,
 ): PortalOrchestration | undefined {
-  if (!tree) return undefined
+  if (!team) return undefined
 
   const db = new RegistryDatabase(projectDirectory, { readonly: true })
-  const orchState = db.getOrchestrationState(tree.mission_id)
-  const plan = db.getLatestOrchestrationPlan(tree.mission_id)
-  const script = db.getMissionScript(tree.mission_id)
+  const orchState = db.getOrchestrationState(team.mission_id)
+  const plan = db.getLatestOrchestrationPlan(team.mission_id)
+  const script = db.getMissionScript(team.mission_id)
 
   const nodeStatus = new Map<string, OrchestrationNodeStatus>()
   if (orchState) {
@@ -103,7 +103,7 @@ export function buildPortalOrchestration(
     }
   }
 
-  const nodes: PortalOrchestrationNode[] = tree.nodes.map((node) => {
+  const nodes: PortalOrchestrationNode[] = team.nodes.map((node) => {
     const status = nodeStatus.get(node.node_id) ?? ("pending" as const)
     const round = orchState?.nodes[node.node_id]?.round
     return {
@@ -149,11 +149,11 @@ export function buildPortalOrchestration(
         steps.map((step) => step.node_id),
       )
 
-  const missionRunning = tree.status === "running"
+  const missionRunning = team.status === "running"
   const hasRuntime = Boolean(script || orchState || plan)
 
   return {
-    mission_id: tree.mission_id,
+    mission_id: team.mission_id,
     active: missionRunning && hasRuntime,
     ...(orchState?.phase && { phase: orchState.phase }),
     ...(orchState?.sandbox?.status && { sandbox_status: orchState.sandbox.status }),
@@ -165,7 +165,7 @@ export function buildPortalOrchestration(
     flow_edges,
     activation_order,
     nodes,
-    terminal_node: tree.terminal_node,
+    terminal_node: team.terminal_node,
   }
 }
 

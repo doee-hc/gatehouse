@@ -1,7 +1,7 @@
 import { extractDependsOnFromStatement, type NormalizedDependsOn } from "./depends-on.ts"
 import type { OrchestrationPlan } from "./plan-types.ts"
 import { parenBraceDepthBefore } from "./source-depth.ts"
-import type { TeamSpec } from "../tree/types.ts"
+import type { MissionTeamSpec } from "../missions/manifest/types.ts"
 import { RegistryDatabase } from "../registry/db.ts"
 import type { RegistryAgent } from "../registry/types.ts"
 
@@ -266,7 +266,7 @@ export function planChildNodeIds(plan: Pick<OrchestrationPlan, "steps">, nodeId:
   return dependsOnDeliverableNodes(plan, nodeId)
 }
 
-export function dependsOnDeliverableSubtreeNodeIds(plan: Pick<OrchestrationPlan, "steps">, nodeId: string) {
+export function dependsOnDeliverableDescendantNodeIds(plan: Pick<OrchestrationPlan, "steps">, nodeId: string) {
   const ids = new Set<string>([nodeId])
   const queue = [nodeId]
   while (queue.length > 0) {
@@ -280,7 +280,8 @@ export function dependsOnDeliverableSubtreeNodeIds(plan: Pick<OrchestrationPlan,
   return [...ids]
 }
 
-export function coordinatorNodeIds(plan: Pick<OrchestrationPlan, "steps">) {
+/** Nodes that wait on upstream deliverables via dependsOn (acceptance / synthesis layer). */
+export function acceptanceLayerNodeIds(plan: Pick<OrchestrationPlan, "steps">) {
   const ids = new Set<string>()
   for (const activation of listPlanRunActivations(plan)) {
     if (activation.dependsOn.some((dep) => dep.deliverable)) ids.add(activation.targetNodeId)
@@ -288,12 +289,12 @@ export function coordinatorNodeIds(plan: Pick<OrchestrationPlan, "steps">) {
   return ids
 }
 
-export function planLeafNodeIds(team: TeamSpec, plan: Pick<OrchestrationPlan, "steps">) {
-  const coordinators = coordinatorNodeIds(plan)
-  return Object.keys(team.nodes).filter((nodeId) => nodeId !== team.terminal && !coordinators.has(nodeId))
+export function planLeafNodeIds(team: MissionTeamSpec, plan: Pick<OrchestrationPlan, "steps">) {
+  const acceptanceLayer = acceptanceLayerNodeIds(plan)
+  return Object.keys(team.nodes).filter((nodeId) => nodeId !== team.terminal && !acceptanceLayer.has(nodeId))
 }
 
-export function isPlanLeafNode(team: TeamSpec, plan: Pick<OrchestrationPlan, "steps">, nodeId: string) {
+export function isPlanLeafNode(team: MissionTeamSpec, plan: Pick<OrchestrationPlan, "steps">, nodeId: string) {
   return planLeafNodeIds(team, plan).includes(nodeId)
 }
 
@@ -326,7 +327,7 @@ export function listPlanExecutionTracks(plan: OrchestrationPlan): PlanExecutionT
 }
 
 /** Parallel track id for lint; null for terminal node. */
-export function planTrackForNode(plan: OrchestrationPlan, team: TeamSpec, nodeId: string): string | null {
+export function planTrackForNode(plan: OrchestrationPlan, team: MissionTeamSpec, nodeId: string): string | null {
   if (nodeId === team.terminal) return null
 
   for (const track of listPlanExecutionTracks(plan)) {
@@ -343,7 +344,7 @@ export function planTrackForNode(plan: OrchestrationPlan, team: TeamSpec, nodeId
   return nodeId
 }
 
-export function teamNodeOrder(team: TeamSpec, plan?: OrchestrationPlan) {
+export function teamNodeOrder(team: MissionTeamSpec, plan?: OrchestrationPlan) {
   const nodeIds = Object.keys(team.nodes)
   if (!plan) return [team.terminal, ...nodeIds.filter((nodeId) => nodeId !== team.terminal).sort()]
 
@@ -361,11 +362,11 @@ export function teamNodeOrder(team: TeamSpec, plan?: OrchestrationPlan) {
 }
 
 export function planDeliverableDescendantNodeIds(plan: Pick<OrchestrationPlan, "steps">, nodeId: string) {
-  return dependsOnDeliverableSubtreeNodeIds(plan, nodeId).filter((id) => id !== nodeId)
+  return dependsOnDeliverableDescendantNodeIds(plan, nodeId).filter((id) => id !== nodeId)
 }
 
 export function innerNodeShowsMissionContract(
-  team: TeamSpec,
+  team: MissionTeamSpec,
   nodeId: string,
   plan: Pick<OrchestrationPlan, "steps">,
 ) {

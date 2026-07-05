@@ -1,16 +1,16 @@
 import type { GatehouseClient } from "../session/client.ts"
 import { createSession } from "../session/client.ts"
-import type { ExtractManifest } from "../tree/types.ts"
-import type { VerifyManifest } from "../tree/types.ts"
+import type { MissionExtractManifest } from "../missions/manifest/types.ts"
+import type { MissionVerifyManifest } from "../missions/manifest/types.ts"
 import { verifySessionTitle } from "../paths.ts"
 import { INNER_VERIFY_AGENT } from "../registry/types.ts"
 
 export async function createVerifyManifest(input: {
   client: GatehouseClient
   projectDirectory: string
-  extract: ExtractManifest
-}): Promise<VerifyManifest> {
-  const nodes: VerifyManifest["nodes"] = {}
+  extract: MissionExtractManifest
+}): Promise<MissionVerifyManifest> {
+  const nodes: MissionVerifyManifest["nodes"] = {}
   for (const nodeId of input.extract.extract_order) {
     const extractNode = input.extract.nodes[nodeId]
     if (!extractNode) continue

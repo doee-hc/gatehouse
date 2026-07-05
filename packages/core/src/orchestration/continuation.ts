@@ -1,6 +1,6 @@
 import type { PluginInput } from "@opencode-ai/plugin"
 import type { RegistryStore } from "../registry/store.ts"
-import { readManifest } from "../tree/store.ts"
+import { readMissionManifest } from "../missions/manifest/store.ts"
 import { loadMissionScript } from "./script-load.ts"
 import {
   applyBaselineToState,
@@ -36,7 +36,7 @@ export async function continueOrchestrationWithNewScript(
   missionId: string,
   opts?: { deliveryVersion?: number; parentMissionId?: string },
 ): Promise<ContinueOrchestrationResult> {
-  const manifest = await readManifest(input.directory, missionId)
+  const manifest = await readMissionManifest(input.directory, missionId)
   if (!manifest) {
     return { status: "not_continuable", reason: "mission orchestration not started" }
   }

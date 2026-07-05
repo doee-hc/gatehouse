@@ -1,7 +1,7 @@
 import type { PluginInput } from "@opencode-ai/plugin"
 import { gatehouseLog } from "../log.ts"
 import type { RegistryStore } from "../registry/store.ts"
-import type { TeamSpec } from "../tree/types.ts"
+import type { MissionTeamSpec } from "../missions/manifest/types.ts"
 import { planChildNodeIds, planLeafNodeIds } from "./plan-graph.ts"
 import { deliverNodeBriefSystemPrompt } from "../execution/node-session.ts"
 import { readActiveMissionContract } from "../missions/contract.ts"
@@ -54,7 +54,7 @@ export type MissionRuntime = {
 export function createMissionHostHandlers(input: {
   plugin: PluginInput
   store: RegistryStore
-  team: TeamSpec
+  team: MissionTeamSpec
   meta?: MissionScriptMeta
 }) {
   const missionId = input.team.mission_id
@@ -144,13 +144,13 @@ export function createMissionHostHandlers(input: {
   return { ctx: runtime.ctx, engine: runtime.engine, handleRpc, missionId }
 }
 
-function assertNodeInTeam(team: TeamSpec, nodeId: string) {
+function assertNodeInTeam(team: MissionTeamSpec, nodeId: string) {
   if (!team.nodes[nodeId]) {
     throw new Error(`unknown node_id in orchestration script: ${nodeId}`)
   }
 }
 
-function assertPromptAllowed(team: TeamSpec, nodeIds: string[], input: PromptInput, replyCount: number) {
+function assertPromptAllowed(team: MissionTeamSpec, nodeIds: string[], input: PromptInput, replyCount: number) {
   if (nodeIds.length === 0) throw new Error("prompt requires at least one nodeId")
   for (const nodeId of nodeIds) assertNodeInTeam(team, nodeId)
   for (const nodeId of waitNodeIds(normalizeDependsOn(input.dependsOn))) assertNodeInTeam(team, nodeId)
@@ -169,7 +169,7 @@ function assertPromptAllowed(team: TeamSpec, nodeIds: string[], input: PromptInp
 export function createMissionContext(input: {
   plugin: PluginInput
   store: RegistryStore
-  team: TeamSpec
+  team: MissionTeamSpec
   meta?: MissionScriptMeta
   planStep?: () => { id: string; index: number } | undefined
 }): MissionRuntime {

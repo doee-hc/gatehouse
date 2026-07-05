@@ -7,7 +7,7 @@ import type { ToolContext } from "@opencode-ai/plugin/tool"
 import { missionRetroTool } from "../src/tools/retro.ts"
 import { submitOrchestrationTool } from "../src/tools/submit-orchestration.ts"
 import { applySkillDomainsTool } from "../src/tools/apply-skill-domains.ts"
-import { readExtractManifest, readRetroManifest } from "../src/tree/store.ts"
+import { readExtractManifest, readRetroManifest } from "../src/missions/manifest/store.ts"
 import { readMissionsDocument } from "../src/missions/store.ts"
 import { copyExampleMission } from "./copy-example-mission.ts"
 import { missionEntryToRecord } from "../src/missions/contract.ts"
@@ -153,10 +153,10 @@ describe("retro_batch skill kickoffs", () => {
     try {
       await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
       const missionId = "solo-root-mission"
-      const treeDir = path.join(dir, ".gatehouse/trees", missionId)
-      await mkdir(treeDir, { recursive: true })
+      const missionDir = path.join(dir, ".gatehouse/missions", missionId)
+      await mkdir(missionDir, { recursive: true })
       await Bun.write(
-        path.join(treeDir, "mission.script.ts"),
+        path.join(missionDir, "mission.script.ts"),
         `export const team = {
   mission_id: "${missionId}",
   terminal: "node-root",

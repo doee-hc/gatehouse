@@ -3,13 +3,13 @@ import path from "node:path"
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { RegistryDatabase } from "../src/registry/db.ts"
-import { readManifest, readTreesIndex, writeManifest } from "../src/tree/store.ts"
+import { readMissionManifest, readMissionManifestIndex, writeMissionManifest } from "../src/missions/manifest/store.ts"
 import { stringifyYaml } from "../src/yaml.ts"
 import { parseMissionsFile } from "../src/missions/parse.ts"
 import { parseYaml } from "../src/yaml.ts"
-import type { TreeManifest } from "../src/tree/types.ts"
+import type { MissionManifest } from "../src/missions/manifest/types.ts"
 
-const sampleManifest = (): TreeManifest => ({
+const sampleManifest = (): MissionManifest => ({
   mission_id: "m-tree-db",
   status: "running",
   terminal_node: "terminal",
@@ -23,21 +23,21 @@ const sampleManifest = (): TreeManifest => ({
 test("tree manifest round-trips in registry.db; yaml is export-only", async () => {
   const dir = await mkdtemp(path.join(tmpdir(), "gh-tree-registry-"))
   try {
-    await writeManifest(dir, sampleManifest())
-    const fromDb = new RegistryDatabase(dir, { readonly: true }).getTreeManifest("m-tree-db")
+    await writeMissionManifest(dir, sampleManifest())
+    const fromDb = new RegistryDatabase(dir, { readonly: true }).getMissionManifest("m-tree-db")
     expect(fromDb?.nodes.leaf?.skill_domain).toBe("docs")
-    const fromRead = await readManifest(dir, "m-tree-db")
+    const fromRead = await readMissionManifest(dir, "m-tree-db")
     expect(fromRead?.terminal_node).toBe("terminal")
     const yamlText = await Bun.file(
-      path.join(dir, ".gatehouse/internal/exports/trees/m-tree-db/manifest.yaml"),
+      path.join(dir, ".gatehouse/internal/exports/missions/m-tree-db/manifest.yaml"),
     ).text()
     expect(yamlText).toContain("m-tree-db")
-    new RegistryDatabase(dir).saveTreeManifest({
+    new RegistryDatabase(dir).saveMissionManifest({
       ...sampleManifest(),
       status: "archived",
       archived_at: "2026-06-02T00:00:00Z",
     })
-    expect(await readManifest(dir, "m-tree-db")).toMatchObject({ status: "archived" })
+    expect(await readMissionManifest(dir, "m-tree-db")).toMatchObject({ status: "archived" })
     expect(yamlText).toContain("running")
   } finally {
     await rm(dir, { recursive: true, force: true })
@@ -73,26 +73,26 @@ test("stringifyYaml preserves multiline notes in mission arrays", () => {
   expect(parsed.missions[0]?.started_at).toBe("2026-06-07T15:28:41.203Z")
 })
 
-test("readTreesIndex derives from registry.db", async () => {
+test("readMissionManifestIndex derives from registry.db", async () => {
   const dir = await mkdtemp(path.join(tmpdir(), "gh-trees-index-db-"))
   try {
-    await writeManifest(dir, sampleManifest())
-    const index = await readTreesIndex(dir)
-    expect(index.trees.length).toBe(1)
-    expect(index.trees[0]?.mission_id).toBe("m-tree-db")
-    expect(index.trees[0]?.terminal_node).toBe("terminal")
-    expect(index.trees[0]?.terminal_session_id).toBe("ses-root")
-    expect(index.trees[0]?.status).toBe("running")
+    await writeMissionManifest(dir, sampleManifest())
+    const index = await readMissionManifestIndex(dir)
+    expect(index.missions.length).toBe(1)
+    expect(index.missions[0]?.mission_id).toBe("m-tree-db")
+    expect(index.missions[0]?.terminal_node).toBe("terminal")
+    expect(index.missions[0]?.terminal_session_id).toBe("ses-root")
+    expect(index.missions[0]?.status).toBe("running")
   } finally {
     await rm(dir, { recursive: true, force: true })
   }
 })
 
-test("findTreeManifestByExecSession queries registry.db", async () => {
+test("findMissionManifestByExecSession queries registry.db", async () => {
   const dir = await mkdtemp(path.join(tmpdir(), "gh-tree-registry-"))
   try {
-    await writeManifest(dir, sampleManifest())
-    const hit = new RegistryDatabase(dir, { readonly: true }).findTreeManifestByExecSession("ses-leaf")
+    await writeMissionManifest(dir, sampleManifest())
+    const hit = new RegistryDatabase(dir, { readonly: true }).findMissionManifestByExecSession("ses-leaf")
     expect(hit?.missionId).toBe("m-tree-db")
     expect(hit?.manifest.terminal_node).toBe("terminal")
   } finally {

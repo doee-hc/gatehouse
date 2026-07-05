@@ -72,14 +72,4 @@ describe("portal admin key config", () => {
       }
     })
   })
-
-  test("ensurePortalAdminKey migrates legacy portal.yaml", () => {
-    withProject((projectDir) => {
-      writeFileSync(path.join(projectDir, ".gatehouse/config.yaml"), `portal:\n  brand:\n    title: Test\n`)
-      writeFileSync(path.join(projectDir, ".gatehouse/portal.yaml"), `adminKey: legacy-key\n`)
-
-      expect(ensurePortalAdminKey(projectDir)).toBe("legacy-key")
-      expect(readPortalAdminKeyFromConfig(projectDir)).toBe("legacy-key")
-    })
-  })
 })

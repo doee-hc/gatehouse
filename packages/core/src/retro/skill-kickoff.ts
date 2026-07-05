@@ -3,12 +3,12 @@ import { gatehouseMessage } from "../i18n.ts"
 import { DEFAULT_GATEHOUSE_LOCALE, readLocaleSync, type GatehouseLocale } from "../locale.ts"
 import { defaultAgentNames, readAgentNamesSync, renderGatehouseTemplate, type OuterProfile } from "../names.ts"
 import { domainSkillExtractPromptPath, resolveProjectPath, skillDomainDir } from "../paths.ts"
-import type { TeamSpec, TreeManifest } from "../tree/types.ts"
+import type { MissionTeamSpec, MissionManifest } from "../missions/manifest/types.ts"
 
 export function resolveExecSkillDomain(
-  manifest: TreeManifest,
+  manifest: MissionManifest,
   nodeId: string,
-  input: { spec?: TeamSpec; briefDomainIds?: string[] },
+  input: { spec?: MissionTeamSpec; briefDomainIds?: string[] },
 ) {
   const manifestNode = manifest.nodes[nodeId]
   if (!manifestNode) return undefined
@@ -17,8 +17,8 @@ export function resolveExecSkillDomain(
 }
 
 export function execSkillKickoffTargets(
-  manifest: TreeManifest,
-  input: { spec?: TeamSpec; briefDomainIds?: string[] },
+  manifest: MissionManifest,
+  input: { spec?: MissionTeamSpec; briefDomainIds?: string[] },
 ) {
   return Object.keys(manifest.nodes).flatMap((nodeId) => {
     const skillDomain = resolveExecSkillDomain(manifest, nodeId, input)

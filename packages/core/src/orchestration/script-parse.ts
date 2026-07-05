@@ -1,7 +1,7 @@
 import ts from "typescript"
 import { createHash } from "node:crypto"
 import type { MissionScriptMeta } from "./types.ts"
-import type { TeamSpec } from "../tree/types.ts"
+import type { MissionTeamSpec } from "../missions/manifest/types.ts"
 
 export const MISSION_SCRIPT_MAX_BYTES = 256 * 1024
 
@@ -16,7 +16,7 @@ export class MissionScriptParseError extends Error {
 }
 
 export type ParsedMissionScript = {
-  team: TeamSpec
+  team: MissionTeamSpec
   meta?: MissionScriptMeta
   orchestrateSource?: string
   scriptSource: string
@@ -42,7 +42,7 @@ export function parseMissionScriptSource(source: string, expectedMissionId?: str
 
   assertNoForbiddenSyntax(sourceFile, source)
 
-  let team: TeamSpec | undefined
+  let team: MissionTeamSpec | undefined
   let meta: MissionScriptMeta | undefined
   let orchestrateSource: string | undefined
 
@@ -51,7 +51,7 @@ export function parseMissionScriptSource(source: string, expectedMissionId?: str
       for (const decl of stmt.declarationList.declarations) {
         if (!ts.isIdentifier(decl.name) || !decl.initializer) continue
         if (decl.name.text === "team") {
-          team = astToJsonValue(decl.initializer, source) as TeamSpec
+          team = astToJsonValue(decl.initializer, source) as MissionTeamSpec
         }
         if (decl.name.text === "meta") {
           meta = astToJsonValue(decl.initializer, source) as MissionScriptMeta

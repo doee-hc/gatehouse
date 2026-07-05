@@ -1,4 +1,4 @@
-import type { TeamSpec } from "../tree/types.ts"
+import type { MissionTeamSpec } from "../missions/manifest/types.ts"
 import { createPlanStepScope } from "./plan-step-scope.ts"
 import type { PlanStep } from "./plan-types.ts"
 import type { SandboxRpcRequest } from "./sandbox-protocol.ts"
@@ -9,7 +9,7 @@ type RpcSender = (request: Omit<SandboxRpcRequest, "type" | "id">) => Promise<un
 /** Replay compiled plan steps from cursor; each step runs then explicitly completes. */
 export async function replayPlanSteps(input: {
   baseCtx: MissionContext
-  team: TeamSpec
+  team: MissionTeamSpec
   steps: readonly PlanStep[]
   startIndex: number
   sendRpc: RpcSender

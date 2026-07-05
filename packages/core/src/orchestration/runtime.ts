@@ -1,6 +1,6 @@
 import type { PluginInput } from "@opencode-ai/plugin"
 import type { RegistryStore } from "../registry/store.ts"
-import type { TreeManifest } from "../tree/types.ts"
+import type { MissionManifest } from "../missions/manifest/types.ts"
 import { saveMissionScriptRecord } from "./context.ts"
 import { saveOrchestrationPlanRecord } from "./plan-store.ts"
 import type { LoadedMissionScript } from "./types.ts"
@@ -16,7 +16,7 @@ import { startSandboxOrchestration } from "./sandbox-runtime.ts"
 
 export async function prepareOrchestrationRuntime(
   projectDirectory: string,
-  manifest: TreeManifest,
+  manifest: MissionManifest,
   script: LoadedMissionScript,
 ) {
   if (!script.orchestrateSource?.trim()) {
@@ -56,7 +56,7 @@ export async function prepareOrchestrationRuntime(
 export async function startOrchestrationRuntime(
   input: PluginInput,
   store: RegistryStore,
-  manifest: TreeManifest,
+  manifest: MissionManifest,
   script: LoadedMissionScript,
 ) {
   const prepared = await prepareOrchestrationRuntime(input.directory, manifest, script)

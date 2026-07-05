@@ -1,10 +1,10 @@
 import type { OrchestrationPlan } from "./plan-types.ts"
 import { upstreamDependsOnNodes } from "./plan-graph.ts"
-import type { TeamSpec } from "../tree/types.ts"
+import type { MissionTeamSpec } from "../missions/manifest/types.ts"
 import type { OrchestrationState } from "./types.ts"
 
 export function validateReworkRequest(input: {
-  team: TeamSpec
+  team: MissionTeamSpec
   plan?: OrchestrationPlan
   state: OrchestrationState
   requesterNodeId: string

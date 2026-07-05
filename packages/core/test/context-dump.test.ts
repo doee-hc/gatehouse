@@ -11,7 +11,7 @@ import {
   missionContextAlreadyDumped,
 } from "../src/session/context-dump.ts"
 import type { GatehouseClient } from "../src/session/client.ts"
-import type { TreeManifest } from "../src/tree/types.ts"
+import type { MissionManifest } from "../src/missions/manifest/types.ts"
 
 describe("context dump", () => {
   test("classifyMessageKind distinguishes user, gatehouse, summary, compaction", () => {
@@ -119,13 +119,13 @@ describe("context dump", () => {
       ],
     })
 
-    const subtree = mergeSessionMetrics([sessionA, sessionB])
-    expect(subtree.session_count).toBe(2)
-    expect(subtree.tokens.input).toBe(13)
-    expect(subtree.cost).toBe(0.03)
-    expect(subtree.tools.by_name.bash?.total).toBe(2)
-    expect(subtree.tools.errors).toBe(1)
-    expect(subtree.sessions).toHaveLength(2)
+    const branch = mergeSessionMetrics([sessionA, sessionB])
+    expect(branch.session_count).toBe(2)
+    expect(branch.tokens.input).toBe(13)
+    expect(branch.cost).toBe(0.03)
+    expect(branch.tools.by_name.bash?.total).toBe(2)
+    expect(branch.tools.errors).toBe(1)
+    expect(branch.sessions).toHaveLength(2)
   })
 
   test("dumpSessionContext supports custom output directory", async () => {
@@ -178,13 +178,13 @@ describe("context dump", () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-context-skip-"))
     try {
       const missionId = "m-skip"
-      const contextRoot = path.join(dir, ".gatehouse/trees", missionId, "context")
+      const contextRoot = path.join(dir, ".gatehouse/missions", missionId, "context")
       await mkdir(contextRoot, { recursive: true })
       await Bun.write(path.join(contextRoot, "index.json"), JSON.stringify({ mission_id: missionId }))
 
       expect(missionContextAlreadyDumped(dir, missionId)).toBe(true)
 
-      const manifest: TreeManifest = {
+      const manifest: MissionManifest = {
         mission_id: missionId,
         status: "running",
         terminal_node: "root",

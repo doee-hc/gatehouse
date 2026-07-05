@@ -12,8 +12,6 @@ export type DoneWhenCriterion = {
   id: number
   text: string
   check: DoneWhenCheck
-  /** @deprecated Legacy publish: metadata; criteria no longer set this on parse. */
-  publishPath?: string
 }
 
 export type DeliveryCriterionStatus = "met" | "unmet" | "partial" | "skipped"
@@ -59,8 +57,6 @@ export type DeliveryRecord = {
   submitted_at: string
   submitted_by_node: string
   blog_post_id?: string
-  /** @deprecated Computed at read time from criteria; not persisted on new records. */
-  pending_publish_paths?: string[]
   published_artifacts?: string[]
   summary?: string
   force_reason?: string

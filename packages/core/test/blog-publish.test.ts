@@ -2,12 +2,12 @@ import { afterEach, beforeEach, expect, test } from "bun:test"
 import path from "node:path"
 import { mkdir, mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
+import { resolveSkillBlogPostId } from "../src/delivery/publish-policy.ts"
 import {
   blogMissionIdFromPostId,
   blogPostRelPath,
   publishBlogPost,
   readBlogPublishedDocument,
-  resolveBlogPostId,
   unpublishBlogPost,
 } from "../src/portal/blog-publish.ts"
 
@@ -21,10 +21,10 @@ afterEach(async () => {
   await rm(dir, { recursive: true, force: true })
 })
 
-test("resolveBlogPostId only maps skill paths", () => {
-  expect(resolveBlogPostId(".gatehouse/lead/reports/m1/report.md")).toBeUndefined()
-  expect(resolveBlogPostId(".gatehouse/trees/m1/reports/root-delivery.md")).toBeUndefined()
-  expect(resolveBlogPostId(".gatehouse/skills/by-domain/dft/x/SKILL.md")).toBe("skill:dft:x")
+test("resolveSkillBlogPostId only maps skill paths", () => {
+  expect(resolveSkillBlogPostId(".gatehouse/lead/reports/m1/report.md")).toBeUndefined()
+  expect(resolveSkillBlogPostId(".gatehouse/missions/m1/reports/root-delivery.md")).toBeUndefined()
+  expect(resolveSkillBlogPostId(".gatehouse/skills/by-domain/dft/x/SKILL.md")).toBe("skill:dft:x")
 })
 
 test("blogMissionIdFromPostId extracts mission id", () => {
@@ -35,7 +35,7 @@ test("blogMissionIdFromPostId extracts mission id", () => {
 
 test("blogPostRelPath inverts post ids", () => {
   expect(blogPostRelPath("m1:lead:report")).toBe(".gatehouse/lead/reports/m1/report.md")
-  expect(blogPostRelPath("m1:retro:summary")).toBe(".gatehouse/trees/m1/reports/retro-summary.md")
+  expect(blogPostRelPath("m1:retro:summary")).toBe(".gatehouse/missions/m1/reports/retro-summary.md")
 })
 
 test("publishBlogPost writes manifest and supports republish", async () => {

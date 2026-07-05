@@ -2,8 +2,8 @@ import type { PluginInput } from "@opencode-ai/plugin"
 import type { ToolContext } from "@opencode-ai/plugin/tool"
 import { readMissionsDocument, writeMissionsDocument } from "./store.ts"
 import type { MissionsDocument } from "./parse.ts"
-import { readManifest, readRetroManifest, readTreesIndex, upsertTreesIndex, writeManifest } from "../tree/store.ts"
-import type { ExtractManifest, RetroManifest, TreeManifest, VerifyManifest } from "../tree/types.ts"
+import { readMissionManifest, readRetroManifest, writeMissionManifest } from "../missions/manifest/store.ts"
+import type { MissionExtractManifest, MissionRetroManifest, MissionManifest, MissionVerifyManifest } from "../missions/manifest/types.ts"
 import { getRegistryStore } from "../registry/context.ts"
 import type { RegistryStore } from "../registry/store.ts"
 import { LEAD_OPENCODE, type RegistryScope } from "../registry/types.ts"
@@ -46,10 +46,10 @@ export async function requireLeadCaller(input: PluginInput, context: ToolContext
 }
 
 export function collectManifestSessionIds(
-  manifest: TreeManifest,
-  retro?: RetroManifest,
-  extract?: ExtractManifest,
-  verify?: VerifyManifest,
+  manifest: MissionManifest,
+  retro?: MissionRetroManifest,
+  extract?: MissionExtractManifest,
+  verify?: MissionVerifyManifest,
 ) {
   const ids = new Set<string>()
   for (const node of Object.values(manifest.nodes)) ids.add(node.session_id)
@@ -244,19 +244,14 @@ export async function deleteMissionSessions(
   )
 }
 
-export async function archiveMissionManifest(projectDirectory: string, manifest: TreeManifest) {
+export async function archiveMissionManifest(projectDirectory: string, manifest: MissionManifest) {
   if (manifest.status === "archived") return manifest
-  const archived: TreeManifest = {
+  const archived: MissionManifest = {
     ...manifest,
     status: "archived",
     archived_at: new Date().toISOString(),
   }
-  await writeManifest(projectDirectory, archived)
-  const index = await readTreesIndex(projectDirectory)
-  const entry = index.trees.find((item) => item.mission_id === manifest.mission_id)
-  if (entry) {
-    await upsertTreesIndex(projectDirectory, { ...entry, status: "archived" })
-  }
+  await writeMissionManifest(projectDirectory, archived)
   return archived
 }
 
@@ -321,7 +316,7 @@ export async function finalizeMissionComplete(input: {
   status: MissionTerminalStatus
   registry: RegistryStore
 }) {
-  const manifest = await readManifest(input.projectDirectory, input.missionId)
+  const manifest = await readMissionManifest(input.projectDirectory, input.missionId)
   const retro = await readRetroManifest(input.projectDirectory, input.missionId)
 
   const doc = await readMissionsDocument(input.projectDirectory)

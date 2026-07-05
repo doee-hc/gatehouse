@@ -192,7 +192,7 @@ describe("formatAgentDirectory", () => {
 })
 
 describe("loadAgentDescriptions", () => {
-  test("reads inner descriptions from registry_tree_node", () => {
+  test("reads inner descriptions from registry_execution_node", () => {
     const dir = path.join(import.meta.dir, `.tmp-desc-${crypto.randomUUID()}`)
     mkdirSync(dir, { recursive: true })
     writeRegistry(dir, [
@@ -209,7 +209,7 @@ describe("loadAgentDescriptions", () => {
     const dbPath = path.join(dir, ".gatehouse", "registry.db")
     const db = new Database(dbPath)
     db.exec(`
-      CREATE TABLE registry_tree_node (
+      CREATE TABLE registry_execution_node (
         mission_id TEXT NOT NULL,
         node_id TEXT NOT NULL,
         session_id TEXT NOT NULL,
@@ -223,7 +223,7 @@ describe("loadAgentDescriptions", () => {
     `)
     db
       .query(
-        `INSERT INTO registry_tree_node (
+        `INSERT INTO registry_execution_node (
           mission_id, node_id, session_id, display_name, description
         ) VALUES (?, ?, ?, ?, ?)`,
       )

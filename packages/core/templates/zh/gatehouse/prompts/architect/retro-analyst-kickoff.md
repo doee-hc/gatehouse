@@ -7,7 +7,7 @@
 ### 数据来源（唯一真相源）
 
 ```
-.gatehouse/trees/{{mission_id}}/context/
+.gatehouse/missions/{{mission_id}}/context/
   index.json                 # 全部 node_id、mission-metrics 路径
   mission-metrics.json       # 全 Mission token/耗时/工具聚合
   <node_id>/

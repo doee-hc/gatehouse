@@ -24,11 +24,11 @@ import {
 import { OUTER_ARCHITECT_ID } from "../src/registry/types.ts"
 import { RegistryStore } from "../src/registry/store.ts"
 import type { GatehouseClient } from "../src/session/client.ts"
-import type { TeamSpec } from "../src/tree/types.ts"
+import type { MissionTeamSpec } from "../src/missions/manifest/types.ts"
 import type { OrchestrationPlan } from "../src/orchestration/plan-types.ts"
 import { startPortalInternalEventCapture, withPortalEnv } from "./portal-test-server.ts"
 
-const team: TeamSpec = {
+const team: MissionTeamSpec = {
   mission_id: "m1",
   terminal: "terminal",
   nodes: {
@@ -238,8 +238,8 @@ describe("node completion", () => {
   })
 
   test("deliverOrchestrationPrompt appends dependsOn block", async () => {
-    const dir = await mkdtemp(path.join(tmpdir(), "gh-rollup-prompt-"))
-    const token = "rollup-test-token"
+    const dir = await mkdtemp(path.join(tmpdir(), "gh-deliverable-prompt-"))
+    const token = "deliverable-test-token"
     const capture = await startPortalInternalEventCapture(token)
     try {
       await withPortalEnv(capture.port, token, async () => {
@@ -253,7 +253,7 @@ describe("node completion", () => {
         }
         markNodeRunning(state, "terminal")
         writeOrchestrationState(dir, state)
-        await mergeAndSaveBrief(dir, "m1", "terminal", { your_work: ["rollup"] })
+        await mergeAndSaveBrief(dir, "m1", "terminal", { your_work: ["synthesize"] })
 
         const mockClient: GatehouseClient = {
           session: {
@@ -328,7 +328,7 @@ describe("node completion", () => {
         {
           id: "step-1",
           op: "run",
-          statement: 'await ctx.run("terminal", { text: "rollup", dependsOn: [{ node: "leaf", deliverable: true }] })',
+          statement: 'await ctx.run("terminal", { text: "synthesize", dependsOn: [{ node: "leaf", deliverable: true }] })',
           nodeId: "terminal",
         },
       ],

@@ -13,28 +13,9 @@ export const MISSION_ARTIFACTS_TABLE_SQL = `
     );
 `
 
-function tableColumns(db: Database, table: string) {
-  const exists = db
-    .query("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = $name")
-    .get({ $name: table })
-  if (!exists) return new Set<string>()
-  const columns = db.query(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>
-  return new Set(columns.map((column) => column.name))
-}
-
 export function migrateMissionArtifactsTables(db: Database) {
   db.exec(MISSION_ARTIFACTS_TABLE_SQL)
   db.exec(DELIVERY_TABLE_SQL)
-  const missionCols = tableColumns(db, "registry_mission")
-  if (missionCols.size > 0 && !missionCols.has("contract_raw_json")) {
-    db.exec("ALTER TABLE registry_mission ADD COLUMN contract_raw_json TEXT")
-  }
-  if (missionCols.size > 0 && !missionCols.has("user_topology")) {
-    db.exec("ALTER TABLE registry_mission ADD COLUMN user_topology TEXT")
-  }
-  if (missionCols.size > 0 && !missionCols.has("user_skill")) {
-    db.exec("ALTER TABLE registry_mission ADD COLUMN user_skill TEXT")
-  }
 }
 
 export function saveMissionContractRaw(db: Database, missionId: string, contractRaw: unknown) {

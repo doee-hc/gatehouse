@@ -1,7 +1,7 @@
 import type { PluginInput } from "@opencode-ai/plugin"
 import type { RegistryStore } from "../registry/store.ts"
-import { readManifest } from "../tree/store.ts"
-import type { TreeManifest } from "../tree/types.ts"
+import { readMissionManifest } from "../missions/manifest/store.ts"
+import type { MissionManifest } from "../missions/manifest/types.ts"
 import { loadMissionScript } from "./script-load.ts"
 import { notifyArchitectOrchestrationFailure } from "./notify.ts"
 import {
@@ -17,7 +17,7 @@ export { orchestrationNeedsResume } from "./state.ts"
 export async function resumeOrchestrationRuntime(
   input: PluginInput,
   store: RegistryStore,
-  manifest: TreeManifest,
+  manifest: MissionManifest,
   missionId: string,
 ) {
   const state = readOrchestrationState(input.directory, missionId)
@@ -70,7 +70,7 @@ export async function resumeOrchestrationForActiveMission(
   store: RegistryStore,
   missionId: string,
 ) {
-  const manifest = await readManifest(input.directory, missionId)
+  const manifest = await readMissionManifest(input.directory, missionId)
   if (!manifest) return { status: "not_resumable" as const }
   return resumeOrchestrationRuntime(input, store, manifest, missionId)
 }
