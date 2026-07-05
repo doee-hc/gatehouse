@@ -53,6 +53,7 @@ async function runOrchestrate(init: SandboxInitMessage) {
         steps: init.plan.steps,
         startIndex: init.plan.cursor_step_index ?? 0,
         sendRpc,
+        workOrderText: runtime.workOrderText,
       })
       self.postMessage({ type: "done" })
       return

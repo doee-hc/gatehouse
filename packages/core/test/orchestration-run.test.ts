@@ -20,17 +20,25 @@ function mockEngine() {
   return { engine, log }
 }
 
+const workOrderText = (nodeId: string, supplementary?: string) =>
+  supplementary ? `work-order:${nodeId}:${supplementary}` : `work-order:${nodeId}`
+
 describe("run / parallel", () => {
   test("run dispatches brief, prompt, dependsOn, and waits by default", async () => {
     const { engine, log } = mockEngine()
-    await orchestrationRun(engine, "leaf", {
-      brief: { your_work: ["work"], acceptance_slice: ["done"] },
-      text: "go",
-      dependsOn: [{ node: "upstream", deliverable: true }],
-    })
+    await orchestrationRun(
+      engine,
+      "leaf",
+      {
+        brief: { your_work: ["work"], acceptance_slice: ["done"] },
+        text: "go",
+        dependsOn: [{ node: "upstream", deliverable: true }],
+      },
+      { workOrderText },
+    )
     expect(log).toEqual([
       "brief:leaf",
-      "prompt:leaf:reply:go:deps=1",
+      "prompt:leaf:reply:work-order:leaf:go:deps=1",
       "wait:leaf",
     ])
   })
@@ -41,13 +49,13 @@ describe("run / parallel", () => {
     expect(log).toEqual(["brief:leaf", "prompt:leaf:silent:go"])
   })
 
-  test("run without text uses defaultWorkOrder when reply is true", async () => {
+  test("run without text uses auto work order when reply is true", async () => {
     const { engine, log } = mockEngine()
     await orchestrationRun(
       engine,
       "leaf",
       { brief: { your_work: ["work"], acceptance_slice: ["done"] } },
-      { defaultWorkOrder: (nodeId) => `work-order:${nodeId}` },
+      { workOrderText },
     )
     expect(log).toEqual(["brief:leaf", "prompt:leaf:reply:work-order:leaf", "wait:leaf"])
   })

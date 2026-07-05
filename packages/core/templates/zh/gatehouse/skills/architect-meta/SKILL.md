@@ -63,7 +63,6 @@ await ctx.run("researcher-a", {
     not_your_job: ["…（sibling 节点职责，勿重复）"],
     acceptance_slice: ["path: reports/researcher-a.md", "…"],
   },
-  text: ctx.template.workOrder("researcher-a"),
 })
 ```
 
@@ -94,7 +93,6 @@ export default async function orchestrate(ctx) {
       your_work: ["…"],
       acceptance_slice: ["path: reports/<leaf-id>.md", "…"],
     },
-    text: ctx.template.workOrder("<leaf-id>"),
   })
 
   await ctx.run("<terminal-node-id>", {
@@ -102,7 +100,7 @@ export default async function orchestrate(ctx) {
       your_work: ["整合上游成果，产出最终交付物"],
       acceptance_slice: ["path: …", "…"],
     },
-    text: ctx.template.workOrder("<terminal-node-id>", { context: "…" }),
+    text: "请阅读上游 reports/ 下的产出并整合为最终交付物。",
     dependsOn: [{ node: "<leaf-id>", deliverable: true }],
   })
 }
@@ -122,11 +120,10 @@ export default async function orchestrate(ctx) {
 
 | API                                                  | 用途                                     |
 | ---------------------------------------------------- | -------------------------------------- |
-| `ctx.run(nodeId, { brief, text?, dependsOn?, completionSchema?, returnStructured?, reply? })` | 激活单个节点：全部 `dependsOn` 满足后 dispatch 一次，并等待 `complete`；`returnStructured: true` 时 resolve 上游节点的 validated JSON |
+| `ctx.run(nodeId, { brief, text?, dependsOn?, completionSchema?, returnStructured?, reply? })` | 激活单个节点：Gatehouse 自动生成标准工单；`text` 为可选附加说明（纯字符串）；全部 `dependsOn` 满足后 dispatch 一次并等待 `complete`；`returnStructured: true` 时 resolve 上游 validated JSON |
 | `ctx.parallel(tracks)`                                   | **并行 barrier**：各 track 同时执行，**全部完成后**继续 |
 | `ctx.pipeline(items, stage1, stage2?, ...)`        | **流式并行**：每项独立流经各 stage，**stage 间无 barrier**（item A 可在 stage 2 时 item B 仍在 stage 1）；失败项 resolve 为 `null` |
-| `ctx.template.workOrder` / `rework` / `reworkResume` | 生成标准工单文案                               |
-| `ctx.objective`                                      | 冻结的 mission 目标（字符串；编排脚本内可嵌入工单）   |
+| `ctx.objective`                                      | 冻结的 mission 目标（字符串；可嵌入 `text` 附加说明）   |
 
 
 节点间协作**勿在脚本中模拟**；脚本侧用 `ctx.run`、`ctx.parallel`、`ctx.pipeline` 驱动时序。
@@ -152,20 +149,18 @@ export default async function orchestrate(ctx) {
 ```typescript
 await ctx.parallel([
   async () => {
-    await ctx.run("a1", { brief: { your_work: ["…"], acceptance_slice: ["…"] }, text: ctx.template.workOrder("a1") })
-    await ctx.run("a2", { brief: { your_work: ["…"], acceptance_slice: ["…"] }, text: ctx.template.workOrder("a2") })
+    await ctx.run("a1", { brief: { your_work: ["…"], acceptance_slice: ["…"] } })
+    await ctx.run("a2", { brief: { your_work: ["…"], acceptance_slice: ["…"] } })
     await ctx.run("a", {
       brief: { your_work: ["…"], acceptance_slice: ["…"] },
-      text: ctx.template.workOrder("a"),
       dependsOn: [{ node: "a1", deliverable: true }, { node: "a2", deliverable: true }],
     })
   },
   async () => {
-    await ctx.run("b1", { brief: { your_work: ["…"], acceptance_slice: ["…"] }, text: ctx.template.workOrder("b1") })
-    await ctx.run("b2", { brief: { your_work: ["…"], acceptance_slice: ["…"] }, text: ctx.template.workOrder("b2") })
+    await ctx.run("b1", { brief: { your_work: ["…"], acceptance_slice: ["…"] } })
+    await ctx.run("b2", { brief: { your_work: ["…"], acceptance_slice: ["…"] } })
     await ctx.run("b", {
       brief: { your_work: ["…"], acceptance_slice: ["…"] },
-      text: ctx.template.workOrder("b"),
       dependsOn: [{ node: "b1", deliverable: true }, { node: "b2", deliverable: true }],
     })
   },
@@ -173,7 +168,6 @@ await ctx.parallel([
 // 仅当 Mission 确实需要跨 track 最终整合时添加；team.terminal 指向该节点。
 await ctx.run("<terminal-node-id>", {
   brief: { your_work: ["…"], acceptance_slice: ["…"] },
-  text: ctx.template.workOrder("<terminal-node-id>"),
   dependsOn: [{ node: "a", deliverable: true }, { node: "b", deliverable: true }],
 })
 ```
@@ -192,7 +186,6 @@ const discovered = await ctx.run("discover", {
   },
   completionSchema: ROUTES,
   returnStructured: true,
-  text: ctx.template.workOrder("discover"),
 })
 
 const audited = await ctx.pipeline(
@@ -200,13 +193,11 @@ const audited = await ctx.pipeline(
   async (route) =>
     ctx.run(`audit-${route}`, {
       brief: { your_work: [`审计 ${route}`], acceptance_slice: ["…"] },
-      text: ctx.template.workOrder(`audit-${route}`),
     }),
   async (_prev, route) =>
     ctx.run(`verify-${route}`, {
       brief: { your_work: [`验证 ${route}`], acceptance_slice: ["…"] },
       dependsOn: [{ node: `audit-${route}`, deliverable: true }],
-      text: ctx.template.workOrder(`verify-${route}`),
     }),
 )
 const results = audited.filter(Boolean)
@@ -218,10 +209,10 @@ const results = audited.filter(Boolean)
 2. **只能**通过 `ctx.*` 驱动 Mission；不要在文件顶层写会立即执行的代码。
 3. `team` / `meta` 必须是字面量对象。
 4. `nodeId` 优先用字符串字面量，避免写错节点名。
-5. 不要把合同全文塞进脚本 — 边界写进 `run` 的 `brief` 或工单文本。
-6. 推荐：`ctx.run(nodeId, { brief, text })`；并行兄弟节点用 `ctx.parallel` + 多个单节点 `run`；**多 stage 逐项处理**（如 per-file migrate→verify）用 `ctx.pipeline`。
-7. `ctx.objective` 可用；勿用未文档化的 `ctx.*` 属性。
-8. **字符串**：`orchestrate` 内 `context` / `note` 优先用模板字面量 `` `...` `` 或单引号。**仅**当 `context:` / `note:` 使用双引号且内容含 `gatehouse_` 时会报 `SCRIPT_RISKY_STRING_LITERAL`（`run` brief 与 `team`/`meta` 字面量不受此限）。修复时只改报错指出的那一处，勿批量改引号风格。
+5. 不要把合同全文塞进脚本 — 边界写进 `run` 的 `brief`；需要额外自然语言说明时用 `text`（纯字符串，Gatehouse 自动套工单模板）。
+6. 推荐：`ctx.run(nodeId, { brief })`；仅在需要附加说明时传 `text`；并行兄弟节点用 `ctx.parallel` + 多个单节点 `run`；**多 stage 逐项处理**（如 per-file migrate→verify）用 `ctx.pipeline`。
+7. `ctx.objective` 可用；勿用未文档化的 `ctx.*` 属性；**禁止** `ctx.template.workOrder`。
+8. **字符串**：`orchestrate` 内 `text` 优先用模板字面量 `` `...` `` 或单引号。**仅**当 `text:` 使用双引号且内容含 `gatehouse_` 时会报 `SCRIPT_RISKY_STRING_LITERAL`（`run` brief 与 `team`/`meta` 字面量不受此限）。修复时只改报错指出的那一处，勿批量改引号风格。
 9. **校验与恢复**：保存脚本后 `gatehouse_submit_orchestration` — 系统自动校验并启动或恢复。**dry-run 失败时错误仅在 tool 返回中**，不会另发 Gatehouse 系统消息（运行时 sandbox 失败才会通知你）。`dry-run` 会检查：轨道间假串行（`SCRIPT_SERIAL_TRACK_BLOCK`）、`dependsOn` 合法性、brief 覆盖、未引用节点、`ctx.parallel` 建议等；警告在 `warnings` 中返回。编排中途重写脚本：**`gatehouse_submit_orchestration(mode=continue)`**。编排进行中勿改 `mission.script.ts`。
 
 编排脚本负责时序与工单；需要上游交付物时在 `dependsOn` 中用 `deliverable: true`。**Terminal 节点**在全树 done 时 `gatehouse_execution_complete` 自动通知 {{lead_name}}。**Portal 发布由 Lead `mission_complete(done)` 完成** — `setBrief` / 工单中**禁止**写「发布到 Portal」或任何 publish 工具名。

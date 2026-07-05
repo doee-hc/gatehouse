@@ -12,10 +12,12 @@ export function missionScriptErrorHint(code: string): string | undefined {
       return "Add brief: { your_work: [...], acceptance_slice: [...] } to each ctx.run dispatch."
     case "SCRIPT_PLAN_DYNAMIC_TOP_LEVEL":
       return "Use explicit top-level await ctx.run steps or ctx.parallel tracks instead of for/while loops."
+    case "SCRIPT_FORBIDDEN_WORK_ORDER_TEMPLATE":
+      return "Remove ctx.template.workOrder(...); use ctx.run(nodeId, { brief, text?: \"supplementary note\" })."
     case "SCRIPT_FORBIDDEN_CTX_READ":
-      return "Inline static context in run brief or work-order text; do not call ctx.readMissionContext or ctx.readContract."
+      return "Inline static context in run brief or text; do not call ctx.readMissionContext or ctx.readContract."
     case "SCRIPT_RISKY_STRING_LITERAL":
-      return "Use template literals or single quotes for context/note when the value contains gatehouse_."
+      return "Use template literals or single quotes for run text when the value contains gatehouse_."
     case "SCRIPT_FORBIDDEN_IMPORT":
       return "mission.script.ts must not import modules; orchestrate via ctx.* only."
     case "SCRIPT_INVALID_ORCHESTRATE_SYNTAX":

@@ -206,7 +206,31 @@ export default async function orchestrate(ctx) {
     expect(result.code).toBe("SCRIPT_FORBIDDEN_CTX_READ")
   })
 
-  test("allows run without text when default work order is configured", async () => {
+  test("rejects ctx.template.workOrder in orchestrate", async () => {
+    const source = `
+export const team = {
+  mission_id: "lint-m1",
+  terminal: "terminal",
+  nodes: {
+    terminal: { description: "root" },
+    a: { description: "a" },
+  },
+}
+export default async function orchestrate(ctx) {
+  await ctx.run("a", {
+    brief: { your_work: ["w"], acceptance_slice: ["path: reports/a.md"] },
+    text: ctx.template.workOrder("a"),
+  })
+  await ctx.run("terminal", { brief: { your_work: ["r"], acceptance_slice: ["done"] }, dependsOn: [{ node: "a", deliverable: true }] })
+}
+`
+    const result = await dryRunMissionScriptSource(source, "lint-m1")
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.code).toBe("SCRIPT_FORBIDDEN_WORK_ORDER_TEMPLATE")
+  })
+
+  test("allows run without text", async () => {
     const source = `
 export const team = {
   mission_id: "lint-m1",

@@ -61,7 +61,6 @@ await ctx.run("researcher-a", {
     not_your_job: ["… (sibling scope — do not duplicate)"],
     acceptance_slice: ["path: reports/researcher-a.md", "…"],
   },
-  text: ctx.template.workOrder("researcher-a"),
 })
 ```
 
@@ -92,7 +91,6 @@ export default async function orchestrate(ctx) {
       your_work: ["…"],
       acceptance_slice: ["path: reports/<leaf-id>.md", "…"],
     },
-    text: ctx.template.workOrder("<leaf-id>"),
   })
 
   await ctx.run("<terminal-node-id>", {
@@ -100,7 +98,7 @@ export default async function orchestrate(ctx) {
       your_work: ["Integrate upstream work into the final deliverable"],
       acceptance_slice: ["path: …", "…"],
     },
-    text: ctx.template.workOrder("<terminal-node-id>", { context: "…" }),
+    text: "Read upstream reports/ deliverables and produce the final artifact.",
     dependsOn: [{ node: "<leaf-id>", deliverable: true }],
   })
 }
@@ -119,11 +117,10 @@ export default async function orchestrate(ctx) {
 
 | API | Purpose |
 |-----|---------|
-| `ctx.run(nodeId, { brief, text?, dependsOn?, completionSchema?, returnStructured?, reply? })` | Activate one node: all `dependsOn` entries must be satisfied, then dispatch once and wait for `complete`; with `returnStructured: true`, resolves upstream validated JSON |
+| `ctx.run(nodeId, { brief, text?, dependsOn?, completionSchema?, returnStructured?, reply? })` | Activate one node: Gatehouse auto-generates the standard work order; `text` is optional supplementary prose (plain string); all `dependsOn` entries must be satisfied, then dispatch once and wait for `complete`; with `returnStructured: true`, resolves upstream validated JSON |
 | `ctx.parallel(tracks)` | **Parallel barrier**: run thunks concurrently; continue after **all** finish |
 | `ctx.pipeline(items, stage1, stage2?, ...)` | **Streaming parallel**: each item flows through stages independently with **no barrier between stages** (item A may be in stage 2 while item B is still in stage 1); failed items resolve to `null` |
-| `ctx.template.workOrder` / `rework` / `reworkResume` | Standard work-order text |
-| `ctx.objective` | Frozen mission objective string (safe to embed in work orders) |
+| `ctx.objective` | Frozen mission objective string (may be echoed in optional `text`) |
 
 Do **not** simulate peer coordination in the script — drive timing with `ctx.run`, `ctx.parallel`, and `ctx.pipeline`.
 
@@ -148,20 +145,18 @@ Do **not** simulate peer coordination in the script — drive timing with `ctx.r
 ```typescript
 await ctx.parallel([
   async () => {
-    await ctx.run("a1", { brief: { your_work: ["…"], acceptance_slice: ["…"] }, text: ctx.template.workOrder("a1") })
-    await ctx.run("a2", { brief: { your_work: ["…"], acceptance_slice: ["…"] }, text: ctx.template.workOrder("a2") })
+    await ctx.run("a1", { brief: { your_work: ["…"], acceptance_slice: ["…"] } })
+    await ctx.run("a2", { brief: { your_work: ["…"], acceptance_slice: ["…"] } })
     await ctx.run("a", {
       brief: { your_work: ["…"], acceptance_slice: ["…"] },
-      text: ctx.template.workOrder("a"),
       dependsOn: [{ node: "a1", deliverable: true }, { node: "a2", deliverable: true }],
     })
   },
   async () => {
-    await ctx.run("b1", { brief: { your_work: ["…"], acceptance_slice: ["…"] }, text: ctx.template.workOrder("b1") })
-    await ctx.run("b2", { brief: { your_work: ["…"], acceptance_slice: ["…"] }, text: ctx.template.workOrder("b2") })
+    await ctx.run("b1", { brief: { your_work: ["…"], acceptance_slice: ["…"] } })
+    await ctx.run("b2", { brief: { your_work: ["…"], acceptance_slice: ["…"] } })
     await ctx.run("b", {
       brief: { your_work: ["…"], acceptance_slice: ["…"] },
-      text: ctx.template.workOrder("b"),
       dependsOn: [{ node: "b1", deliverable: true }, { node: "b2", deliverable: true }],
     })
   },
@@ -169,7 +164,6 @@ await ctx.parallel([
 // Cross-track final delivery only when the mission needs it; set team.terminal to this node.
 await ctx.run("<terminal-node-id>", {
   brief: { your_work: ["…"], acceptance_slice: ["…"] },
-  text: ctx.template.workOrder("<terminal-node-id>"),
   dependsOn: [{ node: "a", deliverable: true }, { node: "b", deliverable: true }],
 })
 ```
@@ -188,7 +182,6 @@ const discovered = await ctx.run("discover", {
   },
   completionSchema: ROUTES,
   returnStructured: true,
-  text: ctx.template.workOrder("discover"),
 })
 
 const audited = await ctx.pipeline(
@@ -196,13 +189,11 @@ const audited = await ctx.pipeline(
   async (route) =>
     ctx.run(`audit-${route}`, {
       brief: { your_work: [`Audit ${route}`], acceptance_slice: ["…"] },
-      text: ctx.template.workOrder(`audit-${route}`),
     }),
   async (_prev, route) =>
     ctx.run(`verify-${route}`, {
       brief: { your_work: [`Verify ${route}`], acceptance_slice: ["…"] },
       dependsOn: [{ node: `audit-${route}`, deliverable: true }],
-      text: ctx.template.workOrder(`verify-${route}`),
     }),
 )
 const results = audited.filter(Boolean)
@@ -214,10 +205,10 @@ const results = audited.filter(Boolean)
 2. Drive the mission **only** through `ctx.*`; no top-level code that runs on load.
 3. `team` / `meta` must be object literals.
 4. Prefer string literals for `nodeId` so node names stay correct.
-5. Do not paste the full contract into the script — put boundaries in `run` brief or work-order text.
-6. Recommended flow: `ctx.run(nodeId, { brief, text })`; parallel siblings use `ctx.parallel` with one run per node; **multi-stage per-item work** (e.g. migrate→verify per file) use `ctx.pipeline`.
-7. Use documented `ctx.*` only (`ctx.objective` is available).
-8. **Strings:** in `orchestrate`, prefer template literals or single quotes for `context` / `note`. **`SCRIPT_RISKY_STRING_LITERAL` applies only** when `context:` / `note:` use double quotes **and** the value contains `gatehouse_` (`run` brief and `team`/`meta` literals are exempt). Fix only the line the error cites — do not bulk-convert quote styles.
+5. Do not paste the full contract into the script — put boundaries in `run` brief; use optional `text` (plain string) for extra natural-language notes (Gatehouse wraps it in the work-order template).
+6. Recommended flow: `ctx.run(nodeId, { brief })`; pass `text` only when you need supplementary notes; parallel siblings use `ctx.parallel` with one run per node; **multi-stage per-item work** (e.g. migrate→verify per file) use `ctx.pipeline`.
+7. `ctx.objective` is available; do not use undocumented `ctx.*` properties; **do not** call `ctx.template.workOrder`.
+8. **Strings:** in `orchestrate`, prefer template literals or single quotes for `text`. **`SCRIPT_RISKY_STRING_LITERAL` applies only** when `text:` uses double quotes **and** the value contains `gatehouse_` (`run` brief and `team`/`meta` literals are exempt). Fix only the line the error cites — do not bulk-convert quote styles.
 9. **Validation & recovery:** save the script, then call `gatehouse_submit_orchestration` — the system validates and starts or resumes automatically. **Dry-run failures return errors in the tool response only**; no separate Gatehouse system message (runtime sandbox failures still notify you). Dry-run checks cross-track false serialization (`SCRIPT_SERIAL_TRACK_BLOCK`), `dependsOn` subtree validity, brief coverage, unreferenced nodes, `ctx.parallel` hints, and more; warnings are returned in `warnings`. After rewriting mid-mission: **`gatehouse_submit_orchestration(mode=continue)`**. Do not edit `mission.script.ts` during active orchestration.
 
 The script drives timing and work orders via `dependsOn` when upstream deliverables are needed. The **terminal node** auto-notifies {{lead_name}} via `gatehouse_execution_complete` when all nodes are done. **Portal publish happens on Lead `mission_complete(done)`** — never put “publish to Portal” or any publish tool name in `setBrief` or work orders.

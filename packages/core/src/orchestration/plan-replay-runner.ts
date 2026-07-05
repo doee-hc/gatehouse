@@ -13,6 +13,7 @@ export async function replayPlanSteps(input: {
   steps: readonly PlanStep[]
   startIndex: number
   sendRpc: RpcSender
+  workOrderText: (nodeId: string, supplementary?: string) => string
 }) {
   for (let index = input.startIndex; index < input.steps.length; index += 1) {
     const step = input.steps[index]!
@@ -22,6 +23,7 @@ export async function replayPlanSteps(input: {
       step,
       index,
       sendRpc: input.sendRpc,
+      workOrderText: input.workOrderText,
     })
     await scope.run()
     await scope.complete()

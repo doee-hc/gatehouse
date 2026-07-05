@@ -21,6 +21,7 @@ export function createPlanStepScope(input: {
   step: PlanStep
   index: number
   sendRpc: RpcSender
+  workOrderText: (nodeId: string, supplementary?: string) => string
 }): PlanStepScope {
   const { baseCtx, step, index, sendRpc } = input
 
@@ -46,9 +47,7 @@ export function createPlanStepScope(input: {
   const stepCtx: MissionContext = {
     ...baseCtx,
     async run(nodeId, opts) {
-      await orchestrationRun(engine, nodeId, opts, {
-        defaultWorkOrder: (nodeId) => baseCtx.template.workOrder(nodeId),
-      })
+      await orchestrationRun(engine, nodeId, opts, { workOrderText: input.workOrderText })
     },
     async parallel(tracks) {
       return orchestrationParallel(tracks)

@@ -94,6 +94,7 @@ export type NodeBriefPartial = {
 
 export type RunOpts = {
   brief: NodeBriefPartial | ((nodeId: string) => NodeBriefPartial)
+  /** Optional supplementary text merged into the auto-generated work order. */
   text?: string | ((nodeId: string) => string)
   dependsOn?: DependsOnEntry[]
   reply?: boolean
@@ -133,11 +134,6 @@ export type MissionContext = {
   nodeIds(): string[]
   leaves(): string[]
   children(nodeId: string): string[]
-  template: {
-    workOrder(nodeId: string, opts?: { context?: string; note?: string; wave?: number }): string
-    rework(nodeId: string, input: { requester: string; reason: string; evidence?: string }): string
-    reworkResume(nodeId: string, input: { blocker: string; reason?: string }): string
-  }
 }
 
 export type LoadedMissionScript = {

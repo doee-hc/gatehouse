@@ -87,9 +87,6 @@ export function extractReferencedNodeIds(orchestrateSource: string) {
   const nodes = new Set<string>()
   const patterns = [
     /ctx\.run\s*\(\s*["'`]([^"'`]+)["'`]/g,
-    /ctx\.template\.workOrder\s*\(\s*["'`]([^"'`]+)["'`]/g,
-    /ctx\.template\.rework\s*\(\s*["'`]([^"'`]+)["'`]/g,
-    /ctx\.template\.reworkResume\s*\(\s*["'`]([^"'`]+)["'`]/g,
     /dependsOn\s*:\s*\[([^\]]*)\]/g,
   ]
   for (const pattern of patterns) {
@@ -194,13 +191,24 @@ function lintPlanDynamicTopLevel(orchestrateSource: string): OrchestrationLintIs
   return errors
 }
 
+function lintForbiddenWorkOrderTemplate(orchestrateSource: string): OrchestrationLintIssue[] {
+  if (!/\bctx\.template\.workOrder\s*\(/.test(orchestrateSource)) return []
+  return [
+    {
+      code: "SCRIPT_FORBIDDEN_WORK_ORDER_TEMPLATE",
+      message:
+        "orchestrate must not call ctx.template.workOrder; Gatehouse auto-generates work orders — pass optional supplementary text as ctx.run(..., { text: \"...\" })",
+    },
+  ]
+}
+
 function lintForbiddenCtxRead(orchestrateSource: string): OrchestrationLintIssue[] {
   if (!/\bctx\.(?:readMissionContext|readContract)\s*\(/.test(orchestrateSource)) return []
   return [
     {
       code: "SCRIPT_FORBIDDEN_CTX_READ",
       message:
-        "orchestrate must not call ctx.readMissionContext or ctx.readContract; inline static context in run brief or work-order text",
+        "orchestrate must not call ctx.readMissionContext or ctx.readContract; inline static context in run brief or text",
     },
   ]
 }
@@ -464,6 +472,7 @@ export function lintOrchestrationScript(
   const errors: OrchestrationLintIssue[] = []
   const warnings: string[] = []
 
+  errors.push(...lintForbiddenWorkOrderTemplate(orchestrateSource))
   errors.push(...lintForbiddenCtxRead(orchestrateSource))
   errors.push(...lintPlanDynamicTopLevel(orchestrateSource))
   errors.push(...lintSerialTrackBlocking(team, plan, orchestrateSource))

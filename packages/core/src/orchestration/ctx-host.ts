@@ -37,11 +37,7 @@ import {
 import type { SandboxRpcRequest } from "./sandbox-protocol.ts"
 import type { MissionContext, MissionScriptMeta, OrchestrationEngine, PromptInput } from "./types.ts"
 import { waitForOrchestration } from "./wait.ts"
-import {
-  formatReworkResumeText,
-  formatReworkText,
-  formatWorkOrderText,
-} from "./templates.ts"
+import { createWorkOrderTextFactory } from "./templates.ts"
 import { orchestrationRun } from "./run.ts"
 import { orchestrationParallel } from "./primitives.ts"
 import { orchestrationPipeline } from "./primitives.ts"
@@ -339,17 +335,16 @@ export function createMissionContext(input: {
     },
   }
 
+  const workOrderText = createWorkOrderTextFactory({
+    missionId,
+    projectDirectory: plugin.directory,
+  })
+
   const ctx: MissionContext = {
     objective: contract?.objective ?? "",
 
     async run(nodeId, opts) {
-      return orchestrationRun(engine, nodeId, opts, {
-        defaultWorkOrder: (nodeId) =>
-          formatWorkOrderText(plugin.directory, {
-            missionId,
-            nodeId,
-          }),
-      })
+      return orchestrationRun(engine, nodeId, opts, { workOrderText })
     },
 
     async parallel(tracks) {
@@ -380,35 +375,6 @@ export function createMissionContext(input: {
     children(nodeId) {
       const plan = readLatestOrchestrationPlanRecord(plugin.directory, missionId)
       return plan ? planChildNodeIds(plan, nodeId) : []
-    },
-
-    template: {
-      workOrder(nodeId, opts) {
-        return formatWorkOrderText(plugin.directory, {
-          missionId,
-          nodeId,
-          ...(opts?.context && { context: opts.context }),
-          ...(opts?.note && { note: opts.note }),
-          ...(opts?.wave !== undefined && { wave: opts.wave }),
-        })
-      },
-      rework(nodeId, reworkInput) {
-        return formatReworkText(plugin.directory, {
-          missionId,
-          nodeId,
-          requester: reworkInput.requester,
-          reason: reworkInput.reason,
-          ...(reworkInput.evidence && { evidence: reworkInput.evidence }),
-        })
-      },
-      reworkResume(nodeId, resumeInput) {
-        return formatReworkResumeText(plugin.directory, {
-          missionId,
-          nodeId,
-          blocker: resumeInput.blocker,
-          ...(resumeInput.reason && { reason: resumeInput.reason }),
-        })
-      },
     },
   }
 

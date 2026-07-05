@@ -1,8 +1,7 @@
 import type { NodeBriefPartial, OrchestrationEngine, RunOpts, RunResult } from "./types.ts"
 
 export type OrchestrationRunConfig = {
-  /** Used when run omits text or passes empty text (defaults to ctx.template.workOrder). */
-  defaultWorkOrder?: (nodeId: string) => string
+  workOrderText: (nodeId: string, supplementary?: string) => string
 }
 
 export function runMissingBriefError(nodeId: string) {
@@ -15,9 +14,11 @@ function resolveBrief(opts: RunOpts, nodeId: string): NodeBriefPartial {
   return typeof opts.brief === "function" ? opts.brief(nodeId) : opts.brief
 }
 
-function resolveText(opts: RunOpts, nodeId: string): string | undefined {
+function resolveSupplementaryText(opts: RunOpts, nodeId: string): string | undefined {
   if (opts.text === undefined) return undefined
-  return typeof opts.text === "function" ? opts.text(nodeId) : opts.text
+  const text = typeof opts.text === "function" ? opts.text(nodeId) : opts.text
+  const trimmed = text.trim()
+  return trimmed || undefined
 }
 
 function resolvePromptText(
@@ -26,11 +27,12 @@ function resolvePromptText(
   reply: boolean,
   runConfig?: OrchestrationRunConfig,
 ): string | undefined {
-  let text = resolveText(opts, nodeId)
-  if (reply && (!text || !text.trim()) && runConfig?.defaultWorkOrder) {
-    text = runConfig.defaultWorkOrder(nodeId)
+  const supplementary = resolveSupplementaryText(opts, nodeId)
+  if (!reply) return supplementary
+  if (!runConfig?.workOrderText) {
+    throw new Error(`run(reply:true) requires workOrderText for node "${nodeId}"`)
   }
-  return text
+  return runConfig.workOrderText(nodeId, supplementary)
 }
 
 function mergeRunBrief(brief: NodeBriefPartial, opts: RunOpts): NodeBriefPartial {

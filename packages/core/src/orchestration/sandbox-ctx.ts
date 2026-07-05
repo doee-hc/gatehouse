@@ -7,11 +7,7 @@ import { orchestrationParallel } from "./primitives.ts"
 import { orchestrationPipeline } from "./primitives.ts"
 import type { MissionContext, OrchestrationEngine, PromptInput } from "./types.ts"
 import type { SandboxRpcRequest } from "./sandbox-protocol.ts"
-import {
-  formatReworkResumeTextWithLocale,
-  formatReworkTextWithLocale,
-  formatWorkOrderTextWithLocale,
-} from "./templates.ts"
+import { createWorkOrderTextFactory } from "./templates.ts"
 import type { NodeBriefPartial } from "./types.ts"
 
 type RpcSender = (request: Omit<SandboxRpcRequest, "type" | "id">) => Promise<unknown>
@@ -48,17 +44,16 @@ export function createSandboxMissionContext(input: {
     },
   }
 
-  const defaultWorkOrder = (nodeId: string) =>
-    formatWorkOrderTextWithLocale(locale, {
-      missionId,
-      nodeId,
-    })
+  const workOrderText = createWorkOrderTextFactory({
+    missionId,
+    locale,
+  })
 
   const ctx: MissionContext = {
     objective: input.objective ?? "",
 
     async run(nodeId, opts) {
-      return orchestrationRun(engine, nodeId, opts, { defaultWorkOrder })
+      return orchestrationRun(engine, nodeId, opts, { workOrderText })
     },
 
     async parallel(tracks) {
@@ -70,7 +65,7 @@ export function createSandboxMissionContext(input: {
     },
 
     readMissionContext() {
-      throw new Error("readMissionContext() is not available synchronously in sandbox; inline static context in prompt text")
+      throw new Error("readMissionContext() is not available synchronously in sandbox; inline static context in run brief or text")
     },
 
     readContract() {
@@ -88,36 +83,7 @@ export function createSandboxMissionContext(input: {
     children(nodeId) {
       return planChildNodeIds(plan, nodeId)
     },
-
-    template: {
-      workOrder(nodeId, opts) {
-        return formatWorkOrderTextWithLocale(locale, {
-          missionId,
-          nodeId,
-          ...(opts?.context && { context: opts.context }),
-          ...(opts?.note && { note: opts.note }),
-          ...(opts?.wave !== undefined && { wave: opts.wave }),
-        })
-      },
-      rework(nodeId, reworkInput) {
-        return formatReworkTextWithLocale(locale, {
-          missionId,
-          nodeId,
-          requester: reworkInput.requester,
-          reason: reworkInput.reason,
-          ...(reworkInput.evidence && { evidence: reworkInput.evidence }),
-        })
-      },
-      reworkResume(nodeId, resumeInput) {
-        return formatReworkResumeTextWithLocale(locale, {
-          missionId,
-          nodeId,
-          blocker: resumeInput.blocker,
-          ...(resumeInput.reason && { reason: resumeInput.reason }),
-        })
-      },
-    },
   }
 
-  return { ctx, engine }
+  return { ctx, engine, workOrderText }
 }

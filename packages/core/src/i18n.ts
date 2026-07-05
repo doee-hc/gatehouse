@@ -210,8 +210,6 @@ All nodes with skill_domain finished extract + verify and registration. Review \
     zh: "按任务书中的职责项执行；验收以任务书中的验收切片为准，勿自行扩大范围。",
     en: "Work from the duties listed in your brief; accept only against your brief's acceptance slice — do not expand scope on your own.",
   },
-  "execution.workOrder.note": { zh: "**说明：** {note}", en: "**Note:** {note}" },
-  "execution.workOrder.wave": { zh: "**波次：** {wave}", en: "**Wave:** {wave}" },
   "execution.workOrder.contextHeader": { zh: "**上下文：**", en: "**Context:**" },
   "execution.workOrder.blockerDone": {
     zh: "**依赖节点 {blocker} 已再次完成。**",

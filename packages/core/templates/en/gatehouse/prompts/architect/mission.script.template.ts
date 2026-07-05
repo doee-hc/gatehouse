@@ -16,7 +16,7 @@ export const team = {
 
 export const meta = {
   name: "<mission_id>",
-  phases: ["Parallel work", "Final delivery"],
+  phases: ["Parallel execution", "Final delivery"],
 }
 
 export default async function orchestrate(ctx) {
@@ -25,20 +25,18 @@ export default async function orchestrate(ctx) {
       await ctx.run("<leaf-a>", {
         brief: {
           your_work: ["…"],
-          not_your_job: ["Out of scope for this node (avoid sibling overlap)"],
+          not_your_job: ["Not this node's job (avoid sibling overlap)"],
           acceptance_slice: ["path: reports/<leaf-a>.md", "…"],
         },
-        text: ctx.template.workOrder("<leaf-a>"),
       })
     },
     async () => {
       await ctx.run("<leaf-b>", {
         brief: {
           your_work: ["…"],
-          not_your_job: ["Out of scope for this node (avoid sibling overlap)"],
+          not_your_job: ["Not this node's job (avoid sibling overlap)"],
           acceptance_slice: ["path: reports/<leaf-b>.md", "…"],
         },
-        text: ctx.template.workOrder("<leaf-b>"),
       })
     },
   ])
@@ -48,9 +46,7 @@ export default async function orchestrate(ctx) {
       your_work: ["Read upstream reports and produce the final mission deliverable"],
       acceptance_slice: ["path: reports/<mission_id>.html", "…"],
     },
-    text: ctx.template.workOrder("<terminal-node-id>", {
-      context: `Upstream nodes are done. Read reports/<leaf-a>.md and reports/<leaf-b>.md, then deliver the final artifact.`,
-    }),
+    text: `Upstream nodes are done. Read reports/<leaf-a>.md and reports/<leaf-b>.md, then deliver the final artifact.`,
     dependsOn: [{ node: "<leaf-a>", deliverable: true }, { node: "<leaf-b>", deliverable: true }],
   })
 }

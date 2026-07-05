@@ -91,7 +91,7 @@ function validateOrchestrateSyntaxOrThrow(orchestrateSource?: string) {
 
 /** Catch common authoring mistakes that break AsyncFunction compile in subtle ways. */
 function validateOrchestrateNoRiskyDoubleQuotedStrings(orchestrateSource: string) {
-  const risky = /(?:note|context)\s*:\s*"[^"\n]*(?:gatehouse_|recipient=|message=)[^"\n]*"/g
+  const risky = /\btext\s*:\s*"[^"\n]*(?:gatehouse_|recipient=|message=)[^"\n]*"/g
   for (const match of orchestrateSource.matchAll(risky)) {
     const snippet = match[0].slice(0, 120)
     throw new MissionScriptParseError(

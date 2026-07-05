@@ -28,7 +28,6 @@ export default async function orchestrate(ctx) {
           not_your_job: ["非本节点职责（避免与 sibling 重叠）"],
           acceptance_slice: ["path: reports/<leaf-a>.md", "…"],
         },
-        text: ctx.template.workOrder("<leaf-a>"),
       })
     },
     async () => {
@@ -38,7 +37,6 @@ export default async function orchestrate(ctx) {
           not_your_job: ["非本节点职责（避免与 sibling 重叠）"],
           acceptance_slice: ["path: reports/<leaf-b>.md", "…"],
         },
-        text: ctx.template.workOrder("<leaf-b>"),
       })
     },
   ])
@@ -48,9 +46,7 @@ export default async function orchestrate(ctx) {
       your_work: ["阅读上游报告，产出 Mission 最终交付物"],
       acceptance_slice: ["path: reports/<mission_id>.html", "…"],
     },
-    text: ctx.template.workOrder("<terminal-node-id>", {
-      context: `上游节点已完成，请阅读 reports/<leaf-a>.md 与 reports/<leaf-b>.md 并交付最终产出。`,
-    }),
+    text: `上游节点已完成，请阅读 reports/<leaf-a>.md 与 reports/<leaf-b>.md 并交付最终产出。`,
     dependsOn: [{ node: "<leaf-a>", deliverable: true }, { node: "<leaf-b>", deliverable: true }],
   })
 }

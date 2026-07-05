@@ -35,9 +35,6 @@ export default async function orchestrate(ctx: {
       dependsOn?: Array<string | { node: string; deliverable?: boolean }>
     },
   ): Promise<void>
-  template: {
-    workOrder(nodeId: string, opts?: { context?: string; note?: string }): string
-  }
 }) {
   await ctx.run("node-doc", {
     brief: {
@@ -46,9 +43,6 @@ export default async function orchestrate(ctx: {
       your_work: ["撰写 packages/core/README.md「示例 Mission」章节"],
       acceptance_slice: ["path: packages/core/README.md", "README 含示例 Mission 章节且可被解析"],
     },
-    text: ctx.template.workOrder("node-doc", {
-      note: `完成 README 示例章节后 gatehouse_execution_complete`,
-    }),
   })
 
   await ctx.run("node-root", {
@@ -61,7 +55,6 @@ export default async function orchestrate(ctx: {
       ],
       acceptance_slice: ["delivery 已提交且 lead 可验收"],
     },
-    text: ctx.template.workOrder("node-root"),
     dependsOn: [{ node: "node-doc", deliverable: true }],
   })
 }

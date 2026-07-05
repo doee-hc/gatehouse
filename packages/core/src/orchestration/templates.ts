@@ -7,16 +7,10 @@ export function formatWorkOrderTextWithLocale(
     missionId: string
     nodeId: string
     context?: string
-    note?: string
-    wave?: number
   },
 ) {
   const header = gatehouseMessage("execution.workOrder.activateHeader", locale, { node_id: input.nodeId })
   const lines = [header, "", `**Mission ID：** ${input.missionId}`, `**Node：** ${input.nodeId}`]
-  if (input.note) lines.push("", gatehouseMessage("execution.workOrder.note", locale, { note: input.note }))
-  if (input.wave !== undefined) {
-    lines.push("", gatehouseMessage("execution.workOrder.wave", locale, { wave: String(input.wave) }))
-  }
   if (input.context) lines.push("", gatehouseMessage("execution.workOrder.contextHeader", locale), input.context.trim())
   lines.push(
     "",
@@ -34,11 +28,27 @@ export function formatWorkOrderText(
     missionId: string
     nodeId: string
     context?: string
-    note?: string
-    wave?: number
   },
 ) {
   return formatWorkOrderTextWithLocale(readLocaleSync(projectDirectory), input)
+}
+
+export function createWorkOrderTextFactory(input: {
+  missionId: string
+  locale?: GatehouseLocale
+  projectDirectory?: string
+}): (nodeId: string, supplementary?: string) => string {
+  return (nodeId, supplementary) => {
+    const payload = {
+      missionId: input.missionId,
+      nodeId,
+      ...(supplementary?.trim() && { context: supplementary.trim() }),
+    }
+    if (input.projectDirectory !== undefined) {
+      return formatWorkOrderText(input.projectDirectory, payload)
+    }
+    return formatWorkOrderTextWithLocale(input.locale!, payload)
+  }
 }
 
 export function formatReworkTextWithLocale(

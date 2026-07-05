@@ -11,11 +11,7 @@ import {
   orchestrationProblemNodeIds,
 } from "./state.ts"
 import type { MissionContext, OrchestrationEngine, OrchestrationState } from "./types.ts"
-import {
-  formatReworkResumeTextWithLocale,
-  formatReworkTextWithLocale,
-  formatWorkOrderTextWithLocale,
-} from "./templates.ts"
+import { createWorkOrderTextFactory } from "./templates.ts"
 import { orchestrationRun } from "./run.ts"
 import { orchestrationParallel } from "./primitives.ts"
 import { orchestrationPipeline } from "./primitives.ts"
@@ -102,12 +98,6 @@ function createSimulatedMissionContext(input: {
           )
         }
         if (promptInput.reply) {
-          if (!promptInput.text?.trim()) {
-            throw new MissionScriptParseError(
-              "SCRIPT_SIMULATION_RUNTIME_ERROR",
-              `run requires non-empty text for node ${nodeId}`,
-            )
-          }
           input.dispatchedReply.add(nodeId)
           markNodeRunning(state, nodeId)
         }
@@ -150,18 +140,14 @@ function createSimulatedMissionContext(input: {
     },
   }
 
-  const defaultWorkOrder = (nodeId: string) =>
-    formatWorkOrderTextWithLocale(locale, {
-      missionId,
-      nodeId,
-    })
+  const workOrderText = createWorkOrderTextFactory({ missionId, locale })
 
   return {
     objective: input.objective,
 
     async run(nodeId, opts) {
       bumpStep(input.stepCount, input.maxSteps)
-      await orchestrationRun(engine, nodeId, opts, { defaultWorkOrder })
+      await orchestrationRun(engine, nodeId, opts, { workOrderText })
     },
 
     async parallel(tracks) {
@@ -177,14 +163,14 @@ function createSimulatedMissionContext(input: {
     readMissionContext() {
       throw new MissionScriptParseError(
         "SCRIPT_FORBIDDEN_CTX_READ",
-        "readMissionContext() is not available in orchestration sandbox; inline static context in run brief or work-order text",
+        "readMissionContext() is not available in orchestration sandbox; inline static context in run brief or text",
       )
     },
 
     readContract() {
       throw new MissionScriptParseError(
         "SCRIPT_FORBIDDEN_CTX_READ",
-        "readContract() is not available in orchestration sandbox; inline static context in run brief or work-order text",
+        "readContract() is not available in orchestration sandbox; inline static context in run brief or text",
       )
     },
 
@@ -198,35 +184,6 @@ function createSimulatedMissionContext(input: {
 
     children(nodeId) {
       return planChildNodeIds(plan, nodeId)
-    },
-
-    template: {
-      workOrder(nodeId, opts) {
-        return formatWorkOrderTextWithLocale(locale, {
-          missionId,
-          nodeId,
-          ...(opts?.context && { context: opts.context }),
-          ...(opts?.note && { note: opts.note }),
-          ...(opts?.wave !== undefined && { wave: opts.wave }),
-        })
-      },
-      rework(nodeId, reworkInput) {
-        return formatReworkTextWithLocale(locale, {
-          missionId,
-          nodeId,
-          requester: reworkInput.requester,
-          reason: reworkInput.reason,
-          ...(reworkInput.evidence && { evidence: reworkInput.evidence }),
-        })
-      },
-      reworkResume(nodeId, resumeInput) {
-        return formatReworkResumeTextWithLocale(locale, {
-          missionId,
-          nodeId,
-          blocker: resumeInput.blocker,
-          ...(resumeInput.reason && { reason: resumeInput.reason }),
-        })
-      },
     },
   }
 }

@@ -25,9 +25,7 @@ export const team = {
 export default async function orchestrate(ctx) {
   await ctx.run("leaf", {
     brief: { your_work: ["work"], not_your_job: [], acceptance_slice: ["done"] },
-    text: ctx.template.workOrder("leaf", {
-      note: "bad gatehouse_send_message(recipient="ai-writer", message="done")",
-    }),
+    text: "bad gatehouse_send_message(recipient="ai-writer", message="done")",
   })
 }
 `
@@ -161,7 +159,6 @@ export const team = {
 export default async function orchestrate(ctx) {
   await ctx.run("leaf", {
     brief: { your_work: ["work"], acceptance_slice: ["done"] },
-    text: ctx.template.workOrder("leaf"),
   })
 }
 `
