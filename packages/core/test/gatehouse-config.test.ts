@@ -101,7 +101,7 @@ describe("gatehouse config", () => {
           {
             id: "step-1",
             op: "run",
-            statement: 'await ctx.run("root", { text: "summary", dependsOn: [{ node: "leaf", summary: true }] })',
+            statement: 'await ctx.run("root", { text: "summary", dependsOn: [{ node: "leaf", deliverable: true }] })',
             nodeId: "root",
           },
         ],

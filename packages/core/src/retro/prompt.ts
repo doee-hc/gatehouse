@@ -17,8 +17,8 @@ function formatAnalysisSteps(steps: RetroAnalysisStep[], locale: GatehouseLocale
   return steps
     .map((step, index) => {
       const nodes = step.node_ids.join(", ")
-      if (step.op === "fork") {
-        return gatehouseMessage("retro.kickoff.forkStep", locale, {
+      if (step.op === "parallel") {
+        return gatehouseMessage("retro.kickoff.parallelStep", locale, {
           index: String(index + 1),
           nodes,
         })

@@ -2,7 +2,7 @@ import { tool, type PluginInput } from "@opencode-ai/plugin"
 import { getRegistryStore } from "../registry/context.ts"
 import { orchestrationComplete, orchestrationRework } from "../orchestration/events.ts"
 import { isMissionTerminalNode } from "../orchestration/plan-graph.ts"
-import { parseArtifactsInput, parseRisksInput } from "../orchestration/completion.ts"
+import { parseStructuredOutputInput } from "../orchestration/completion.ts"
 import { hasOrchestrationRuntime, readOrchestrationState } from "../orchestration/state.ts"
 import type { NodeCompletion } from "../orchestration/types.ts"
 import {
@@ -28,19 +28,16 @@ function allOtherNodesDone(
 export function executionCompleteTool(input: PluginInput) {
   return tool({
     description:
-      "Signal that this execution node finished its Node Brief work. Advances orchestration (unblocks nodes waiting on you). Terminal node: when all nodes are done, runs done_when precheck, records delivery, and notifies lead automatically. Put deliverables in the project tree; pass artifact paths with descriptions in artifacts.",
+      "Signal that this execution node finished its Node Brief work. Advances orchestration (unblocks nodes waiting on you). Terminal node: when all nodes are done, runs done_when precheck, records delivery, and notifies lead automatically. Put deliverables in the project tree; describe paths and outcomes in summary.",
     args: {
-      summary: tool.schema.string().min(1).describe("Short completion summary (required)"),
-      artifacts: tool.schema
-        .array(
-          tool.schema.object({
-            path: tool.schema.string(),
-            description: tool.schema.string(),
-          }),
-        )
+      summary: tool.schema
+        .string()
+        .min(1)
+        .describe("Completion summary: what was done, deliverable paths, open risks (required)"),
+      structured_output: tool.schema
+        .union([tool.schema.string(), tool.schema.record(tool.schema.string(), tool.schema.unknown())])
         .optional()
-        .describe("Project deliverable paths with descriptions"),
-      risks: tool.schema.array(tool.schema.string()).optional().describe("Open risks or unfinished items; omit if none"),
+        .describe("JSON object matching the node brief completion_schema when set; required when schema is defined"),
       force_reason: tool.schema
         .string()
         .optional()
@@ -76,12 +73,10 @@ export function executionCompleteTool(input: PluginInput) {
         const plan = scriptDb.getLatestOrchestrationPlan(missionId)
         const isTerminal = isMissionTerminalNode(nodeId, plan)
 
-        let artifacts: ReturnType<typeof parseArtifactsInput>
-        let risks: ReturnType<typeof parseRisksInput>
+        let structuredOutput: ReturnType<typeof parseStructuredOutputInput>
         let evidence: ReturnType<typeof parseEvidenceInput>
         try {
-          artifacts = parseArtifactsInput(args.artifacts)
-          risks = parseRisksInput(args.risks)
+          structuredOutput = parseStructuredOutputInput(args.structured_output)
           evidence = parseEvidenceInput(args.evidence)
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error)
@@ -141,8 +136,7 @@ export function executionCompleteTool(input: PluginInput) {
         const completion: NodeCompletion = {
           summary,
           completed_at: new Date().toISOString(),
-          ...(artifacts?.length && { artifacts }),
-          ...(risks?.length && { risks }),
+          ...(structuredOutput !== undefined && { structured_output: structuredOutput }),
           ...(node?.round !== undefined && { round: node.round }),
         }
 
@@ -173,6 +167,14 @@ export function executionCompleteTool(input: PluginInput) {
         if (result.status === "not_active") {
           return {
             output: toolFail(toolName, "NOT_ACTIVE", `Node status is ${result.current}; cannot complete`),
+            ...toolMetadata(toolName),
+          }
+        }
+        if (result.status === "structured_validation_failed") {
+          return {
+            output: toolFail(toolName, "STRUCTURED_VALIDATION_FAILED", result.message, {
+              node_id: result.node_id,
+            }),
             ...toolMetadata(toolName),
           }
         }

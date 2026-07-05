@@ -12,7 +12,7 @@ import { initOrchestrationState } from "../src/orchestration/state.ts"
 
 const steps: OrchestrationPlan["steps"] = [
   { id: "step-0", op: "run", statement: 'await ctx.run("a")' },
-  { id: "step-1", op: "fork", statement: "await ctx.fork([])" },
+  { id: "step-1", op: "parallel", statement: "await ctx.parallel([])" },
   { id: "step-2", op: "run", statement: 'await ctx.run("b")' },
 ]
 

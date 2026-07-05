@@ -11,9 +11,9 @@ describe("orchestration plan layout", () => {
   test("layers nodes by longest path through flow edges", () => {
     const nodeIds = ["a1", "a", "leaf", "root"]
     const flowEdges: PortalOrchestrationFlowEdge[] = [
-      { step_id: "s1", from: "a1", to: "a", op: "run", state: "done", kind: "summary" },
-      { step_id: "s3", from: "a", to: "root", op: "run", state: "pending", kind: "summary" },
-      { step_id: "s3", from: "leaf", to: "root", op: "run", state: "pending", kind: "summary" },
+      { step_id: "s1", from: "a1", to: "a", op: "run", state: "done", kind: "deliverable" },
+      { step_id: "s3", from: "a", to: "root", op: "run", state: "pending", kind: "deliverable" },
+      { step_id: "s3", from: "leaf", to: "root", op: "run", state: "pending", kind: "deliverable" },
     ]
     const activationOrder = activationOrderFromPlan(nodeIds, flowEdges, ["a1", "a", "leaf", "root"])
     const layers = computePlanNodeLayers(nodeIds, flowEdges, activationOrder)

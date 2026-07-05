@@ -1,37 +1,44 @@
 import { describe, expect, test } from "bun:test"
 import {
+  deliverableNodeIds,
   extractDependsOnFromStatement,
+  hasDeliverableDepends,
   normalizeDependsOn,
   parseDependsOnArrayBody,
-  summaryNodeIds,
   waitNodeIds,
 } from "../src/orchestration/depends-on.ts"
 
 describe("dependsOn", () => {
   test("normalizes string and object entries", () => {
     expect(
-      normalizeDependsOn(["a1", { node: "a2", summary: true }, { node: "a3", summary: false }]),
+      normalizeDependsOn([
+        "a1",
+        { node: "a2", deliverable: true },
+        { node: "a3", deliverable: false },
+      ]),
     ).toEqual([
-      { node: "a1", summary: false },
-      { node: "a2", summary: true },
-      { node: "a3", summary: false },
+      { node: "a1", deliverable: false },
+      { node: "a2", deliverable: true },
+      { node: "a3", deliverable: false },
     ])
   })
 
   test("parses dependsOn array body from script source", () => {
-    expect(parseDependsOnArrayBody('"a1", { node: "a2", summary: true }')).toEqual([
-      { node: "a2", summary: true },
-      { node: "a1", summary: false },
+    expect(parseDependsOnArrayBody('"a1", { node: "a2", deliverable: true }')).toEqual([
+      { node: "a2", deliverable: true },
+      { node: "a1", deliverable: false },
     ])
   })
 
   test("extracts dependsOn from run statement", () => {
-    const statement = `await ctx.run("b1", { text: "go", dependsOn: ["a1", { node: "a2", summary: true }] })`
-    expect(extractDependsOnFromStatement(statement)).toEqual([
-      { node: "a2", summary: true },
-      { node: "a1", summary: false },
+    const statement = `await ctx.run("b1", { text: "go", dependsOn: ["a1", { node: "a2", deliverable: true }] })`
+    const dependsOn = extractDependsOnFromStatement(statement)
+    expect(dependsOn).toEqual([
+      { node: "a2", deliverable: true },
+      { node: "a1", deliverable: false },
     ])
-    expect(waitNodeIds(extractDependsOnFromStatement(statement))).toEqual(["a2", "a1"])
-    expect(summaryNodeIds(extractDependsOnFromStatement(statement))).toEqual(["a2"])
+    expect(waitNodeIds(dependsOn)).toEqual(["a2", "a1"])
+    expect(deliverableNodeIds(dependsOn)).toEqual(["a2"])
+    expect(hasDeliverableDepends(dependsOn)).toBe(true)
   })
 })

@@ -32,7 +32,7 @@ export default async function orchestrate(ctx: {
         role?: string
       }
       text?: string
-      dependsOn?: Array<string | { node: string; summary?: boolean }>
+      dependsOn?: Array<string | { node: string; deliverable?: boolean }>
     },
   ): Promise<void>
   template: {
@@ -62,6 +62,6 @@ export default async function orchestrate(ctx: {
       acceptance_slice: ["delivery 已提交且 lead 可验收"],
     },
     text: ctx.template.workOrder("node-root"),
-    dependsOn: [{ node: "node-doc", summary: true }],
+    dependsOn: [{ node: "node-doc", deliverable: true }],
   })
 }

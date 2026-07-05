@@ -16,7 +16,10 @@ import {
   formatReworkTextWithLocale,
   formatWorkOrderTextWithLocale,
 } from "./templates.ts"
-import { orchestrationFork, orchestrationRun } from "./run-fork.ts"
+import { orchestrationRun } from "./run.ts"
+import { orchestrationParallel } from "./primitives.ts"
+import { orchestrationPipeline } from "./primitives.ts"
+import { mockStructuredFromSchema } from "./json-schema-validate.ts"
 
 export const ORCHESTRATION_SIMULATION_TIMEOUT_MS = 5_000
 export const ORCHESTRATION_SIMULATION_MAX_STEPS = 500
@@ -56,10 +59,30 @@ function createSimulatedMissionContext(input: {
   state: OrchestrationState
   dispatchedReply: Set<string>
   briefedNodes: Set<string>
+  briefSchemas: Map<string, Record<string, unknown>>
   stepCount: { value: number }
   maxSteps: number
 }): MissionContext {
   const { missionId, locale, team, plan, state } = input
+
+  function completeSimulatedNode(nodeId: string) {
+    const now = new Date().toISOString()
+    const schema = input.briefSchemas.get(nodeId)
+    const structured = schema ? mockStructuredFromSchema(schema) : undefined
+    const current = state.nodes[nodeId] ?? { status: "pending" as const }
+    state.nodes[nodeId] = {
+      ...current,
+      status: "done",
+      completed_at: now,
+      blocked_by: undefined,
+      rework_reason: undefined,
+      completion: {
+        summary: `simulated completion for ${nodeId}`,
+        completed_at: now,
+        ...(structured !== undefined && { structured_output: structured }),
+      },
+    }
+  }
 
   const engine: OrchestrationEngine = {
     async prompt(nodeIds, promptInput) {
@@ -72,13 +95,13 @@ function createSimulatedMissionContext(input: {
             `orchestrate references unknown node_id: ${nodeId}`,
           )
         }
+        if (!input.briefedNodes.has(nodeId)) {
+          throw new MissionScriptParseError(
+            "SCRIPT_MISSING_BRIEF",
+            `orchestrate run dispatches node "${nodeId}" but never provides brief in ctx.run`,
+          )
+        }
         if (promptInput.reply) {
-          if (!input.briefedNodes.has(nodeId)) {
-            throw new MissionScriptParseError(
-              "SCRIPT_MISSING_BRIEF",
-              `orchestrate run dispatches node "${nodeId}" but never provides brief in ctx.run`,
-            )
-          }
           if (!promptInput.text?.trim()) {
             throw new MissionScriptParseError(
               "SCRIPT_SIMULATION_RUNTIME_ERROR",
@@ -91,7 +114,7 @@ function createSimulatedMissionContext(input: {
       }
     },
 
-    async setBrief(nodeId) {
+    async setBrief(nodeId, partial) {
       bumpStep(input.stepCount, input.maxSteps)
       if (!team.nodes[nodeId]) {
         throw new MissionScriptParseError(
@@ -100,6 +123,9 @@ function createSimulatedMissionContext(input: {
         )
       }
       input.briefedNodes.add(nodeId)
+      if (partial.completion_schema) {
+        input.briefSchemas.set(nodeId, partial.completion_schema)
+      }
     },
 
     async waitFor(nodeId) {
@@ -110,14 +136,17 @@ function createSimulatedMissionContext(input: {
           `orchestrate references unknown node_id: ${nodeId}`,
         )
       }
-      if (state.nodes[nodeId]?.status === "done") return
+      if (state.nodes[nodeId]?.status === "done") {
+        return { completion: state.nodes[nodeId]?.completion }
+      }
       if (!input.dispatchedReply.has(nodeId)) {
         throw new MissionScriptParseError(
           "SCRIPT_SIMULATION_UNPROMPTED_WAIT",
           `run("${nodeId}") waits before that node was dispatched`,
         )
       }
-      markNodeDone(state, nodeId)
+      completeSimulatedNode(nodeId)
+      return { completion: state.nodes[nodeId]?.completion }
     },
   }
 
@@ -135,9 +164,14 @@ function createSimulatedMissionContext(input: {
       await orchestrationRun(engine, nodeId, opts, { defaultWorkOrder })
     },
 
-    async fork(tracks) {
+    async parallel(tracks) {
       bumpStep(input.stepCount, input.maxSteps)
-      return orchestrationFork(tracks)
+      return orchestrationParallel(tracks)
+    },
+
+    async pipeline(items, firstStage, ...restStages) {
+      bumpStep(input.stepCount, input.maxSteps)
+      return orchestrationPipeline(items, firstStage, ...restStages)
     },
 
     readMissionContext() {
@@ -241,6 +275,7 @@ export async function simulateOrchestration(input: {
   const state = initOrchestrationState(missionId, Object.keys(team.nodes))
   const dispatchedReply = new Set<string>()
   const briefedNodes = new Set<string>()
+  const briefSchemas = new Map<string, Record<string, unknown>>()
   const stepCount = { value: 0 }
   const maxSteps = Math.max(ORCHESTRATION_SIMULATION_MAX_STEPS, input.plan.steps.length * 10)
 
@@ -253,6 +288,7 @@ export async function simulateOrchestration(input: {
     state,
     dispatchedReply,
     briefedNodes,
+    briefSchemas,
     stepCount,
     maxSteps,
   })

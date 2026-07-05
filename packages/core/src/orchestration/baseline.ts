@@ -17,9 +17,6 @@ export function captureOrchestrationBaseline(input: {
       status: "done",
       ...(node.completed_at && { completed_at: node.completed_at }),
       ...(node.completion?.summary && { summary: node.completion.summary }),
-      ...(node.completion?.artifacts?.length && {
-        artifact_paths: node.completion.artifacts.map((artifact) => artifact.path),
-      }),
     })
   }
   const capturedAt = new Date().toISOString()
@@ -60,9 +57,6 @@ export function applyBaselineToState(state: OrchestrationState, baseline: Orches
           completion: {
             summary: entry.summary,
             completed_at: entry.completed_at ?? new Date().toISOString(),
-            ...(entry.artifact_paths?.length && {
-              artifacts: entry.artifact_paths.map((path) => ({ path, description: path })),
-            }),
           },
         }),
       }

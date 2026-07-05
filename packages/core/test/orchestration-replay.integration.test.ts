@@ -120,12 +120,12 @@ describe("orchestration replay integration", () => {
     }
   })
 
-  test("fork compound replay skips already-done nodes on resume", async () => {
-    const missionId = "replay-fork-skip-m1"
+  test("parallel compound replay skips already-done nodes on resume", async () => {
+    const missionId = "replay-parallel-skip-m1"
     activeMissions.add(missionId)
     const env = await createReplayTestEnv({
       missionId,
-      scriptSource: SCRIPT.forkThenFinal(missionId),
+      scriptSource: SCRIPT.parallelThenFinal(missionId),
     })
 
     try {
@@ -139,10 +139,10 @@ describe("orchestration replay integration", () => {
         resume: true,
       })
 
-      await waitForPromptMarker(env, "marker:fork-a2", { label: "fork a2 prompt after resume" })
+      await waitForPromptMarker(env, "marker:parallel-a2", { label: "parallel a2 prompt after resume" })
 
-      expect(countPromptMarkers(env.promptTexts, "marker:fork-a1")).toBe(0)
-      expect(countPromptMarkers(env.promptTexts, "marker:fork-a2")).toBe(1)
+      expect(countPromptMarkers(env.promptTexts, "marker:parallel-a1")).toBe(0)
+      expect(countPromptMarkers(env.promptTexts, "marker:parallel-a2")).toBe(1)
     } finally {
       await rm(env.dir, { recursive: true, force: true })
     }
@@ -153,7 +153,7 @@ describe("orchestration replay integration", () => {
     activeMissions.add(missionId)
     const env = await createReplayTestEnv({
       missionId,
-      scriptSource: SCRIPT.forkMultiRoundSameNode(missionId),
+      scriptSource: SCRIPT.parallelMultiRoundSameNode(missionId),
     })
 
     try {
@@ -178,12 +178,12 @@ describe("orchestration replay integration", () => {
     }
   })
 
-  test("live fork multi-round re-prompts after first round completes", async () => {
-    const missionId = "replay-fork-live-multiround-m1"
+  test("live parallel multi-round re-prompts after first round completes", async () => {
+    const missionId = "replay-parallel-live-multiround-m1"
     activeMissions.add(missionId)
     const env = await createReplayTestEnv({
       missionId,
-      scriptSource: SCRIPT.forkMultiRoundSameNode(missionId),
+      scriptSource: SCRIPT.parallelMultiRoundSameNode(missionId),
     })
 
     try {
@@ -370,7 +370,7 @@ describe("orchestration replay host rpc sequences", () => {
     const missionId = "replay-host-stepcomplete-m1"
     const env = await createReplayTestEnv({
       missionId,
-      scriptSource: SCRIPT.forkMultiRoundSameNode(missionId),
+      scriptSource: SCRIPT.parallelMultiRoundSameNode(missionId),
     })
 
     try {
@@ -442,11 +442,11 @@ describe("orchestration replay host rpc sequences", () => {
     }
   })
 
-  test("fork step with done node skips duplicate prompt unless latch armed", async () => {
-    const missionId = "replay-host-fork-skip-m1"
+  test("parallel step with done node skips duplicate prompt unless latch armed", async () => {
+    const missionId = "replay-host-parallel-skip-m1"
     const env = await createReplayTestEnv({
       missionId,
-      scriptSource: SCRIPT.forkThenFinal(missionId),
+      scriptSource: SCRIPT.parallelThenFinal(missionId),
     })
 
     try {
@@ -460,6 +460,7 @@ describe("orchestration replay host rpc sequences", () => {
       })
 
       seedDoneNode(env, "a1")
+      await seedNodeBrief(env, "a1", { your_work: ["a1"], acceptance_slice: [] })
 
       await host.handleRpc({
         type: "rpc",
@@ -497,7 +498,7 @@ describe("orchestration replay host rpc sequences", () => {
     const missionId = "replay-host-latch-arm-m1"
     const env = await createReplayTestEnv({
       missionId,
-      scriptSource: SCRIPT.forkMultiRoundSameNode(missionId),
+      scriptSource: SCRIPT.parallelMultiRoundSameNode(missionId),
     })
 
     try {

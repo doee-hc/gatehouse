@@ -1,7 +1,7 @@
 import type { PlanStep, PlanStepOp } from "../orchestration/plan-types.ts"
 import {
   extractDependsOnFromStatement,
-  hasSummaryDepends,
+  hasDeliverableDepends,
 } from "../orchestration/depends-on.ts"
 import { parenBraceDepthBefore } from "../orchestration/source-depth.ts"
 
@@ -11,7 +11,7 @@ export type PortalOrchestrationFlowEdge = {
   to: string
   op: PlanStepOp
   state: "done" | "current" | "pending"
-  kind?: "summary" | "serial" | "depends"
+  kind?: "deliverable" | "serial" | "depends"
 }
 
 function extractRunTargetIds(statement: string) {
@@ -139,21 +139,21 @@ function splitTopLevelCommaList(body: string) {
   return items
 }
 
-/** Split a fork array into per-track source chunks (each async arrow callback). */
-function extractForkTrackBodies(statement: string) {
-  const forkMatch = /\bctx\.fork\s*\(/.exec(statement)
-  if (!forkMatch) return null
+/** Split a parallel array into per-track source chunks (each async arrow callback). */
+function extractParallelTrackBodies(statement: string) {
+  const parallelMatch = /\bctx\.parallel\s*\(/.exec(statement)
+  if (!parallelMatch) return null
 
-  const openParenIndex = statement.indexOf("(", forkMatch.index)
+  const openParenIndex = statement.indexOf("(", parallelMatch.index)
   if (openParenIndex < 0) return null
 
   const closeParenIndex = findCallEnd(statement, openParenIndex)
-  const forkArgs = statement.slice(openParenIndex + 1, closeParenIndex).trim()
-  const openBracketIndex = forkArgs.indexOf("[")
+  const parallelArgs = statement.slice(openParenIndex + 1, closeParenIndex).trim()
+  const openBracketIndex = parallelArgs.indexOf("[")
   if (openBracketIndex < 0) return null
 
-  const closeBracketIndex = findMatchingBracket(forkArgs, openBracketIndex)
-  const arrayBody = forkArgs.slice(openBracketIndex + 1, closeBracketIndex)
+  const closeBracketIndex = findMatchingBracket(parallelArgs, openBracketIndex)
+  const arrayBody = parallelArgs.slice(openBracketIndex + 1, closeBracketIndex)
   return splitTopLevelCommaList(arrayBody)
 }
 
@@ -170,7 +170,7 @@ function extractAsyncArrowBody(trackSource: string) {
 
 function extractTopLevelAwaitStatements(source: string) {
   const trimmed = source.trim()
-  const boundaryPattern = /\bawait\s+ctx\.(?:run|fork)\s*\(/gm
+  const boundaryPattern = /\bawait\s+ctx\.(?:run|parallel)\s*\(/gm
   const starts: number[] = []
   let match: RegExpExecArray | null
   while ((match = boundaryPattern.exec(trimmed)) !== null) {
@@ -205,10 +205,10 @@ type RunStatementEdgeResult = {
   primaryNode?: string
 }
 
-export function wasSummaryDependsStatement(statement: string, nodeId?: string) {
+export function wasDeliverableDependsStatement(statement: string, nodeId?: string) {
   const targets = nodeId ? [nodeId] : extractRunTargetIds(statement)
   const dependsOn = extractDependsOnFromStatement(statement)
-  return hasSummaryDepends(dependsOn) && targets.length === 1
+  return hasDeliverableDepends(dependsOn) && targets.length === 1
 }
 
 function pushEdge(
@@ -229,15 +229,15 @@ function buildRunStatementEdges(
 ): RunStatementEdgeResult {
   const targets = nodeId ? [nodeId] : extractRunTargetIds(statement)
   const dependsOn = extractDependsOnFromStatement(statement)
-  const summaryDeps = dependsOn.filter((dep) => dep.summary)
-  const orderDeps = dependsOn.filter((dep) => !dep.summary)
+  const deliverableDeps = dependsOn.filter((dep) => dep.deliverable)
+  const orderDeps = dependsOn.filter((dep) => !dep.deliverable)
   const stepEdges: PortalOrchestrationFlowEdge[] = []
 
-  if (summaryDeps.length > 0 && targets.length === 1 && orderDeps.length === 0) {
+  if (deliverableDeps.length > 0 && targets.length === 1 && orderDeps.length === 0) {
     const to = targets[0]!
-    for (const dep of summaryDeps) {
+    for (const dep of deliverableDeps) {
       if (dep.node !== to) {
-        pushEdge(stepEdges, { step_id: stepId, from: dep.node, to, op: "run", state, kind: "summary" })
+        pushEdge(stepEdges, { step_id: stepId, from: dep.node, to, op: "run", state, kind: "deliverable" })
       }
     }
   }
@@ -252,7 +252,7 @@ function buildRunStatementEdges(
         to,
         op: "run",
         state,
-        kind: dep.summary ? "summary" : "depends",
+        kind: dep.deliverable ? "deliverable" : "depends",
       })
     }
   }
@@ -264,7 +264,7 @@ function buildRunStatementEdges(
     primaryNode &&
     prevPrimaryNode &&
     prevStatement &&
-    !wasSummaryDependsStatement(prevStatement) &&
+    !wasDeliverableDependsStatement(prevStatement) &&
     prevPrimaryNode !== primaryNode
   ) {
     pushEdge(stepEdges, {
@@ -307,8 +307,8 @@ function buildStatementSequenceEdges(
   let prevStatement: string | undefined
 
   for (const innerStatement of extractTopLevelAwaitStatements(scope)) {
-    if (/^await\s+ctx\.fork\s*\(/m.test(innerStatement)) {
-      edges.push(...buildForkStatementEdges(innerStatement, stepId, state))
+    if (/^await\s+ctx\.parallel\s*\(/m.test(innerStatement)) {
+      edges.push(...buildParallelStatementEdges(innerStatement, stepId, state))
       prevPrimaryNode = undefined
       prevStatement = undefined
       continue
@@ -332,12 +332,12 @@ function buildStatementSequenceEdges(
   return edges
 }
 
-function buildForkStatementEdges(
+function buildParallelStatementEdges(
   statement: string,
   stepId: string,
   state: PortalOrchestrationFlowEdge["state"],
 ) {
-  const tracks = extractForkTrackBodies(statement)
+  const tracks = extractParallelTrackBodies(statement)
   if (!tracks) {
     return buildStatementSequenceEdges(statement, stepId, state)
   }
@@ -361,11 +361,11 @@ export function buildPortalOrchestrationFlowEdges(
     const prevStep = i > 0 ? planSteps[i - 1] : undefined
     const prevPrimaryNode = prevStep ? primaryNodeForStep(prevStep) : undefined
     const prevStatement =
-      prevStep?.op === "run" || prevStep?.op === "fork" ? prevStep.statement : undefined
+      prevStep?.op === "run" || prevStep?.op === "parallel" ? prevStep.statement : undefined
     const prevWasPlainRun =
       prevStep?.op === "run" &&
       Boolean(prevStatement) &&
-      !wasSummaryDependsStatement(prevStatement!, prevStep.nodeId)
+      !wasDeliverableDependsStatement(prevStatement!, prevStep.nodeId)
 
     if (step.op === "run") {
       const result = buildRunStatementEdges(
@@ -380,8 +380,8 @@ export function buildPortalOrchestrationFlowEdges(
       continue
     }
 
-    if (step.op === "fork") {
-      edges.push(...buildForkStatementEdges(step.statement, step.id, state))
+    if (step.op === "parallel") {
+      edges.push(...buildParallelStatementEdges(step.statement, step.id, state))
     }
   }
 

@@ -34,7 +34,7 @@ describe("portal orchestration view", () => {
 
       const orchestrateSource = `
 await ctx.run("leaf", { brief: { your_work: ["w"], acceptance_slice: ["done"] }, text: "go" })
-await ctx.run("terminal", { brief: { your_work: ["r"], acceptance_slice: ["done"] }, text: "rollup", dependsOn: [{ node: "leaf", summary: true }] })
+await ctx.run("terminal", { brief: { your_work: ["r"], acceptance_slice: ["done"] }, text: "rollup", dependsOn: [{ node: "leaf", deliverable: true }] })
 `
 
       const plan = compileOrchestrationPlan({

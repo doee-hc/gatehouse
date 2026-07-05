@@ -30,6 +30,7 @@ export type SandboxRpcRequest = {
     not_your_job?: string[]
     acceptance_slice?: string[]
     role?: string
+    completion_schema?: Record<string, unknown>
   }
   view?: "summary" | "full"
   event?: "complete"

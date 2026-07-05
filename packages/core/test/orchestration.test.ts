@@ -176,6 +176,9 @@ describe("orchestration state", () => {
       }
       const { engine } = createMissionContext({ plugin: pluginInput, store, team: parallelTeam })
 
+      await mergeAndSaveBrief(dir, "parallel-m1", "a", { your_work: ["work a"], acceptance_slice: [] })
+      await mergeAndSaveBrief(dir, "parallel-m1", "b", { your_work: ["work b"], acceptance_slice: [] })
+
       await Promise.all([
         engine.prompt("a", { text: "work a", reply: true }),
         engine.prompt("b", { text: "work b", reply: true }),

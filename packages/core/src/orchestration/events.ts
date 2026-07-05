@@ -8,6 +8,7 @@ import { runAcceptanceSlicePrecheck } from "../execution/acceptance-precheck.ts"
 import { sanitizeInnerBriefStrings } from "../missions/done-when-filter.ts"
 import type { NodeBrief } from "../execution/types.ts"
 import type { NodeCompletion } from "./types.ts"
+import { validateStructuredOutputAgainstBrief } from "./completion.ts"
 import { deliverOrchestrationPrompt } from "./prompt.ts"
 import { readOrchestrationState, mutateOrchestrationState } from "./state.ts"
 import { validateReworkRequest } from "./rework.ts"
@@ -24,6 +25,9 @@ function mergeBrief(existing: NodeBrief | undefined, nodeId: string, partial: Pa
     not_your_job: partial.not_your_job ?? existing?.not_your_job ?? [],
     acceptance_slice,
     ...(partial.role ?? existing?.role ? { role: partial.role ?? existing?.role } : {}),
+    ...(partial.completion_schema ?? existing?.completion_schema
+      ? { completion_schema: partial.completion_schema ?? existing?.completion_schema }
+      : {}),
   }
 }
 
@@ -51,6 +55,16 @@ export async function orchestrationComplete(input: {
 
   const registry = new RegistryDatabase(input.plugin.directory, { readonly: true })
   const brief = registry.getNodeBrief(input.missionId, input.nodeId)
+  try {
+    validateStructuredOutputAgainstBrief(input.completion?.structured_output, brief)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return {
+      status: "structured_validation_failed" as const,
+      node_id: input.nodeId,
+      message,
+    }
+  }
   if (brief?.acceptance_slice.length && !input.skipAcceptanceSlice) {
     const acceptanceCheck = await runAcceptanceSlicePrecheck(
       input.plugin.directory,
@@ -206,6 +220,7 @@ export async function mergeAndSaveBrief(
     not_your_job?: string[]
     acceptance_slice?: string[]
     role?: string
+    completion_schema?: Record<string, unknown>
   },
 ) {
   const registry = new RegistryDatabase(projectDirectory)

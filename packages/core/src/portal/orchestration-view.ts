@@ -44,7 +44,7 @@ export type PortalOrchestration = {
   phases: PortalOrchestrationPhase[]
   steps: PortalOrchestrationStep[]
   flow_edges: PortalOrchestrationFlowEdge[]
-  /** Plan dispatch order for graph layout (fork tracks included). */
+  /** Plan dispatch order for graph layout (parallel tracks included). */
   activation_order: string[]
   nodes: PortalOrchestrationNode[]
   terminal_node: string

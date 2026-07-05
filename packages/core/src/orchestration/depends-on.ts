@@ -2,7 +2,7 @@ import type { DependsOnEntry } from "./types.ts"
 
 export type NormalizedDependsOn = {
   node: string
-  summary: boolean
+  deliverable: boolean
 }
 
 export function normalizeDependsOn(entries?: DependsOnEntry[]): NormalizedDependsOn[] {
@@ -11,11 +11,16 @@ export function normalizeDependsOn(entries?: DependsOnEntry[]): NormalizedDepend
   for (const entry of entries) {
     if (typeof entry === "string") {
       const node = entry.trim()
-      if (node) out.push({ node, summary: false })
+      if (node) out.push({ node, deliverable: false })
       continue
     }
     const node = entry.node.trim()
-    if (node) out.push({ node, summary: entry.summary === true })
+    if (node) {
+      out.push({
+        node,
+        deliverable: entry.deliverable === true,
+      })
+    }
   }
   return out
 }
@@ -25,13 +30,16 @@ export function parseDependsOnArrayBody(body: string): NormalizedDependsOn[] {
   const entries: NormalizedDependsOn[] = []
   let rest = body
   const objectPattern =
-    /\{\s*node\s*:\s*["'`]([^"'`]+)["'`](?:\s*,\s*summary\s*:\s*(true|false))?\s*\}/g
-  rest = rest.replace(objectPattern, (_match, node: string, summary?: string) => {
-    entries.push({ node, summary: summary === "true" })
+    /\{\s*node\s*:\s*["'`]([^"'`]+)["'`](?:\s*,\s*deliverable\s*:\s*(true|false))?\s*\}/g
+  rest = rest.replace(objectPattern, (_match, node: string, deliverable?: string) => {
+    entries.push({
+      node,
+      deliverable: deliverable === "true",
+    })
     return ""
   })
   for (const match of rest.matchAll(/["'`]([^"'`]+)["'`]/g)) {
-    if (match[1]) entries.push({ node: match[1], summary: false })
+    if (match[1]) entries.push({ node: match[1], deliverable: false })
   }
   return entries
 }
@@ -46,10 +54,10 @@ export function waitNodeIds(deps: NormalizedDependsOn[]) {
   return [...new Set(deps.map((dep) => dep.node))]
 }
 
-export function summaryNodeIds(deps: NormalizedDependsOn[]) {
-  return deps.filter((dep) => dep.summary).map((dep) => dep.node)
+export function deliverableNodeIds(deps: NormalizedDependsOn[]) {
+  return deps.filter((dep) => dep.deliverable).map((dep) => dep.node)
 }
 
-export function hasSummaryDepends(deps: NormalizedDependsOn[]) {
-  return deps.some((dep) => dep.summary)
+export function hasDeliverableDepends(deps: NormalizedDependsOn[]) {
+  return deps.some((dep) => dep.deliverable)
 }

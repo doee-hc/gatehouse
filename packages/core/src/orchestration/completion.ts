@@ -1,75 +1,58 @@
+import { readNodeBriefRegistry } from "../execution/artifacts.ts"
 import { gatehouseMessage } from "../i18n.ts"
 import type { GatehouseLocale } from "../locale.ts"
-import { dependsOnSummaryNodes } from "./plan-graph.ts"
+import { dependsOnDeliverableNodes } from "./plan-graph.ts"
 import type { OrchestrationPlan } from "./plan-types.ts"
 import type { TeamSpec } from "../tree/types.ts"
 import type { NodeCompletion, OrchestrationState } from "./types.ts"
+import { JsonSchemaValidationError, validateJsonSchema } from "./json-schema-validate.ts"
 
-export type NodeArtifact = {
-  path: string
-  description: string
-}
-
-function parseArtifactRecord(raw: unknown): NodeArtifact | undefined {
-  if (!raw || typeof raw !== "object") return
-  const record = raw as Record<string, unknown>
-  const artifactPath = typeof record.path === "string" ? record.path.trim() : ""
-  const description = typeof record.description === "string" ? record.description.trim() : ""
-  if (!artifactPath || !description) return
-  return { path: artifactPath.replace(/\\/g, "/").replace(/^\.\//, ""), description }
-}
-
-function parseArtifactsArray(parsed: unknown): NodeArtifact[] {
-  if (!Array.isArray(parsed)) throw new Error("artifacts must be a JSON array")
-  return parsed.flatMap((item) => {
-    const artifact = parseArtifactRecord(item)
-    return artifact ? [artifact] : []
-  })
-}
-
-/** Accept JSON string or array — agents often pass structured artifacts as an object. */
-export function parseArtifactsInput(raw: unknown): NodeArtifact[] | undefined {
+/** Accept JSON string or object for structured_output. */
+export function parseStructuredOutputInput(raw: unknown): unknown | undefined {
   if (raw === undefined || raw === null) return undefined
   if (typeof raw === "string") {
     if (!raw.trim()) return undefined
-    const parsed = parseArtifactsArray(JSON.parse(raw))
-    return parsed.length ? parsed : undefined
+    return JSON.parse(raw) as unknown
   }
-  if (Array.isArray(raw)) {
-    const parsed = parseArtifactsArray(raw)
-    return parsed.length ? parsed : undefined
-  }
-  throw new Error("artifacts must be a JSON array string or array")
+  if (typeof raw === "object") return raw
+  throw new Error("structured_output must be a JSON object or JSON string")
 }
 
-export function parseRisksInput(raw: unknown): string[] | undefined {
-  if (raw === undefined || raw === null) return undefined
-  if (typeof raw === "string") {
-    if (!raw.trim()) return undefined
-    const parsed = JSON.parse(raw) as unknown
-    if (!Array.isArray(parsed)) throw new Error("risks must be a JSON array of strings")
-    const risks = parsed.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
-    return risks.length ? risks : undefined
+export function validateStructuredOutputAgainstBrief(
+  structured: unknown | undefined,
+  brief: { completion_schema?: Record<string, unknown> } | undefined,
+) {
+  if (!brief?.completion_schema) {
+    if (structured !== undefined) {
+      throw new Error("structured_output provided but node brief has no completion_schema")
+    }
+    return
   }
-  if (Array.isArray(raw)) {
-    const risks = raw.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
-    return risks.length ? risks : undefined
+  if (structured === undefined) {
+    throw new Error("structured_output is required when completion_schema is set on the node brief")
   }
-  throw new Error("risks must be a JSON array string or array")
+  try {
+    validateJsonSchema(structured, brief.completion_schema)
+  } catch (error) {
+    const message = error instanceof JsonSchemaValidationError ? error.message : String(error)
+    throw new Error(`structured_output failed schema validation: ${message}`)
+  }
 }
 
-export class DependsOnSummaryValidationError extends Error {
+export class DependsOnDeliverableValidationError extends Error {
   constructor(
     readonly code: string,
     message: string,
     readonly nodeId?: string,
   ) {
     super(message)
-    this.name = "DependsOnSummaryValidationError"
+    this.name = "DependsOnDeliverableValidationError"
   }
 }
 
-export function assertDependsOnSummaryReady(
+export async function assertDependsOnDeliverableReady(
+  directory: string,
+  missionId: string,
   team: TeamSpec,
   state: OrchestrationState,
   nodeIds: string[],
@@ -77,24 +60,32 @@ export function assertDependsOnSummaryReady(
   if (nodeIds.length === 0) return
   for (const nodeId of nodeIds) {
     if (!team.nodes[nodeId]) {
-      throw new DependsOnSummaryValidationError(
+      throw new DependsOnDeliverableValidationError(
         "DEPENDS_ON_UNKNOWN_NODE",
-        `dependsOn summary references unknown node: ${nodeId}`,
+        `dependsOn deliverable references unknown node: ${nodeId}`,
         nodeId,
       )
     }
     const node = state.nodes[nodeId]
     if (!node || node.status !== "done") {
-      throw new DependsOnSummaryValidationError(
+      throw new DependsOnDeliverableValidationError(
         "DEPENDS_ON_NODE_NOT_DONE",
         `dependsOn node ${nodeId} is not done (status: ${node?.status ?? "missing"})`,
         nodeId,
       )
     }
     if (!node.completion?.summary?.trim()) {
-      throw new DependsOnSummaryValidationError(
+      throw new DependsOnDeliverableValidationError(
         "DEPENDS_ON_MISSING_COMPLETION",
-        `dependsOn node ${nodeId} has no structured completion; call gatehouse_execution_complete with summary first`,
+        `dependsOn node ${nodeId} has no completion summary; call gatehouse_execution_complete with summary first`,
+        nodeId,
+      )
+    }
+    const brief = await readNodeBriefRegistry(directory, missionId, nodeId)
+    if (brief?.completion_schema && node.completion?.structured_output === undefined) {
+      throw new DependsOnDeliverableValidationError(
+        "DEPENDS_ON_MISSING_STRUCTURED",
+        `dependsOn node ${nodeId} has no structured_output; call gatehouse_execution_complete with structured_output matching completion_schema`,
         nodeId,
       )
     }
@@ -106,23 +97,34 @@ export function formatNodeCompletionSection(
   nodeId: string,
   completion: NodeCompletion,
 ) {
-  const lines = [
+  return [
     `### ${gatehouseMessage("completion.summary.nodeHeader", locale, { node_id: nodeId })}`,
     "",
     completion.summary.trim(),
-  ]
-  if (completion.artifacts?.length) {
-    lines.push("", gatehouseMessage("completion.summary.artifactsHeader", locale))
-    for (const artifact of completion.artifacts) {
-      lines.push(`- \`${artifact.path}\` — ${artifact.description}`)
+  ].join("\n")
+}
+
+export function formatDependsOnStructuredBlock(
+  locale: GatehouseLocale,
+  state: OrchestrationState,
+  nodeIds: string[],
+) {
+  if (nodeIds.length === 0) return ""
+  const sections = nodeIds.map((nodeId) => {
+    const structured = state.nodes[nodeId]?.completion?.structured_output
+    const header = `### ${gatehouseMessage("completion.structured.nodeHeader", locale, { node_id: nodeId })}`
+    if (structured === undefined) {
+      return `${header}\n\n(${gatehouseMessage("completion.structured.missing", locale)})`
     }
-  }
-  const risks = completion.risks?.filter((item) => item.trim())
-  if (risks?.length) {
-    lines.push("", gatehouseMessage("completion.summary.risksHeader", locale))
-    for (const risk of risks) lines.push(`- ${risk}`)
-  }
-  return lines.join("\n")
+    return `${header}\n\n\`\`\`json\n${JSON.stringify(structured, null, 2)}\n\`\`\``
+  })
+  return [
+    gatehouseMessage("completion.structured.header", locale),
+    "",
+    gatehouseMessage("completion.structured.hint", locale),
+    "",
+    ...sections,
+  ].join("\n")
 }
 
 export function formatDependsOnSummaryBlock(
@@ -156,7 +158,7 @@ export function synthesizeTerminalDeliveryMarkdown(
   plan: OrchestrationPlan,
 ) {
   const terminalCompletion = state.nodes[terminalNodeId]?.completion
-  const upstreamNodes = dependsOnSummaryNodes(plan, terminalNodeId)
+  const upstreamNodes = dependsOnDeliverableNodes(plan, terminalNodeId)
     .filter((nodeId) => state.nodes[nodeId]?.status === "done" && state.nodes[nodeId]?.completion)
 
   const lines = [
@@ -173,13 +175,6 @@ export function synthesizeTerminalDeliveryMarkdown(
       terminalCompletion.summary.trim(),
       "",
     )
-    if (terminalCompletion.artifacts?.length) {
-      lines.push(gatehouseMessage("completion.terminalDelivery.terminalArtifacts", locale))
-      for (const artifact of terminalCompletion.artifacts) {
-        lines.push(`- \`${artifact.path}\` — ${artifact.description}`)
-      }
-      lines.push("")
-    }
   }
 
   if (upstreamNodes.length > 0) {

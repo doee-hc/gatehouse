@@ -5,7 +5,7 @@ Mission **{{mission_id}}** node **{{node_id}}** is **running** but the session h
 ## Act now
 
 1. If your current work order is **done**:
-   - **`gatehouse_execution_complete(summary=..., artifacts=[{path,description}], risks=?, force_reason=?, evidence=?)`** — list artifact paths only.
+   - **`gatehouse_execution_complete(summary=..., force_reason=?, evidence=?)`**
 2. 若你是 **terminal 节点**且尚未提交交付：
    - Confirm all nodes are done, then call **`gatehouse_execution_complete`**.
 3. If work is **not done** → resume immediately.

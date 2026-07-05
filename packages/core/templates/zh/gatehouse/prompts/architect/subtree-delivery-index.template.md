@@ -12,4 +12,4 @@
 
 （无则写「无」）
 
-完成本波次后：`gatehouse_execution_complete(summary=..., artifacts=?)`。
+完成本波次后：`gatehouse_execution_complete(summary=...)`。

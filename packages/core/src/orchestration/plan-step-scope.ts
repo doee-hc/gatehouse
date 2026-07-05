@@ -1,7 +1,8 @@
 import type { TeamSpec } from "../tree/types.ts"
 import { compilePlanStepStatement } from "./plan-step-compile.ts"
 import type { PlanStep } from "./plan-types.ts"
-import { orchestrationFork, orchestrationRun } from "./run-fork.ts"
+import { orchestrationRun } from "./run.ts"
+import { orchestrationParallel } from "./primitives.ts"
 import type { SandboxRpcRequest } from "./sandbox-protocol.ts"
 import type { MissionContext, OrchestrationEngine } from "./types.ts"
 
@@ -49,8 +50,8 @@ export function createPlanStepScope(input: {
         defaultWorkOrder: (nodeId) => baseCtx.template.workOrder(nodeId),
       })
     },
-    async fork(tracks) {
-      return orchestrationFork(tracks)
+    async parallel(tracks) {
+      return orchestrationParallel(tracks)
     },
   }
 

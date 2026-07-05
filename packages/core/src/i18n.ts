@@ -284,13 +284,9 @@ All nodes with skill_domain finished extract + verify and registration. Review \
     zh: "**行动依据：** 你的任务书与本次开工通知；严格遵守，勿扩大范围。",
     en: "**How to work:** Your node brief and this activation message; follow them strictly and do not expand scope.",
   },
-  "execution.workOrder.missingBriefWarning": {
-    zh: "**⚠ 任务书未就绪：** 请根据本次开工通知行动；在 `gatehouse_execution_complete` 的 `risks` 中注明缺失项。",
-    en: "**⚠ Brief not ready:** Follow this activation message; note gaps in `risks` on `gatehouse_execution_complete`.",
-  },
   "execution.workOrder.completeHint": {
-    zh: "完成后调用 `gatehouse_execution_complete(summary=..., artifacts=[{path,description}], risks=?)` — 真实产出在项目目录，artifacts 只列路径与描述。",
-    en: "When done, call `gatehouse_execution_complete(summary=..., artifacts=[{path,description}], risks=?)` — deliverables live in the project; list paths and descriptions only.",
+    zh: "完成后调用 `gatehouse_execution_complete(summary=...)` — 产出在项目目录，summary 中写明做了什么、路径与未完成项。",
+    en: "When done, call `gatehouse_execution_complete(summary=...)` — deliverables live in the project; describe work, paths, and open items in summary.",
   },
   "execution.workOrder.reworkHint": {
     zh: "你在 `dependsOn` 中声明的上游产出不合格（含小范围修正）且仍处于 running：`gatehouse_execution_rework(blocked_by=<上游 node_id>, reason=..., evidence_path=...)` — 仅可打回本节点 run 的 `dependsOn` 上游；reason 只写最小修改面。",
@@ -305,15 +301,30 @@ All nodes with skill_domain finished extract + verify and registration. Review \
     en: "## Referenced node completions",
   },
   "completion.summary.hint": {
-    zh: "以下为上游节点汇报摘要；**勿**展开 artifact 正文，只引用路径与描述。",
-    en: "Upstream completion summaries below; **do not** paste artifact bodies — reference paths and descriptions only.",
+    zh: "以下为上游节点汇报摘要；**勿**展开交付物正文，只引用路径与结论。",
+    en: "Upstream completion summaries below; **do not** paste deliverable bodies — reference paths and conclusions only.",
   },
   "completion.summary.nodeHeader": { zh: "节点 {node_id}", en: "Node {node_id}" },
-  "completion.summary.artifactsHeader": { zh: "**变更 / 证据**", en: "**Changes / evidence**" },
-  "completion.summary.risksHeader": { zh: "**未完成 / 风险**", en: "**Open items / risks**" },
   "completion.summary.missing": {
     zh: "（无汇报摘要）",
     en: "(no completion summary)",
+  },
+  "completion.structured.header": {
+    zh: "## 上游结构化输出",
+    en: "## Referenced structured outputs",
+  },
+  "completion.structured.hint": {
+    zh: "以下为上游节点的 validated JSON；下游可直接引用字段，无需解析 prose summary。",
+    en: "Validated JSON from upstream nodes below; downstream work may reference fields directly without parsing prose summaries.",
+  },
+  "completion.structured.nodeHeader": { zh: "节点 {node_id} · structured_output", en: "Node {node_id} · structured_output" },
+  "completion.structured.missing": {
+    zh: "（无 structured_output）",
+    en: "(no structured_output)",
+  },
+  "execution.workOrder.structuredCompletionHint": {
+    zh: "**结构化完成：** 调用 `gatehouse_execution_complete` 时须传 `structured_output` 且符合下列 JSON Schema：\n\n```json\n{schema}\n```",
+    en: "**Structured completion:** pass `structured_output` on `gatehouse_execution_complete` matching this JSON Schema:\n\n```json\n{schema}\n```",
   },
   "completion.terminalDelivery.title": { zh: "任务交付索引 · {mission_id}", en: "Mission delivery index · {mission_id}" },
   "completion.terminalDelivery.generated": {
@@ -321,7 +332,6 @@ All nodes with skill_domain finished extract + verify and registration. Review \
     en: "> Coordination index: paths and summaries for acceptance review; deliverable bodies live in the project tree.",
   },
   "completion.terminalDelivery.terminalSummary": { zh: "本节点摘要", en: "This node summary" },
-  "completion.terminalDelivery.terminalArtifacts": { zh: "**本节点产出**", en: "**This node artifacts**" },
   "completion.terminalDelivery.upstreamSummaries": { zh: "上游节点汇报", en: "Upstream node summaries" },
   "mission.contract.header": { zh: "## 任务快照（冻结）", en: "## Mission snapshot (frozen)" },
   "mission.contract.missionId": { zh: "**任务 ID：** {mission_id}", en: "**Mission ID:** {mission_id}" },
@@ -388,8 +398,8 @@ All nodes with skill_domain finished extract + verify and registration. Review \
   "delivery.revision.userFeedbackHeader": { zh: "## 用户原话", en: "## User feedback" },
   "delivery.revision.mustNotHeader": { zh: "## 边界（must_not）", en: "## Boundaries (must_not)" },
   "delivery.revision.completeHint": {
-    zh: "返工完成后再次调用 `gatehouse_execution_complete(summary=..., artifacts=...)`；全树节点均 done 时系统自动通知 lead 验收。",
-    en: "When rework is done, call `gatehouse_execution_complete(summary=..., artifacts=...)` again; the system notifies lead automatically once all nodes are done.",
+    zh: "返工完成后再次调用 `gatehouse_execution_complete(summary=...)`；全树节点均 done 时系统自动通知 lead 验收。",
+    en: "When rework is done, call `gatehouse_execution_complete(summary=...)` again; the system notifies lead automatically once all nodes are done.",
   },
   "retro.kickoff.contextHeader": { zh: "## Mission 复盘启动快照", en: "## Mission retro kickoff snapshot" },
   "retro.kickoff.mission": { zh: "**Mission：** `{mission_id}`", en: "**Mission:** `{mission_id}`" },
@@ -403,9 +413,9 @@ All nodes with skill_domain finished extract + verify and registration. Review \
     zh: "{index}. `run` → 分析 `context/{node}/`（timeline.md + metrics.json；禁止通读 messages.json）",
     en: "{index}. `run` → analyze `context/{node}/` (timeline.md + metrics.json; do not read all of messages.json)",
   },
-  "retro.kickoff.forkStep": {
-    zh: "{index}. `fork` → 并行段按声明顺序分析：{nodes}",
-    en: "{index}. `fork` → parallel segment; analyze in declared order: {nodes}",
+  "retro.kickoff.parallelStep": {
+    zh: "{index}. `parallel` → 并行段按声明顺序分析：{nodes}",
+    en: "{index}. `parallel` → parallel segment; analyze in declared order: {nodes}",
   },
   "retro.kickoff.noPlanSteps": {
     zh: "（编排 plan 不可用 — 按 context/index.json 节点列表顺序分析）",

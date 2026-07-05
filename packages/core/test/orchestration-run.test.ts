@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import { orchestrationFork, orchestrationRun } from "../src/orchestration/run-fork.ts"
+import { orchestrationParallel } from "../src/orchestration/primitives.ts"
+import { orchestrationRun } from "../src/orchestration/run.ts"
 import type { NodeBriefPartial, OrchestrationEngine } from "../src/orchestration/types.ts"
 
 function mockEngine() {
@@ -19,13 +20,13 @@ function mockEngine() {
   return { engine, log }
 }
 
-describe("run / fork", () => {
+describe("run / parallel", () => {
   test("run dispatches brief, prompt, dependsOn, and waits by default", async () => {
     const { engine, log } = mockEngine()
     await orchestrationRun(engine, "leaf", {
       brief: { your_work: ["work"], acceptance_slice: ["done"] },
       text: "go",
-      dependsOn: [{ node: "upstream", summary: true }],
+      dependsOn: [{ node: "upstream", deliverable: true }],
     })
     expect(log).toEqual([
       "brief:leaf",
@@ -51,7 +52,18 @@ describe("run / fork", () => {
     expect(log).toEqual(["brief:leaf", "prompt:leaf:reply:work-order:leaf", "wait:leaf"])
   })
 
-  test("fork runs tracks concurrently", async () => {
+  test("run without brief throws", async () => {
+    const { engine } = mockEngine()
+    let message = ""
+    try {
+      await orchestrationRun(engine, "leaf", { text: "go" } as never)
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error)
+    }
+    expect(message).toContain('run requires brief for node "leaf"')
+  })
+
+  test("parallel runs tracks concurrently", async () => {
     const order: string[] = []
     const delay = (ms: number, label: string) =>
       new Promise<string>((resolve) => {
@@ -61,7 +73,7 @@ describe("run / fork", () => {
         }, ms)
       })
 
-    const [a, b] = await orchestrationFork([
+    const [a, b] = await orchestrationParallel([
       () => delay(30, "a"),
       () => delay(10, "b"),
     ])

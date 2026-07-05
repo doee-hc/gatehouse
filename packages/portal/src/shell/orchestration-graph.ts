@@ -515,7 +515,7 @@ function dedupeFlowEdges(edges: PortalOrchestrationFlowEdge[]) {
   return [...byPair.values()]
 }
 
-function flowEdgeKind(edge: PortalOrchestrationFlowEdge): "summary" | "serial" | "depends" {
+function flowEdgeKind(edge: PortalOrchestrationFlowEdge): "deliverable" | "serial" | "depends" {
   return edge.kind ?? "serial"
 }
 
@@ -557,8 +557,8 @@ function renderMiniGraphEdges(
 function flowEdgeTitle(edge: PortalOrchestrationFlowEdge) {
   const kind = flowEdgeKind(edge)
   const label =
-    kind === "summary"
-      ? t("orch.flow.summary")
+    kind === "deliverable"
+      ? t("orch.flow.deliverable")
       : kind === "depends"
         ? t("orch.flow.depends")
         : t("orch.flow.serial")

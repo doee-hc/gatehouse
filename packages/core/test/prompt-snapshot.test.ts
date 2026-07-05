@@ -244,7 +244,7 @@ nodes:
         {
           id: "step-1",
           op: "run",
-          statement: 'await ctx.run("node-root", { text: "summary", dependsOn: [{ node: "node-doc", summary: true }] })',
+          statement: 'await ctx.run("node-root", { text: "summary", dependsOn: [{ node: "node-doc", deliverable: true }] })',
           nodeId: "node-root",
         },
       ],

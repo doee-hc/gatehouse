@@ -36,7 +36,7 @@ export type PortalOrchestrationPhase = {
   state: "done" | "current" | "pending"
 }
 
-export type PlanStepOp = "run" | "fork" | "other"
+export type PlanStepOp = "run" | "parallel" | "pipeline" | "other"
 
 export type PortalOrchestrationStep = {
   id: string
@@ -51,7 +51,7 @@ export type PortalOrchestrationFlowEdge = {
   to: string
   op: PlanStepOp
   state: "done" | "current" | "pending"
-  kind?: "summary" | "serial" | "depends"
+  kind?: "deliverable" | "serial" | "depends"
 }
 
 export type PortalOrchestration = {
@@ -65,7 +65,7 @@ export type PortalOrchestration = {
   phases: PortalOrchestrationPhase[]
   steps: PortalOrchestrationStep[]
   flow_edges: PortalOrchestrationFlowEdge[]
-  /** Plan dispatch order for graph layout (fork tracks included). */
+  /** Plan dispatch order for graph layout (parallel tracks included). */
   activation_order: string[]
   nodes: PortalOrchestrationNode[]
   terminal_node: string

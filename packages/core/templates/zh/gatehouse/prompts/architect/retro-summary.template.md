@@ -11,7 +11,7 @@
 - 节点数：{{node_count}}
 
 ## 编排顺序发现
-（按 `ctx.run` / `ctx.fork` 逐步 — 效率问题，附 timeline/metrics/脚本证据）
+（按 `ctx.run` / `ctx.parallel` 逐步 — 效率问题，附 timeline/metrics/脚本证据）
 
 ## 跨节点运行时模式
 - 上下文压缩 / 协调 / token 热点

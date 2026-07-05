@@ -2,7 +2,7 @@ import type { OrchestrationPlan } from "../orchestration/plan-types.ts"
 
 export type RetroAnalysisStep = {
   step_id: string
-  op: "run" | "fork"
+  op: "run" | "parallel"
   node_ids: string[]
   statement: string
 }
@@ -26,10 +26,10 @@ export function retroAnalysisSteps(plan: OrchestrationPlan): RetroAnalysisStep[]
       steps.push({ step_id: step.id, op: "run", node_ids: nodeIds, statement: step.statement })
       continue
     }
-    if (step.op === "fork") {
+    if (step.op === "parallel") {
       const nodeIds = extractRunNodeIds(step.statement)
       if (nodeIds.length === 0) continue
-      steps.push({ step_id: step.id, op: "fork", node_ids: nodeIds, statement: step.statement })
+      steps.push({ step_id: step.id, op: "parallel", node_ids: nodeIds, statement: step.statement })
     }
   }
   return steps

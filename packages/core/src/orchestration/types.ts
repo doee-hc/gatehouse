@@ -15,17 +15,12 @@ export type OrchestrationSandboxMeta = {
 
 export type OrchestrationNodeStatus = "pending" | "running" | "done" | "blocked" | "rework"
 
-export type NodeArtifact = {
-  path: string
-  description: string
-}
-
 export type NodeCompletion = {
   summary: string
-  artifacts?: NodeArtifact[]
-  risks?: string[]
   completed_at: string
   round?: number
+  /** Validated JSON payload when the node brief defines completion_schema. */
+  structured_output?: unknown
 }
 
 export type OrchestrationNodeState = {
@@ -55,7 +50,7 @@ export type OrchestrationState = {
   cursor_step_index?: number
   /** Derived from cursor_step_index for legacy readers; do not write directly. */
   completed_step_ids?: string[]
-  /** Nodes re-armed for prompt inside an in-progress compound (fork) step. */
+  /** Nodes re-armed for prompt inside an in-progress compound (parallel) step. */
   compound_replay?: CompoundReplayState
   /** Frozen baseline snapshot id when continuing from prior work. */
   baseline_id?: string
@@ -77,7 +72,9 @@ export type MissionScriptRecord = {
   lockedAt: string
 }
 
-export type DependsOnEntry = string | { node: string; summary?: boolean }
+export type DependsOnEntry = string | { node: string; deliverable?: boolean }
+
+export type JsonSchemaObject = Record<string, unknown>
 
 export type PromptInput = {
   text?: string
@@ -91,26 +88,46 @@ export type NodeBriefPartial = {
   not_your_job?: string[]
   acceptance_slice?: string[]
   role?: string
+  /** JSON Schema the node must satisfy in gatehouse_execution_complete(structured_output=...). */
+  completion_schema?: JsonSchemaObject
 }
 
 export type RunOpts = {
-  brief?: NodeBriefPartial | ((nodeId: string) => NodeBriefPartial)
+  brief: NodeBriefPartial | ((nodeId: string) => NodeBriefPartial)
   text?: string | ((nodeId: string) => string)
   dependsOn?: DependsOnEntry[]
   reply?: boolean
+  /** JSON Schema for structured completion; also stored on the node brief. */
+  completionSchema?: JsonSchemaObject
+  /** When true, ctx.run resolves with structured_output after the node completes. */
+  returnStructured?: boolean
+}
+
+export type RunResult = {
+  structured?: unknown
+  summary?: string
 }
 
 /** Host/runtime dispatch surface used internally by run. Not available in mission scripts. */
 export type OrchestrationEngine = {
   setBrief(nodeId: string, partial: NodeBriefPartial): Promise<void>
   prompt(nodeId: string | string[], input: PromptInput): Promise<void>
-  waitFor(nodeId: string, event: "complete", opts?: { timeout?: string }): Promise<void>
+  waitFor(
+    nodeId: string,
+    event: "complete",
+    opts?: { timeout?: string },
+  ): Promise<{ completion?: NodeCompletion } | void>
 }
 
 export type MissionContext = {
   objective: string
-  run(nodeId: string, opts?: RunOpts): Promise<void>
-  fork<T>(tracks: ReadonlyArray<() => Promise<T>>): Promise<T[]>
+  run(nodeId: string, opts: RunOpts): Promise<RunResult | void>
+  parallel<T>(tracks: ReadonlyArray<() => Promise<T>>): Promise<T[]>
+  pipeline<T, R>(
+    items: readonly T[],
+    firstStage: (item: T, index: number) => Promise<R>,
+    ...restStages: ReadonlyArray<(prev: R, item: T, index: number) => Promise<R>>
+  ): Promise<(R | null)[]>
   readMissionContext(): string
   readContract(opts?: { view?: "summary" | "full" }): unknown
   nodeIds(): string[]

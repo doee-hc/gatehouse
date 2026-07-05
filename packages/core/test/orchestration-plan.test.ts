@@ -91,7 +91,7 @@ await ctx.run("b", { brief: { your_work: ["w"], acceptance_slice: ["done"] }, te
     expect(state.completed_step_ids).toEqual([])
   })
 
-  test("parallel siblings compile with fork", async () => {
+  test("parallel siblings compile with parallel", async () => {
     const source = `
 export const team = {
   mission_id: "plan-m1",
@@ -103,7 +103,7 @@ export const team = {
   },
 }
 export default async function orchestrate(ctx) {
-  await ctx.fork([
+  await ctx.parallel([
     async () => {
       await ctx.run("a", {
         brief: { your_work: ["a"], acceptance_slice: ["done"] },
@@ -120,7 +120,7 @@ export default async function orchestrate(ctx) {
   await ctx.run("terminal", {
     brief: { your_work: ["summary"], acceptance_slice: ["done"] },
     text: "summary",
-    dependsOn: [{ node: "a", summary: true }, { node: "b", summary: true }],
+    dependsOn: [{ node: "a", deliverable: true }, { node: "b", deliverable: true }],
   })
 }
 `
@@ -128,7 +128,7 @@ export default async function orchestrate(ctx) {
     expect(dryRun.ok).toBe(true)
     if (!dryRun.ok) return
     expect(dryRun.plan.steps.filter((s) => s.op === "run").length).toBe(1)
-    expect(dryRun.plan.steps.some((s) => s.op === "fork")).toBe(true)
+    expect(dryRun.plan.steps.some((s) => s.op === "parallel")).toBe(true)
   })
 
   test("parallel tracks compile and simulate independently", async () => {
@@ -147,32 +147,32 @@ export const team = {
   },
 }
 export default async function orchestrate(ctx) {
-  await ctx.fork([
+  await ctx.parallel([
     async () => {
       for (const id of ["a1", "a2"]) {
         await ctx.run(id, { brief: { your_work: [id], acceptance_slice: ["done"] }, text: "go" })
       }
-      await ctx.run("a", { brief: { your_work: ["rollup a"], acceptance_slice: ["done"] }, text: "summary", dependsOn: [{ node: "a1", summary: true }, { node: "a2", summary: true }] })
+      await ctx.run("a", { brief: { your_work: ["rollup a"], acceptance_slice: ["done"] }, text: "summary", dependsOn: [{ node: "a1", deliverable: true }, { node: "a2", deliverable: true }] })
     },
     async () => {
       for (const id of ["b1", "b2"]) {
         await ctx.run(id, { brief: { your_work: [id], acceptance_slice: ["done"] }, text: "go" })
       }
-      await ctx.run("b", { brief: { your_work: ["rollup b"], acceptance_slice: ["done"] }, text: "summary", dependsOn: [{ node: "b1", summary: true }, { node: "b2", summary: true }] })
+      await ctx.run("b", { brief: { your_work: ["rollup b"], acceptance_slice: ["done"] }, text: "summary", dependsOn: [{ node: "b1", deliverable: true }, { node: "b2", deliverable: true }] })
     },
   ])
-  await ctx.run("terminal", { brief: { your_work: ["final"], acceptance_slice: ["done"] }, text: "final", dependsOn: [{ node: "a", summary: true }, { node: "b", summary: true }] })
+  await ctx.run("terminal", { brief: { your_work: ["final"], acceptance_slice: ["done"] }, text: "final", dependsOn: [{ node: "a", deliverable: true }, { node: "b", deliverable: true }] })
 }
 `
     const dryRun = await dryRunMissionScriptSource(source, "plan-m1")
     expect(dryRun.ok).toBe(true)
     if (!dryRun.ok) return
-    expect(dryRun.plan.steps.some((s) => s.op === "fork")).toBe(true)
+    expect(dryRun.plan.steps.some((s) => s.op === "parallel")).toBe(true)
   })
 
-  test("splitOrchestrateStatements keeps fork body as one step", () => {
+  test("splitOrchestrateStatements keeps parallel body as one step", () => {
     const body = `
-await ctx.fork([
+await ctx.parallel([
   async () => {
     await ctx.run("a1", { brief: { your_work: ["a1"], acceptance_slice: ["done"] }, text: "go" })
   },
@@ -181,7 +181,7 @@ await ctx.run("terminal", { brief: { your_work: ["root"], acceptance_slice: ["do
 `
     const statements = splitOrchestrateStatements(body)
     expect(statements.length).toBe(2)
-    expect(statements[0]).toContain("ctx.fork")
+    expect(statements[0]).toContain("ctx.parallel")
     expect(statements[0]).toContain('ctx.run("a1"')
     expect(statements[1]).toContain('ctx.run("terminal"')
   })

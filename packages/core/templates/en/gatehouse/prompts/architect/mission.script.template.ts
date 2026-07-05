@@ -20,7 +20,7 @@ export const meta = {
 }
 
 export default async function orchestrate(ctx) {
-  await ctx.fork([
+  await ctx.parallel([
     async () => {
       await ctx.run("<leaf-a>", {
         brief: {
@@ -51,6 +51,6 @@ export default async function orchestrate(ctx) {
     text: ctx.template.workOrder("<terminal-node-id>", {
       context: `Upstream nodes are done. Read reports/<leaf-a>.md and reports/<leaf-b>.md, then deliver the final artifact.`,
     }),
-    dependsOn: [{ node: "<leaf-a>", summary: true }, { node: "<leaf-b>", summary: true }],
+    dependsOn: [{ node: "<leaf-a>", deliverable: true }, { node: "<leaf-b>", deliverable: true }],
   })
 }

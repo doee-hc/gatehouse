@@ -11,7 +11,7 @@ Save to: `.gatehouse/trees/<mission_id>/reports/retro-summary.md`
 - Node count: {{node_count}}
 
 ## Orchestration order findings
-(Per `ctx.run` / `ctx.fork` step — efficiency issues, evidence from timeline/metrics/scripts)
+(Per `ctx.run` / `ctx.parallel` step — efficiency issues, evidence from timeline/metrics/scripts)
 
 ## Cross-node runtime patterns
 - Context compaction / coordination / token hotspots

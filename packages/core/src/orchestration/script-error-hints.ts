@@ -3,7 +3,7 @@ export function missionScriptErrorHint(code: string): string | undefined {
   switch (code) {
     case "SCRIPT_SERIAL_TRACK_BLOCK":
       return (
-        "Wrap each independent parallel track in ctx.fork([async () => { ... }, ...]); " +
+        "Wrap each independent parallel track in ctx.parallel([async () => { ... }, ...]); " +
         "do not await one track's completion before dispatching the next track at top level."
       )
     case "SCRIPT_SIMULATION_INCOMPLETE":
@@ -11,7 +11,7 @@ export function missionScriptErrorHint(code: string): string | undefined {
     case "SCRIPT_MISSING_BRIEF":
       return "Add brief: { your_work: [...], acceptance_slice: [...] } to each ctx.run dispatch."
     case "SCRIPT_PLAN_DYNAMIC_TOP_LEVEL":
-      return "Use explicit top-level await ctx.run steps or ctx.fork tracks instead of for/while loops."
+      return "Use explicit top-level await ctx.run steps or ctx.parallel tracks instead of for/while loops."
     case "SCRIPT_FORBIDDEN_CTX_READ":
       return "Inline static context in run brief or work-order text; do not call ctx.readMissionContext or ctx.readContract."
     case "SCRIPT_RISKY_STRING_LITERAL":

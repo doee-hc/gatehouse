@@ -6,7 +6,7 @@ import { nodeAlreadyActivated } from "./state.ts"
 export type PlanStepKind = "linear" | "compound"
 
 export function planStepKind(op: PlanStepOp | undefined): PlanStepKind {
-  return op === "fork" ? "compound" : "linear"
+  return op === "parallel" || op === "pipeline" ? "compound" : "linear"
 }
 
 export function nodeIsDone(state: OrchestrationState, nodeId: string) {

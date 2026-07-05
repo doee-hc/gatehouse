@@ -42,7 +42,9 @@ import {
   formatReworkText,
   formatWorkOrderText,
 } from "./templates.ts"
-import { orchestrationFork, orchestrationRun } from "./run-fork.ts"
+import { orchestrationRun } from "./run.ts"
+import { orchestrationParallel } from "./primitives.ts"
+import { orchestrationPipeline } from "./primitives.ts"
 import { RegistryDatabase } from "../registry/db.ts"
 
 const PROMPT_TEXT_MAX = 32_768
@@ -123,12 +125,12 @@ export function createMissionHostHandlers(input: {
         case "waitFor": {
           if (!request.nodeId) throw new Error("waitFor requires nodeId")
           assertNodeInTeam(input.team, request.nodeId)
-          await runtime.engine.waitFor(
+          const waitResult = await runtime.engine.waitFor(
             request.nodeId,
             "complete",
             request.timeout ? { timeout: request.timeout } : undefined,
           )
-          return undefined
+          return waitResult ?? undefined
         }
         case "stepComplete": {
           finishPlanStep()
@@ -325,11 +327,15 @@ export function createMissionContext(input: {
     async waitFor(nodeId, _event, opts) {
       const readState = () => readOrchestrationState(plugin.directory, missionId)
       const state = readState()
-      if (state && nodeIsCompleteForWait(state, nodeId)) return
+      if (state && nodeIsCompleteForWait(state, nodeId)) {
+        return { completion: state.nodes[nodeId]?.completion }
+      }
       await waitForOrchestration(missionId, nodeId, "complete", {
         readState,
         ...(opts?.timeout && { timeout: opts.timeout }),
       })
+      const fresh = readState()
+      return { completion: fresh?.nodes[nodeId]?.completion }
     },
   }
 
@@ -337,7 +343,7 @@ export function createMissionContext(input: {
     objective: contract?.objective ?? "",
 
     async run(nodeId, opts) {
-      await orchestrationRun(engine, nodeId, opts, {
+      return orchestrationRun(engine, nodeId, opts, {
         defaultWorkOrder: (nodeId) =>
           formatWorkOrderText(plugin.directory, {
             missionId,
@@ -346,8 +352,12 @@ export function createMissionContext(input: {
       })
     },
 
-    async fork(tracks) {
-      return orchestrationFork(tracks)
+    async parallel(tracks) {
+      return orchestrationParallel(tracks)
+    },
+
+    async pipeline(items, firstStage, ...restStages) {
+      return orchestrationPipeline(items, firstStage, ...restStages)
     },
 
     readMissionContext() {

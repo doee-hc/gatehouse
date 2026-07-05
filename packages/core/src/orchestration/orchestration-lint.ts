@@ -188,7 +188,7 @@ function lintPlanDynamicTopLevel(orchestrateSource: string): OrchestrationLintIs
     errors.push({
       code: "SCRIPT_PLAN_DYNAMIC_TOP_LEVEL",
       message:
-        "top-level for/while must not contain ctx.run; use ctx.fork tracks or explicit top-level await ctx.run steps for plan replay",
+        "top-level for/while must not contain ctx.run; use ctx.parallel tracks or explicit top-level await ctx.run steps for plan replay",
     })
   })
   return errors
@@ -246,7 +246,7 @@ function lintNonLiteralNodeIds(orchestrateSource: string): string[] {
 
 function lintMissingAwait(orchestrateSource: string): string[] {
   const warnings: string[] = []
-  const pattern = /\bctx\.(?:run|fork)\s*\(/g
+  const pattern = /\bctx\.(?:run|parallel|pipeline)\s*\(/g
   for (const match of orchestrateSource.matchAll(pattern)) {
     const index = match.index!
     const before = orchestrateSource.slice(Math.max(0, index - 12), index)
@@ -291,7 +291,7 @@ function lintSerialTrackBlocking(team: TeamSpec, plan: OrchestrationPlan, orches
         code: "SCRIPT_SERIAL_TRACK_BLOCK",
         message:
           `top-level wait on "${event.nodeId}" blocks script before track "${nextTrack}" dispatches ` +
-          `"${next.nodeId}"; dispatch all tracks first or wrap independent tracks in ctx.fork`,
+          `"${next.nodeId}"; dispatch all tracks first or wrap independent tracks in ctx.parallel`,
       })
       break
     }
@@ -313,7 +313,7 @@ function lintDependsOn(team: TeamSpec, plan: OrchestrationPlan, orchestrateSourc
 
     const dependsMatch = /dependsOn\s*:\s*\[([\s\S]*?)\]/m.exec(call.body)
     const dependsOn = dependsMatch ? parseDependsOnArrayBody(dependsMatch[1] ?? "") : []
-    const summaryIds = dependsOn.filter((dep) => dep.summary).map((dep) => dep.node)
+    const deliverableIds = dependsOn.filter((dep) => dep.deliverable).map((dep) => dep.node)
 
     for (const dep of dependsOn) {
       if (!team.nodes[dep.node]) {
@@ -325,11 +325,11 @@ function lintDependsOn(team: TeamSpec, plan: OrchestrationPlan, orchestrateSourc
     }
 
     const directChildren = planChildNodeIds(plan, nodeId)
-    if (directChildren.length > 0 && summaryIds.length > 0) {
-      const missing = directChildren.filter((childId) => !summaryIds.includes(childId))
+    if (directChildren.length > 0 && deliverableIds.length > 0) {
+      const missing = directChildren.filter((childId) => !deliverableIds.includes(childId))
       if (missing.length > 0) {
         warnings.push(
-          `dependsOn summary on "${nodeId}" omits direct children: ${missing.join(", ")}`,
+          `dependsOn deliverable on "${nodeId}" omits direct children: ${missing.join(", ")}`,
         )
       }
     }
@@ -392,12 +392,23 @@ function lintDuplicateDispatches(orchestrateSource: string): string[] {
   return warnings
 }
 
-function lintEmptyFork(orchestrateSource: string): OrchestrationLintIssue[] {
+function lintEmptyParallel(orchestrateSource: string): OrchestrationLintIssue[] {
   const errors: OrchestrationLintIssue[] = []
-  if (/ctx\.fork\s*\(\s*\[\s*\]/.test(orchestrateSource)) {
+  if (/ctx\.parallel\s*\(\s*\[\s*\]/.test(orchestrateSource)) {
     errors.push({
-      code: "SCRIPT_EMPTY_FORK",
-      message: "ctx.fork([]) has no tracks; remove the call or add tracks",
+      code: "SCRIPT_EMPTY_PARALLEL",
+      message: "ctx.parallel([]) has no tracks; remove the call or add tracks",
+    })
+  }
+  return errors
+}
+
+function lintEmptyPipeline(orchestrateSource: string): OrchestrationLintIssue[] {
+  const errors: OrchestrationLintIssue[] = []
+  if (/ctx\.pipeline\s*\(\s*\[\s*\]/.test(orchestrateSource)) {
+    errors.push({
+      code: "SCRIPT_EMPTY_PIPELINE",
+      message: "ctx.pipeline([]) has no items; remove the call or pass items",
     })
   }
   return errors
@@ -408,13 +419,13 @@ function lintForbiddenPatterns(orchestrateSource: string): OrchestrationLintIssu
   if (/\bPromise\.all\s*\(/.test(orchestrateSource) && /\bctx\./.test(orchestrateSource)) {
     errors.push({
       code: "SCRIPT_FORBIDDEN_PROMISE_ALL",
-      message: "orchestrate must not use Promise.all on ctx.*; use ctx.fork instead",
+      message: "orchestrate must not use Promise.all on ctx.*; use ctx.parallel instead",
     })
   }
   return errors
 }
 
-function lintForkRecommended(team: TeamSpec, plan: OrchestrationPlan, orchestrateSource: string): string[] {
+function lintParallelRecommended(team: TeamSpec, plan: OrchestrationPlan, orchestrateSource: string): string[] {
   const warnings: string[] = []
   const tracks = new Set<string>()
   for (const nodeId of Object.keys(team.nodes)) {
@@ -422,7 +433,7 @@ function lintForkRecommended(team: TeamSpec, plan: OrchestrationPlan, orchestrat
     if (track) tracks.add(track)
   }
   if (tracks.size < 2) return warnings
-  if (/ctx\.fork\s*\(/.test(orchestrateSource)) return warnings
+  if (/ctx\.parallel\s*\(/.test(orchestrateSource)) return warnings
 
   const topWaits = extractOrchestrationEvents(orchestrateSource).filter(
     (event) => event.depth === 0 && event.kind === "wait",
@@ -437,7 +448,7 @@ function lintForkRecommended(team: TeamSpec, plan: OrchestrationPlan, orchestrat
   )
   if (waitTracks.size >= 2) {
     warnings.push(
-      `mission has ${tracks.size} sibling tracks (${[...tracks].join(", ")}) but no ctx.fork; ` +
+      `mission has ${tracks.size} sibling tracks (${[...tracks].join(", ")}) but no ctx.parallel; ` +
         "sequential top-level runs may block independent tracks",
     )
   }
@@ -457,7 +468,8 @@ export function lintOrchestrationScript(
   errors.push(...lintPlanDynamicTopLevel(orchestrateSource))
   errors.push(...lintSerialTrackBlocking(team, plan, orchestrateSource))
   errors.push(...lintBriefCoverage(team, orchestrateSource))
-  errors.push(...lintEmptyFork(orchestrateSource))
+  errors.push(...lintEmptyParallel(orchestrateSource))
+  errors.push(...lintEmptyPipeline(orchestrateSource))
   errors.push(...lintForbiddenPatterns(orchestrateSource))
 
   const dependsOn = lintDependsOn(team, plan, orchestrateSource)
@@ -469,7 +481,7 @@ export function lintOrchestrationScript(
   warnings.push(...lintMissingAwait(orchestrateSource))
   warnings.push(...lintUnusedTeamNodes(team, orchestrateSource))
   warnings.push(...lintDuplicateDispatches(orchestrateSource))
-  warnings.push(...lintForkRecommended(team, plan, orchestrateSource))
+  warnings.push(...lintParallelRecommended(team, plan, orchestrateSource))
 
   const dedupedErrors = dedupeIssues(errors)
   const dedupedWarnings = [...new Set(warnings)]

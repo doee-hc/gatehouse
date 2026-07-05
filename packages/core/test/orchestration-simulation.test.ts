@@ -47,7 +47,7 @@ export const team = {
   },
 }
 export default async function orchestrate(ctx) {
-  await ctx.fork([
+  await ctx.parallel([
     async () => {
       await ctx.run("a", {
         brief: { your_work: ["a"], acceptance_slice: ["done"] },
@@ -64,7 +64,7 @@ export default async function orchestrate(ctx) {
   await ctx.run("terminal", {
     brief: { your_work: ["summary"], acceptance_slice: ["done"] },
     text: "summary",
-    dependsOn: [{ node: "a", summary: true }, { node: "b", summary: true }],
+    dependsOn: [{ node: "a", deliverable: true }, { node: "b", deliverable: true }],
   })
 }
 `

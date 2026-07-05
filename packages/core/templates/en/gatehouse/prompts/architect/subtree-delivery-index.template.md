@@ -12,4 +12,4 @@
 
 (none if N/A)
 
-When this wave is done: `gatehouse_execution_complete(summary=..., artifacts=?)`.
+When this wave is done: `gatehouse_execution_complete(summary=...)`.

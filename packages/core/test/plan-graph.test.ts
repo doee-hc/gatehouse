@@ -34,16 +34,16 @@ describe("plan-graph", () => {
   await ctx.run("a", {
     brief: { your_work: ["a"], acceptance_slice: [] },
     text: "a",
-    dependsOn: [{ node: "b", summary: true }],
+    dependsOn: [{ node: "b", deliverable: true }],
   })
 `)
     expect(plan.terminal_node).toBe("a")
     expect(inferTerminalNodeFromPlan(plan)).toBe("a")
   })
 
-  test("inferTerminalNodeFromPlan handles fork then final rollup", () => {
+  test("inferTerminalNodeFromPlan handles parallel then final rollup", () => {
     const plan = compile(`
-  await ctx.fork([
+  await ctx.parallel([
     async () => {
       await ctx.run("b", { brief: { your_work: ["b"], acceptance_slice: [] }, text: "b" })
     },
@@ -51,7 +51,7 @@ describe("plan-graph", () => {
   await ctx.run("a", {
     brief: { your_work: ["a"], acceptance_slice: [] },
     text: "a",
-    dependsOn: [{ node: "b", summary: true }],
+    dependsOn: [{ node: "b", deliverable: true }],
   })
 `)
     expect(inferTerminalNodeFromPlan(plan)).toBe("a")
@@ -78,7 +78,7 @@ describe("rework dependsOn upstream", () => {
   await ctx.run("a", {
     brief: { your_work: ["a"], acceptance_slice: [] },
     text: "a",
-    dependsOn: [{ node: "b", summary: true }],
+    dependsOn: [{ node: "b", deliverable: true }],
   })
 `)
 

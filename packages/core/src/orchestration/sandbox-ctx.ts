@@ -2,7 +2,9 @@ import { planChildNodeIds, planLeafNodeIds } from "./plan-graph.ts"
 import type { GatehouseLocale } from "../locale.ts"
 import type { OrchestrationPlan } from "./plan-types.ts"
 import type { TeamSpec } from "../tree/types.ts"
-import { orchestrationFork, orchestrationRun } from "./run-fork.ts"
+import { orchestrationRun } from "./run.ts"
+import { orchestrationParallel } from "./primitives.ts"
+import { orchestrationPipeline } from "./primitives.ts"
 import type { MissionContext, OrchestrationEngine, PromptInput } from "./types.ts"
 import type { SandboxRpcRequest } from "./sandbox-protocol.ts"
 import {
@@ -33,12 +35,16 @@ export function createSandboxMissionContext(input: {
       await sendRpc({ op: "prompt", nodeIds: ids, input: promptInput })
     },
     async waitFor(nodeId, _event, opts) {
-      await sendRpc({
+      const result = await sendRpc({
         op: "waitFor",
         nodeId,
         event: "complete",
         ...(opts?.timeout && { timeout: opts.timeout }),
       })
+      if (result && typeof result === "object" && "completion" in (result as Record<string, unknown>)) {
+        return { completion: (result as { completion?: import("./types.ts").NodeCompletion }).completion }
+      }
+      return undefined
     },
   }
 
@@ -52,11 +58,15 @@ export function createSandboxMissionContext(input: {
     objective: input.objective ?? "",
 
     async run(nodeId, opts) {
-      await orchestrationRun(engine, nodeId, opts, { defaultWorkOrder })
+      return orchestrationRun(engine, nodeId, opts, { defaultWorkOrder })
     },
 
-    async fork(tracks) {
-      return orchestrationFork(tracks)
+    async parallel(tracks) {
+      return orchestrationParallel(tracks)
+    },
+
+    async pipeline(items, firstStage, ...restStages) {
+      return orchestrationPipeline(items, firstStage, ...restStages)
     },
 
     readMissionContext() {

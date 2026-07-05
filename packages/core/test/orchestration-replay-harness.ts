@@ -287,12 +287,12 @@ export default async function orchestrate(ctx) {
   await ctx.run("n2", {
     brief: { your_work: ["n2"], acceptance_slice: [] },
     text: "marker:step1-n2",
-    dependsOn: [{ node: "n1", summary: true }],
+    dependsOn: [{ node: "n1", deliverable: true }],
   })
   await ctx.run("n3", {
     brief: { your_work: ["n3"], acceptance_slice: [] },
     text: "marker:step2-n3",
-    dependsOn: [{ node: "n2", summary: true }],
+    dependsOn: [{ node: "n2", deliverable: true }],
   })
 }
 `
@@ -312,7 +312,7 @@ export default async function orchestrate(ctx) {
 `
   },
 
-  forkThenFinal(missionId: string) {
+  parallelThenFinal(missionId: string) {
     return `
 export const team = {
   mission_id: "${missionId}",
@@ -324,22 +324,22 @@ export const team = {
   },
 }
 export default async function orchestrate(ctx) {
-  await ctx.fork([
+  await ctx.parallel([
     async () => {
-      await ctx.run("a1", { brief: { your_work: ["a1"], acceptance_slice: [] }, text: "marker:fork-a1" })
-      await ctx.run("a2", { brief: { your_work: ["a2"], acceptance_slice: [] }, text: "marker:fork-a2" })
+      await ctx.run("a1", { brief: { your_work: ["a1"], acceptance_slice: [] }, text: "marker:parallel-a1" })
+      await ctx.run("a2", { brief: { your_work: ["a2"], acceptance_slice: [] }, text: "marker:parallel-a2" })
     },
   ])
   await ctx.run("terminal", {
     brief: { your_work: ["final"], acceptance_slice: [] },
     text: "marker:final-root",
-    dependsOn: [{ node: "a2", summary: true }],
+    dependsOn: [{ node: "a2", deliverable: true }],
   })
 }
 `
   },
 
-  forkMultiRoundSameNode(missionId: string) {
+  parallelMultiRoundSameNode(missionId: string) {
     return `
 export const team = {
   mission_id: "${missionId}",
@@ -347,7 +347,7 @@ export const team = {
   nodes: { a: { description: "worker" } },
 }
 export default async function orchestrate(ctx) {
-  await ctx.fork([
+  await ctx.parallel([
     async () => {
       await ctx.run("a", { brief: { your_work: ["round1"], acceptance_slice: [] }, text: "marker:compound-r1" })
       await ctx.run("a", { brief: { your_work: ["round2"], acceptance_slice: [] }, text: "marker:compound-r2" })
@@ -369,7 +369,7 @@ export const team = {
   },
 }
 export default async function orchestrate(ctx) {
-  await ctx.fork([
+  await ctx.parallel([
     async () => {
       await ctx.run("a", {
         brief: { your_work: ["a"], acceptance_slice: [] },
@@ -386,14 +386,14 @@ export default async function orchestrate(ctx) {
   await ctx.run("terminal", {
     brief: { your_work: ["summary"], acceptance_slice: [] },
     text: "marker:rollup-root",
-    dependsOn: [{ node: "a", summary: true }, { node: "b", summary: true }],
+    dependsOn: [{ node: "a", deliverable: true }, { node: "b", deliverable: true }],
   })
 }
 `
   },
 
-  /** 组间并行：双轨 fork，轨内串行 fan-in 后 rollup 到协调节点，最后 root 汇总 */
-  dualTrackForkFinal(missionId: string) {
+  /** 组间并行：双轨 parallel，轨内串行 fan-in 后 rollup 到协调节点，最后 root 汇总 */
+  dualTrackParallelFinal(missionId: string) {
     return `
 export const team = {
   mission_id: "${missionId}",
@@ -409,14 +409,14 @@ export const team = {
   },
 }
 export default async function orchestrate(ctx) {
-  await ctx.fork([
+  await ctx.parallel([
     async () => {
       await ctx.run("a1", { brief: { your_work: ["a1"], acceptance_slice: [] }, text: "marker:trackA-a1" })
       await ctx.run("a2", { brief: { your_work: ["a2"], acceptance_slice: [] }, text: "marker:trackA-a2" })
       await ctx.run("a", {
         brief: { your_work: ["rollup a"], acceptance_slice: [] },
         text: "marker:trackA-rollup",
-        dependsOn: [{ node: "a1", summary: true }, { node: "a2", summary: true }],
+        dependsOn: [{ node: "a1", deliverable: true }, { node: "a2", deliverable: true }],
       })
     },
     async () => {
@@ -425,20 +425,20 @@ export default async function orchestrate(ctx) {
       await ctx.run("b", {
         brief: { your_work: ["rollup b"], acceptance_slice: [] },
         text: "marker:trackB-rollup",
-        dependsOn: [{ node: "b1", summary: true }, { node: "b2", summary: true }],
+        dependsOn: [{ node: "b1", deliverable: true }, { node: "b2", deliverable: true }],
       })
     },
   ])
   await ctx.run("terminal", {
     brief: { your_work: ["final"], acceptance_slice: [] },
     text: "marker:final-root",
-    dependsOn: [{ node: "a", summary: true }, { node: "b", summary: true }],
+    dependsOn: [{ node: "a", deliverable: true }, { node: "b", deliverable: true }],
   })
 }
 `
   },
 
-  /** 组间 + 组内并行：双轨 fork，每轨内 fan-out 叶子后 join 再 rollup */
+  /** 组间 + 组内并行：双轨 parallel，每轨内 fan-out 叶子后 join 再 rollup */
   dualTrackIntraFanOut(missionId: string) {
     return `
 export const team = {
@@ -455,9 +455,9 @@ export const team = {
   },
 }
 export default async function orchestrate(ctx) {
-  await ctx.fork([
+  await ctx.parallel([
     async () => {
-      await ctx.fork([
+      await ctx.parallel([
         async () => {
           await ctx.run("a1", {
             brief: { your_work: ["a1"], acceptance_slice: [] },
@@ -474,11 +474,11 @@ export default async function orchestrate(ctx) {
       await ctx.run("a", {
         brief: { your_work: ["rollup a"], acceptance_slice: [] },
         text: "marker:trackA-rollup",
-        dependsOn: [{ node: "a1", summary: true }, { node: "a2", summary: true }],
+        dependsOn: [{ node: "a1", deliverable: true }, { node: "a2", deliverable: true }],
       })
     },
     async () => {
-      await ctx.fork([
+      await ctx.parallel([
         async () => {
           await ctx.run("b1", {
             brief: { your_work: ["b1"], acceptance_slice: [] },
@@ -495,14 +495,14 @@ export default async function orchestrate(ctx) {
       await ctx.run("b", {
         brief: { your_work: ["rollup b"], acceptance_slice: [] },
         text: "marker:trackB-rollup",
-        dependsOn: [{ node: "b1", summary: true }, { node: "b2", summary: true }],
+        dependsOn: [{ node: "b1", deliverable: true }, { node: "b2", deliverable: true }],
       })
     },
   ])
   await ctx.run("terminal", {
     brief: { your_work: ["final"], acceptance_slice: [] },
     text: "marker:final-root",
-    dependsOn: [{ node: "a", summary: true }, { node: "b", summary: true }],
+    dependsOn: [{ node: "a", deliverable: true }, { node: "b", deliverable: true }],
   })
 }
 `
@@ -523,7 +523,7 @@ export const team = {
   },
 }
 export default async function orchestrate(ctx) {
-  await ctx.fork([
+  await ctx.parallel([
     async () => {
       await ctx.run("l1a", {
         brief: { your_work: ["l1a"], acceptance_slice: [] },
@@ -540,23 +540,23 @@ export default async function orchestrate(ctx) {
   await ctx.run("l2", {
     brief: { your_work: ["l2 rollup"], acceptance_slice: [] },
     text: "marker:rollup-l2",
-    dependsOn: [{ node: "l1a", summary: true }, { node: "l1b", summary: true }],
+    dependsOn: [{ node: "l1a", deliverable: true }, { node: "l1b", deliverable: true }],
   })
   await ctx.run("l3", {
     brief: { your_work: ["l3 rollup"], acceptance_slice: [] },
     text: "marker:rollup-l3",
-    dependsOn: [{ node: "l2", summary: true }],
+    dependsOn: [{ node: "l2", deliverable: true }],
   })
   await ctx.run("l4", {
     brief: { your_work: ["l4 rollup"], acceptance_slice: [] },
     text: "marker:rollup-l4",
-    dependsOn: [{ node: "l3", summary: true }],
+    dependsOn: [{ node: "l3", deliverable: true }],
   })
 }
 `
   },
 
-  /** 组内并行 + compound 多轮：fork 单轨内 fan-out 后对协调节点两轮 run */
+  /** 组内并行 + compound 多轮：parallel 单轨内 fan-out 后对协调节点两轮 run */
   intraFanOutCompoundMultiRound(missionId: string) {
     return `
 export const team = {
@@ -569,9 +569,9 @@ export const team = {
   },
 }
 export default async function orchestrate(ctx) {
-  await ctx.fork([
+  await ctx.parallel([
     async () => {
-      await ctx.fork([
+      await ctx.parallel([
         async () => {
           await ctx.run("x1", {
             brief: { your_work: ["x1"], acceptance_slice: [] },
@@ -588,7 +588,7 @@ export default async function orchestrate(ctx) {
       await ctx.run("coord", {
         brief: { your_work: ["round1"], acceptance_slice: [] },
         text: "marker:coord-r1",
-        dependsOn: [{ node: "x1", summary: true }, { node: "x2", summary: true }],
+        dependsOn: [{ node: "x1", deliverable: true }, { node: "x2", deliverable: true }],
       })
       await ctx.run("coord", {
         brief: { your_work: ["round2"], acceptance_slice: [] },
@@ -613,7 +613,7 @@ export const team = {
   },
 }
 export default async function orchestrate(ctx) {
-  await ctx.fork([
+  await ctx.parallel([
     async () => {
       await ctx.run("a", { brief: { your_work: ["a"], acceptance_slice: [] }, text: "marker:track-a" })
     },
@@ -624,7 +624,7 @@ export default async function orchestrate(ctx) {
   await ctx.run("terminal", {
     brief: { your_work: ["root wave1"], acceptance_slice: [] },
     text: "marker:root-w1",
-    dependsOn: [{ node: "a", summary: true }, { node: "b", summary: true }],
+    dependsOn: [{ node: "a", deliverable: true }, { node: "b", deliverable: true }],
   })
   await ctx.run("terminal", {
     brief: { your_work: ["root wave2"], acceptance_slice: [] },

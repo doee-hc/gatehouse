@@ -40,7 +40,7 @@ function extractNestedRunStatements(source: string) {
   return statements
 }
 
-/** Ordered run activations from plan steps (includes nested fork tracks). */
+/** Ordered run activations from plan steps (includes nested parallel tracks). */
 export function listPlanRunActivations(plan: Pick<OrchestrationPlan, "steps">): PlanRunActivation[] {
   const activations: PlanRunActivation[] = []
 
@@ -54,7 +54,7 @@ export function listPlanRunActivations(plan: Pick<OrchestrationPlan, "steps">): 
       })
       continue
     }
-    if (step.op === "fork") {
+    if (step.op === "parallel" || step.op === "pipeline") {
       for (const innerStatement of extractNestedRunStatements(step.statement)) {
         const targetNodeId = extractRunTargetFromStatement(innerStatement)
         if (!targetNodeId) continue
@@ -195,20 +195,20 @@ function findMatchingBrace(source: string, openBraceIndex: number) {
   return source.length
 }
 
-function extractForkTrackBodies(statement: string) {
-  const forkMatch = /\bctx\.fork\s*\(/.exec(statement)
-  if (!forkMatch) return null
+function extractParallelTrackBodies(statement: string) {
+  const parallelMatch = /\bctx\.parallel\s*\(/.exec(statement)
+  if (!parallelMatch) return null
 
-  const openParenIndex = statement.indexOf("(", forkMatch.index)
+  const openParenIndex = statement.indexOf("(", parallelMatch.index)
   if (openParenIndex < 0) return null
 
   const closeParenIndex = findCallEnd(statement, openParenIndex)
-  const forkArgs = statement.slice(openParenIndex + 1, closeParenIndex).trim()
-  const openBracketIndex = forkArgs.indexOf("[")
+  const parallelArgs = statement.slice(openParenIndex + 1, closeParenIndex).trim()
+  const openBracketIndex = parallelArgs.indexOf("[")
   if (openBracketIndex < 0) return null
 
-  const closeBracketIndex = findMatchingBracket(forkArgs, openBracketIndex)
-  const arrayBody = forkArgs.slice(openBracketIndex + 1, closeBracketIndex)
+  const closeBracketIndex = findMatchingBracket(parallelArgs, openBracketIndex)
+  const arrayBody = parallelArgs.slice(openBracketIndex + 1, closeBracketIndex)
   return splitTopLevelCommaList(arrayBody)
 }
 
@@ -225,7 +225,7 @@ function extractAsyncArrowBody(trackSource: string) {
 
 function extractTopLevelAwaitStatements(source: string) {
   const trimmed = source.trim()
-  const boundaryPattern = /\bawait\s+ctx\.(?:run|fork)\s*\(/gm
+  const boundaryPattern = /\bawait\s+ctx\.(?:run|parallel)\s*\(/gm
   const starts: number[] = []
   let match: RegExpExecArray | null
   while ((match = boundaryPattern.exec(trimmed)) !== null) {
@@ -245,33 +245,33 @@ function extractTopLevelAwaitStatements(source: string) {
   return statements
 }
 
-/** Ordered run activations from a compiled plan (includes nested fork tracks). */
+/** Ordered run activations from a compiled plan (includes nested parallel tracks). */
 export function activatedNodeIds(plan: OrchestrationPlan) {
   return new Set(listPlanRunActivations(plan).map((activation) => activation.targetNodeId))
 }
 
-/** Summary dependsOn sources declared for activations targeting `nodeId`. */
-export function dependsOnSummaryNodes(plan: Pick<OrchestrationPlan, "steps">, nodeId: string) {
+/** Deliverable dependsOn sources declared for activations targeting `nodeId`. */
+export function dependsOnDeliverableNodes(plan: Pick<OrchestrationPlan, "steps">, nodeId: string) {
   const sources = new Set<string>()
   for (const activation of listPlanRunActivations(plan)) {
     if (activation.targetNodeId !== nodeId) continue
     for (const dep of activation.dependsOn) {
-      if (dep.summary && dep.node !== nodeId) sources.add(dep.node)
+      if (dep.deliverable && dep.node !== nodeId) sources.add(dep.node)
     }
   }
   return [...sources]
 }
 
 export function planChildNodeIds(plan: Pick<OrchestrationPlan, "steps">, nodeId: string) {
-  return dependsOnSummaryNodes(plan, nodeId)
+  return dependsOnDeliverableNodes(plan, nodeId)
 }
 
-export function dependsOnSummarySubtreeNodeIds(plan: Pick<OrchestrationPlan, "steps">, nodeId: string) {
+export function dependsOnDeliverableSubtreeNodeIds(plan: Pick<OrchestrationPlan, "steps">, nodeId: string) {
   const ids = new Set<string>([nodeId])
   const queue = [nodeId]
   while (queue.length > 0) {
     const current = queue.shift()!
-    for (const source of dependsOnSummaryNodes(plan, current)) {
+    for (const source of dependsOnDeliverableNodes(plan, current)) {
       if (ids.has(source)) continue
       ids.add(source)
       queue.push(source)
@@ -283,7 +283,7 @@ export function dependsOnSummarySubtreeNodeIds(plan: Pick<OrchestrationPlan, "st
 export function coordinatorNodeIds(plan: Pick<OrchestrationPlan, "steps">) {
   const ids = new Set<string>()
   for (const activation of listPlanRunActivations(plan)) {
-    if (activation.dependsOn.some((dep) => dep.summary)) ids.add(activation.targetNodeId)
+    if (activation.dependsOn.some((dep) => dep.deliverable)) ids.add(activation.targetNodeId)
   }
   return ids
 }
@@ -302,12 +302,12 @@ export function listPlanExecutionTracks(plan: OrchestrationPlan): PlanExecutionT
   let mainTrack: string[] = []
 
   for (const step of plan.steps) {
-    if (step.op === "fork") {
+    if (step.op === "parallel") {
       if (mainTrack.length > 0) {
         tracks.push({ trackId: mainTrack[0]!, nodeIds: [...mainTrack] })
         mainTrack = []
       }
-      for (const trackSource of extractForkTrackBodies(step.statement) ?? []) {
+      for (const trackSource of extractParallelTrackBodies(step.statement) ?? []) {
         const nodeIds = extractTopLevelAwaitStatements(extractAsyncArrowBody(trackSource))
           .map((statement) => extractRunTargetFromStatement(statement))
           .filter((nodeId): nodeId is string => Boolean(nodeId))
@@ -335,11 +335,11 @@ export function planTrackForNode(plan: OrchestrationPlan, team: TeamSpec, nodeId
 
   for (const activation of listPlanRunActivations(plan)) {
     for (const dep of activation.dependsOn) {
-      if (dep.summary && dep.node === nodeId) return activation.targetNodeId
+      if (dep.deliverable && dep.node === nodeId) return activation.targetNodeId
     }
   }
 
-  if (dependsOnSummaryNodes(plan, nodeId).length > 0) return nodeId
+  if (dependsOnDeliverableNodes(plan, nodeId).length > 0) return nodeId
   return nodeId
 }
 
@@ -360,8 +360,8 @@ export function teamNodeOrder(team: TeamSpec, plan?: OrchestrationPlan) {
   return ordered
 }
 
-export function planSummaryDescendantNodeIds(plan: Pick<OrchestrationPlan, "steps">, nodeId: string) {
-  return dependsOnSummarySubtreeNodeIds(plan, nodeId).filter((id) => id !== nodeId)
+export function planDeliverableDescendantNodeIds(plan: Pick<OrchestrationPlan, "steps">, nodeId: string) {
+  return dependsOnDeliverableSubtreeNodeIds(plan, nodeId).filter((id) => id !== nodeId)
 }
 
 export function innerNodeShowsMissionContract(
@@ -370,5 +370,5 @@ export function innerNodeShowsMissionContract(
   plan: Pick<OrchestrationPlan, "steps">,
 ) {
   if (nodeId === team.terminal) return true
-  return dependsOnSummaryNodes(plan, nodeId).length > 0
+  return dependsOnDeliverableNodes(plan, nodeId).length > 0
 }

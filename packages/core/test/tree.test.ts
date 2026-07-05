@@ -164,7 +164,7 @@ nodes:
           id: "step-1",
           op: "run",
           nodeId: "root",
-          statement: 'await ctx.run("root", { dependsOn: [{ node: "leaf", summary: true }] })',
+          statement: 'await ctx.run("root", { dependsOn: [{ node: "leaf", deliverable: true }] })',
         },
       ],
     }

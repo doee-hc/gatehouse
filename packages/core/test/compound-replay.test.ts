@@ -4,6 +4,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import type { PluginInput } from "@opencode-ai/plugin"
 import { createMissionContext } from "../src/orchestration/ctx-host.ts"
+import { mergeAndSaveBrief } from "../src/orchestration/events.ts"
 import {
   decideReplyPrompt,
   decideSetBriefDeliver,
@@ -92,7 +93,7 @@ describe("replay policy", () => {
       }),
     ).toBe("deliver")
     expect(planStepKind("run")).toBe("linear")
-    expect(planStepKind("fork")).toBe("compound")
+    expect(planStepKind("parallel")).toBe("compound")
   })
 })
 
@@ -119,8 +120,8 @@ describe("replay policy in mission context", () => {
           { id: "step-0", op: "run", statement: 'await ctx.run("a")' },
           {
             id: input.planStep.id,
-            op: "fork",
-            statement: "await ctx.fork([])",
+            op: "parallel",
+            statement: "await ctx.parallel([])",
           },
         ]),
       )
@@ -170,6 +171,7 @@ describe("replay policy in mission context", () => {
       state.nodes.a = { status: "done", completed_at: new Date().toISOString(), round: 1 }
       writeOrchestrationState(dir, state)
 
+      await mergeAndSaveBrief(dir, "compound-m1", "a", { your_work: ["wave2"], acceptance_slice: ["done"] })
       await engine.prompt("a", { text: "wave2", reply: true })
 
       expect(promptTexts.some((text) => text.includes("wave2"))).toBe(true)

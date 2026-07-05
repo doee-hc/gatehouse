@@ -1,19 +1,19 @@
 import type { PluginInput } from "@opencode-ai/plugin"
 import { readNodeBriefRegistry } from "../execution/artifacts.ts"
 import { buildDirectedNotification, gatehouseMessage } from "../i18n.ts"
-import { gatehouseLog } from "../log.ts"
 import { readLocaleSync } from "../locale.ts"
 import { readAgentNamesSync } from "../names.ts"
 import { innerAgentId } from "../registry/types.ts"
 import type { RegistryStore } from "../registry/store.ts"
 import { promptSession } from "../session/client.ts"
-import { assertDependsOnSummaryReady, formatDependsOnSummaryBlock } from "./completion.ts"
 import {
-  normalizeDependsOn,
-  summaryNodeIds,
-  waitNodeIds,
-} from "./depends-on.ts"
+  assertDependsOnDeliverableReady,
+  formatDependsOnStructuredBlock,
+  formatDependsOnSummaryBlock,
+} from "./completion.ts"
+import { deliverableNodeIds, normalizeDependsOn } from "./depends-on.ts"
 import { readOrchestrationState } from "./state.ts"
+import { runMissingBriefError } from "./run.ts"
 import type { PromptInput } from "./types.ts"
 import type { TeamSpec } from "../tree/types.ts"
 
@@ -48,30 +48,40 @@ export async function deliverOrchestrationPrompt(input: {
   if (input.prompt.reply) {
     let activationText = input.prompt.text.trim()
     const dependsOn = normalizeDependsOn(input.prompt.dependsOn)
-    const injectSummary = summaryNodeIds(dependsOn)
-    if (injectSummary.length) {
+    const injectDeliverable = deliverableNodeIds(dependsOn)
+    if (injectDeliverable.length) {
       const state = readOrchestrationState(input.plugin.directory, input.missionId)
       if (!state) throw new Error(`orchestration state missing for ${input.missionId}`)
-      if (!input.team) throw new Error("dependsOn summary requires team spec for validation")
-      assertDependsOnSummaryReady(input.team, state, injectSummary)
-      const dependsOnSummaryBlock = formatDependsOnSummaryBlock(locale, state, injectSummary)
+      if (!input.team) throw new Error("dependsOn deliverable requires team spec for validation")
+      await assertDependsOnDeliverableReady(
+        input.plugin.directory,
+        input.missionId,
+        input.team,
+        state,
+        injectDeliverable,
+      )
+      const dependsOnSummaryBlock = formatDependsOnSummaryBlock(locale, state, injectDeliverable)
       if (dependsOnSummaryBlock.trim()) {
         activationText = [activationText, "", dependsOnSummaryBlock].join("\n")
       }
+      const structuredNodeIds = injectDeliverable.filter(
+        (nodeId) => state.nodes[nodeId]?.completion?.structured_output !== undefined,
+      )
+      if (structuredNodeIds.length) {
+        const dependsOnStructuredBlock = formatDependsOnStructuredBlock(locale, state, structuredNodeIds)
+        if (dependsOnStructuredBlock.trim()) {
+          activationText = [activationText, "", dependsOnStructuredBlock].join("\n")
+        }
+      }
     }
     const brief = await readNodeBriefRegistry(input.plugin.directory, input.missionId, input.nodeId)
-    if (!brief) {
-      gatehouseLog(
-        "warn",
-        `[orchestration:${input.missionId}] activating ${input.nodeId} without node brief (ctx.run brief not set)`,
-      )
-      const leadName = readAgentNamesSync(input.plugin.directory).lead
+    if (!brief) throw runMissingBriefError(input.nodeId)
+    if (brief.completion_schema) {
       activationText = [
         activationText,
         "",
-        gatehouseMessage("execution.workOrder.missingBriefWarning", locale, {
-          node_id: input.nodeId,
-          lead_name: leadName,
+        gatehouseMessage("execution.workOrder.structuredCompletionHint", locale, {
+          schema: JSON.stringify(brief.completion_schema, null, 2),
         }),
       ].join("\n")
     }

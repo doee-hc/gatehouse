@@ -3,7 +3,7 @@ import { missionScriptErrorHint } from "../src/orchestration/script-error-hints.
 
 describe("missionScriptErrorHint", () => {
   test("returns hint for common architect failure codes", () => {
-    expect(missionScriptErrorHint("SCRIPT_SERIAL_TRACK_BLOCK")).toContain("ctx.fork")
+    expect(missionScriptErrorHint("SCRIPT_SERIAL_TRACK_BLOCK")).toContain("ctx.parallel")
     expect(missionScriptErrorHint("SCRIPT_MISSING_BRIEF")).toContain("brief:")
   })
 

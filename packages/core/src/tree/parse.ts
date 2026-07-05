@@ -1,6 +1,6 @@
 import { INNER_EXECUTION_AGENT } from "../registry/types.ts"
 import type { OrchestrationPlan } from "../orchestration/plan-types.ts"
-import { dependsOnSummaryNodes } from "../orchestration/plan-graph.ts"
+import { dependsOnDeliverableNodes } from "../orchestration/plan-graph.ts"
 import type { TeamSpec, TeamSpecNode, TreeManifest, TreeNode } from "./types.ts"
 import { isRecord, parseYaml, readString } from "../yaml.ts"
 
@@ -105,7 +105,7 @@ export function modelForInnerNode(
   plan: OrchestrationPlan,
   nodeId: string,
 ) {
-  return dependsOnSummaryNodes(plan, nodeId).length > 0 ? models.coordinator : models.executor
+  return dependsOnDeliverableNodes(plan, nodeId).length > 0 ? models.coordinator : models.executor
 }
 
 export function manifestMembers(manifest: TreeManifest): import("./types.ts").TreeMember[] {

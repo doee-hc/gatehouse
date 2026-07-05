@@ -27,7 +27,7 @@ disable-model-invocation: true
 严格按 kickoff 快照中的**编排脚本顺序**：
 
 1. 每个 `run` 步骤 → 分析 `context/<node_id>/`。
-2. 每个 `fork` 步骤 → 按声明顺序分析所列兄弟节点（并行段；重点关注等待/汇总/协调行为）。
+2. 每个 `parallel` 步骤 → 按声明顺序分析所列兄弟节点（并行段；重点关注等待/汇总/协调行为）。
 3. 优先 `timeline.md` + `metrics.json`；grep 后再读 `messages.json` 片段。
 
 ## 产出

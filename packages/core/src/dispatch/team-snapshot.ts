@@ -4,7 +4,7 @@ import { readLocaleSync } from "../locale.ts"
 import type { OrchestrationPlan } from "../orchestration/plan-types.ts"
 import {
   planChildNodeIds,
-  planSummaryDescendantNodeIds,
+  planDeliverableDescendantNodeIds,
   teamNodeOrder,
 } from "../orchestration/plan-graph.ts"
 import {
@@ -87,7 +87,7 @@ export function formatAcceptanceSubtreeSnapshot(
   acceptanceNodeId: string,
   locale: GatehouseLocale,
 ) {
-  const allowed = new Set<string>([acceptanceNodeId, ...planSummaryDescendantNodeIds(plan, acceptanceNodeId)])
+  const allowed = new Set<string>([acceptanceNodeId, ...planDeliverableDescendantNodeIds(plan, acceptanceNodeId)])
   const nodeIds = teamNodeOrder(spec, plan).filter((nodeId) => allowed.has(nodeId))
   const lines = [gatehouseMessage("dispatch.teamSnapshot.subtreeHeader", locale)]
   for (const nodeId of nodeIds) {

@@ -32,7 +32,7 @@ afterEach(() => {
 
 describe("complex orchestration scripts validate", () => {
   const cases = [
-    ["dualTrackForkFinal", SCRIPT.dualTrackForkFinal],
+    ["dualTrackParallelFinal", SCRIPT.dualTrackParallelFinal],
     ["dualTrackIntraFanOut", SCRIPT.dualTrackIntraFanOut],
     ["deepHierarchyFanOut", SCRIPT.deepHierarchyFanOut],
     ["intraFanOutCompoundMultiRound", SCRIPT.intraFanOutCompoundMultiRound],
@@ -51,12 +51,12 @@ describe("complex orchestration scripts validate", () => {
 })
 
 describe("orchestration replay complex scenarios", () => {
-  test("dual-track fork: inter-group parallel with per-track serial rollup", async () => {
+  test("dual-track parallel: inter-group parallel with per-track serial rollup", async () => {
     const missionId = "complex-dual-track-m1"
     activeMissions.add(missionId)
     const env = await createReplayTestEnv({
       missionId,
-      scriptSource: SCRIPT.dualTrackForkFinal(missionId),
+      scriptSource: SCRIPT.dualTrackParallelFinal(missionId),
     })
 
     try {
@@ -85,12 +85,12 @@ describe("orchestration replay complex scenarios", () => {
     }
   })
 
-  test("dual-track fork resume: done track A skipped, track B still runs", async () => {
+  test("dual-track parallel resume: done track A skipped, track B still runs", async () => {
     const missionId = "complex-dual-resume-m1"
     activeMissions.add(missionId)
     const env = await createReplayTestEnv({
       missionId,
-      scriptSource: SCRIPT.dualTrackForkFinal(missionId),
+      scriptSource: SCRIPT.dualTrackParallelFinal(missionId),
     })
 
     try {
@@ -246,7 +246,7 @@ describe("orchestration replay complex scenarios", () => {
     }
   })
 
-  test("intra fan-out + compound multi-round on coordinator inside fork", async () => {
+  test("intra fan-out + compound multi-round on coordinator inside parallel", async () => {
     const missionId = "complex-compound-fan-m1"
     activeMissions.add(missionId)
     const env = await createReplayTestEnv({
@@ -307,7 +307,7 @@ describe("orchestration replay complex scenarios", () => {
     }
   })
 
-  test("dual-track then root linear multi-round after fork completes", async () => {
+  test("dual-track then root linear multi-round after parallel completes", async () => {
     const missionId = "complex-root-multiround-m1"
     activeMissions.add(missionId)
     const env = await createReplayTestEnv({
@@ -335,12 +335,12 @@ describe("orchestration replay complex scenarios", () => {
     }
   })
 
-  test("crash during dual-track fork then resume continues unfinished track", async () => {
+  test("crash during dual-track parallel then resume continues unfinished track", async () => {
     const missionId = "complex-dual-crash-m1"
     activeMissions.add(missionId)
     const env = await createReplayTestEnv({
       missionId,
-      scriptSource: SCRIPT.dualTrackForkFinal(missionId),
+      scriptSource: SCRIPT.dualTrackParallelFinal(missionId),
     })
 
     try {

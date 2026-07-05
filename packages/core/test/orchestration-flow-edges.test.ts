@@ -14,7 +14,7 @@ describe("portal orchestration flow edges", () => {
       {
         id: "step-1",
         op: "run",
-        statement: `await ctx.run("a", { brief: { your_work: ["a"], acceptance_slice: ["done"] }, text: "summary", dependsOn: [{ node: "a1", summary: true }] })`,
+        statement: `await ctx.run("a", { brief: { your_work: ["a"], acceptance_slice: ["done"] }, text: "summary", dependsOn: [{ node: "a1", deliverable: true }] })`,
         nodeId: "a",
       },
       {
@@ -26,7 +26,7 @@ describe("portal orchestration flow edges", () => {
       {
         id: "step-3",
         op: "run",
-        statement: `await ctx.run("terminal", { brief: { your_work: ["root"], acceptance_slice: ["done"] }, text: "final", dependsOn: [{ node: "a", summary: true }, { node: "leaf", summary: true }] })`,
+        statement: `await ctx.run("terminal", { brief: { your_work: ["root"], acceptance_slice: ["done"] }, text: "final", dependsOn: [{ node: "a", deliverable: true }, { node: "leaf", deliverable: true }] })`,
         nodeId: "terminal",
       },
     ]
@@ -35,9 +35,9 @@ describe("portal orchestration flow edges", () => {
     const edges = buildPortalOrchestrationFlowEdges(planSteps, [...states])
 
     expect(edges).toEqual([
-      { step_id: "step-1", from: "a1", to: "a", op: "run", state: "current", kind: "summary" },
-      { step_id: "step-3", from: "a", to: "terminal", op: "run", state: "pending", kind: "summary" },
-      { step_id: "step-3", from: "leaf", to: "terminal", op: "run", state: "pending", kind: "summary" },
+      { step_id: "step-1", from: "a1", to: "a", op: "run", state: "current", kind: "deliverable" },
+      { step_id: "step-3", from: "a", to: "terminal", op: "run", state: "pending", kind: "deliverable" },
+      { step_id: "step-3", from: "leaf", to: "terminal", op: "run", state: "pending", kind: "deliverable" },
     ])
   })
 
@@ -111,19 +111,19 @@ describe("portal orchestration flow edges", () => {
     ])
   })
 
-  test("extracts nested run steps inside ctx.fork for rollup and serial arrows", () => {
+  test("extracts nested run steps inside ctx.parallel for rollup and serial arrows", () => {
     const planSteps: PlanStep[] = [
       {
         id: "step-0",
-        op: "fork",
+        op: "parallel",
         statement: `
-await ctx.fork([
+await ctx.parallel([
   async () => {
     await ctx.run("gpt-researcher", { text: "go" })
     await ctx.run("claude-researcher", { text: "go" })
     await ctx.run("research-lead", {
       text: "summary",
-      dependsOn: [{ node: "gpt-researcher", summary: true }, { node: "claude-researcher", summary: true }],
+      dependsOn: [{ node: "gpt-researcher", deliverable: true }, { node: "claude-researcher", deliverable: true }],
     })
   },
   async () => {
@@ -131,7 +131,7 @@ await ctx.fork([
     await ctx.run("pricing-analyst", { text: "go" })
     await ctx.run("analysis-lead", {
       text: "summary",
-      dependsOn: [{ node: "benchmark-analyst", summary: true }, { node: "pricing-analyst", summary: true }],
+      dependsOn: [{ node: "benchmark-analyst", deliverable: true }, { node: "pricing-analyst", deliverable: true }],
     })
   },
 ])`,
@@ -153,7 +153,7 @@ await ctx.fork([
         to: "research-lead",
         op: "run",
         state: "done",
-        kind: "summary",
+        kind: "deliverable",
       },
       {
         step_id: "step-0",
@@ -161,7 +161,7 @@ await ctx.fork([
         to: "research-lead",
         op: "run",
         state: "done",
-        kind: "summary",
+        kind: "deliverable",
       },
       {
         step_id: "step-0",
@@ -177,7 +177,7 @@ await ctx.fork([
         to: "analysis-lead",
         op: "run",
         state: "done",
-        kind: "summary",
+        kind: "deliverable",
       },
       {
         step_id: "step-0",
@@ -185,18 +185,18 @@ await ctx.fork([
         to: "analysis-lead",
         op: "run",
         state: "done",
-        kind: "summary",
+        kind: "deliverable",
       },
     ])
   })
 
-  test("does not link parallel fork tracks that dispatch sibling nodes", () => {
+  test("does not link parallel tracks that dispatch sibling nodes", () => {
     const planSteps: PlanStep[] = [
       {
         id: "step-0",
-        op: "fork",
+        op: "parallel",
         statement: `
-await ctx.fork([
+await ctx.parallel([
   async () => {
     await ctx.run("playbook-synthesis", { text: "go" })
   },
@@ -214,9 +214,9 @@ await ctx.fork([
         statement: `await ctx.run("terminal", {
   text: "summary",
   dependsOn: [
-    { node: "playbook-synthesis", summary: true },
-    { node: "playbook-assessment", summary: true },
-    { node: "playbook-roadmap", summary: true },
+    { node: "playbook-synthesis", deliverable: true },
+    { node: "playbook-assessment", deliverable: true },
+    { node: "playbook-roadmap", deliverable: true },
   ],
 })`,
         nodeId: "terminal",
@@ -230,7 +230,7 @@ await ctx.fork([
         to: "terminal",
         op: "run",
         state: "done",
-        kind: "summary",
+        kind: "deliverable",
       },
       {
         step_id: "step-1",
@@ -238,7 +238,7 @@ await ctx.fork([
         to: "terminal",
         op: "run",
         state: "done",
-        kind: "summary",
+        kind: "deliverable",
       },
       {
         step_id: "step-1",
@@ -246,7 +246,7 @@ await ctx.fork([
         to: "terminal",
         op: "run",
         state: "done",
-        kind: "summary",
+        kind: "deliverable",
       },
     ])
   })

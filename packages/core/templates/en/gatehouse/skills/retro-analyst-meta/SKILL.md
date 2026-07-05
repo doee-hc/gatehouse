@@ -27,7 +27,7 @@ You are **{{architect_name}}**'s retro assistant (empty context). Your job is em
 Follow **orchestration script order** from the kickoff snapshot:
 
 1. For each `run` step → analyze that node's `context/<node_id>/`.
-2. For each `fork` step → analyze listed siblings in declared order (parallel segment; focus on coordination/wait/rollup behavior).
+2. For each `parallel` step → analyze listed siblings in declared order (parallel segment; focus on coordination/wait/rollup behavior).
 3. Prefer `timeline.md` + `metrics.json`; grep before reading `messages.json` fragments.
 
 ## Output

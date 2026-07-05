@@ -20,13 +20,13 @@ export function trimPlanStatementChunk(chunk: string) {
   return trimmed.trim()
 }
 
-/** Split orchestrate body into top-level await ctx.run/fork statements. */
+/** Split orchestrate body into top-level await ctx.run/parallel/pipeline statements. */
 export function splitOrchestrateStatements(orchestrateSource: string) {
   const statements: string[] = []
   const trimmed = orchestrateSource.trim()
   if (!trimmed) return statements
 
-  const boundaryPattern = /\bawait\s+ctx\.(?:run|fork)\s*\(/gm
+  const boundaryPattern = /\bawait\s+ctx\.(?:run|parallel|pipeline)\s*\(/gm
   let match: RegExpExecArray | null
   const starts: number[] = []
   while ((match = boundaryPattern.exec(trimmed)) !== null) {
@@ -38,7 +38,7 @@ export function splitOrchestrateStatements(orchestrateSource: string) {
   if (starts.length === 0) {
     throw new MissionScriptParseError(
       "SCRIPT_EMPTY_PLAN",
-      "orchestrate body has no await ctx.run/fork steps",
+      "orchestrate body has no await ctx.run/parallel/pipeline steps",
     )
   }
 
@@ -65,8 +65,10 @@ function classifyStatement(statement: string, team: TeamSpec): PlanStep {
   if (/^await\s+ctx\.run\s*\(/.test(trimmed)) {
     op = "run"
     nodeId = extractNodeIdFromCall(trimmed, "run")
-  } else if (/^await\s+ctx\.fork\s*\(/.test(trimmed)) {
-    op = "fork"
+  } else if (/^await\s+ctx\.parallel\s*\(/.test(trimmed)) {
+    op = "parallel"
+  } else if (/^await\s+ctx\.pipeline\s*\(/.test(trimmed)) {
+    op = "pipeline"
   }
 
   if (nodeId && !team.nodes[nodeId]) {
@@ -98,7 +100,7 @@ function validateWaitSequence(steps: PlanStep[]) {
       dispatchCounts.set(step.nodeId, (dispatchCounts.get(step.nodeId) ?? 0) + 1)
     }
 
-    if (step.op === "fork") {
+    if (step.op === "parallel" || step.op === "pipeline") {
       // Compound step; inner order validated by simulation.
     }
   }
@@ -124,7 +126,7 @@ export function compileOrchestrationPlan(input: {
 
   const rawStatements = splitOrchestrateStatements(input.orchestrateSource)
   if (rawStatements.length === 0) {
-    throw new MissionScriptParseError("SCRIPT_EMPTY_PLAN", "orchestrate body has no await ctx.run/fork steps")
+    throw new MissionScriptParseError("SCRIPT_EMPTY_PLAN", "orchestrate body has no await ctx.run/parallel steps")
   }
 
   const steps: PlanStep[] = rawStatements.map((statement, index) => {

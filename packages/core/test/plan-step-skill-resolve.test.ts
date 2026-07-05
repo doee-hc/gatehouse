@@ -49,7 +49,7 @@ describe("skill domain auto resolve", () => {
         id: "step-2",
         op: "run",
         statement:
-          'await ctx.run("coordinator", { text: "summary", dependsOn: [{ node: "researcher-a", summary: true }, { node: "researcher-b", summary: true }] })',
+          'await ctx.run("coordinator", { text: "summary", dependsOn: [{ node: "researcher-a", deliverable: true }, { node: "researcher-b", deliverable: true }] })',
         nodeId: "coordinator",
       },
     ],
@@ -95,7 +95,7 @@ describe("skill domain auto resolve", () => {
         {
           id: "step-1",
           op: "run",
-          statement: 'await ctx.run("terminal", { text: "summary", dependsOn: [{ node: "worker", summary: true }] })',
+          statement: 'await ctx.run("terminal", { text: "summary", dependsOn: [{ node: "worker", deliverable: true }] })',
           nodeId: "terminal",
         },
       ],

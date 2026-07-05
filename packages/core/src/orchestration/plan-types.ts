@@ -2,7 +2,7 @@ import { createHash } from "node:crypto"
 
 export const ORCHESTRATION_PLAN_SCHEMA_VERSION = 1
 
-export type PlanStepOp = "run" | "fork" | "other"
+export type PlanStepOp = "run" | "parallel" | "pipeline" | "other"
 
 export type PlanStep = {
   id: string
@@ -29,7 +29,6 @@ export type OrchestrationBaselineNode = {
   status: "done"
   completed_at?: string
   summary?: string
-  artifact_paths?: string[]
 }
 
 export type OrchestrationBaseline = {
