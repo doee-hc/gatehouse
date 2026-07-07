@@ -5,7 +5,6 @@ import type { MissionExtractManifest, MissionManifest, MissionRetroManifest, Mis
 import type { OrchestrationPlan } from "../orchestration/plan/types.ts"
 import type { OuterProfile } from "../names.ts"
 import {
-  REGISTRY_SCHEMA_VERSION,
   type DeliverSystemNotificationInput,
   type RegisterAgentInput,
   type RegistryAgent,
@@ -13,7 +12,12 @@ import {
   type SendMessageInput,
   type SendMessageResult,
 } from "./types.ts"
-import { now, skillExtractCompletionKey, skillVerifyCompletionKey } from "./helpers.ts"
+import {
+  createEmptyRegistryState,
+  hydrateRegistryState,
+  registerAgentInState,
+  registryMemorySnapshot,
+} from "./store-memory.ts"
 import type { RecipientResolution, RegistryHost, RegistryState, ResolveOptions, StoreOptions } from "./internals.ts"
 import * as agentRegistry from "./agent-registry.ts"
 import * as extractService from "./extract-service.ts"
@@ -31,16 +35,7 @@ export class RegistryStore {
   private constructor(private options: StoreOptions) {
     this.db = new RegistryDatabase(options.directory)
     this.dbPath = this.db.path
-    this.state = {
-      agents: new Map(),
-      pendingDeliveries: [],
-      retroRuns: new Map(),
-      skillExtractRuns: new Map(),
-      skillExtractCompletions: new Map(),
-      skillVerifyRuns: new Map(),
-      skillVerifyCompletions: new Map(),
-      flushTail: Promise.resolve(),
-    }
+    this.state = createEmptyRegistryState()
   }
 
   get directory() {
@@ -73,32 +68,11 @@ export class RegistryStore {
   }
 
   private loadSnapshot() {
-    const snapshot = this.db.load()
-    this.state.agents = new Map(snapshot.agents.map((item) => [item.agentId, item]))
-    this.state.pendingDeliveries = snapshot.pendingDeliveries
-    this.state.retroRuns = new Map(snapshot.retroRuns.map((item) => [item.missionId, item]))
-    this.state.skillExtractRuns = new Map(snapshot.skillExtractRuns.map((item) => [item.missionId, item]))
-    this.state.skillExtractCompletions = new Map(
-      snapshot.skillExtractCompletions.map((item) => [skillExtractCompletionKey(item.missionId, item.nodeId), item]),
-    )
-    this.state.skillVerifyRuns = new Map(snapshot.skillVerifyRuns.map((item) => [item.missionId, item]))
-    this.state.skillVerifyCompletions = new Map(
-      snapshot.skillVerifyCompletions.map((item) => [skillVerifyCompletionKey(item.missionId, item.nodeId), item]),
-    )
+    hydrateRegistryState(this.state, this.db.load())
   }
 
   private memorySnapshot() {
-    return {
-      schemaVersion: REGISTRY_SCHEMA_VERSION,
-      updatedAt: now(),
-      agents: Array.from(this.state.agents.values()),
-      pendingDeliveries: [...this.state.pendingDeliveries],
-      retroRuns: Array.from(this.state.retroRuns.values()),
-      skillExtractRuns: Array.from(this.state.skillExtractRuns.values()),
-      skillExtractCompletions: Array.from(this.state.skillExtractCompletions.values()),
-      skillVerifyRuns: Array.from(this.state.skillVerifyRuns.values()),
-      skillVerifyCompletions: Array.from(this.state.skillVerifyCompletions.values()),
-    }
+    return registryMemorySnapshot(this.state)
   }
 
   private mutate<T>(fn: () => T) {
@@ -114,24 +88,7 @@ export class RegistryStore {
   }
 
   register(input: RegisterAgentInput) {
-    return this.mutate(() => {
-      const updatedAt = now()
-      const record: RegistryAgent = {
-        agentId: input.agentId,
-        scope: input.scope,
-        profile: input.profile,
-        sessionId: input.sessionId,
-        displayName: input.displayName,
-        status: input.status ?? "active",
-        createdAt: this.state.agents.get(input.agentId)?.createdAt ?? updatedAt,
-        updatedAt,
-        ...(input.missionId && { missionId: input.missionId }),
-        ...(input.nodeId && { nodeId: input.nodeId }),
-        ...(input.projectRootSessionId && { projectRootSessionId: input.projectRootSessionId }),
-      }
-      this.state.agents.set(input.agentId, record)
-      return record
-    })
+    return this.mutate(() => registerAgentInState(this.state, input))
   }
 
   registerOuterSession(input: { profile: string; sessionId: string; projectRootSessionId?: string }) {
