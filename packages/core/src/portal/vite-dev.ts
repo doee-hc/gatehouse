@@ -122,7 +122,7 @@ export async function createPortalViteDevServer(input: {
   try {
     const createViteServer = await importViteDevServerCreator(portalRoot)
     vite = await createViteServer({
-      terminal: portalRoot,
+      root: portalRoot,
       configFile: path.join(portalRoot, "vite.config.ts"),
       appType: "spa",
       envPrefix: ["VITE_", "GATEHOUSE_"],
