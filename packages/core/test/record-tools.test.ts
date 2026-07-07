@@ -43,12 +43,12 @@ describe("record tools", () => {
         sessionId: "ses_inner",
         profile: "build",
       })
-      store.registerRetroAnalyst({
+      store.retro.registerRetroAnalyst({
         missionId,
         sessionId: "ses_retro",
       })
       const record = retroRecordTool(pluginInput)
-      store.beginRetroRun(missionId)
+      store.retro.beginRetroRun(missionId)
 
       const missingReport = toolOutput(
         await record.execute({}, mockToolContext(dir, "ses_retro", RETRO_ANALYST_AGENT)),
@@ -87,7 +87,7 @@ describe("record tools", () => {
       const store = await getRegistryStore(pluginInput)
       const missionId = "m1"
       const nodeId = "node-doc"
-      store.registerExtractNode({
+      store.skillPipeline.registerExtractNode({
         missionId,
         nodeId,
         sessionId: "ses_extract",
@@ -105,7 +105,7 @@ describe("record tools", () => {
           },
         },
       })
-      store.beginSkillExtractRun(missionId, [nodeId])
+      store.skillPipeline.beginSkillExtractRun(missionId, [nodeId])
       const record = skillExtractRecordTool(pluginInput)
       const summaryRel = curatorSkillSummaryRelPath(missionId, nodeId)
       await Bun.write(path.join(dir, summaryRel), "# extract\n")

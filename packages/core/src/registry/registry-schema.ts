@@ -10,7 +10,7 @@ import {
   migrateRetroLeadNotifiedColumns,
   migrateSkillPipelineTables,
   SKILL_PIPELINE_SCHEMA_SQL,
-} from "./skill-pipeline-db.ts"
+} from "./skill-pipeline-schema.ts"
 import { configureSqlite, schemaReady } from "./sqlite.ts"
 import { REGISTRY_SCHEMA_VERSION } from "./types.ts"
 

@@ -130,7 +130,7 @@ export function assertCanStartRunning(doc: MissionsDocument, registry?: import("
   if (retro.length > 0) {
     let detail = retro.join(", ")
     if (registry && retro.length === 1) {
-      const readiness = registry.retroCompleteReadiness(retro[0]!)
+      const readiness = registry.retro.retroCompleteReadiness(retro[0]!)
       if (!readiness.ready) {
         detail += ` (retro summaries pending: ${readiness.pending.join(", ")})`
       }

@@ -91,7 +91,7 @@ export function missionCompleteTool(input: PluginInput) {
             assertRetroReadyForComplete(lead.registry, missionId)
           } catch (error) {
             const message = error instanceof Error ? error.message : String(error)
-            const readiness = lead.registry.retroCompleteReadiness(missionId)
+            const readiness = lead.registry.retro.retroCompleteReadiness(missionId)
             return {
               output: toolFail(toolName, "RETRO_SUMMARY_PENDING", message, {
                 pending: readiness.pending,

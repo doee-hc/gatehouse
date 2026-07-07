@@ -213,18 +213,18 @@ describe("mission lifecycle tools", () => {
 
       await registerOuterTeam(pluginInput)
       const registry = await getRegistryStore(pluginInput)
-      registry.registerRetroAnalyst({
+      registry.retro.registerRetroAnalyst({
         missionId,
         sessionId: "ses_retro_root",
       })
-      registry.beginRetroRun(missionId)
-      await registry.recordRetroSummary({
+      registry.retro.beginRetroRun(missionId)
+      await registry.retro.recordRetroSummary({
         missionId,
         sessionId: "ses_retro_root",
         reportPath: reportRel,
       })
-      expect(registry.retroStatus(missionId).architectNotified).toBe(true)
-      expect(registry.retroStatus(missionId).architectLeadNotified).toBe(false)
+      expect(registry.retro.retroStatus(missionId).architectNotified).toBe(true)
+      expect(registry.retro.retroStatus(missionId).architectLeadNotified).toBe(false)
 
       const output = toolOutput(
         await missionCompleteTool(pluginInput).execute(

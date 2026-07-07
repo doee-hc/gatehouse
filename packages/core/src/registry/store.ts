@@ -1,8 +1,7 @@
 import { RegistryDatabase } from "./db.ts"
 import { bindWatchdogStateStore } from "../watchdog/state-store.ts"
 import { normalizeOuterProfile } from "../names.ts"
-import type { MissionExtractManifest, MissionManifest, MissionRetroManifest, MissionTeamSpec, MissionVerifyManifest } from "../missions/manifest/types.ts"
-import type { OrchestrationPlan } from "../orchestration/plan/types.ts"
+import type { MissionManifest } from "../missions/manifest/types.ts"
 import type { OuterProfile } from "../names.ts"
 import {
   type DeliverSystemNotificationInput,
@@ -19,17 +18,19 @@ import {
   registryMemorySnapshot,
 } from "./store-memory.ts"
 import { RegistryStoreMissions } from "./store-missions.ts"
+import { RegistryStoreRetro } from "./store-retro.ts"
+import { RegistryStoreSkillPipeline } from "./store-skill-pipeline.ts"
 import type { RecipientResolution, RegistryHost, RegistryState, ResolveOptions, StoreOptions } from "./internals.ts"
 import * as agentRegistry from "./agent-registry.ts"
-import * as extractService from "./extract-service.ts"
 import * as messagingService from "./messaging-service.ts"
-import * as retroService from "./retro-service.ts"
 import * as sessionFactory from "./session-factory.ts"
 
 export type { StoreOptions } from "./internals.ts"
 
 export class RegistryStore {
   readonly dbPath: string
+  readonly retro: RegistryStoreRetro
+  readonly skillPipeline: RegistryStoreSkillPipeline
   private db: RegistryDatabase
   private readonly state: RegistryState
   private readonly missions: RegistryStoreMissions
@@ -38,6 +39,8 @@ export class RegistryStore {
     this.db = new RegistryDatabase(options.directory)
     this.dbPath = this.db.path
     this.missions = new RegistryStoreMissions(this.db)
+    this.retro = new RegistryStoreRetro(() => this.host())
+    this.skillPipeline = new RegistryStoreSkillPipeline(() => this.host())
     this.state = createEmptyRegistryState()
   }
 
@@ -96,42 +99,6 @@ export class RegistryStore {
 
   registerOuterSession(input: { profile: string; sessionId: string; projectRootSessionId?: string }) {
     return agentRegistry.registerOuterSession(this.host(), input)
-  }
-
-  syncRetroFromManifest(retro: MissionRetroManifest) {
-    return agentRegistry.syncRetroFromManifest(this.host(), retro)
-  }
-
-  registerRetroAnalyst(input: { missionId: string; sessionId: string; projectRootSessionId?: string }) {
-    return agentRegistry.registerRetroAnalyst(this.host(), input)
-  }
-
-  registerExtractNode(input: {
-    missionId: string
-    nodeId: string
-    sessionId: string
-    profile: string
-    projectRootSessionId?: string
-  }) {
-    return agentRegistry.registerExtractNode(this.host(), input)
-  }
-
-  registerVerifyNode(input: {
-    missionId: string
-    nodeId: string
-    sessionId: string
-    profile: string
-    projectRootSessionId?: string
-  }) {
-    return agentRegistry.registerVerifyNode(this.host(), input)
-  }
-
-  syncExtractFromManifest(extract: MissionExtractManifest, manifest: MissionManifest) {
-    return agentRegistry.syncExtractFromManifest(this.host(), extract, manifest)
-  }
-
-  syncVerifyFromManifest(verify: MissionVerifyManifest) {
-    return agentRegistry.syncVerifyFromManifest(this.host(), verify)
   }
 
   syncInnerFromManifest(manifest: MissionManifest) {
@@ -253,112 +220,5 @@ export class RegistryStore {
 
   flushPendingDeliveries() {
     return messagingService.flushPendingDeliveries(this.host())
-  }
-
-  beginRetroRun(missionId: string) {
-    return retroService.beginRetroRun(this.host(), missionId)
-  }
-
-  retroStatus(missionId: string) {
-    return retroService.retroStatus(this.host(), missionId)
-  }
-
-  retroCompleteReadiness(missionId: string) {
-    return retroService.retroCompleteReadiness(this.host(), missionId)
-  }
-
-  recordArchitectRetroSummary(input: { missionId: string; reportPath: string }) {
-    return retroService.recordArchitectRetroSummary(this.host(), input)
-  }
-
-  recordCuratorSkillSummary(input: { missionId: string; reportPath: string }) {
-    return retroService.recordCuratorSkillSummary(this.host(), input)
-  }
-
-  recordRetroSummary(input: { missionId: string; sessionId: string; reportPath: string }) {
-    return retroService.recordRetroSummary(this.host(), input)
-  }
-
-  kickoffRetroSession(manifest: MissionManifest, plan?: OrchestrationPlan) {
-    return retroService.kickoffRetroSession(this.host(), manifest, plan)
-  }
-
-  listIncompleteRetroRecordRuns() {
-    return retroService.listIncompleteRetroRecordRuns(this.host())
-  }
-
-  deactivateRetroAgent(missionId: string) {
-    return agentRegistry.deactivateRetroAgent(this.host(), missionId)
-  }
-
-  deactivateRetroAgentsForMission(missionId: string) {
-    return agentRegistry.deactivateRetroAgent(this.host(), missionId)
-  }
-
-  beginSkillExtractRun(missionId: string, expectedNodeIds: string[]) {
-    return extractService.beginSkillExtractRun(this.host(), missionId, expectedNodeIds)
-  }
-
-  skillExtractStatus(missionId: string) {
-    return extractService.skillExtractStatus(this.host(), missionId)
-  }
-
-  beginSkillVerifyRun(missionId: string, expectedNodeIds: string[]) {
-    return extractService.beginSkillVerifyRun(this.host(), missionId, expectedNodeIds)
-  }
-
-  skillVerifyStatus(missionId: string) {
-    return extractService.skillVerifyStatus(this.host(), missionId)
-  }
-
-  listIncompleteSkillVerifyRecordRuns() {
-    return extractService.listIncompleteSkillVerifyRecordRuns(this.host())
-  }
-
-  listIncompleteSkillExtractRecordRuns() {
-    return extractService.listIncompleteSkillExtractRecordRuns(this.host())
-  }
-
-  recordSkillExtractCompletion(input: {
-    missionId: string
-    nodeId: string
-    sessionId: string
-    summaryPath?: string
-  }) {
-    return extractService.recordSkillExtractCompletion(this.host(), input)
-  }
-
-  recordSkillVerifyCompletion(input: {
-    missionId: string
-    nodeId: string
-    sessionId: string
-    passed: boolean
-    reportPath?: string
-  }) {
-    return extractService.recordSkillVerifyCompletion(this.host(), input)
-  }
-
-  kickoffCuratorSkillAssignment(input: { missionId: string; objective?: string; spec: MissionTeamSpec }) {
-    return extractService.kickoffCuratorSkillAssignment(this.host(), input)
-  }
-
-  kickoffExtractSkillSessions(extract: MissionExtractManifest) {
-    return extractService.kickoffExtractSkillSessions(this.host(), extract)
-  }
-
-  kickoffSkillVerifySessions(verify: MissionVerifyManifest) {
-    return extractService.kickoffSkillVerifySessions(this.host(), verify)
-  }
-
-  deactivateExtractAgentForNode(missionId: string, nodeId: string) {
-    return agentRegistry.deactivateExtractAgentForNode(this.host(), missionId, nodeId)
-  }
-
-  deactivateVerifyAgentForNode(missionId: string, nodeId: string) {
-    return agentRegistry.deactivateVerifyAgentForNode(this.host(), missionId, nodeId)
-  }
-
-  deactivateVerifyAgentsForMission(missionId: string) {
-    return agentRegistry.deactivateVerifyAgentsForMission(this.host(), missionId)
   }
 }

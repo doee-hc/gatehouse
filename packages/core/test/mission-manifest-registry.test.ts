@@ -3,7 +3,7 @@ import path from "node:path"
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { RegistryDatabase } from "../src/registry/db.ts"
-import { readMissionManifest, readMissionManifestIndex, writeMissionManifest } from "../src/missions/manifest/store.ts"
+import { readMissionManifest, readMissionManifestIndex, writeMissionManifest, writeExtractManifest, writeVerifyManifest, findMissionBySession } from "../src/missions/manifest/store.ts"
 import { stringifyYaml } from "../src/yaml.ts"
 import { parseMissionsFile } from "../src/missions/parse.ts"
 import { parseYaml } from "../src/yaml.ts"
@@ -95,6 +95,45 @@ test("findMissionManifestByExecSession queries registry.db", async () => {
     const hit = new RegistryDatabase(dir, { readonly: true }).findMissionManifestByExecSession("ses-leaf")
     expect(hit?.missionId).toBe("m-tree-db")
     expect(hit?.manifest.terminal_node).toBe("terminal")
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test("findMissionBySession resolves extract and verify sessions", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "gh-tree-session-lookup-"))
+  try {
+    await writeMissionManifest(dir, sampleManifest())
+    await writeExtractManifest(dir, {
+      mission_id: "m-tree-db",
+      created_at: "2026-06-01T00:00:00Z",
+      extract_order: ["leaf"],
+      nodes: {
+        leaf: {
+          exec_session_id: "ses-leaf",
+          extract_session_id: "ses-extract-leaf",
+          skill_domain: "docs",
+        },
+      },
+    })
+    await writeVerifyManifest(dir, {
+      mission_id: "m-tree-db",
+      created_at: "2026-06-02T00:00:00Z",
+      verify_order: ["leaf"],
+      nodes: {
+        leaf: {
+          extract_session_id: "ses-extract-leaf",
+          verify_session_id: "ses-verify-leaf",
+          skill_domain: "docs",
+        },
+      },
+    })
+    const readonlyDb = () => new RegistryDatabase(dir, { readonly: true })
+    expect(readonlyDb().findMissionManifestByExtractSession("ses-extract-leaf")?.missionId).toBe("m-tree-db")
+    expect(readonlyDb().findMissionManifestByVerifySession("ses-verify-leaf")?.missionId).toBe("m-tree-db")
+    expect((await findMissionBySession(dir, "ses-extract-leaf"))?.missionId).toBe("m-tree-db")
+    expect((await findMissionBySession(dir, "ses-verify-leaf"))?.missionId).toBe("m-tree-db")
+    expect(await findMissionBySession(dir, "ses-missing")).toBeUndefined()
   } finally {
     await rm(dir, { recursive: true, force: true })
   }

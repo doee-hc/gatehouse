@@ -226,3 +226,14 @@ export type RegistryDatabaseFacade = ManifestDbFacade &
   MissionArtifactsDbFacade &
   WatchdogDbFacade &
   DeliveryDbFacade
+
+export function mixinRegistryDatabaseFacade(db: Database): RegistryDatabaseFacade {
+  return Object.assign(
+    attachManifestDb(db),
+    attachMissionRegistryDb(db),
+    attachOrchestrationDb(db),
+    attachMissionArtifactsDb(db),
+    attachWatchdogDb(db),
+    attachDeliveryDb(db),
+  )
+}

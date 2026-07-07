@@ -191,7 +191,7 @@ export async function waitForAllMissionAgentsIdle(input: {
 
 /** When missions.yaml is retro and Lead calls mission_complete(done), retro summary registration must finish. */
 export function assertRetroReadyForComplete(registry: RegistryStore, missionId: string) {
-  const readiness = registry.retroCompleteReadiness(missionId)
+  const readiness = registry.retro.retroCompleteReadiness(missionId)
   if (readiness.ready) return readiness
   throw new Error(
     `Mission ${missionId} retro summaries incomplete; wait for architect/curator summary registration before mission_complete(done): ${readiness.pending.join(", ")}`,

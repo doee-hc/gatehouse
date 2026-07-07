@@ -8,7 +8,7 @@ import { requireActiveMissionId } from "../missions/scope.ts"
 import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
 
 function retroSummaryReadinessPayload(missionId: string, registry: Awaited<ReturnType<typeof getRegistryStore>>) {
-  const readiness = registry.retroCompleteReadiness(missionId)
+  const readiness = registry.retro.retroCompleteReadiness(missionId)
   return {
     retro_summary_ready: readiness.ready,
     ...(readiness.pending.length > 0 && { remaining: readiness.pending.length }),
@@ -63,7 +63,7 @@ export function retroSummaryRecordTool(input: PluginInput) {
           }
         }
 
-        const recorded = await registry.recordArchitectRetroSummary({
+        const recorded = await registry.retro.recordArchitectRetroSummary({
           missionId,
           reportPath: reportRel,
         })
@@ -135,7 +135,7 @@ export function skillSummaryRecordTool(input: PluginInput) {
           }
         }
 
-        const recorded = await registry.recordCuratorSkillSummary({
+        const recorded = await registry.retro.recordCuratorSkillSummary({
           missionId,
           reportPath: reportRel,
         })

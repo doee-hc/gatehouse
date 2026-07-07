@@ -621,14 +621,14 @@ describe("registry harness", () => {
         sessionId: "ses_architect",
         displayName: "Architect",
       })
-      store.registerRetroAnalyst({
+      store.retro.registerRetroAnalyst({
         missionId: "m1",
         sessionId: "ses_retro_root",
       })
-      store.beginRetroRun("m1")
+      store.retro.beginRetroRun("m1")
       const reportRel = ".gatehouse/missions/m1/reports/retro-summary.md"
       await Bun.write(path.join(dir, reportRel), "# retro\n")
-      await store.recordRetroSummary({
+      await store.retro.recordRetroSummary({
         missionId: "m1",
         sessionId: "ses_retro_root",
         reportPath: reportRel,
@@ -637,7 +637,7 @@ describe("registry harness", () => {
       expect(promptCalls).toHaveLength(1)
       expect(promptCalls[0]?.sessionId).toBe("ses_architect")
       expect(promptCalls[0]?.text).toContain("Retro review ready")
-      expect(store.retroStatus("m1").status === "ok" && store.retroStatus("m1").architectNotified).toBe(true)
+      expect(store.retro.retroStatus("m1").status === "ok" && store.retro.retroStatus("m1").architectNotified).toBe(true)
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
@@ -689,25 +689,25 @@ describe("registry harness", () => {
         sessionId: "ses_architect",
         displayName: "Architect",
       })
-      store.registerRetroAnalyst({
+      store.retro.registerRetroAnalyst({
         missionId: "m1",
         sessionId: "ses_retro_root",
       })
-      store.beginRetroRun("m1")
+      store.retro.beginRetroRun("m1")
       const reportRel = ".gatehouse/missions/m1/reports/retro-summary.md"
       await Bun.write(path.join(dir, reportRel), "# retro\n")
-      await store.recordRetroSummary({
+      await store.retro.recordRetroSummary({
         missionId: "m1",
         sessionId: "ses_retro_root",
         reportPath: reportRel,
       })
-      expect(store.retroStatus("m1").architectSummarySubmitted).toBe(false)
+      expect(store.retro.retroStatus("m1").architectSummarySubmitted).toBe(false)
       const afterRetro = await readBlogPublishedDocument(dir)
       expect(afterRetro.posts.map((entry) => entry.id)).toEqual(["m1:retro:summary"])
 
       const summaryRel = ".gatehouse/missions/m1/reports/architect-summary.md"
       await Bun.write(path.join(dir, summaryRel), "# architect summary\n")
-      await store.recordArchitectRetroSummary({ missionId: "m1", reportPath: summaryRel })
+      await store.retro.recordArchitectRetroSummary({ missionId: "m1", reportPath: summaryRel })
 
       const afterArchitect = await readBlogPublishedDocument(dir)
       expect(afterArchitect.posts.map((entry) => entry.id)).toEqual([
@@ -715,9 +715,9 @@ describe("registry harness", () => {
         "m1:architect:summary",
       ])
 
-      expect(store.retroStatus("m1").architectSummarySubmitted).toBe(true)
-      expect(store.retroCompleteReadiness("m1").ready).toBe(true)
-      expect(store.retroStatus("m1").leadRetroSummaryNotified).toBe(true)
+      expect(store.retro.retroStatus("m1").architectSummarySubmitted).toBe(true)
+      expect(store.retro.retroCompleteReadiness("m1").ready).toBe(true)
+      expect(store.retro.retroStatus("m1").leadRetroSummaryNotified).toBe(true)
       const leadPrompts = promptCalls.filter((call) => call.sessionId === "ses_lead")
       expect(leadPrompts).toHaveLength(1)
       expect(leadPrompts[0]?.text).toContain("Retro summaries ready")

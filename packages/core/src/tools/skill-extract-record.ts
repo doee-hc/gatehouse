@@ -34,7 +34,7 @@ export function skillExtractRecordTool(input: PluginInput) {
             ...toolMetadata(toolName),
           }
         }
-        const skillExtractRun = registry.skillExtractStatus(missionId)
+        const skillExtractRun = registry.skillPipeline.skillExtractStatus(missionId)
         if (skillExtractRun.status !== "ok" || !skillExtractRun.run.expectedNodeIds.includes(nodeId)) {
           return {
             output: toolFail(
@@ -95,7 +95,7 @@ export function skillExtractRecordTool(input: PluginInput) {
           }
         }
 
-        await registry.recordSkillExtractCompletion({
+        await registry.skillPipeline.recordSkillExtractCompletion({
           missionId,
           nodeId,
           sessionId: context.sessionID,
@@ -109,7 +109,7 @@ export function skillExtractRecordTool(input: PluginInput) {
           nodeId,
           sessionId: context.sessionID,
         }).catch(() => undefined)
-        const status = registry.skillExtractStatus(missionId)
+        const status = registry.skillPipeline.skillExtractStatus(missionId)
         return {
           output: toolOk(toolName, {
             mission_id: missionId,

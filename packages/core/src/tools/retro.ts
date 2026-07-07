@@ -29,7 +29,7 @@ function retroAlreadyStartedResponse(
   retro: MissionRetroManifest,
   registry: RegistryStore,
 ) {
-  const retroStatus = registry.retroStatus(missionId)
+  const retroStatus = registry.retro.retroStatus(missionId)
   return {
     output: toolOk(toolName, {
       mission_id: missionId,
@@ -162,8 +162,8 @@ export function missionRetroTool(input: PluginInput) {
         } satisfies MissionRetroManifest
 
         await writeRetroManifest(input.directory, retro)
-        registry.syncRetroFromManifest(retro)
-        registry.beginRetroRun(manifest.mission_id)
+        registry.retro.syncRetroFromManifest(retro)
+        registry.retro.beginRetroRun(manifest.mission_id)
 
         await dumpMissionContext({
           client: input.client,
@@ -192,11 +192,11 @@ export function missionRetroTool(input: PluginInput) {
           spec: resolved.spec,
         })
         await writeExtractManifest(input.directory, extract)
-        registry.syncExtractFromManifest(extract, manifest)
+        registry.skillPipeline.syncExtractFromManifest(extract, manifest)
 
         await Promise.all([
-          registry.kickoffRetroSession(manifest, plan),
-          registry.kickoffExtractSkillSessions(extract),
+          registry.retro.kickoffRetroSession(manifest, plan),
+          registry.skillPipeline.kickoffExtractSkillSessions(extract),
         ])
         await registry.flushPendingDeliveries()
 
@@ -252,7 +252,7 @@ export function retroRecordTool(input: PluginInput) {
           }
         }
         const missionId = requireSenderMissionId(sender)
-        const retroRun = registry.retroStatus(missionId)
+        const retroRun = registry.retro.retroStatus(missionId)
         if (retroRun.status !== "ok") {
           return {
             output: toolFail(toolName, "NO_RETRO_RUN", `No active retro run for mission ${missionId}`),
@@ -280,7 +280,7 @@ export function retroRecordTool(input: PluginInput) {
           }
         }
 
-        await registry.recordRetroSummary({
+        await registry.retro.recordRetroSummary({
           missionId,
           sessionId: context.sessionID,
           reportPath: reportRel,
@@ -294,7 +294,7 @@ export function retroRecordTool(input: PluginInput) {
           sessionId: context.sessionID,
         }).catch(() => undefined)
 
-        const status = registry.retroStatus(missionId)
+        const status = registry.retro.retroStatus(missionId)
         return {
           output: toolOk(toolName, {
             mission_id: missionId,

@@ -223,7 +223,7 @@ export function submitOrchestrationTool(input: PluginInput) {
             }
           }
 
-          const kickoff = await registry.kickoffCuratorSkillAssignment({
+          const kickoff = await registry.skillPipeline.kickoffCuratorSkillAssignment({
             missionId: spec.mission_id,
             objective: contract?.objective,
             spec,

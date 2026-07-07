@@ -207,7 +207,7 @@ export function startRecordWatchdogs(
     registry,
     "retro_record",
     timing,
-    (store) => store.listIncompleteRetroRecordRuns(),
+    (store) => store.retro.listIncompleteRetroRecordRuns(),
     (store, missionId, _nodeId) => store.byAgentId(retroAgentId(missionId)),
     loadWatchdogRetroRecordWakePrompt,
   ).start()
@@ -217,7 +217,7 @@ export function startRecordWatchdogs(
     registry,
     "skill_record",
     timing,
-    (store) => store.listIncompleteSkillExtractRecordRuns(),
+    (store) => store.skillPipeline.listIncompleteSkillExtractRecordRuns(),
     (store, missionId, nodeId) => store.byAgentId(extractAgentId(missionId, nodeId)),
     loadWatchdogSkillRecordWakePrompt,
   ).start()
@@ -227,7 +227,7 @@ export function startRecordWatchdogs(
     registry,
     "skill_verify_record",
     timing,
-    (store) => store.listIncompleteSkillVerifyRecordRuns(),
+    (store) => store.skillPipeline.listIncompleteSkillVerifyRecordRuns(),
     (store, missionId, nodeId) => store.byAgentId(verifyAgentId(missionId, nodeId)),
     loadWatchdogSkillVerifyRecordWakePrompt,
   ).start()

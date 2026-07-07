@@ -36,7 +36,7 @@ export function skillVerifyRecordTool(input: PluginInput) {
             ...toolMetadata(toolName),
           }
         }
-        const verifyRun = registry.skillVerifyStatus(missionId)
+        const verifyRun = registry.skillPipeline.skillVerifyStatus(missionId)
         if (verifyRun.status !== "ok" || !verifyRun.run.expectedNodeIds.includes(nodeId)) {
           return {
             output: toolFail(
@@ -85,7 +85,7 @@ export function skillVerifyRecordTool(input: PluginInput) {
           }
         }
 
-        await registry.recordSkillVerifyCompletion({
+        await registry.skillPipeline.recordSkillVerifyCompletion({
           missionId,
           nodeId,
           sessionId: context.sessionID,
@@ -100,7 +100,7 @@ export function skillVerifyRecordTool(input: PluginInput) {
           nodeId,
           sessionId: context.sessionID,
         }).catch(() => undefined)
-        const status = registry.skillVerifyStatus(missionId)
+        const status = registry.skillPipeline.skillVerifyStatus(missionId)
         return {
           output: toolOk(toolName, {
             mission_id: missionId,
