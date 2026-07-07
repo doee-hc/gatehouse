@@ -18,6 +18,7 @@ import {
   registerAgentInState,
   registryMemorySnapshot,
 } from "./store-memory.ts"
+import { RegistryStoreMissions } from "./store-missions.ts"
 import type { RecipientResolution, RegistryHost, RegistryState, ResolveOptions, StoreOptions } from "./internals.ts"
 import * as agentRegistry from "./agent-registry.ts"
 import * as extractService from "./extract-service.ts"
@@ -31,10 +32,12 @@ export class RegistryStore {
   readonly dbPath: string
   private db: RegistryDatabase
   private readonly state: RegistryState
+  private readonly missions: RegistryStoreMissions
 
   private constructor(private options: StoreOptions) {
     this.db = new RegistryDatabase(options.directory)
     this.dbPath = this.db.path
+    this.missions = new RegistryStoreMissions(this.db)
     this.state = createEmptyRegistryState()
   }
 
@@ -55,7 +58,7 @@ export class RegistryStore {
       byAgentId: (agentId) => store.byAgentId(agentId),
       bySession: (sessionId) => store.bySession(sessionId),
       byProfile: (profile, scope) => store.byProfile(profile, scope),
-      getActiveMission: () => store.getActiveMission(),
+      getActiveMission: () => store.missions.getActiveMission(),
       resolveRecipient: (query, opts) => messagingService.resolveRecipient(store.host(), query, opts),
     }
   }
@@ -175,16 +178,15 @@ export class RegistryStore {
   }
 
   getActiveMission() {
-    return this.db.getActiveMission()
+    return this.missions.getActiveMission()
   }
 
   activateMission(record: import("./types.ts").RegistryMissionRecord) {
-    this.db.activateMission(record)
+    this.missions.activateMission(record)
   }
 
   syncMissionRegistryStatus(missionId: string, status: string, completedAt?: string) {
-    this.db.updateMissionStatus(missionId, status, completedAt)
-    if (status === "done" || status === "cancelled") this.db.deactivateMission(missionId)
+    this.missions.syncMissionRegistryStatus(missionId, status, completedAt)
   }
 
   purgePendingDeliveriesForMission(missionId: string) {

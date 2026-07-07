@@ -1,3 +1,14 @@
+export const REGISTRY_MISSION_RETRO_TABLE_SQL = `
+    CREATE TABLE IF NOT EXISTS registry_mission_retro (
+      mission_id TEXT PRIMARY KEY,
+      created_at TEXT NOT NULL,
+      retro_session_id TEXT NOT NULL,
+      analysis_order_json TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS registry_mission_retro_session_idx
+      ON registry_mission_retro(retro_session_id);
+`
+
 export const MISSION_MANIFEST_SCHEMA_SQL = `
     CREATE TABLE IF NOT EXISTS registry_execution (
       mission_id TEXT PRIMARY KEY,

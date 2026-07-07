@@ -108,10 +108,15 @@ export async function readMissionManifestIndex(projectDirectory: string): Promis
 }
 
 export async function findMissionBySession(projectDirectory: string, sessionId: string) {
-  const byExec = missionRegistry(projectDirectory, true).findMissionManifestByExecSession(sessionId)
+  const registry = missionRegistry(projectDirectory, true)
+  const byExec = registry.findMissionManifestByExecSession(sessionId)
   if (byExec) return byExec
-  const byRetro = missionRegistry(projectDirectory, true).findMissionManifestByRetroSession(sessionId)
+  const byRetro = registry.findMissionManifestByRetroSession(sessionId)
   if (byRetro) return byRetro
+  const byExtract = registry.findMissionManifestByExtractSession(sessionId)
+  if (byExtract) return byExtract
+  const byVerify = registry.findMissionManifestByVerifySession(sessionId)
+  if (byVerify) return byVerify
   return undefined
 }
 
