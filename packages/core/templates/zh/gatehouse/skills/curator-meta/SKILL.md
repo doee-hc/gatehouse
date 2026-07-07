@@ -58,9 +58,8 @@ Gatehouse 向每个 `build-extract` session 投递**同一份**全局模板；�
 |------|------|
 | 领域注册表 | `.gatehouse/skills/domains.yaml` |
 | 领域 skill | `.gatehouse/skills/by-domain/<id>/` |
-| 任务树 | `.gatehouse/missions/<id>/` |
-| 提炼摘要 | `.gatehouse/missions/<id>/reports/skills/<node_id>-extract.md` |
-| 验证报告 | `.gatehouse/missions/<id>/reports/skills/<node_id>-verify.md` |
+| 提炼/验证报告 | `.gatehouse/missions/<id>/reports/skills/` |
+| curator 摘要 | `.gatehouse/missions/<id>/reports/curator-summary.md` |
 | **全局提炼 prompt** | `.gatehouse/<locale>/prompts/architect/domain-skill-extract.md` |
 
 ## 铁律

@@ -18,7 +18,6 @@ permission:
   gatehouse_send_message: deny
   gatehouse_execution_complete: deny
   gatehouse_retro_record: deny
-  gatehouse_mission_info: allow
   gatehouse_list_team: deny
   gatehouse_mission_start: deny
   gatehouse_mission_retro: deny

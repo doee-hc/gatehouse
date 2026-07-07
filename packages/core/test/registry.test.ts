@@ -209,7 +209,7 @@ describe("registry harness", () => {
     const token = "registry-test-token"
     const capture = await startPortalInternalEventCapture(token)
     try {
-      await withPortalEnv(capture.port, token, async () => {
+      await withPortalEnv(capture, token, async () => {
         let sessionCounter = 0
         const mockClient: GatehouseClient = {
           session: {
@@ -515,7 +515,7 @@ describe("registry harness", () => {
     const token = "registry-test-token"
     const capture = await startPortalInternalEventCapture(token)
     try {
-      await withPortalEnv(capture.port, token, async () => {
+      await withPortalEnv(capture, token, async () => {
         const pluginInput = { directory: dir, client: mockClientMinimal() } as unknown as PluginInput
         const store = await getRegistryStore(pluginInput)
         store.registerOuterSession({

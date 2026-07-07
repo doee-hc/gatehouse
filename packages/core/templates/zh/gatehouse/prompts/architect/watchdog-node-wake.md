@@ -1,13 +1,13 @@
-# Execution watchdog
+# 执行节点 watchdog
 
-Mission **{{mission_id}}** node **{{node_id}}** is **running** but the session has been idle for **{{idle_seconds}}** seconds.
+Mission **{{mission_id}}** 节点 **{{node_id}}** 处于 **running**，但 session 已空闲 **{{idle_seconds}}** 秒。
 
-## Act now
+## 请立即处理
 
-1. If your current work order is **done**:
+1. 若当前工单**已完成**：
    - **`gatehouse_execution_complete(summary=..., force_reason=?, evidence=?)`**
 2. 若你是 **terminal 节点**且尚未提交交付：
-   - Confirm all nodes are done, then call **`gatehouse_execution_complete`**.
-3. If work is **not done** → resume immediately.
+   - 确认全树节点均已完成后，调用 **`gatehouse_execution_complete`**。
+3. 若工作**尚未完成** → 立即继续执行。
 
-This alert is only to unblock **this node**.
+本提醒仅用于解除**本节点**阻塞。

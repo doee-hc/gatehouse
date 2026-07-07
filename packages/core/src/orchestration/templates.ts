@@ -15,9 +15,6 @@ export function formatWorkOrderTextWithLocale(
   lines.push(
     "",
     gatehouseMessage("execution.workOrder.missionInfoRef", locale),
-    gatehouseMessage("execution.workOrder.completeHint", locale),
-    "",
-    gatehouseMessage("execution.workOrder.reworkHint", locale),
   )
   return lines.join("\n")
 }

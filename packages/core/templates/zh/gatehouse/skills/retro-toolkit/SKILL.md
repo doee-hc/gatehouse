@@ -1,17 +1,16 @@
 ---
-
-## name: retro-toolkit
+name: retro-toolkit
 description: >-
-  Shared retro analysis methodology and reusable scripts for Gatehouse retro-analyst sessions.
-  Use during mission retro when analyzing context/ dumps and promoting reusable retro tools.
+  Gatehouse 复盘分析可复用脚本与约定。retro-analyst session 分析 context/ 落盘时使用。
 metadata:
   gatehouse-kind: toolkit
   gatehouse-role: exec
 disable-model-invocation: true
+---
 
 # Retro 工具库 · retro-toolkit
 
-本 skill 补充 retro kickoff 未涵盖的**可复用工具方法论**。分析步骤见 kickoff 消息；此处聚焦工具目录约定与问题分类。
+本 skill 补充 **retro-analyst-meta** 未涵盖的**可复用工具方法论**。分析步骤见 meta；此处聚焦工具目录约定与问题分类。
 
 先复用 `.gatehouse/skills/retro-toolkit/tools/*/SKILL.md`，再按需扩展。
 
@@ -33,4 +32,3 @@ disable-model-invocation: true
 - tool 反复失败与重试
 - 用户中途介入与 prompt 约束不足
 - 所辖分支内节点间职责重叠
-

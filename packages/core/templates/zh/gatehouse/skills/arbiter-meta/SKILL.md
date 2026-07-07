@@ -1,8 +1,7 @@
 ---
 name: arbiter-meta
 description: >-
-  Reviews permission requests and records audit decisions for the Gatehouse outer arbiter profile.
-  Use when acting as profile arbiter — inspector queue and decide workflow.
+  审查权限申请并记录裁决结果。在 profile arbiter 下使用 — inspector queue 与 decide 流程。
 metadata:
   gatehouse-kind: meta
   gatehouse-role: arbiter

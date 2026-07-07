@@ -54,57 +54,21 @@ disable-model-invocation: true
 
 每个 inner 节点必填 `description`：一句话职责。详细任务与边界写在 `ctx.run({ brief: … })`。
 
-**Brief 约束：** 每个叶子需具体 `your_work`、含项目 `path:` 的 `acceptance_slice`（文件或目录路径均可，如 `path: reports/foo.md` 或 `path: reports/template/`），并列节点写清 scope 边界。完成后调用 `gatehouse_execution_complete(summary=...)`，在 summary 中写明做了什么、产出路径与未完成项。
+**Brief 约束：** 每个叶子需具体 `your_work`、含**项目** `path:` 的 `acceptance_slice`（文件或目录，如 `path: <node_id>/` 或 `path: reports/<node_id>/`），并列节点写清 scope 边界。**禁止**在 inner 节点 `acceptance_slice` 使用 `.gatehouse/` 路径 — 那是 outer 协调报告区，不是交付物。完成后调用 `gatehouse_execution_complete(summary=...)`，在 summary 中写明做了什么、产出路径与未完成项。
 
 ```typescript
 await ctx.run("researcher-a", {
   brief: {
     your_work: ["…"],
     not_your_job: ["…（sibling 节点职责，勿重复）"],
-    acceptance_slice: ["path: reports/researcher-a.md", "…"],
+    acceptance_slice: ["path: researcher-a/", "path: reports/researcher-a.json", "…"],
   },
 })
 ```
 
 **勿写 `profile`** — bootstrap 时所有 inner 节点均使用 `build` profile。
 
-```typescript
-export const team = {
-  mission_id: "<id>",
-  terminal: "<terminal-node-id>",
-  nodes: {
-    "<leaf-id>": {
-      description: "负责 <具体产出> 的执行成员",
-    },
-    "<terminal-node-id>": {
-      description: "产出 Mission 最终交付物",
-    },
-  },
-}
-
-export const meta = {
-  name: "<id>",
-  phases: ["阶段一", "阶段二"],
-}
-
-export default async function orchestrate(ctx) {
-  await ctx.run("<leaf-id>", {
-    brief: {
-      your_work: ["…"],
-      acceptance_slice: ["path: reports/<leaf-id>.md", "…"],
-    },
-  })
-
-  await ctx.run("<terminal-node-id>", {
-    brief: {
-      your_work: ["整合上游成果，产出最终交付物"],
-      acceptance_slice: ["path: …", "…"],
-    },
-    text: "请阅读上游 reports/ 下的产出并整合为最终交付物。",
-    dependsOn: [{ node: "<leaf-id>", deliverable: true }],
-  })
-}
-```
+完整脚本结构（`team`、`meta`、`orchestrate`、并行 track、`ctx.pipeline`）见 `.gatehouse/<locale>/prompts/architect/mission.script.template.ts`（`<locale>` 见 `.gatehouse/config.yaml`）。
 
 **团队与编排：**
 
@@ -132,10 +96,11 @@ export default async function orchestrate(ctx) {
 
 - 在 `ctx.run` 的 `brief.completion_schema` 或 `completionSchema` 上声明 JSON Schema；节点须在 `gatehouse_execution_complete` 传 `structured_output` 且通过校验。
 - 脚本内可直接消费：`const { structured } = await ctx.run("leaf", { completionSchema: SCHEMA, returnStructured: true })`。
+- **汇总/聚合节点**（`dependsOn` 含多个 `deliverable: true`）：优先让上游 leaf 声明 `completionSchema`（如 `{ artifact_paths: string[] }`）；否则至少统一 `path: <node_id>/` 约定，Gatehouse 会在工单中注入路径列表。
 
 **`dependsOn` 规则：**
 
-- 条目为 **字符串**（只等该节点完成）或 **`{ node, deliverable?: boolean }`**（注入上游 completion：prose summary，若有 validated JSON 一并注入）。
+- 条目为 **字符串**（只等该节点完成）或 **`{ node, deliverable?: boolean }`**（注入上游 completion：prose summary、**acceptance_slice 项目路径列表**、若有 validated JSON 一并注入）。
 - 工单需要上游交付物时，用 `deliverable: true` **显式列出**所有相关节点（汇总子树时列出全部 direct children）。
 - **跨 track 顺序依赖**：`dependsOn: ["other-node"]`（只等完成，不注入交付物）— 顶层与 parallel track 内均可。
 - **跨 track 且需要上游交付内容**：`dependsOn: [{ node: "a1", deliverable: true }]`（parallel track 内也会阻塞等待）。
@@ -144,64 +109,11 @@ export default async function orchestrate(ctx) {
 
 - `team.nodes` 中的**每个** node_id 都须通过 `ctx.run` 完成，否则 dry-run 报 `SCRIPT_SIMULATION_INCOMPLETE`。
 
-**并行编排**：兄弟节点或独立子树均用 `ctx.parallel`，每个节点单独 `ctx.run`：
-
-```typescript
-await ctx.parallel([
-  async () => {
-    await ctx.run("a1", { brief: { your_work: ["…"], acceptance_slice: ["…"] } })
-    await ctx.run("a2", { brief: { your_work: ["…"], acceptance_slice: ["…"] } })
-    await ctx.run("a", {
-      brief: { your_work: ["…"], acceptance_slice: ["…"] },
-      dependsOn: [{ node: "a1", deliverable: true }, { node: "a2", deliverable: true }],
-    })
-  },
-  async () => {
-    await ctx.run("b1", { brief: { your_work: ["…"], acceptance_slice: ["…"] } })
-    await ctx.run("b2", { brief: { your_work: ["…"], acceptance_slice: ["…"] } })
-    await ctx.run("b", {
-      brief: { your_work: ["…"], acceptance_slice: ["…"] },
-      dependsOn: [{ node: "b1", deliverable: true }, { node: "b2", deliverable: true }],
-    })
-  },
-])
-// 仅当 Mission 确实需要跨 track 最终整合时添加；team.terminal 指向该节点。
-await ctx.run("<terminal-node-id>", {
-  brief: { your_work: ["…"], acceptance_slice: ["…"] },
-  dependsOn: [{ node: "a", deliverable: true }, { node: "b", deliverable: true }],
-})
-```
+**并行编排**：兄弟节点或独立子树均用 `ctx.parallel`，每个节点单独 `ctx.run`。示例见 `mission.script.template.ts`。
 
 若最后一个工作节点已满足 `done_when`，直接令其担任 terminal（`team.terminal`）— 勿再套一层包装节点。
 
-**流水线编排（`ctx.pipeline`）**：对列表中每项独立跑多 stage（stage 间无 barrier），适合 per-file/per-item 的 discover→process→verify：
-
-```typescript
-const ROUTES = { type: "object", required: ["routes"], properties: { routes: { type: "array" } } }
-
-const discovered = await ctx.run("discover", {
-  brief: {
-    your_work: ["列出待处理路径"],
-    completion_schema: ROUTES,
-  },
-  completionSchema: ROUTES,
-  returnStructured: true,
-})
-
-const audited = await ctx.pipeline(
-  discovered.structured?.routes ?? [],
-  async (route) =>
-    ctx.run(`audit-${route}`, {
-      brief: { your_work: [`审计 ${route}`], acceptance_slice: ["…"] },
-    }),
-  async (_prev, route) =>
-    ctx.run(`verify-${route}`, {
-      brief: { your_work: [`验证 ${route}`], acceptance_slice: ["…"] },
-      dependsOn: [{ node: `audit-${route}`, deliverable: true }],
-    }),
-)
-const results = audited.filter(Boolean)
-```
+**流水线编排（`ctx.pipeline`）**：对列表中每项独立跑多 stage（stage 间无 barrier），适合 per-file/per-item 的 discover→process→verify。示例见 `mission.script.template.ts`。
 
 **脚本写作限制：**
 

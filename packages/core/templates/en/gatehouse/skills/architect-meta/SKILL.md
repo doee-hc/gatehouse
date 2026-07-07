@@ -52,57 +52,21 @@ Task body includes objective / done_when / must_not / notes / user_topology / us
 
 Each inner node **must** have `description` (one-line role). Put detailed tasks and boundaries in `ctx.run({ brief: … })`.
 
-**Brief constraints:** each leaf needs concrete `your_work`, explicit `acceptance_slice` with a project `path:` (file or directory, e.g. `path: reports/foo.md` or `path: reports/template/`), and sibling scope boundaries when needed. When done, call `gatehouse_execution_complete(summary=...)` — describe work, deliverable paths, and open items in summary.
+**Brief constraints:** each leaf needs concrete `your_work`, explicit **project** `path:` in `acceptance_slice` (file or directory, e.g. `path: <node_id>/` or `path: reports/<node_id>/`), and sibling scope boundaries when needed. **Never** use `.gatehouse/` paths in inner node `acceptance_slice` — that tree is for outer coordination reports, not deliverables. When done, call `gatehouse_execution_complete(summary=...)` — describe work, deliverable paths, and open items in summary.
 
 ```typescript
 await ctx.run("researcher-a", {
   brief: {
     your_work: ["…"],
     not_your_job: ["… (sibling scope — do not duplicate)"],
-    acceptance_slice: ["path: reports/researcher-a.md", "…"],
+    acceptance_slice: ["path: researcher-a/", "path: reports/researcher-a.json", "…"],
   },
 })
 ```
 
 **Do not write `profile`** — all inner nodes use the `build` profile at bootstrap.
 
-```typescript
-export const team = {
-  mission_id: "<id>",
-  terminal: "<terminal-node-id>",
-  nodes: {
-    "<leaf-id>": {
-      description: "Executes <concrete deliverable>",
-    },
-    "<terminal-node-id>": {
-      description: "Produces the final mission deliverable",
-    },
-  },
-}
-
-export const meta = {
-  name: "<id>",
-  phases: ["Phase A", "Phase B"],
-}
-
-export default async function orchestrate(ctx) {
-  await ctx.run("<leaf-id>", {
-    brief: {
-      your_work: ["…"],
-      acceptance_slice: ["path: reports/<leaf-id>.md", "…"],
-    },
-  })
-
-  await ctx.run("<terminal-node-id>", {
-    brief: {
-      your_work: ["Integrate upstream work into the final deliverable"],
-      acceptance_slice: ["path: …", "…"],
-    },
-    text: "Read upstream reports/ deliverables and produce the final artifact.",
-    dependsOn: [{ node: "<leaf-id>", deliverable: true }],
-  })
-}
-```
+Full script layout (`team`, `meta`, `orchestrate`, parallel tracks, `ctx.pipeline`) — read `.gatehouse/<locale>/prompts/architect/mission.script.template.ts` (`<locale>` from `.gatehouse/config.yaml`).
 
 **Team vs orchestration:**
 
@@ -128,10 +92,11 @@ Do **not** simulate peer coordination in the script — drive timing with `ctx.r
 
 - Declare JSON Schema on `brief.completion_schema` or `completionSchema` in `ctx.run`; the node must pass `structured_output` on `gatehouse_execution_complete` matching the schema.
 - Consume in-script: `const { structured } = await ctx.run("leaf", { completionSchema: SCHEMA, returnStructured: true })`.
+- **Aggregator nodes** (`dependsOn` with multiple `deliverable: true`): prefer `completionSchema` on upstream leaves (e.g. `{ artifact_paths: string[] }`); otherwise use a stable `path: <node_id>/` convention — Gatehouse injects path lists into work orders automatically.
 
 **`dependsOn` rules:**
 
-- Each entry is a **string** (wait for completion only) or **`{ node, deliverable?: boolean }`** (inject upstream completion: prose summary plus validated JSON when present).
+- Each entry is a **string** (wait for completion only) or **`{ node, deliverable?: boolean }`** (inject upstream completion: prose summary, **acceptance_slice project paths**, plus validated JSON when present).
 - When the work order needs upstream deliverables, list every relevant node explicitly with `deliverable: true` (including all direct children when aggregating a branch).
 - **Cross-track ordering:** `dependsOn: ["other-node"]` (ordering only, no deliverable injection) — allowed anywhere, including top level and inside parallel tracks.
 - **Cross-track with upstream delivery content:** `dependsOn: [{ node: "a1", deliverable: true }]` inside parallel tracks.
@@ -140,64 +105,11 @@ Do **not** simulate peer coordination in the script — drive timing with `ctx.r
 
 - **Each** node_id in `team.nodes` must be activated via `ctx.run`, or dry-run fails with `SCRIPT_SIMULATION_INCOMPLETE`.
 
-**Parallel orchestration:** for independent branches or sibling leaves, use `ctx.parallel` with one `ctx.run` per node:
-
-```typescript
-await ctx.parallel([
-  async () => {
-    await ctx.run("a1", { brief: { your_work: ["…"], acceptance_slice: ["…"] } })
-    await ctx.run("a2", { brief: { your_work: ["…"], acceptance_slice: ["…"] } })
-    await ctx.run("a", {
-      brief: { your_work: ["…"], acceptance_slice: ["…"] },
-      dependsOn: [{ node: "a1", deliverable: true }, { node: "a2", deliverable: true }],
-    })
-  },
-  async () => {
-    await ctx.run("b1", { brief: { your_work: ["…"], acceptance_slice: ["…"] } })
-    await ctx.run("b2", { brief: { your_work: ["…"], acceptance_slice: ["…"] } })
-    await ctx.run("b", {
-      brief: { your_work: ["…"], acceptance_slice: ["…"] },
-      dependsOn: [{ node: "b1", deliverable: true }, { node: "b2", deliverable: true }],
-    })
-  },
-])
-// Cross-track final delivery only when the mission needs it; set team.terminal to this node.
-await ctx.run("<terminal-node-id>", {
-  brief: { your_work: ["…"], acceptance_slice: ["…"] },
-  dependsOn: [{ node: "a", deliverable: true }, { node: "b", deliverable: true }],
-})
-```
+**Parallel orchestration:** for independent branches or sibling leaves, use `ctx.parallel` with one `ctx.run` per node. See `mission.script.template.ts` for parallel tracks and terminal integration.
 
 When the last work node already satisfies `done_when`, make it the terminal (`team.terminal`) — no extra wrapper node.
 
-**Pipeline orchestration (`ctx.pipeline`):** run multiple stages per list item with no barrier between stages — suited for per-file/per-item discover→process→verify:
-
-```typescript
-const ROUTES = { type: "object", required: ["routes"], properties: { routes: { type: "array" } } }
-
-const discovered = await ctx.run("discover", {
-  brief: {
-    your_work: ["List paths to process"],
-    completion_schema: ROUTES,
-  },
-  completionSchema: ROUTES,
-  returnStructured: true,
-})
-
-const audited = await ctx.pipeline(
-  discovered.structured?.routes ?? [],
-  async (route) =>
-    ctx.run(`audit-${route}`, {
-      brief: { your_work: [`Audit ${route}`], acceptance_slice: ["…"] },
-    }),
-  async (_prev, route) =>
-    ctx.run(`verify-${route}`, {
-      brief: { your_work: [`Verify ${route}`], acceptance_slice: ["…"] },
-      dependsOn: [{ node: `audit-${route}`, deliverable: true }],
-    }),
-)
-const results = audited.filter(Boolean)
-```
+**Pipeline orchestration (`ctx.pipeline`):** run multiple stages per list item with no barrier between stages — suited for per-file/per-item discover→process→verify. See `mission.script.template.ts` for a `ctx.pipeline` example.
 
 **Script writing limits:**
 

@@ -68,31 +68,6 @@ export function decideReplyPrompt(input: {
   return "deliver"
 }
 
-export function decideSetBriefDeliver(input: {
-  state: OrchestrationState
-  nodeId: string
-  hasPlanStep: boolean
-  stepIndex?: number
-  stepKind: PlanStepKind
-  briefChanged: boolean
-}): boolean {
-  const { state, nodeId, hasPlanStep, stepIndex, stepKind, briefChanged } = input
-
-  if (hasPlanStep && stepIndex !== undefined && isReplayStepComplete(state, stepIndex)) {
-    return false
-  }
-
-  if (stepKind === "compound" && nodeIsDone(state, nodeId) && !briefChanged) {
-    return false
-  }
-
-  if (!hasPlanStep && nodeAlreadyActivated(state, nodeId)) {
-    return false
-  }
-
-  return true
-}
-
 export function shouldArmCompoundReactivation(input: {
   stepKind: PlanStepKind
   briefChanged: boolean

@@ -289,6 +289,16 @@ describe("gatehouse path permissions", () => {
     expect(read[".gatehouse/**"]).toBe("deny")
   })
 
+  test("arbiter allows audit paths but not other outer meta-skills", () => {
+    const read = arbiterSessionPermissions.read as Record<string, string>
+    expect(read[".gatehouse/missions/**"]).toBe("allow")
+    expect(read[".gatehouse/lead/**"]).toBe("allow")
+    expect(read[".gatehouse/skills/lead-meta/**"]).toBe("deny")
+    expect(read[".gatehouse/skills/architect-meta/**"]).toBe("deny")
+    expect(read[".gatehouse/skills/arbiter-meta/**"]).toBe("allow")
+    expect(read[".gatehouse/**"]).toBe("deny")
+  })
+
   test("injectAgentPermissionYaml emits nested read path rules for build", () => {
     const template = `---
 name: build

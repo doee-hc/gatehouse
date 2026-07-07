@@ -1,5 +1,4 @@
 import { RegistryDatabase } from "../registry/db.ts"
-import { replayNextStepIndex } from "./replay-cursor.ts"
 import type { OrchestrationState } from "./types.ts"
 import {
   ORCHESTRATION_STATE_SCHEMA_VERSION,
@@ -39,15 +38,6 @@ function normalizeOrchestrationState(state: OrchestrationState): OrchestrationSt
   }
   if (state.cursor_step_index === undefined) state.cursor_step_index = 0
   return state
-}
-
-export function isPlanStepCompleted(state: OrchestrationState, stepIndex: number) {
-  return stepIndex < replayNextStepIndex(state)
-}
-
-export function isPlanStepIdCompleted(state: OrchestrationState, stepId: string, steps: readonly { id: string }[]) {
-  const index = steps.findIndex((step) => step.id === stepId)
-  return index >= 0 && isPlanStepCompleted(state, index)
 }
 
 export { resetReplayCursor } from "./replay-cursor.ts"
@@ -160,12 +150,6 @@ export function nodeAlreadyActivated(state: OrchestrationState, nodeId: string) 
     node?.status === "rework" ||
     node?.status === "blocked"
   )
-}
-
-/** Plan-aware: skip reply prompt when this plan step index is already complete. */
-export function shouldSkipReplyPromptStep(state: OrchestrationState, stepIndex?: number) {
-  if (stepIndex === undefined) return false
-  return isPlanStepCompleted(state, stepIndex)
 }
 
 export const AWAITING_SKILL_DOMAINS_PHASE = "awaiting_skill_domains"

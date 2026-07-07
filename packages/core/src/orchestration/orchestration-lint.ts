@@ -5,6 +5,7 @@ import {
 } from "./plan-graph.ts"
 import type { OrchestrationPlan } from "./plan-types.ts"
 import type { MissionTeamSpec } from "../missions/manifest/types.ts"
+import { isCoordinationReportPath } from "../delivery/publish-policy.ts"
 import { parseDependsOnArrayBody } from "./depends-on.ts"
 import { parenBraceDepthBefore } from "./source-depth.ts"
 
@@ -211,6 +212,66 @@ function lintForbiddenCtxRead(orchestrateSource: string): OrchestrationLintIssue
         "orchestrate must not call ctx.readMissionContext or ctx.readContract; inline static context in run brief or text",
     },
   ]
+}
+
+function lintReplyFalseWithoutText(orchestrateSource: string): OrchestrationLintIssue[] {
+  const errors: OrchestrationLintIssue[] = []
+  for (const call of collectRunCalls(orchestrateSource)) {
+    if (runRepliesByDefault(call.body)) continue
+    if (/\btext\s*:/.test(call.body)) continue
+    errors.push({
+      code: "SCRIPT_REPLY_FALSE_WITHOUT_TEXT",
+      message:
+        `node "${call.nodeId}" uses reply:false without text; brief is only delivered with activation text — omit reply or add text`,
+    })
+  }
+  return errors
+}
+
+function parseAcceptancePathFromLiteral(item: string) {
+  const trimmed = item.trim()
+  const match = trimmed.match(/^path:\s*(.+)$/i)
+  return match?.[1]?.trim()
+}
+
+function lintGatehouseDeliverablePaths(orchestrateSource: string): OrchestrationLintIssue[] {
+  const errors: OrchestrationLintIssue[] = []
+  for (const call of collectRunCalls(orchestrateSource)) {
+    const briefInner = extractLiteralBriefInner(call.body)
+    if (!briefInner) continue
+    const acceptanceMatch = /acceptance_slice\s*:\s*\[([\s\S]*?)\]/.exec(briefInner)
+    const acceptance = acceptanceMatch ? parseLiteralStringArray(acceptanceMatch[1] ?? "") : []
+    for (const item of acceptance) {
+      const deliverablePath = parseAcceptancePathFromLiteral(item)
+      if (!deliverablePath) continue
+      if (!isCoordinationReportPath(deliverablePath) && !deliverablePath.startsWith(".gatehouse/")) continue
+      errors.push({
+        code: "SCRIPT_ACCEPTANCE_GATEHOUSE_PATH",
+        message:
+          `node "${call.nodeId}" acceptance_slice uses "${deliverablePath}" under .gatehouse/; ` +
+          `use a project path (e.g. "path: ${call.nodeId}/" or "path: reports/${call.nodeId}/") — inner deliverables must not live in .gatehouse/`,
+      })
+    }
+  }
+  return errors
+}
+
+function lintAggregatorHandoff(orchestrateSource: string): string[] {
+  const warnings: string[] = []
+  for (const call of extractRunCalls(orchestrateSource)) {
+    const dependsMatch = /dependsOn\s*:\s*\[([\s\S]*?)\]/m.exec(call.body)
+    const dependsOn = dependsMatch ? parseDependsOnArrayBody(dependsMatch[1] ?? "") : []
+    const deliverableIds = dependsOn.filter((dep) => dep.deliverable).map((dep) => dep.node)
+    if (deliverableIds.length < 2) continue
+    const hasCompletionSchema =
+      /\bcompletion_schema\s*:/.test(call.body) || /\bcompletionSchema\s*:/.test(call.body)
+    if (hasCompletionSchema) continue
+    warnings.push(
+      `node "${call.nodeId}" aggregates ${deliverableIds.length} deliverable upstream nodes; ` +
+        "consider completionSchema on upstream leaves for machine-readable handoff, or ensure each upstream acceptance_slice uses a stable project path (e.g. `<node_id>/`)",
+    )
+  }
+  return warnings
 }
 
 function lintBriefQuality(team: MissionTeamSpec, plan: OrchestrationPlan, orchestrateSource: string): string[] {
@@ -480,6 +541,8 @@ export function lintOrchestrationScript(
   errors.push(...lintEmptyParallel(orchestrateSource))
   errors.push(...lintEmptyPipeline(orchestrateSource))
   errors.push(...lintForbiddenPatterns(orchestrateSource))
+  errors.push(...lintGatehouseDeliverablePaths(orchestrateSource))
+  errors.push(...lintReplyFalseWithoutText(orchestrateSource))
 
   const dependsOn = lintDependsOn(team, plan, orchestrateSource)
   errors.push(...dependsOn.errors)
@@ -491,6 +554,7 @@ export function lintOrchestrationScript(
   warnings.push(...lintUnusedTeamNodes(team, orchestrateSource))
   warnings.push(...lintDuplicateDispatches(orchestrateSource))
   warnings.push(...lintParallelRecommended(team, plan, orchestrateSource))
+  warnings.push(...lintAggregatorHandoff(orchestrateSource))
 
   const dedupedErrors = dedupeIssues(errors)
   const dedupedWarnings = [...new Set(warnings)]

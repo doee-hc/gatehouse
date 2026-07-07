@@ -67,7 +67,7 @@ describe("prompt snapshot injections", () => {
       expect(prompt).toContain("冻结")
       expect(prompt).not.toMatch(/## 任务快照\n\n## 任务快照/)
       expect(prompt).toContain("node-doc")
-      expect(prompt).toContain("user_skill")
+      expect(prompt).toContain("curator-meta")
       expect(prompt).not.toContain("{{mission_contract}}")
       expect(prompt).not.toContain("gatehouse_mission_info` — 任务全文")
     } finally {

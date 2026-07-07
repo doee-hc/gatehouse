@@ -174,9 +174,13 @@ describe("portal events", () => {
       text: "hello",
     }
     const capture = await startPortalInternalEventCapture(token)
+    if (capture.mode !== "http") {
+      capture.server.stop()
+      return
+    }
     setPortalInProcessDelivery(false)
     try {
-      await withPortalEnv(capture.port, token, async () => {
+      await withPortalEnv(capture, token, async () => {
         emitPortalEvent(expected)
         await capture.waitPosted()
       })

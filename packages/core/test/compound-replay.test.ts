@@ -5,11 +5,7 @@ import path from "node:path"
 import type { PluginInput } from "@opencode-ai/plugin"
 import { createMissionContext } from "../src/orchestration/ctx-host.ts"
 import { mergeAndSaveBrief } from "../src/orchestration/events.ts"
-import {
-  decideReplyPrompt,
-  decideSetBriefDeliver,
-  planStepKind,
-} from "../src/orchestration/replay-policy.ts"
+import { decideReplyPrompt, planStepKind } from "../src/orchestration/replay-policy.ts"
 import { saveOrchestrationPlanRecord } from "../src/orchestration/plan-store.ts"
 import type { OrchestrationPlan } from "../src/orchestration/plan-types.ts"
 import { initOrchestrationState, readOrchestrationState, writeOrchestrationState } from "../src/orchestration/state.ts"
@@ -52,31 +48,6 @@ describe("replay policy", () => {
         reactivated: new Set(["a"]),
       }),
     ).toBe("deliver")
-  })
-
-  test("skips unchanged setBrief deliver for done nodes in compound steps", () => {
-    const state = initOrchestrationState("m1", ["a"])
-    state.nodes.a = { status: "done", completed_at: new Date().toISOString() }
-    expect(
-      decideSetBriefDeliver({
-        state,
-        nodeId: "a",
-        hasPlanStep: true,
-        stepIndex: 1,
-        stepKind: "compound",
-        briefChanged: false,
-      }),
-    ).toBe(false)
-    expect(
-      decideSetBriefDeliver({
-        state,
-        nodeId: "a",
-        hasPlanStep: true,
-        stepIndex: 1,
-        stepKind: "compound",
-        briefChanged: true,
-      }),
-    ).toBe(true)
   })
 
   test("linear plan steps still deliver to done nodes", () => {

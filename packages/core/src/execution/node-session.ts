@@ -1,12 +1,8 @@
-import type { PluginInput } from "@opencode-ai/plugin"
 import { formatAcceptanceBranchSnapshot } from "../dispatch/team-snapshot.ts"
 import { gatehouseMessage } from "../i18n.ts"
 import type { GatehouseLocale } from "../locale.ts"
 import { readLocaleSync } from "../locale.ts"
 import type { MissionContract } from "../missions/contract.ts"
-import type { RegistryStore } from "../registry/store.ts"
-import { innerAgentId } from "../registry/types.ts"
-import { promptSession } from "../session/client.ts"
 import type { MissionTeamSpec } from "../missions/manifest/types.ts"
 import type { OrchestrationPlan } from "../orchestration/plan-types.ts"
 import { planChildNodeIds } from "../orchestration/plan-graph.ts"
@@ -93,29 +89,4 @@ export async function buildBootstrapSystemForNode(input: {
     ...(skillDomainNote && { skillDomainNote }),
     ...(input.brief && { brief: input.brief }),
   })
-}
-
-export async function deliverNodeBriefSystemPrompt(input: {
-  plugin: PluginInput
-  store: RegistryStore
-  missionId: string
-  nodeId: string
-  brief: NodeBrief
-}) {
-  const recipient = input.store.byAgentId(innerAgentId(input.missionId, input.nodeId))
-  if (!recipient) return { status: "skipped" as const, reason: "node_not_in_registry" }
-
-  const locale = readLocaleSync(input.plugin.directory)
-  await promptSession(
-    input.plugin.client,
-    input.plugin.directory,
-    recipient.sessionId,
-    {
-      profile: recipient.profile,
-      system: formatNodeBriefBlock(input.brief, locale),
-      noReply: true,
-    },
-    input.plugin,
-  )
-  return { status: "sent" as const, locale }
 }

@@ -3,6 +3,8 @@ import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import type { PluginInput } from "@opencode-ai/plugin"
+import { formatNodeBriefBlock } from "../src/execution/brief.ts"
+import { DEFAULT_GATEHOUSE_LOCALE } from "../src/locale.ts"
 import { mergeAndSaveBrief } from "../src/orchestration/events.ts"
 import { deliverOrchestrationPrompt } from "../src/orchestration/prompt.ts"
 import { RegistryDatabase } from "../src/registry/db.ts"
@@ -269,7 +271,7 @@ describe("orchestration prompt portal", () => {
     const token = "orch-test-token"
     const capture = await startPortalInternalEventCapture(token)
     try {
-      await withPortalEnv(capture.port, token, async () => {
+      await withPortalEnv(capture, token, async () => {
         const mockClient: GatehouseClient = {
           session: {
             async create() {
@@ -302,7 +304,7 @@ describe("orchestration prompt portal", () => {
           profile: "build",
           sessionId: "ses_doc",
         })
-        await mergeAndSaveBrief(dir, "m1", "node-doc", { your_work: ["document"] })
+        const brief = await mergeAndSaveBrief(dir, "m1", "node-doc", { your_work: ["document"] })
 
         await deliverOrchestrationPrompt({
           plugin: pluginInput,
@@ -312,13 +314,12 @@ describe("orchestration prompt portal", () => {
           prompt: { text: "start documentation work", reply: true },
         })
         await capture.waitPosted()
-      })
-
-      expect(capture.posted).toEqual({
-        type: "agent.chat",
-        fromSpawnId: "architect",
-        toSpawnId: "node-doc",
-        text: "start documentation work",
+        expect(capture.posted).toEqual({
+          type: "agent.chat",
+          fromSpawnId: "architect",
+          toSpawnId: "node-doc",
+          text: ["start documentation work", "", formatNodeBriefBlock(brief, DEFAULT_GATEHOUSE_LOCALE)].join("\n"),
+        })
       })
     } finally {
       capture.server.stop()
@@ -369,6 +370,7 @@ describe("orchestration prompt portal", () => {
           profile: "build",
           sessionId: "ses_doc",
         })
+        await mergeAndSaveBrief(dir, "m1", "node-doc", { your_work: ["document"] })
 
         await deliverOrchestrationPrompt({
           plugin: pluginInput,

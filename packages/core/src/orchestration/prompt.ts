@@ -1,6 +1,8 @@
 import type { PluginInput } from "@opencode-ai/plugin"
+import { formatNodeBriefBlock } from "../execution/brief.ts"
 import { readNodeBriefRegistry } from "../execution/artifacts.ts"
 import { buildDirectedNotification, gatehouseMessage } from "../i18n.ts"
+import type { GatehouseLocale } from "../locale.ts"
 import { readLocaleSync } from "../locale.ts"
 import { readAgentNamesSync } from "../names.ts"
 import { innerAgentId } from "../registry/types.ts"
@@ -8,6 +10,7 @@ import type { RegistryStore } from "../registry/store.ts"
 import { promptSession } from "../session/client.ts"
 import {
   assertDependsOnDeliverableReady,
+  formatDependsOnArtifactPathsBlock,
   formatDependsOnStructuredBlock,
   formatDependsOnSummaryBlock,
 } from "./completion.ts"
@@ -16,6 +19,11 @@ import { readOrchestrationState } from "./state.ts"
 import { runMissingBriefError } from "./run.ts"
 import type { PromptInput } from "./types.ts"
 import type { MissionTeamSpec } from "../missions/manifest/types.ts"
+import type { NodeBrief } from "../execution/types.ts"
+
+function appendNodeBriefToActivationText(text: string, brief: NodeBrief, locale: GatehouseLocale) {
+  return [text.trim(), "", formatNodeBriefBlock(brief, locale)].join("\n")
+}
 
 export async function deliverOrchestrationPrompt(input: {
   plugin: PluginInput
@@ -45,8 +53,11 @@ export async function deliverOrchestrationPrompt(input: {
     return { status: "sent" as const }
   }
 
+  const brief = await readNodeBriefRegistry(input.plugin.directory, input.missionId, input.nodeId)
+  if (!brief) throw runMissingBriefError(input.nodeId)
+
   if (input.prompt.reply) {
-    let activationText = input.prompt.text.trim()
+    let activationText = appendNodeBriefToActivationText(input.prompt.text, brief, locale)
     const dependsOn = normalizeDependsOn(input.prompt.dependsOn)
     const injectDeliverable = deliverableNodeIds(dependsOn)
     if (injectDeliverable.length) {
@@ -64,6 +75,15 @@ export async function deliverOrchestrationPrompt(input: {
       if (dependsOnSummaryBlock.trim()) {
         activationText = [activationText, "", dependsOnSummaryBlock].join("\n")
       }
+      const dependsOnArtifactPathsBlock = await formatDependsOnArtifactPathsBlock(
+        input.plugin.directory,
+        input.missionId,
+        locale,
+        injectDeliverable,
+      )
+      if (dependsOnArtifactPathsBlock.trim()) {
+        activationText = [activationText, "", dependsOnArtifactPathsBlock].join("\n")
+      }
       const structuredNodeIds = injectDeliverable.filter(
         (nodeId) => state.nodes[nodeId]?.completion?.structured_output !== undefined,
       )
@@ -74,8 +94,6 @@ export async function deliverOrchestrationPrompt(input: {
         }
       }
     }
-    const brief = await readNodeBriefRegistry(input.plugin.directory, input.missionId, input.nodeId)
-    if (!brief) throw runMissingBriefError(input.nodeId)
     if (brief.completion_schema) {
       activationText = [
         activationText,
@@ -98,7 +116,11 @@ export async function deliverOrchestrationPrompt(input: {
     input.plugin.client,
     input.plugin.directory,
     recipient.sessionId,
-    { profile, text: input.prompt.text.trim(), noReply: true },
+    {
+      profile,
+      text: appendNodeBriefToActivationText(input.prompt.text, brief, locale),
+      noReply: true,
+    },
     input.plugin,
   )
   return { status: "sent" as const }

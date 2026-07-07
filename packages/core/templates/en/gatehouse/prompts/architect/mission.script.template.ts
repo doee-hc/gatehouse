@@ -26,7 +26,7 @@ export default async function orchestrate(ctx) {
         brief: {
           your_work: ["…"],
           not_your_job: ["Not this node's job (avoid sibling overlap)"],
-          acceptance_slice: ["path: reports/<leaf-a>.md", "…"],
+          acceptance_slice: ["path: <leaf-a>/", "path: reports/<leaf-a>.json", "…"],
         },
       })
     },
@@ -35,7 +35,7 @@ export default async function orchestrate(ctx) {
         brief: {
           your_work: ["…"],
           not_your_job: ["Not this node's job (avoid sibling overlap)"],
-          acceptance_slice: ["path: reports/<leaf-b>.md", "…"],
+          acceptance_slice: ["path: <leaf-b>/", "path: reports/<leaf-b>.json", "…"],
         },
       })
     },
@@ -46,7 +46,7 @@ export default async function orchestrate(ctx) {
       your_work: ["Read upstream reports and produce the final mission deliverable"],
       acceptance_slice: ["path: reports/<mission_id>.html", "…"],
     },
-    text: `Upstream nodes are done. Read reports/<leaf-a>.md and reports/<leaf-b>.md, then deliver the final artifact.`,
+    text: `Upstream nodes are done; work order lists each node's acceptance_slice paths — read those paths and deliver the final artifact.`,
     dependsOn: [{ node: "<leaf-a>", deliverable: true }, { node: "<leaf-b>", deliverable: true }],
   })
 }

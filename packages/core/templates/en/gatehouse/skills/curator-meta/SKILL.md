@@ -58,9 +58,8 @@ Typical addenda: abstraction level, when-to-use / when-not-to-use format, produc
 |---------|------|
 | Domain registry | `.gatehouse/skills/domains.yaml` |
 | Domain skills | `.gatehouse/skills/by-domain/<id>/` |
-| Mission tree | `.gatehouse/missions/<id>/` |
-| Extract summaries | `.gatehouse/missions/<id>/reports/skills/<node_id>-extract.md` |
-| Verify reports | `.gatehouse/missions/<id>/reports/skills/<node_id>-verify.md` |
+| Extract/verify reports | `.gatehouse/missions/<id>/reports/skills/` |
+| Curator summary | `.gatehouse/missions/<id>/reports/curator-summary.md` |
 | **Global extract prompt** | `.gatehouse/<locale>/prompts/architect/domain-skill-extract.md` |
 
 ## Rules

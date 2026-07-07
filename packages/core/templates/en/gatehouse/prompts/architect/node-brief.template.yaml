@@ -1,10 +1,10 @@
 node_id: <node_id>
-role: Executor
+role: execution member
 your_work:
-  - Concrete deliverable for this node
+  - Concrete deliverables for this node
 not_your_job:
-  - Out of scope (list sibling scopes here to prevent overlap)
+  - Out of scope (list sibling boundaries to avoid overlap)
 acceptance_slice:
-  - path: reports/<node_id>.md
-  - Hard word band example: 1500–1800 words markdown, one-shot within ±10% (no edit/count loops)
-  - Deliver only this node's path; do not read sibling node artifacts
+  - path: <node_id>/
+  - path: reports/<node_id>/
+  - Deliver only under these paths; do not read sibling artifacts

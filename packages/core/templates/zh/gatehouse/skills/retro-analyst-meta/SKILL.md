@@ -30,6 +30,17 @@ disable-model-invocation: true
 2. 每个 `parallel` 步骤 → 按声明顺序分析所列兄弟节点（并行段；重点关注等待/汇总/协调行为）。
 3. 优先 `timeline.md` + `metrics.json`；grep 后再读 `messages.json` 片段。
 
+### timeline.md grep 指引
+
+| 目标 | 命令 |
+|------|------|
+| 用户真实输入 | `grep 'kind=user'` |
+| Gatehouse 系统投递 | `grep 'kind=gatehouse'` |
+| 上下文压缩 | `grep 'kind=compaction_marker'` |
+| 压缩摘要 | `grep 'kind=summary'` |
+| 节点完成 / rework | `grep 'tool=gatehouse_execution_'` |
+| Todo 变更 | `grep 'tool=todowrite'` |
+
 ## 产出
 
 1. 写 `.gatehouse/missions/<mission_id>/reports/retro-summary.md`（结构见 `retro-summary.template.md`）。

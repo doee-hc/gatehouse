@@ -8,12 +8,7 @@ Repository-wide domain list: `.gatehouse/skills/domains.yaml` (read by profile l
 
 ## Per-skill conventions
 
-- **Granularity:** one business action + minimal closed loop.
-- **Naming:** verb-noun slug, e.g. `resolve-tessent-c9-drc`.
-- **Frontmatter:** trigger and forbidden scenarios.
-- **Size:** 1k–3k token body.
-- **Timing:** only after {{lead_name}} accepts delivery and runs `gatehouse_mission_retro`; Gatehouse creates **extract sessions** (`build-extract`) for assigned nodes and dispatches `domain-skill-extract.md`; after all extract complete, **verify sessions** (`build-verify`) run automatically.
-- **Loading:** at execution time use `skill({ name: "<slug>" })` or read `SKILL.md`; frontmatter may include `metadata.gatehouse-domain`.
+Format, naming, size, and extraction rules live in the global template `.gatehouse/<locale>/prompts/architect/domain-skill-extract.md` (`<locale>` from `.gatehouse/config.yaml`).
 
 ## Context strategy
 

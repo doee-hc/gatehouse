@@ -1,3 +1,5 @@
+import { criteriaFromStringList } from "../delivery/criteria.ts"
+import { deliverablePathsFromCriteria } from "../delivery/publish-policy.ts"
 import { readNodeBriefRegistry } from "../execution/artifacts.ts"
 import { gatehouseMessage } from "../i18n.ts"
 import type { GatehouseLocale } from "../locale.ts"
@@ -122,6 +124,36 @@ export function formatDependsOnStructuredBlock(
     gatehouseMessage("completion.structured.header", locale),
     "",
     gatehouseMessage("completion.structured.hint", locale),
+    "",
+    ...sections,
+  ].join("\n")
+}
+
+export async function formatDependsOnArtifactPathsBlock(
+  directory: string,
+  missionId: string,
+  locale: GatehouseLocale,
+  nodeIds: string[],
+) {
+  if (nodeIds.length === 0) return ""
+  const sections: string[] = []
+  for (const nodeId of nodeIds) {
+    const brief = await readNodeBriefRegistry(directory, missionId, nodeId)
+    const paths = brief?.acceptance_slice?.length
+      ? deliverablePathsFromCriteria(criteriaFromStringList(brief.acceptance_slice))
+      : []
+    if (paths.length === 0) continue
+    sections.push(
+      `### ${gatehouseMessage("completion.artifacts.nodeHeader", locale, { node_id: nodeId })}`,
+      "",
+      ...paths.map((artifactPath) => `- \`${artifactPath}\``),
+    )
+  }
+  if (sections.length === 0) return ""
+  return [
+    gatehouseMessage("completion.artifacts.header", locale),
+    "",
+    gatehouseMessage("completion.artifacts.hint", locale),
     "",
     ...sections,
   ].join("\n")

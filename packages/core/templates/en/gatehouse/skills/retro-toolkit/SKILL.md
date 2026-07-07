@@ -11,7 +11,7 @@ disable-model-invocation: true
 
 # Retro toolkit · retro-toolkit
 
-This skill supplements the retro kickoff with **reusable tool conventions**. Follow the kickoff message for analysis steps; this file covers tool layout and problem classes.
+This skill supplements **retro-analyst-meta** with **reusable tool conventions**. Follow the meta skill for analysis steps; this file covers tool layout and problem classes.
 
 Reuse `.gatehouse/skills/retro-toolkit/tools/*/SKILL.md` before adding new tools.
 

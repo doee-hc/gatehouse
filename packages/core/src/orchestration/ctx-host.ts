@@ -3,7 +3,6 @@ import { gatehouseLog } from "../log.ts"
 import type { RegistryStore } from "../registry/store.ts"
 import type { MissionTeamSpec } from "../missions/manifest/types.ts"
 import { planChildNodeIds, planLeafNodeIds } from "./plan-graph.ts"
-import { deliverNodeBriefSystemPrompt } from "../execution/node-session.ts"
 import { readActiveMissionContract } from "../missions/contract.ts"
 import {
   mergeAndSaveBrief,
@@ -23,7 +22,6 @@ import {
   compoundReactivatedNodes,
   consumeCompoundReactivation,
   decideReplyPrompt,
-  decideSetBriefDeliver,
   planStepKind,
   shouldArmCompoundReactivation,
 } from "./replay-policy.ts"
@@ -293,31 +291,6 @@ export function createMissionContext(input: {
           armCompoundReactivation(fresh, planStep.id, nodeId)
         })
       }
-
-      if (
-        !decideSetBriefDeliver({
-          state,
-          nodeId,
-          hasPlanStep: Boolean(planStep),
-          stepIndex: planStep?.index,
-          stepKind,
-          briefChanged,
-        })
-      ) {
-        gatehouseLog(
-          "info",
-          `[orchestration:${missionId}] skip replay setBrief deliver for ${nodeId}`,
-        )
-        return
-      }
-
-      await deliverNodeBriefSystemPrompt({
-        plugin,
-        store,
-        missionId,
-        nodeId,
-        brief: merged,
-      })
     },
 
     async waitFor(nodeId, _event, opts) {

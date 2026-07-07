@@ -1,4 +1,4 @@
-# Retro record watchdog
+# 复盘登记 watchdog
 
 Mission **{{mission_id}}** 的 retro-analyst session 已空闲 **{{idle_seconds}}** 秒，尚未调用 `gatehouse_retro_record`。
 

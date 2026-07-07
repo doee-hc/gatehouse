@@ -8,12 +8,7 @@
 
 ## 单条 skill 约定
 
-- **粒度**：单一业务动作 + 最小知识闭环；一个 skill 只解决一个核心问题。
-- **命名**：子目录 slug 为「动词+名词」，如 `resolve-tessent-c9-drc`。
-- **frontmatter**：写清触发场景与禁止场景。
-- **体量**：正文 1k–3k token。
-- **时机**：仅在 {{lead_name}} 验收后执行 `gatehouse_mission_retro`；Gatehouse 为已分配 `skill_domain` 的节点创建 **extract session**（`build-extract`），投递 `domain-skill-extract.md`；extract 全部完成后自动进入 **verify session**（`build-verify`）。
-- **加载**：执行期用 `skill({ name: "<slug>" })` 或 read `SKILL.md`；frontmatter 可含 `metadata.gatehouse-domain`。
+格式、命名、体量与提炼规则见全局模板 `.gatehouse/<locale>/prompts/architect/domain-skill-extract.md`（`<locale>` 见 `.gatehouse/config.yaml`）。
 
 ## 上下文策略
 

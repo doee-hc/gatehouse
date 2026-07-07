@@ -5,6 +5,7 @@ import path from "node:path"
 import type { PluginInput } from "@opencode-ai/plugin"
 import {
   assertDependsOnDeliverableReady,
+  formatDependsOnArtifactPathsBlock,
   formatDependsOnStructuredBlock,
   formatDependsOnSummaryBlock,
   parseStructuredOutputInput,
@@ -242,7 +243,7 @@ describe("node completion", () => {
     const token = "deliverable-test-token"
     const capture = await startPortalInternalEventCapture(token)
     try {
-      await withPortalEnv(capture.port, token, async () => {
+      await withPortalEnv(capture, token, async () => {
         const state = initOrchestrationState("m1", ["terminal", "leaf"])
         state.nodes.leaf = {
           status: "done",
@@ -254,6 +255,10 @@ describe("node completion", () => {
         markNodeRunning(state, "terminal")
         writeOrchestrationState(dir, state)
         await mergeAndSaveBrief(dir, "m1", "terminal", { your_work: ["synthesize"] })
+        await mergeAndSaveBrief(dir, "m1", "leaf", {
+          your_work: ["produce"],
+          acceptance_slice: ["path: leaf/", "path: reports/leaf.json"],
+        })
 
         const mockClient: GatehouseClient = {
           session: {
@@ -309,6 +314,11 @@ describe("node completion", () => {
         const posted = capture.posted as { text?: string } | undefined
         expect(posted?.text).toContain("leaf output")
         expect(posted?.text).toContain("Referenced node completions")
+        expect(posted?.text).toContain("Referenced deliverable paths")
+        expect(posted?.text).toContain("`leaf/`")
+        expect(posted?.text).toContain("`reports/leaf.json`")
+        expect(posted?.text).toContain("synthesize")
+        expect(posted?.text).toContain("your_work")
       })
     } finally {
       capture.server.stop()

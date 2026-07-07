@@ -187,8 +187,8 @@ All nodes with skill_domain finished extract + verify and registration. Review \
     en: "**Acceptance slice (acceptance_slice):**",
   },
   "execution.nodeBrief.priorityHint": {
-    zh: "**行动依据：** 以上任务书。若需重新查看任务范围或共同边界，调用 `gatehouse_mission_info`。",
-    en: "**How to work:** Follow the brief above. Call `gatehouse_mission_info` to re-read your scope or shared boundaries if needed.",
+    zh: "**行动依据：** 以上任务书；严格遵守，勿扩大范围。记不清时可调用 `gatehouse_mission_info` 重新查看。",
+    en: "**How to work:** Follow the brief above strictly; do not expand scope. Call `gatehouse_mission_info` to re-read if needed.",
   },
   "execution.missionContext.header": {
     zh: "## Mission Context（共同边界）",
@@ -317,6 +317,18 @@ All nodes with skill_domain finished extract + verify and registration. Review \
   "completion.structured.missing": {
     zh: "（无 structured_output）",
     en: "(no structured_output)",
+  },
+  "completion.artifacts.header": {
+    zh: "## 上游验收路径",
+    en: "## Referenced deliverable paths",
+  },
+  "completion.artifacts.hint": {
+    zh: "以下为上游节点 `acceptance_slice` 中的项目路径（非 `.gatehouse/`）；**直接 read 这些路径**，勿从 summary 猜测位置。",
+    en: "Project paths from upstream `acceptance_slice` entries (never under `.gatehouse/`); **read these paths directly** — do not infer locations from summaries alone.",
+  },
+  "completion.artifacts.nodeHeader": {
+    zh: "节点 {node_id} · 路径",
+    en: "Node {node_id} · paths",
   },
   "execution.workOrder.structuredCompletionHint": {
     zh: "**结构化完成：** 调用 `gatehouse_execution_complete` 时须传 `structured_output` 且符合下列 JSON Schema：\n\n```json\n{schema}\n```",

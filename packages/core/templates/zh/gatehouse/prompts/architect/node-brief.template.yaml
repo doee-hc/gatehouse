@@ -5,6 +5,6 @@ your_work:
 not_your_job:
   - 非本节点职责（勿扩大范围；并列 sibling 的职责写在此，避免内容重叠）
 acceptance_slice:
-  - path: reports/<node_id>.md
-  - 字数硬区间示例：1500–1800 字 markdown，±10% 内一次性交付（勿反复 edit 计字）
+  - path: <node_id>/
+  - path: reports/<node_id>/
   - 只交付本节点 path；勿 read sibling 节点 artifact

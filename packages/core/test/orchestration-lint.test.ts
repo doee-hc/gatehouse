@@ -322,4 +322,86 @@ await ctx.run("terminal", { brief: { your_work: ["r"], acceptance_slice: ["done"
     })
     expect(plan.steps.some((step) => step.op === "pipeline")).toBe(true)
   })
+
+  test("rejects acceptance_slice paths under .gatehouse/", () => {
+    const team = {
+      mission_id: "lint-m1",
+      terminal: "terminal",
+      nodes: {
+        terminal: { description: "root" },
+        leaf: { description: "leaf" },
+      },
+    }
+    const source = `
+await ctx.run("leaf", {
+  brief: {
+    your_work: ["work"],
+    acceptance_slice: ["path: .gatehouse/missions/lint-m1/reports/leaf/"],
+  },
+})
+await ctx.run("terminal", { brief: { your_work: ["r"], acceptance_slice: ["path: out/"] }, dependsOn: [{ node: "leaf", deliverable: true }] })
+`
+    const plan = compileOrchestrationPlan({
+      missionId: "lint-m1",
+      team,
+      orchestrateSource: source,
+      scriptHash: "gatehouse-path",
+    })
+    const lint = lintOrchestrationScript(team, plan, source)
+    expect(lint.errors.some((e) => e.code === "SCRIPT_ACCEPTANCE_GATEHOUSE_PATH")).toBe(true)
+  })
+
+  test("warns when aggregator depends on many deliverables without completionSchema", () => {
+    const team = {
+      mission_id: "lint-m1",
+      terminal: "agg",
+      nodes: {
+        a1: { description: "a1" },
+        a2: { description: "a2" },
+        agg: { description: "aggregate" },
+      },
+    }
+    const source = `
+await ctx.parallel([
+  async () => { await ctx.run("a1", { brief: { your_work: ["a1"], acceptance_slice: ["path: a1/"] } }) },
+  async () => { await ctx.run("a2", { brief: { your_work: ["a2"], acceptance_slice: ["path: a2/"] } }) },
+])
+await ctx.run("agg", {
+  brief: { your_work: ["merge"], acceptance_slice: ["path: reports/agg.json"] },
+  dependsOn: [{ node: "a1", deliverable: true }, { node: "a2", deliverable: true }],
+})
+`
+    const plan = compileOrchestrationPlan({
+      missionId: "lint-m1",
+      team,
+      orchestrateSource: source,
+      scriptHash: "agg-handoff",
+    })
+    const lint = lintOrchestrationScript(team, plan, source)
+    expect(lint.warnings.some((w) => w.includes("aggregates 2 deliverable"))).toBe(true)
+  })
+
+  test("rejects reply:false without text", () => {
+    const team = {
+      mission_id: "lint-m1",
+      terminal: "leaf",
+      nodes: {
+        leaf: { description: "leaf" },
+      },
+    }
+    const source = `
+await ctx.run("leaf", {
+  brief: { your_work: ["work"], acceptance_slice: ["path: leaf/"] },
+  reply: false,
+})
+`
+    const plan = compileOrchestrationPlan({
+      missionId: "lint-m1",
+      team,
+      orchestrateSource: source,
+      scriptHash: "reply-false-no-text",
+    })
+    const lint = lintOrchestrationScript(team, plan, source)
+    expect(lint.errors.some((e) => e.code === "SCRIPT_REPLY_FALSE_WITHOUT_TEXT")).toBe(true)
+  })
 })

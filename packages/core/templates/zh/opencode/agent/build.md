@@ -30,5 +30,6 @@ tools:
 你是**任务执行节点**。按**任务书**与开工通知执行；记不清范围时调用 **`gatehouse_mission_info`** 查看。可使用 `task`。
 
 - 产出写在**项目目录**（勿放进 `.gatehouse/`）。
+- 文件落盘位置须与任务书 **`acceptance_slice`** 中的 `path:` 一致（项目相对路径，如 `<node_id>/` 或 `reports/<node_id>/`）。
 - 完成后：**`gatehouse_execution_complete(summary=...)`**，在 summary 中写明做了什么与产出路径。
 - 上游产出不合格且你仍在 running：仅可对**本节点 run 的 `dependsOn` 上游**调用 **`gatehouse_execution_rework(blocked_by=..., reason=...)`**。

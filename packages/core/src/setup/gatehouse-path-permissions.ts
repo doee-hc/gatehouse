@@ -153,28 +153,25 @@ export const curatorFilesystemPermissions = filesystemPathPermissions(
   ),
 )
 
-/** profile arbiter — read-only audit across `.gatehouse/` except registry/internal. */
+/** profile arbiter — read-only audit; other outer meta-skills denied to avoid cross-role playbook leakage. */
+const arbiterReadPaths = gatehouseRules(
+  [
+    `${GH}/config.yaml`,
+    `${GH}/arbiter/**`,
+    `${GH}/lead/**`,
+    `${GH}/missions/**`,
+    `${GH}/skills/by-domain/**`,
+    `${GH}/skills/domains.yaml`,
+    ...metaSkillPatterns(GATEHOUSE_ROLE_SKILLS.arbiter),
+  ],
+  [...denyOtherOuterMetaSkills(GATEHOUSE_ROLE_SKILLS.arbiter)],
+)
+
 export const arbiterFilesystemPermissions = {
-  read: {
-    "*": "allow",
-    [`${GH}/registry.db`]: "deny",
-    [`${GH}/internal/**`]: "deny",
-  },
-  grep: {
-    "*": "allow",
-    [`${GH}/registry.db`]: "deny",
-    [`${GH}/internal/**`]: "deny",
-  },
-  glob: {
-    "*": "allow",
-    [`${GH}/registry.db`]: "deny",
-    [`${GH}/internal/**`]: "deny",
-  },
-  list: {
-    "*": "allow",
-    [`${GH}/registry.db`]: "deny",
-    [`${GH}/internal/**`]: "deny",
-  },
+  read: arbiterReadPaths,
+  grep: arbiterReadPaths,
+  glob: arbiterReadPaths,
+  list: arbiterReadPaths,
 } as const
 
 const innerGatehouseDenyAll: PathPermissionMap = {

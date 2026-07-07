@@ -30,6 +30,17 @@ Follow **orchestration script order** from the kickoff snapshot:
 2. For each `parallel` step → analyze listed siblings in declared order (parallel segment; focus on coordination/wait/synthesis behavior).
 3. Prefer `timeline.md` + `metrics.json`; grep before reading `messages.json` fragments.
 
+### timeline.md grep guide
+
+| Target | Command |
+|--------|---------|
+| Real user input | `grep 'kind=user'` |
+| Gatehouse system delivery | `grep 'kind=gatehouse'` |
+| Context compaction | `grep 'kind=compaction_marker'` |
+| Compaction summary | `grep 'kind=summary'` |
+| Node completion / rework | `grep 'tool=gatehouse_execution_'` |
+| Todo changes | `grep 'tool=todowrite'` |
+
 ## Output
 
 1. Write `.gatehouse/missions/<mission_id>/reports/retro-summary.md` (see `retro-summary.template.md`).

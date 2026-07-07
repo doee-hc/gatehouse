@@ -148,7 +148,7 @@ describe("example flow", () => {
     const token = "bootstrap-portal-chat-token"
     const capture = await startPortalInternalEventCapture(token)
     try {
-      await withPortalEnv(capture.port, token, async () => {
+      await withPortalEnv(capture, token, async () => {
         await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
         await copyExampleMission(dir)
 

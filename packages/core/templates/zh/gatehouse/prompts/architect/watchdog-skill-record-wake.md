@@ -1,8 +1,8 @@
-# Skill extract record watchdog
+# Skill 提炼登记 watchdog
 
-Mission **{{mission_id}}** node **{{node_id}}** extract session has been idle for **{{idle_seconds}}** seconds without calling `gatehouse_skill_extract_record`.
+Mission **{{mission_id}}** 节点 **{{node_id}}** 的 extract session 已空闲 **{{idle_seconds}}** 秒，尚未调用 `gatehouse_skill_extract_record`。
 
-## Complete now
+## 请立即完成
 
-1. Confirm the extract summary is written: `{{summary_path}}`.
-2. Call **`gatehouse_skill_extract_record()`** (or `summary_path=` pointing to the summary).
+1. 确认提炼摘要已写入：`{{summary_path}}`。
+2. 调用 **`gatehouse_skill_extract_record()`**（或通过 `summary_path=` 指向摘要）。
