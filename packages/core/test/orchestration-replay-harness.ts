@@ -2,21 +2,21 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import type { PluginInput } from "@opencode-ai/plugin"
-import { mergeAndSaveBrief } from "../src/orchestration/events.ts"
-import { orchestrationComplete } from "../src/orchestration/events.ts"
-import { saveMissionScriptRecord } from "../src/orchestration/context.ts"
-import { saveOrchestrationPlanRecord } from "../src/orchestration/plan-store.ts"
-import { loadMissionScript } from "../src/orchestration/script-load.ts"
+import { mergeAndSaveBrief } from "../src/orchestration/engine/events.ts"
+import { orchestrationComplete } from "../src/orchestration/engine/events.ts"
+import { saveMissionScriptRecord } from "../src/orchestration/lifecycle/coordinator.ts"
+import { saveOrchestrationPlanRecord } from "../src/orchestration/plan/store.ts"
+import { loadMissionScript } from "../src/orchestration/script/load.ts"
 import type { LoadedMissionScript } from "../src/orchestration/types.ts"
 import {
   initOrchestrationState,
   readOrchestrationState,
   writeOrchestrationState,
-} from "../src/orchestration/state.ts"
+} from "../src/orchestration/state/store.ts"
 import { getRegistryStore } from "../src/registry/context.ts"
 import type { RegistryStore } from "../src/registry/store.ts"
 import type { GatehouseClient } from "../src/session/client.ts"
-import { teamNodeOrder } from "../src/orchestration/plan-graph.ts"
+import { teamNodeOrder } from "../src/orchestration/plan/graph.ts"
 import type { MissionTeamSpec, MissionManifest } from "../src/missions/manifest/types.ts"
 
 export type ReplayTestEnv = {

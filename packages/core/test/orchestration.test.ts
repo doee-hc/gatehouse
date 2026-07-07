@@ -5,8 +5,8 @@ import path from "node:path"
 import type { PluginInput } from "@opencode-ai/plugin"
 import { formatNodeBriefBlock } from "../src/execution/brief.ts"
 import { DEFAULT_GATEHOUSE_LOCALE } from "../src/locale.ts"
-import { mergeAndSaveBrief } from "../src/orchestration/events.ts"
-import { deliverOrchestrationPrompt } from "../src/orchestration/prompt.ts"
+import { mergeAndSaveBrief } from "../src/orchestration/engine/events.ts"
+import { deliverOrchestrationPrompt } from "../src/orchestration/engine/prompt.ts"
 import { RegistryDatabase } from "../src/registry/db.ts"
 import { RegistryStore } from "../src/registry/store.ts"
 import { OUTER_ARCHITECT_ID } from "../src/registry/types.ts"
@@ -23,14 +23,14 @@ import {
   orchestrationStateNeedsNodeInit,
   readOrchestrationState,
   writeOrchestrationState,
-} from "../src/orchestration/state.ts"
-import { prepareOrchestrationRuntime } from "../src/orchestration/runtime.ts"
-import { createMissionContext } from "../src/orchestration/ctx-host.ts"
-import { saveMissionScriptRecord } from "../src/orchestration/context.ts"
-import { validateReworkRequest } from "../src/orchestration/rework.ts"
-import { notifyOrchestrationWaiters } from "../src/orchestration/wait.ts"
+} from "../src/orchestration/state/store.ts"
+import { prepareOrchestrationRuntime } from "../src/orchestration/lifecycle/coordinator.ts"
+import { createMissionContext } from "../src/orchestration/sandbox/host.ts"
+import { saveMissionScriptRecord } from "../src/orchestration/lifecycle/coordinator.ts"
+import { validateReworkRequest } from "../src/orchestration/state/rework.ts"
+import { notifyOrchestrationWaiters } from "../src/orchestration/engine/wait.ts"
 import type { MissionTeamSpec } from "../src/missions/manifest/types.ts"
-import { loadMissionScript } from "../src/orchestration/script-load.ts"
+import { loadMissionScript } from "../src/orchestration/script/load.ts"
 import { startEphemeralServer, startPortalInternalEventCapture, withPortalEnv } from "./portal-test-server.ts"
 
 const sampleTeam: MissionTeamSpec = {
@@ -124,12 +124,22 @@ describe("orchestration state", () => {
           b: { session_id: "ses_b"},
         },
       }
+      const orchestrateSource = "export default async function orchestrate(ctx) {}"
       const prepared = await prepareOrchestrationRuntime(dir, manifest, {
         team: sampleTeam,
         scriptPath: ".gatehouse/missions/orch-m1/mission.script.ts",
         scriptHash: "hash123",
-        scriptSource: "export default async function orchestrate(ctx) {}",
-        orchestrateSource: "export default async function orchestrate(ctx) {}",
+        scriptSource: orchestrateSource,
+        orchestrateSource,
+        plan: {
+          schema_version: 1,
+          mission_id: "orch-m1",
+          plan_version: "test-plan",
+          script_hash: "hash123",
+          terminal_node: "terminal",
+          steps: [],
+          warnings: [],
+        },
       })
       expect(prepared.status).toBe("prepared")
       if (prepared.status !== "prepared") return
@@ -395,12 +405,12 @@ describe("orchestration prompt portal", () => {
 
 describe("orchestration wait", () => {
   beforeEach(async () => {
-    const { clearMissionWaits } = await import("../src/orchestration/wait.ts")
+    const { clearMissionWaits } = await import("../src/orchestration/engine/wait.ts")
     for (const missionId of ["wait-m1", "race-m1"]) clearMissionWaits(missionId)
   })
 
   test("notifyOrchestrationWaiters resolves complete wait", async () => {
-    const { waitForOrchestration } = await import("../src/orchestration/wait.ts")
+    const { waitForOrchestration } = await import("../src/orchestration/engine/wait.ts")
     const missionId = "wait-m1"
     const state = initOrchestrationState(missionId, ["a"])
     state.nodes.a = { status: "pending" }
@@ -414,7 +424,7 @@ describe("orchestration wait", () => {
   })
 
   test("readState poll resolves when notify happened before register", async () => {
-    const { waitForOrchestration } = await import("../src/orchestration/wait.ts")
+    const { waitForOrchestration } = await import("../src/orchestration/engine/wait.ts")
     const missionId = "race-m1"
     const state = initOrchestrationState(missionId, ["a"])
     state.nodes.a = { status: "done", completed_at: new Date().toISOString() }

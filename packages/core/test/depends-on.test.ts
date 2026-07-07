@@ -6,7 +6,7 @@ import {
   normalizeDependsOn,
   parseDependsOnArrayBody,
   waitNodeIds,
-} from "../src/orchestration/depends-on.ts"
+} from "../src/orchestration/engine/depends-on.ts"
 
 describe("dependsOn", () => {
   test("normalizes string and object entries", () => {

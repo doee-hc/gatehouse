@@ -1,184 +1,67 @@
-import type { PluginInput } from "@opencode-ai/plugin"
 import { RegistryDatabase } from "./db.ts"
-import { enrichLeadDeliveryMessage } from "../messaging/delivery-notify.ts"
+import { bindWatchdogStateStore } from "../watchdog/state-store.ts"
+import { normalizeOuterProfile } from "../names.ts"
+import type { MissionExtractManifest, MissionManifest, MissionRetroManifest, MissionTeamSpec, MissionVerifyManifest } from "../missions/manifest/types.ts"
+import type { OrchestrationPlan } from "../orchestration/plan/types.ts"
+import type { OuterProfile } from "../names.ts"
 import {
-  publishArchitectSummaryBlogPost,
-  publishRetroSummaryBlogPost,
-} from "../delivery/publish-artifacts.ts"
-import { architectRetroReviewReadyMessage, leadRetroSummaryReadyMessage, loadRetroKickoffPrompt } from "../retro/prompt.ts"
-import { loadDomainSkillExtractPrompt } from "../retro/skill-kickoff.ts"
-import { loadDomainSkillVerifyPrompt } from "../extract/prompt.ts"
-import { createVerifyManifest } from "../extract/verify-setup.ts"
-import { loadCuratorSkillAssignKickoff, curatorSkillExtractBatchReadyMessage } from "../curator/prompt.ts"
-import { archiveLowUtilitySkills } from "../skills/utility.ts"
-import { readExtractManifest, writeVerifyManifest } from "../missions/manifest/store.ts"
-import type { MissionExtractManifest, MissionTeamSpec, MissionVerifyManifest } from "../missions/manifest/types.ts"
-import { loadArchitectPrompt } from "../prompt/architect.ts"
-import { loadArbiterPrompt } from "../prompt/arbiter.ts"
-import { loadCuratorPrompt } from "../prompt/curator.ts"
-import { curatorSkillAssignKickoffPath, curatorSkillSummaryRelPath, extractSessionTitle, nodeDisplayLabel, retroSessionTitle, retroSummaryRelPath, verifySessionTitle, architectSummaryRelPath, curatorSummaryRelPath } from "../paths.ts"
-import { buildDirectedNotification, gatehouseMessage, parseDirectedNotification } from "../i18n.ts"
-import { loadGatehouseConfig, modelForOuterProfile } from "../gatehouse-config.ts"
-import { readLocaleSync } from "../locale.ts"
-import { agentName, normalizeOuterProfile, OUTER_PROFILES, readAgentNamesSync, type OuterProfile } from "../names.ts"
-import {
-  ARCHITECT_OPENCODE,
-  LEAD_OPENCODE,
-  INNER_EXECUTION_AGENT,
-  INNER_EXTRACT_AGENT,
-  INNER_VERIFY_AGENT,
-  ARBITER_OPENCODE,
-  CURATOR_OPENCODE,
-  OUTER_ARCHITECT_ID,
-  OUTER_LEAD_ID,
-  OUTER_ARBITER_ID,
-  OUTER_CURATOR_ID,
   REGISTRY_SCHEMA_VERSION,
-  RETRO_ANALYST_AGENT,
   type DeliverSystemNotificationInput,
-  type SendMessageInput,
-  type SendMessageResult,
-  retroAgentId,
   type RegisterAgentInput,
   type RegistryAgent,
-  type RegistryPendingDelivery,
-  type RegistryRetroRun,
-  type RegistrySkillExtractCompletion,
-  type RegistrySkillExtractRun,
-  type RegistrySkillVerifyCompletion,
-  type RegistrySkillVerifyRun,
   type RegistryScope,
-  extractAgentId,
-  innerAgentId,
-  verifyAgentId,
+  type SendMessageInput,
+  type SendMessageResult,
 } from "./types.ts"
-import { isTerminalInnerAgent } from "../orchestration/plan-graph.ts"
-import type { MissionRetroManifest, MissionManifest } from "../missions/manifest/types.ts"
-import type { OrchestrationPlan } from "../orchestration/plan-types.ts"
-import {
-  createSession,
-  promptSession,
-  sessionExists,
-  updateSessionTitle,
-  type GatehouseClient,
-} from "../session/client.ts"
-import { sessionStatusById } from "../session/status.ts"
-import { emitPortalEvent } from "../portal/events.ts"
-import { spawnIdForAgent } from "../portal/spawn-id.ts"
-import { notifyWatchdogSendMessage } from "../watchdog/notify.ts"
-import { bindWatchdogStateStore } from "../watchdog/state-store.ts"
+import { now, skillExtractCompletionKey, skillVerifyCompletionKey } from "./helpers.ts"
+import type { RecipientResolution, RegistryHost, RegistryState, ResolveOptions, StoreOptions } from "./internals.ts"
+import * as agentRegistry from "./agent-registry.ts"
+import * as extractService from "./extract-service.ts"
+import * as messagingService from "./messaging-service.ts"
+import * as retroService from "./retro-service.ts"
+import * as sessionFactory from "./session-factory.ts"
 
-const MAX_DELIVERY_ATTEMPTS = 10
-
-type StoreOptions = {
-  directory: string
-  client: GatehouseClient
-  plugin?: PluginInput
-}
-
-type ResolveOptions = {
-  missionId?: string
-  scope?: RegistryScope
-  sender?: RegistryAgent
-}
-
-type RecipientResolution =
-  | { status: "resolved"; recipient: RegistryAgent; matchedBy: "agentId" | "sessionId" | "profile" | "displayName" | "nodeId" }
-  | { status: "not_found"; query: string; candidates: RegistryAgent[] }
-  | { status: "ambiguous"; query: string; candidates: RegistryAgent[] }
-
-function now() {
-  return new Date().toISOString()
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null
-}
-
-function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : String(error)
-}
-
-function pendingEligible(delivery: RegistryPendingDelivery, nowIso: string) {
-  if (delivery.nextRetryAt && delivery.nextRetryAt > nowIso) return false
-  return true
-}
-
-function deliveryBackoffMs(attempts: number) {
-  return Math.min(60_000, 1_000 * 2 ** Math.max(0, attempts - 1))
-}
-
-function formatDirectedNotification(
-  projectDirectory: string,
-  senderLabel: string,
-  content: string,
-) {
-  return buildDirectedNotification(senderLabel, content, readLocaleSync(projectDirectory))
-}
-
-function skillExtractCompletionKey(missionId: string, nodeId: string) {
-  return `${missionId}:${nodeId}`
-}
-
-function skillVerifyCompletionKey(missionId: string, nodeId: string) {
-  return `${missionId}:${nodeId}`
-}
+export type { StoreOptions } from "./internals.ts"
 
 export class RegistryStore {
   readonly dbPath: string
-  private agents = new Map<string, RegistryAgent>()
-  private pendingDeliveries: RegistryPendingDelivery[] = []
-  private retroRuns = new Map<string, RegistryRetroRun>()
-  private skillExtractRuns = new Map<string, RegistrySkillExtractRun>()
-  private skillExtractCompletions = new Map<string, RegistrySkillExtractCompletion>()
-  private skillVerifyRuns = new Map<string, RegistrySkillVerifyRun>()
-  private skillVerifyCompletions = new Map<string, RegistrySkillVerifyCompletion>()
   private db: RegistryDatabase
-  private flushTail: Promise<void> = Promise.resolve()
+  private readonly state: RegistryState
 
   private constructor(private options: StoreOptions) {
     this.db = new RegistryDatabase(options.directory)
     this.dbPath = this.db.path
+    this.state = {
+      agents: new Map(),
+      pendingDeliveries: [],
+      retroRuns: new Map(),
+      skillExtractRuns: new Map(),
+      skillExtractCompletions: new Map(),
+      skillVerifyRuns: new Map(),
+      skillVerifyCompletions: new Map(),
+      flushTail: Promise.resolve(),
+    }
   }
 
   get directory() {
     return this.options.directory
   }
 
-  private outerName(profile: OuterProfile) {
-    return agentName(readAgentNamesSync(this.options.directory), profile)
-  }
-
-  private outerModel(profile: OuterProfile) {
-    return modelForOuterProfile(loadGatehouseConfig(this.options.directory).models, profile)
-  }
-
-  async syncOuterSessionTitle(sessionId: string, profile: OuterProfile) {
-    await updateSessionTitle(
-      this.options.client,
-      this.options.directory,
-      sessionId,
-      this.outerName(profile),
-    )
-  }
-
-  syncOuterDisplayNames() {
-    for (const profile of OUTER_PROFILES) {
-      const agent = this.byProfile(profile, "outer")
-      if (!agent) continue
-      const displayName = this.outerName(profile)
-      if (agent.displayName === displayName) continue
-      this.register({
-        agentId: agent.agentId,
-        scope: agent.scope,
-        profile: agent.profile,
-        sessionId: agent.sessionId,
-        displayName,
-        status: agent.status,
-        ...(agent.missionId && { missionId: agent.missionId }),
-        ...(agent.nodeId && { nodeId: agent.nodeId }),
-        ...(agent.projectRootSessionId && { projectRootSessionId: agent.projectRootSessionId }),
-      })
+  private host(): RegistryHost {
+    const store = this
+    return {
+      directory: store.options.directory,
+      options: store.options,
+      state: store.state,
+      mutate: (fn) => store.mutate(fn),
+      loadSnapshot: () => store.loadSnapshot(),
+      removeAgent: (agentId) => store.removeAgent(agentId),
+      register: (input) => store.register(input),
+      byAgentId: (agentId) => store.byAgentId(agentId),
+      bySession: (sessionId) => store.bySession(sessionId),
+      byProfile: (profile, scope) => store.byProfile(profile, scope),
+      getActiveMission: () => store.getActiveMission(),
+      resolveRecipient: (query, opts) => messagingService.resolveRecipient(store.host(), query, opts),
     }
   }
 
@@ -191,15 +74,15 @@ export class RegistryStore {
 
   private loadSnapshot() {
     const snapshot = this.db.load()
-    this.agents = new Map(snapshot.agents.map((item) => [item.agentId, item]))
-    this.pendingDeliveries = snapshot.pendingDeliveries
-    this.retroRuns = new Map(snapshot.retroRuns.map((item) => [item.missionId, item]))
-    this.skillExtractRuns = new Map(snapshot.skillExtractRuns.map((item) => [item.missionId, item]))
-    this.skillExtractCompletions = new Map(
+    this.state.agents = new Map(snapshot.agents.map((item) => [item.agentId, item]))
+    this.state.pendingDeliveries = snapshot.pendingDeliveries
+    this.state.retroRuns = new Map(snapshot.retroRuns.map((item) => [item.missionId, item]))
+    this.state.skillExtractRuns = new Map(snapshot.skillExtractRuns.map((item) => [item.missionId, item]))
+    this.state.skillExtractCompletions = new Map(
       snapshot.skillExtractCompletions.map((item) => [skillExtractCompletionKey(item.missionId, item.nodeId), item]),
     )
-    this.skillVerifyRuns = new Map(snapshot.skillVerifyRuns.map((item) => [item.missionId, item]))
-    this.skillVerifyCompletions = new Map(
+    this.state.skillVerifyRuns = new Map(snapshot.skillVerifyRuns.map((item) => [item.missionId, item]))
+    this.state.skillVerifyCompletions = new Map(
       snapshot.skillVerifyCompletions.map((item) => [skillVerifyCompletionKey(item.missionId, item.nodeId), item]),
     )
   }
@@ -208,13 +91,13 @@ export class RegistryStore {
     return {
       schemaVersion: REGISTRY_SCHEMA_VERSION,
       updatedAt: now(),
-      agents: Array.from(this.agents.values()),
-      pendingDeliveries: [...this.pendingDeliveries],
-      retroRuns: Array.from(this.retroRuns.values()),
-      skillExtractRuns: Array.from(this.skillExtractRuns.values()),
-      skillExtractCompletions: Array.from(this.skillExtractCompletions.values()),
-      skillVerifyRuns: Array.from(this.skillVerifyRuns.values()),
-      skillVerifyCompletions: Array.from(this.skillVerifyCompletions.values()),
+      agents: Array.from(this.state.agents.values()),
+      pendingDeliveries: [...this.state.pendingDeliveries],
+      retroRuns: Array.from(this.state.retroRuns.values()),
+      skillExtractRuns: Array.from(this.state.skillExtractRuns.values()),
+      skillExtractCompletions: Array.from(this.state.skillExtractCompletions.values()),
+      skillVerifyRuns: Array.from(this.state.skillVerifyRuns.values()),
+      skillVerifyCompletions: Array.from(this.state.skillVerifyCompletions.values()),
     }
   }
 
@@ -226,7 +109,7 @@ export class RegistryStore {
 
   private removeAgent(agentId: string) {
     this.mutate(() => {
-      this.agents.delete(agentId)
+      this.state.agents.delete(agentId)
     })
   }
 
@@ -240,97 +123,27 @@ export class RegistryStore {
         sessionId: input.sessionId,
         displayName: input.displayName,
         status: input.status ?? "active",
-        createdAt: this.agents.get(input.agentId)?.createdAt ?? updatedAt,
+        createdAt: this.state.agents.get(input.agentId)?.createdAt ?? updatedAt,
         updatedAt,
         ...(input.missionId && { missionId: input.missionId }),
         ...(input.nodeId && { nodeId: input.nodeId }),
         ...(input.projectRootSessionId && { projectRootSessionId: input.projectRootSessionId }),
       }
-      this.agents.set(input.agentId, record)
+      this.state.agents.set(input.agentId, record)
       return record
     })
   }
 
   registerOuterSession(input: { profile: string; sessionId: string; projectRootSessionId?: string }) {
-    if (input.profile === LEAD_OPENCODE) {
-      return this.register({
-        agentId: OUTER_LEAD_ID,
-        scope: "outer",
-        profile: "lead",
-        sessionId: input.sessionId,
-        displayName: this.outerName("lead"),
-        projectRootSessionId: input.projectRootSessionId ?? input.sessionId,
-      })
-    }
-    if (input.profile === ARCHITECT_OPENCODE) {
-      return this.register({
-        agentId: OUTER_ARCHITECT_ID,
-        scope: "outer",
-        profile: "architect",
-        sessionId: input.sessionId,
-        displayName: this.outerName("architect"),
-        projectRootSessionId: input.projectRootSessionId,
-      })
-    }
-    if (input.profile === CURATOR_OPENCODE) {
-      return this.register({
-        agentId: OUTER_CURATOR_ID,
-        scope: "outer",
-        profile: "curator",
-        sessionId: input.sessionId,
-        displayName: this.outerName("curator"),
-        projectRootSessionId: input.projectRootSessionId,
-      })
-    }
-    if (input.profile === ARBITER_OPENCODE) {
-      return this.register({
-        agentId: OUTER_ARBITER_ID,
-        scope: "outer",
-        profile: "arbiter",
-        sessionId: input.sessionId,
-        displayName: this.outerName("arbiter"),
-        projectRootSessionId: input.projectRootSessionId,
-      })
-    }
+    return agentRegistry.registerOuterSession(this.host(), input)
   }
 
   syncRetroFromManifest(retro: MissionRetroManifest) {
-    return this.mutate(() => {
-      const projectRootSessionId = this.byProfile("lead", "outer")?.sessionId
-      return this.registerRetroAnalyst({
-        missionId: retro.mission_id,
-        sessionId: retro.retro_session_id,
-        projectRootSessionId,
-      })
-    })
+    return agentRegistry.syncRetroFromManifest(this.host(), retro)
   }
 
-  registerRetroAnalyst(input: {
-    missionId: string
-    sessionId: string
-    projectRootSessionId?: string
-  }) {
-    return this.mutate(() => {
-      const agentId = retroAgentId(input.missionId)
-      const existing = this.agents.get(agentId)
-      const updatedAt = now()
-      const record: RegistryAgent = {
-        agentId,
-        scope: "retro",
-        profile: RETRO_ANALYST_AGENT,
-        sessionId: input.sessionId,
-        displayName: retroSessionTitle(input.missionId),
-        missionId: input.missionId,
-        status: "active",
-        createdAt: existing?.createdAt ?? updatedAt,
-        updatedAt,
-        ...((input.projectRootSessionId ?? existing?.projectRootSessionId) && {
-          projectRootSessionId: input.projectRootSessionId ?? existing?.projectRootSessionId,
-        }),
-      }
-      this.agents.set(agentId, record)
-      return record
-    })
+  registerRetroAnalyst(input: { missionId: string; sessionId: string; projectRootSessionId?: string }) {
+    return agentRegistry.registerRetroAnalyst(this.host(), input)
   }
 
   registerExtractNode(input: {
@@ -340,28 +153,7 @@ export class RegistryStore {
     profile: string
     projectRootSessionId?: string
   }) {
-    return this.mutate(() => {
-      const agentId = extractAgentId(input.missionId, input.nodeId)
-      const existing = this.agents.get(agentId)
-      const updatedAt = now()
-      const record: RegistryAgent = {
-        agentId,
-        scope: "extract",
-        profile: input.profile,
-        sessionId: input.sessionId,
-        displayName: extractSessionTitle(input.missionId, input.nodeId),
-        missionId: input.missionId,
-        nodeId: input.nodeId,
-        status: "active",
-        createdAt: existing?.createdAt ?? updatedAt,
-        updatedAt,
-        ...((input.projectRootSessionId ?? existing?.projectRootSessionId) && {
-          projectRootSessionId: input.projectRootSessionId ?? existing?.projectRootSessionId,
-        }),
-      }
-      this.agents.set(agentId, record)
-      return record
-    })
+    return agentRegistry.registerExtractNode(this.host(), input)
   }
 
   registerVerifyNode(input: {
@@ -371,87 +163,19 @@ export class RegistryStore {
     profile: string
     projectRootSessionId?: string
   }) {
-    return this.mutate(() => {
-      const agentId = verifyAgentId(input.missionId, input.nodeId)
-      const existing = this.agents.get(agentId)
-      const updatedAt = now()
-      const record: RegistryAgent = {
-        agentId,
-        scope: "verify",
-        profile: input.profile,
-        sessionId: input.sessionId,
-        displayName: verifySessionTitle(input.missionId, input.nodeId),
-        missionId: input.missionId,
-        nodeId: input.nodeId,
-        status: "active",
-        createdAt: existing?.createdAt ?? updatedAt,
-        updatedAt,
-        ...((input.projectRootSessionId ?? existing?.projectRootSessionId) && {
-          projectRootSessionId: input.projectRootSessionId ?? existing?.projectRootSessionId,
-        }),
-      }
-      this.agents.set(agentId, record)
-      return record
-    })
+    return agentRegistry.registerVerifyNode(this.host(), input)
   }
 
   syncExtractFromManifest(extract: MissionExtractManifest, manifest: MissionManifest) {
-    return this.mutate(() => {
-      const projectRootSessionId = this.byProfile("lead", "outer")?.sessionId
-      const synced: RegistryAgent[] = []
-      for (const [nodeId, node] of Object.entries(extract.nodes)) {
-        if (!manifest.nodes[nodeId]) continue
-        synced.push(
-          this.registerExtractNode({
-            missionId: extract.mission_id,
-            nodeId,
-            sessionId: node.extract_session_id,
-            profile: INNER_EXTRACT_AGENT,
-            projectRootSessionId,
-          }),
-        )
-      }
-      return synced
-    })
+    return agentRegistry.syncExtractFromManifest(this.host(), extract, manifest)
   }
 
   syncVerifyFromManifest(verify: MissionVerifyManifest) {
-    return this.mutate(() => {
-      const projectRootSessionId = this.byProfile("lead", "outer")?.sessionId
-      const synced: RegistryAgent[] = []
-      for (const [nodeId, node] of Object.entries(verify.nodes)) {
-        synced.push(
-          this.registerVerifyNode({
-            missionId: verify.mission_id,
-            nodeId,
-            sessionId: node.verify_session_id,
-            profile: INNER_VERIFY_AGENT,
-            projectRootSessionId,
-          }),
-        )
-      }
-      return synced
-    })
+    return agentRegistry.syncVerifyFromManifest(this.host(), verify)
   }
 
   syncInnerFromManifest(manifest: MissionManifest) {
-    const synced = this.mutate(() => {
-      const projectRootSessionId = this.byProfile("lead", "outer")?.sessionId
-      const agents: RegistryAgent[] = []
-      for (const [nodeId, node] of Object.entries(manifest.nodes)) {
-        agents.push(
-          this.registerInnerNode({
-            missionId: manifest.mission_id,
-            nodeId,
-            sessionId: node.session_id,
-            profile: node.profile ?? INNER_EXECUTION_AGENT,
-            projectRootSessionId,
-          }),
-        )
-      }
-      return agents
-    })
-    return synced
+    return agentRegistry.syncInnerFromManifest(this.host(), manifest)
   }
 
   registerInnerNode(input: {
@@ -461,51 +185,27 @@ export class RegistryStore {
     profile: string
     projectRootSessionId?: string
   }) {
-    return this.mutate(() => {
-      const agentId = innerAgentId(input.missionId, input.nodeId)
-      const existing = this.agents.get(agentId)
-      const updatedAt = now()
-      const record: RegistryAgent = {
-        agentId,
-        scope: "inner",
-        profile: input.profile,
-        sessionId: input.sessionId,
-        displayName: nodeDisplayLabel(input.nodeId),
-        missionId: input.missionId,
-        nodeId: input.nodeId,
-        status: "active",
-        createdAt: existing?.createdAt ?? updatedAt,
-        updatedAt,
-        ...((input.projectRootSessionId ?? existing?.projectRootSessionId) && {
-          projectRootSessionId: input.projectRootSessionId ?? existing?.projectRootSessionId,
-        }),
-      }
-      this.agents.set(agentId, record)
-      return record
-    })
+    return agentRegistry.registerInnerNode(this.host(), input)
   }
 
   byAgentId(agentId: string) {
-    return this.agents.get(agentId)
+    return this.state.agents.get(agentId)
   }
 
   bySession(sessionId: string) {
-    return Array.from(this.agents.values()).find((agent) => agent.sessionId === sessionId && agent.status === "active")
+    return Array.from(this.state.agents.values()).find((agent) => agent.sessionId === sessionId && agent.status === "active")
   }
 
   byProfile(profile: string, scope?: RegistryScope) {
     const key = normalizeOuterProfile(profile)
     if (!key) return undefined
-    return Array.from(this.agents.values()).find(
-      (agent) =>
-        agent.status === "active" &&
-        agent.profile === key &&
-        (scope === undefined || agent.scope === scope),
+    return Array.from(this.state.agents.values()).find(
+      (agent) => agent.status === "active" && agent.scope === (scope ?? "outer") && agent.profile === key,
     )
   }
 
   list(input?: { scope?: RegistryScope; missionId?: string }) {
-    return Array.from(this.agents.values()).filter((agent) => {
+    return Array.from(this.state.agents.values()).filter((agent) => {
       if (agent.status !== "active") return false
       if (input?.scope && agent.scope !== input.scope) return false
       if (input?.missionId && agent.missionId !== input.missionId) return false
@@ -514,7 +214,7 @@ export class RegistryStore {
   }
 
   pendingDeliveryCountForSession(sessionId: string) {
-    return this.pendingDeliveries.filter((delivery) => delivery.recipientSessionId === sessionId).length
+    return this.state.pendingDeliveries.filter((delivery) => delivery.recipientSessionId === sessionId).length
   }
 
   getActiveMission() {
@@ -532,1125 +232,174 @@ export class RegistryStore {
 
   purgePendingDeliveriesForMission(missionId: string) {
     return this.mutate(() => {
-      const before = this.pendingDeliveries.length
-      this.pendingDeliveries = this.pendingDeliveries.filter((delivery) => {
+      let removed = 0
+      this.state.pendingDeliveries = this.state.pendingDeliveries.filter((delivery) => {
         const recipient = this.byAgentId(delivery.recipientAgentId)
         if (!recipient?.missionId || recipient.missionId !== missionId) return true
         if (recipient.scope !== "inner" && recipient.scope !== "retro") return true
+        removed += 1
         return false
       })
-      return before - this.pendingDeliveries.length
+      return removed
     })
   }
 
   resolveRecipient(query: string, opts: ResolveOptions = {}): RecipientResolution {
-    const trimmed = query.trim()
-    const normalized = trimmed.toLowerCase()
-    const agents = Array.from(this.agents.values()).filter((agent) => {
-      if (agent.status !== "active") return false
-      if (opts.scope && agent.scope !== opts.scope) return false
-      if (
-        opts.missionId &&
-        (agent.scope === "inner" || agent.scope === "retro") &&
-        agent.missionId !== opts.missionId
-      ) {
-        return false
-      }
-      return true
-    })
+    return messagingService.resolveRecipient(this.host(), query, opts)
+  }
 
-    const exactId = agents.find((agent) => agent.agentId === trimmed)
-    if (exactId) return { status: "resolved", recipient: exactId, matchedBy: "agentId" }
+  async syncOuterSessionTitle(sessionId: string, profile: OuterProfile) {
+    return sessionFactory.syncOuterSessionTitle(this.host(), sessionId, profile)
+  }
 
-    const exactSession = agents.find((agent) => agent.sessionId === trimmed)
-    if (exactSession) return { status: "resolved", recipient: exactSession, matchedBy: "sessionId" }
-
-    const targetProfile = normalizeOuterProfile(normalized)
-    const profileMatches = agents.filter(
-      (agent) => agent.scope === "outer" && targetProfile && agent.profile === targetProfile,
-    )
-    if (profileMatches.length === 1) return { status: "resolved", recipient: profileMatches[0]!, matchedBy: "profile" }
-
-    if (opts.missionId) {
-      const nodeMatches = agents.filter((agent) => agent.nodeId === trimmed && agent.missionId === opts.missionId)
-      const nodeRecipient = pickNodeRecipient(nodeMatches, opts.sender)
-      if (nodeRecipient) return { status: "resolved", recipient: nodeRecipient, matchedBy: "nodeId" }
-      if (nodeMatches.length > 1) return { status: "ambiguous", query: trimmed, candidates: nodeMatches }
-    }
-
-    if (profileMatches.length > 1) return { status: "ambiguous", query: trimmed, candidates: profileMatches }
-
-    const candidates = agents
-      .filter(
-        (agent) =>
-          agent.agentId.toLowerCase().includes(normalized) ||
-          agent.displayName.toLowerCase().includes(normalized) ||
-          (agent.scope === "outer" && agent.profile.toLowerCase().includes(normalized)) ||
-          agent.nodeId?.toLowerCase().includes(normalized),
-      )
-      .slice(0, 8)
-    return { status: "not_found", query: trimmed, candidates }
+  syncOuterDisplayNames() {
+    return sessionFactory.syncOuterDisplayNames(this.host())
   }
 
   async ensureArchitectSession(projectRootSessionId?: string) {
-    const existing = this.byProfile("architect", "outer")
-    if (existing?.sessionId) {
-      if (await sessionExists(this.options.client, this.options.directory, existing.sessionId)) {
-        this.syncOuterDisplayNames()
-        return { agent: this.byProfile("architect", "outer") ?? existing, createdSession: false }
-      }
-      this.removeAgent(OUTER_ARCHITECT_ID)
-    }
-    const sessionId = await createSession(this.options.client, this.options.directory, {
-      display_name: this.outerName("architect"),
-      profile: ARCHITECT_OPENCODE,
-      model: this.outerModel("architect"),
-    })
-    await promptSession(this.options.client, this.options.directory, sessionId, {
-      profile: ARCHITECT_OPENCODE,
-      system: await loadArchitectPrompt(this.options.directory),
-      noReply: true,
-      model: this.outerModel("architect"),
-    }, this.options.plugin)
-    const agent = this.register({
-      agentId: OUTER_ARCHITECT_ID,
-      scope: "outer",
-      profile: "architect",
-      sessionId,
-      displayName: this.outerName("architect"),
-      projectRootSessionId,
-    })
-    return { agent, createdSession: true }
+    return sessionFactory.ensureArchitectSession(this.host(), projectRootSessionId)
   }
 
   async ensureCuratorSession(projectRootSessionId?: string) {
-    const existing = this.byProfile("curator", "outer")
-    if (existing?.sessionId) {
-      if (await sessionExists(this.options.client, this.options.directory, existing.sessionId)) {
-        this.syncOuterDisplayNames()
-        return { agent: this.byProfile("curator", "outer") ?? existing, createdSession: false }
-      }
-      this.removeAgent(OUTER_CURATOR_ID)
-    }
-    const sessionId = await createSession(this.options.client, this.options.directory, {
-      display_name: this.outerName("curator"),
-      profile: CURATOR_OPENCODE,
-      model: this.outerModel("curator"),
-    })
-    await promptSession(this.options.client, this.options.directory, sessionId, {
-      profile: CURATOR_OPENCODE,
-      system: await loadCuratorPrompt(this.options.directory),
-      noReply: true,
-      model: this.outerModel("curator"),
-    }, this.options.plugin)
-    const agent = this.register({
-      agentId: OUTER_CURATOR_ID,
-      scope: "outer",
-      profile: "curator",
-      sessionId,
-      displayName: this.outerName("curator"),
-      projectRootSessionId,
-    })
-    return { agent, createdSession: true }
+    return sessionFactory.ensureCuratorSession(this.host(), projectRootSessionId)
   }
 
   async ensureArbiterSession(projectRootSessionId?: string) {
-    const existing = this.byProfile("arbiter", "outer")
-    if (existing?.sessionId) {
-      if (await sessionExists(this.options.client, this.options.directory, existing.sessionId)) {
-        this.syncOuterDisplayNames()
-        return { agent: this.byProfile("arbiter", "outer") ?? existing, createdSession: false }
-      }
-      this.removeAgent(OUTER_ARBITER_ID)
-    }
-    const sessionId = await createSession(this.options.client, this.options.directory, {
-      display_name: this.outerName("arbiter"),
-      profile: ARBITER_OPENCODE,
-      model: this.outerModel("arbiter"),
-    })
-    await promptSession(this.options.client, this.options.directory, sessionId, {
-      profile: ARBITER_OPENCODE,
-      system: await loadArbiterPrompt(this.options.directory),
-      noReply: true,
-      model: this.outerModel("arbiter"),
-    }, this.options.plugin)
-    const agent = this.register({
-      agentId: OUTER_ARBITER_ID,
-      scope: "outer",
-      profile: "arbiter",
-      sessionId,
-      displayName: this.outerName("arbiter"),
-      projectRootSessionId,
-    })
-    return { agent, createdSession: true }
+    return sessionFactory.ensureArbiterSession(this.host(), projectRootSessionId)
   }
 
   async initOuterTeam(projectRootSessionId: string) {
-    this.syncOuterDisplayNames()
-    const architect = await this.ensureArchitectSession(projectRootSessionId)
-    const curator = await this.ensureCuratorSession(projectRootSessionId)
-    const arbiter = await this.ensureArbiterSession(projectRootSessionId)
-    this.syncOuterDisplayNames()
-    const names = readAgentNamesSync(this.options.directory)
-    return {
-      names,
-      architect: {
-        profile: "architect",
-        display_name: names.architect,
-        session_id: architect.agent.sessionId,
-        created_session: architect.createdSession,
-      },
-      curator: {
-        profile: "curator",
-        display_name: names.curator,
-        session_id: curator.agent.sessionId,
-        created_session: curator.createdSession,
-      },
-      arbiter: {
-        profile: "arbiter",
-        display_name: names.arbiter,
-        session_id: arbiter.agent.sessionId,
-        created_session: arbiter.createdSession,
-      },
-    }
+    return sessionFactory.initOuterTeam(this.host(), projectRootSessionId)
   }
 
-  async sendMessage(input: SendMessageInput): Promise<SendMessageResult> {
-    if (input.senderProfile === LEAD_OPENCODE && !this.bySession(input.senderSessionId)) {
-      const existingLead = this.byProfile("lead", "outer")
-      if (!existingLead) {
-        this.registerOuterSession({
-          profile: LEAD_OPENCODE,
-          sessionId: input.senderSessionId,
-          projectRootSessionId: input.senderSessionId,
-        })
-        await this.syncOuterSessionTitle(input.senderSessionId, "lead")
-      }
-    }
-    const resolvedSender = input.senderAgentId
-      ? this.byAgentId(input.senderAgentId)
-      : this.bySession(input.senderSessionId)
-    if (!resolvedSender) {
-      return { status: "forbidden", reason: "Sender session is not registered in registry" }
-    }
-
-    if (resolvedSender.scope !== "outer") {
-      return {
-        status: "forbidden",
-        reason: "gatehouse_send_message is outer-team only; execution nodes use gatehouse_execution_complete",
-        sender: resolvedSender,
-      }
-    }
-
-    const missionId = resolvedSender.missionId ?? this.getActiveMission()?.missionId
-    const recipientResolution = this.resolveRecipient(input.recipientQuery, {
-      missionId,
-      sender: resolvedSender,
-    })
-    if (recipientResolution.status !== "resolved") return recipientResolution
-
-    const recipient = recipientResolution.recipient
-    if (recipient.sessionId === input.senderSessionId) return { status: "self", recipient }
-
-    const forbidden = sendPolicyViolation(
-      resolvedSender,
-      recipient,
-      readAgentNamesSync(this.options.directory),
-      this.options.directory,
-    )
-    if (forbidden) {
-      return {
-        status: "forbidden",
-        reason: forbidden,
-        sender: resolvedSender,
-        recipient,
-      }
-    }
-
-    return this.deliverDirectedNotification({
-      resolvedSender,
-      recipient,
-      message: input.message,
-      senderAgentId: resolvedSender.agentId ?? input.senderAgentId,
-      missionId,
-    })
+  sendMessage(input: SendMessageInput): Promise<SendMessageResult> {
+    return messagingService.sendMessage(this.host(), input)
   }
 
-  /** Delivery after execution_complete or other system flows; not available to agents. */
-  async deliverSystemNotification(input: DeliverSystemNotificationInput): Promise<SendMessageResult> {
-    const resolvedSender = input.senderAgentId
-      ? this.byAgentId(input.senderAgentId)
-      : this.bySession(input.senderSessionId)
-    if (!resolvedSender) {
-      return { status: "forbidden", reason: "Sender session is not registered in registry" }
-    }
-
-    const missionId = resolvedSender.missionId ?? this.getActiveMission()?.missionId
-    const recipientResolution = this.resolveRecipient(input.recipientQuery, {
-      missionId,
-      sender: resolvedSender,
-    })
-    if (recipientResolution.status !== "resolved") return recipientResolution
-
-    const recipient = recipientResolution.recipient
-    if (recipient.sessionId === input.senderSessionId) return { status: "self", recipient }
-
-    if (
-      recipient.scope === "outer" &&
-      recipient.profile === LEAD_OPENCODE &&
-      !isTerminalInnerAgent(this.options.directory, resolvedSender)
-    ) {
-      return {
-        status: "forbidden",
-        reason: "only the terminal node may notify lead of mission delivery",
-        sender: resolvedSender,
-        recipient,
-      }
-    }
-
-    return this.deliverDirectedNotification({
-      resolvedSender,
-      recipient,
-      message: input.message,
-      senderAgentId: resolvedSender.agentId ?? input.senderAgentId,
-      missionId,
-    })
+  deliverSystemNotification(input: DeliverSystemNotificationInput): Promise<SendMessageResult> {
+    return messagingService.deliverSystemNotification(this.host(), input)
   }
 
-  private async deliverDirectedNotification(input: {
-    resolvedSender: RegistryAgent
-    recipient: RegistryAgent
-    message: string
-    senderAgentId?: string
-    missionId?: string
-  }): Promise<SendMessageResult> {
-    const senderLabel = input.resolvedSender.displayName
-    const message = enrichLeadDeliveryMessage(this.options.directory, {
-      sender: input.resolvedSender,
-      recipient: input.recipient,
-      message: input.message,
-    })
-    const delivery = await this.deliverToRecipient({
-      recipient: input.recipient,
-      promptText: formatDirectedNotification(this.options.directory, senderLabel, message),
-      senderAgentId: input.senderAgentId,
-    })
-    if (delivery.status === "failed") {
-      return { status: "failed", recipient: input.recipient, error: delivery.error ?? "prompt failed" }
-    }
-    notifyWatchdogSendMessage(this.options.directory, {
-      missionId: input.missionId,
-      sender: input.resolvedSender,
-      recipient: input.recipient,
-    })
-    return {
-      status: delivery.status,
-      recipient: input.recipient,
-      sessionId: input.recipient.sessionId,
-      createdSession: false,
-    }
+  deliverSystemMessage(recipient: RegistryAgent, content: string, promptProfile?: string) {
+    return messagingService.deliverSystemMessage(this.host(), recipient, content, promptProfile)
   }
 
-  private emitPortalAgentChat(sender: RegistryAgent, recipient: RegistryAgent, text: string) {
-    emitPortalEvent({
-      type: "agent.chat",
-      fromSpawnId: spawnIdForAgent(sender),
-      toSpawnId: spawnIdForAgent(recipient),
-      text,
-    })
-  }
-
-  private emitPortalChat(
+  deliverSystemPrompt(
     recipient: RegistryAgent,
     promptText: string,
-    options?: { suffix?: string; sender?: RegistryAgent },
+    options?: { promptProfile?: string; senderAgentId?: string },
   ) {
-    const parsed = parseDirectedNotification(promptText)
-    if (!parsed) return
-    const sender = options?.sender
-    if (!sender) return
-    const suffix = options?.suffix ?? ""
-    this.emitPortalAgentChat(sender, recipient, suffix ? `${parsed.text}${suffix}` : parsed.text)
+    return messagingService.deliverSystemPrompt(this.host(), recipient, promptText, options)
+  }
+
+  flushPendingDeliveries() {
+    return messagingService.flushPendingDeliveries(this.host())
   }
 
   beginRetroRun(missionId: string) {
-    return this.mutate(() => {
-      const run: RegistryRetroRun = { missionId, startedAt: now() }
-      this.retroRuns.set(missionId, run)
-      return run
-    })
+    return retroService.beginRetroRun(this.host(), missionId)
   }
 
   retroStatus(missionId: string) {
-    const run = this.retroRuns.get(missionId)
-    if (!run) return { status: "no_run" as const }
-    const summarySubmitted = Boolean(run.retroSummarySubmittedAt)
-    return {
-      status: "ok" as const,
-      run,
-      summarySubmitted,
-      architectNotified: Boolean(run.architectNotifiedAt),
-      architectSummarySubmitted: Boolean(run.architectLeadNotifiedAt),
-      architectLeadNotified: Boolean(run.architectLeadNotifiedAt),
-      leadRetroSummaryNotified: Boolean(run.leadRetroSummaryNotifiedAt),
-    }
+    return retroService.retroStatus(this.host(), missionId)
   }
 
   retroCompleteReadiness(missionId: string) {
-    const pending: string[] = []
-    const retro = this.retroStatus(missionId)
-    if (retro.status === "no_run") {
-      return { ready: true, pending, retro, skill: this.skillExtractStatus(missionId) }
-    }
-    if (!retro.summarySubmitted) pending.push("retro_analyst_summary")
-    else if (!retro.architectSummarySubmitted) pending.push("architect_retro_summary")
-
-    const skill = this.skillExtractStatus(missionId)
-    if (skill.status === "ok" && skill.run.expectedNodeIds.length > 0) {
-      if (!skill.allDone) pending.push("skill_extract_nodes")
-      else {
-        const verify = this.skillVerifyStatus(missionId)
-        if (verify.status === "no_run" || !verify.allDone) pending.push("skill_verify_nodes")
-        else if (!skill.curatorNotified) pending.push("curator_skill_kickoff")
-        else if (!skill.curatorSummarySubmitted) pending.push("curator_skill_summary")
-      }
-    }
-
-    return { ready: pending.length === 0, pending, retro, skill }
+    return retroService.retroCompleteReadiness(this.host(), missionId)
   }
 
-  async recordArchitectRetroSummary(input: { missionId: string; reportPath: string }) {
-    const retro = this.retroStatus(input.missionId)
-    if (retro.status !== "ok") {
-      throw new Error(`No retro run for mission ${input.missionId}`)
-    }
-    if (!retro.summarySubmitted) {
-      throw new Error(`Mission ${input.missionId} retro-summary has not been submitted yet`)
-    }
-    const alreadySubmitted = retro.architectSummarySubmitted
-    if (!alreadySubmitted) {
-      this.mutate(() => {
-        const run = this.retroRuns.get(input.missionId)
-        if (!run) return
-        this.retroRuns.set(input.missionId, { ...run, architectLeadNotifiedAt: now() })
-      })
-    }
-    const leadDelivery = await this.maybeNotifyLeadRetroSummaryComplete(input.missionId)
-    await publishArchitectSummaryBlogPost(this.options.directory, input.missionId, input.reportPath).catch(
-      () => undefined,
-    )
-    return {
-      missionId: input.missionId,
-      reportPath: input.reportPath,
-      alreadySubmitted,
-      retro_status: this.retroStatus(input.missionId),
-      retro_readiness: this.retroCompleteReadiness(input.missionId),
-      lead_notification: leadDelivery,
-    }
+  recordArchitectRetroSummary(input: { missionId: string; reportPath: string }) {
+    return retroService.recordArchitectRetroSummary(this.host(), input)
   }
 
-  async recordCuratorSkillSummary(input: { missionId: string; reportPath: string }) {
-    const skill = this.skillExtractStatus(input.missionId)
-    if (skill.status !== "ok" || skill.run.expectedNodeIds.length === 0) {
-      throw new Error(`Mission ${input.missionId} has no skill extract pipeline for curator`)
-    }
-    if (!skill.curatorNotified) {
-      throw new Error(`Mission ${input.missionId} curator skill kickoff has not completed yet`)
-    }
-    const alreadySubmitted = skill.curatorSummarySubmitted
-    if (!alreadySubmitted) {
-      this.mutate(() => {
-        const run = this.skillExtractRuns.get(input.missionId)
-        if (!run) return
-        this.skillExtractRuns.set(input.missionId, { ...run, curatorLeadNotifiedAt: now() })
-      })
-    }
-    const leadDelivery = await this.maybeNotifyLeadRetroSummaryComplete(input.missionId)
-    return {
-      missionId: input.missionId,
-      reportPath: input.reportPath,
-      alreadySubmitted,
-      skill_status: this.skillExtractStatus(input.missionId),
-      retro_readiness: this.retroCompleteReadiness(input.missionId),
-      lead_notification: leadDelivery,
-    }
+  recordCuratorSkillSummary(input: { missionId: string; reportPath: string }) {
+    return retroService.recordCuratorSkillSummary(this.host(), input)
   }
 
-  private async maybeNotifyLeadRetroSummaryComplete(missionId: string) {
-    const readiness = this.retroCompleteReadiness(missionId)
-    if (!readiness.ready) return { status: "skipped" as const, reason: "retro_incomplete" as const }
-
-    const run = this.retroRuns.get(missionId)
-    if (run?.leadRetroSummaryNotifiedAt) {
-      return { status: "skipped" as const, reason: "already_notified" as const }
-    }
-
-    const lead = this.byProfile("lead", "outer")
-    if (!lead?.sessionId) {
-      return { status: "failed" as const, error: "lead session not registered" }
-    }
-
-    const locale = readLocaleSync(this.options.directory)
-    const names = readAgentNamesSync(this.options.directory)
-    const skillAssigned =
-      readiness.skill.status === "ok" && readiness.skill.run.expectedNodeIds.length > 0
-    const sent = await this.deliverSystemMessage(
-      lead,
-      leadRetroSummaryReadyMessage(missionId, {
-        architectSummaryPath: architectSummaryRelPath(missionId),
-        ...(skillAssigned && { curatorSummaryPath: curatorSummaryRelPath(missionId) }),
-        locale,
-        leadName: names.lead,
-      }),
-      lead.profile,
-    )
-    if (sent.status === "failed") {
-      return { status: "failed" as const, error: sent.error ?? "prompt failed" }
-    }
-
-    this.mutate(() => {
-      const current = this.retroRuns.get(missionId)
-      if (!current) return
-      this.retroRuns.set(missionId, { ...current, leadRetroSummaryNotifiedAt: now() })
-    })
-    await this.flushPendingDeliveries()
-    return { status: sent.status, session_id: lead.sessionId }
+  recordRetroSummary(input: { missionId: string; sessionId: string; reportPath: string }) {
+    return retroService.recordRetroSummary(this.host(), input)
   }
 
-  async recordRetroSummary(input: { missionId: string; sessionId: string; reportPath: string }) {
-    const recorded = this.mutate(() => {
-      const run = this.retroRuns.get(input.missionId)
-      if (!run) throw new Error(`No retro run for mission ${input.missionId}`)
-      const updated: RegistryRetroRun = {
-        ...run,
-        retroSummarySubmittedAt: now(),
-        retroSummaryPath: input.reportPath,
-      }
-      this.retroRuns.set(input.missionId, updated)
-      return updated
-    })
-    this.deactivateRetroAgent(input.missionId)
-    await this.maybeNotifyArchitectRetroReview(input.missionId, input.reportPath)
-    await publishRetroSummaryBlogPost(this.options.directory, input.missionId, input.reportPath).catch(
-      () => undefined,
-    )
-    return recorded
-  }
-
-  deactivateRetroAgent(missionId: string) {
-    return this.mutate(() => {
-      const agentId = retroAgentId(missionId)
-      const agent = this.agents.get(agentId)
-      if (!agent || agent.status !== "active") return 0
-      this.agents.set(agentId, { ...agent, status: "completed", updatedAt: now() })
-      return 1
-    })
-  }
-
-  deactivateRetroAgentsForMission(missionId: string) {
-    return this.deactivateRetroAgent(missionId)
-  }
-
-  async deliverSystemMessage(recipient: RegistryAgent, content: string, promptProfile?: string) {
-    return this.deliverToRecipient({
-      recipient,
-      promptText: formatDirectedNotification(this.options.directory, "Gatehouse", content),
-      promptProfile,
-    })
-  }
-
-  async kickoffCuratorSkillAssignment(input: { missionId: string; objective?: string; spec: MissionTeamSpec }) {
-    const curator = this.byProfile("curator", "outer")
-    if (!curator?.sessionId) {
-      return {
-        delivery: "failed" as const,
-        error: "curator session not registered; lead must call gatehouse_init_team first",
-      }
-    }
-    const promptText = formatDirectedNotification(
-      this.options.directory,
-      "Gatehouse",
-      await loadCuratorSkillAssignKickoff(this.options.directory, {
-        missionId: input.missionId,
-        objective: input.objective,
-        spec: input.spec,
-      }),
-    )
-    const result = await this.deliverToRecipient({
-      recipient: curator,
-      promptText,
-      promptProfile: curator.profile,
-    })
-    if (result.status !== "failed") {
-      const architect = this.byProfile("architect", "outer")
-      if (architect) {
-        const locale = readLocaleSync(this.options.directory)
-        this.emitPortalAgentChat(
-          architect,
-          curator,
-          gatehouseMessage("portal.architectBootstrapCuratorHint", locale),
-        )
-      }
-    }
-    return {
-      curator_session_id: curator.sessionId,
-      delivery: result.status,
-      ...(result.error && { error: result.error }),
-    }
-  }
-
-  async kickoffExtractSkillSessions(extract: MissionExtractManifest) {
-    this.beginSkillExtractRun(extract.mission_id, extract.extract_order)
-    const deliveries: Array<{ nodeId: string; skillDomain: string; delivery: "sent" | "queued" | "failed"; error?: string }> = []
-    for (const nodeId of extract.extract_order) {
-      const extractNode = extract.nodes[nodeId]
-      if (!extractNode) continue
-      const recipient = this.byAgentId(extractAgentId(extract.mission_id, nodeId))
-      if (!recipient) {
-        deliveries.push({
-          nodeId,
-          skillDomain: extractNode.skill_domain,
-          delivery: "failed",
-          error: "extract agent not in registry",
-        })
-        continue
-      }
-      const content = await loadDomainSkillExtractPrompt(this.options.directory, {
-        missionId: extract.mission_id,
-        nodeId,
-        skillDomain: extractNode.skill_domain,
-      })
-      const result = await this.deliverSystemMessage(recipient, content, INNER_EXTRACT_AGENT)
-      deliveries.push({
-        nodeId,
-        skillDomain: extractNode.skill_domain,
-        delivery: result.status,
-        ...(result.error && { error: result.error }),
-      })
-    }
-    return deliveries
-  }
-
-  async kickoffSkillVerifySessions(verify: MissionVerifyManifest) {
-    const deliveries: Array<{ nodeId: string; skillDomain: string; delivery: "sent" | "queued" | "failed"; error?: string }> = []
-    for (const nodeId of verify.verify_order) {
-      const verifyNode = verify.nodes[nodeId]
-      if (!verifyNode) continue
-      const recipient = this.byAgentId(verifyAgentId(verify.mission_id, nodeId))
-      if (!recipient) {
-        deliveries.push({
-          nodeId,
-          skillDomain: verifyNode.skill_domain,
-          delivery: "failed",
-          error: "verify agent not in registry",
-        })
-        continue
-      }
-      const content = await loadDomainSkillVerifyPrompt(this.options.directory, {
-        missionId: verify.mission_id,
-        nodeId,
-        skillDomain: verifyNode.skill_domain,
-      })
-      const result = await this.deliverSystemMessage(recipient, content, INNER_VERIFY_AGENT)
-      deliveries.push({
-        nodeId,
-        skillDomain: verifyNode.skill_domain,
-        delivery: result.status,
-        ...(result.error && { error: result.error }),
-      })
-    }
-    return deliveries
-  }
-
-  async kickoffRetroSession(manifest: MissionManifest, plan?: OrchestrationPlan) {
-    const recipient = this.byAgentId(retroAgentId(manifest.mission_id))
-    if (!recipient) {
-      return { delivery: "failed" as const, error: "retro analyst not in registry" }
-    }
-    const promptText = await loadRetroKickoffPrompt(this.options.directory, {
-      missionId: manifest.mission_id,
-      manifest,
-      plan,
-    })
-    const result = await this.deliverToRecipient({
-      recipient,
-      promptText,
-      promptProfile: recipient.profile,
-    })
-    return {
-      nodeId: manifest.mission_id,
-      delivery: result.status,
-      ...(result.error && { error: result.error }),
-    }
-  }
-
-  private async maybeNotifyArchitectRetroReview(missionId: string, reportPath: string) {
-    const status = this.retroStatus(missionId)
-    if (status.status !== "ok" || !status.summarySubmitted || status.architectNotified) return
-    const architect = this.byProfile("architect", "outer")
-    if (!architect) return
-    const sent = await this.deliverSystemMessage(
-      architect,
-      architectRetroReviewReadyMessage(
-        missionId,
-        reportPath,
-        readAgentNamesSync(this.options.directory),
-        readLocaleSync(this.options.directory),
-      ),
-    )
-    if (sent.status === "failed") return
-    this.mutate(() => {
-      const run = this.retroRuns.get(missionId)
-      if (!run) return
-      this.retroRuns.set(missionId, { ...run, architectNotifiedAt: now() })
-    })
-  }
-
-  beginSkillExtractRun(missionId: string, expectedNodeIds: string[]) {
-    return this.mutate(() => {
-      for (const key of [...this.skillExtractCompletions.keys()]) {
-        if (key.startsWith(`${missionId}:`)) this.skillExtractCompletions.delete(key)
-      }
-      const run: RegistrySkillExtractRun = { missionId, expectedNodeIds, startedAt: now() }
-      this.skillExtractRuns.set(missionId, run)
-      return run
-    })
-  }
-
-  skillExtractStatus(missionId: string) {
-    const run = this.skillExtractRuns.get(missionId)
-    if (!run) return { status: "no_run" as const }
-    const completed = run.expectedNodeIds.filter((nodeId) =>
-      this.skillExtractCompletions.has(skillExtractCompletionKey(missionId, nodeId)),
-    )
-    const pending = run.expectedNodeIds.filter((nodeId) => !completed.includes(nodeId))
-    const completions = completed.flatMap((nodeId) => {
-      const item = this.skillExtractCompletions.get(skillExtractCompletionKey(missionId, nodeId))
-      if (!item) return []
-      return [{ node_id: nodeId, summary_path: item.summaryPath, completed_at: item.completedAt }]
-    })
-    return {
-      status: "ok" as const,
-      run,
-      completed,
-      pending,
-      completions,
-      allDone: pending.length === 0 && run.expectedNodeIds.length > 0,
-      verifyStarted: Boolean(run.verifyStartedAt),
-      curatorNotified: Boolean(run.curatorNotifiedAt),
-      curatorSummarySubmitted: Boolean(run.curatorLeadNotifiedAt),
-      curatorLeadNotified: Boolean(run.curatorLeadNotifiedAt),
-    }
-  }
-
-  beginSkillVerifyRun(missionId: string, expectedNodeIds: string[]) {
-    return this.mutate(() => {
-      for (const key of [...this.skillVerifyCompletions.keys()]) {
-        if (key.startsWith(`${missionId}:`)) this.skillVerifyCompletions.delete(key)
-      }
-      const run: RegistrySkillVerifyRun = { missionId, expectedNodeIds, startedAt: now() }
-      this.skillVerifyRuns.set(missionId, run)
-      return run
-    })
-  }
-
-  skillVerifyStatus(missionId: string) {
-    const run = this.skillVerifyRuns.get(missionId)
-    if (!run) return { status: "no_run" as const }
-    const completed = run.expectedNodeIds.filter((nodeId) =>
-      this.skillVerifyCompletions.has(skillVerifyCompletionKey(missionId, nodeId)),
-    )
-    const pending = run.expectedNodeIds.filter((nodeId) => !completed.includes(nodeId))
-    const completions = completed.flatMap((nodeId) => {
-      const item = this.skillVerifyCompletions.get(skillVerifyCompletionKey(missionId, nodeId))
-      if (!item) return []
-      return [{
-        node_id: nodeId,
-        passed: item.passed,
-        report_path: item.reportPath,
-        completed_at: item.completedAt,
-      }]
-    })
-    const skillRun = this.skillExtractRuns.get(missionId)
-    return {
-      status: "ok" as const,
-      run,
-      completed,
-      pending,
-      completions,
-      allDone: pending.length === 0 && run.expectedNodeIds.length > 0,
-      curatorNotified: Boolean(skillRun?.curatorNotifiedAt),
-    }
-  }
-
-  listIncompleteSkillVerifyRecordRuns() {
-    return [...this.skillVerifyRuns.keys()].flatMap((missionId) => {
-      const status = this.skillVerifyStatus(missionId)
-      if (status.status !== "ok" || status.allDone) return []
-      return [{
-        missionId,
-        expectedNodeIds: status.run.expectedNodeIds,
-        pendingNodeIds: status.pending,
-      }]
-    })
+  kickoffRetroSession(manifest: MissionManifest, plan?: OrchestrationPlan) {
+    return retroService.kickoffRetroSession(this.host(), manifest, plan)
   }
 
   listIncompleteRetroRecordRuns() {
-    return [...this.retroRuns.keys()].flatMap((missionId) => {
-      const status = this.retroStatus(missionId)
-      if (status.status !== "ok" || status.summarySubmitted) return []
-      return [{
-        missionId,
-        expectedNodeIds: ["retro-analyst"],
-        pendingNodeIds: ["retro-analyst"],
-      }]
-    })
+    return retroService.listIncompleteRetroRecordRuns(this.host())
+  }
+
+  deactivateRetroAgent(missionId: string) {
+    return agentRegistry.deactivateRetroAgent(this.host(), missionId)
+  }
+
+  deactivateRetroAgentsForMission(missionId: string) {
+    return agentRegistry.deactivateRetroAgent(this.host(), missionId)
+  }
+
+  beginSkillExtractRun(missionId: string, expectedNodeIds: string[]) {
+    return extractService.beginSkillExtractRun(this.host(), missionId, expectedNodeIds)
+  }
+
+  skillExtractStatus(missionId: string) {
+    return extractService.skillExtractStatus(this.host(), missionId)
+  }
+
+  beginSkillVerifyRun(missionId: string, expectedNodeIds: string[]) {
+    return extractService.beginSkillVerifyRun(this.host(), missionId, expectedNodeIds)
+  }
+
+  skillVerifyStatus(missionId: string) {
+    return extractService.skillVerifyStatus(this.host(), missionId)
+  }
+
+  listIncompleteSkillVerifyRecordRuns() {
+    return extractService.listIncompleteSkillVerifyRecordRuns(this.host())
   }
 
   listIncompleteSkillExtractRecordRuns() {
-    return [...this.skillExtractRuns.keys()].flatMap((missionId) => {
-      const status = this.skillExtractStatus(missionId)
-      if (status.status !== "ok" || status.allDone) return []
-      return [{
-        missionId,
-        expectedNodeIds: status.run.expectedNodeIds,
-        pendingNodeIds: status.pending,
-      }]
-    })
+    return extractService.listIncompleteSkillExtractRecordRuns(this.host())
   }
 
-  async recordSkillExtractCompletion(input: {
+  recordSkillExtractCompletion(input: {
     missionId: string
     nodeId: string
     sessionId: string
     summaryPath?: string
   }) {
-    const recorded = this.mutate(() => {
-      const item: RegistrySkillExtractCompletion = {
-        missionId: input.missionId,
-        nodeId: input.nodeId,
-        sessionId: input.sessionId,
-        completedAt: now(),
-        ...(input.summaryPath && { summaryPath: input.summaryPath }),
-      }
-      this.skillExtractCompletions.set(skillExtractCompletionKey(input.missionId, input.nodeId), item)
-      return item
-    })
-    this.deactivateExtractAgentForNode(input.missionId, input.nodeId)
-    await this.maybeKickoffSkillVerify(input.missionId)
-    return recorded
+    return extractService.recordSkillExtractCompletion(this.host(), input)
   }
 
-  async recordSkillVerifyCompletion(input: {
+  recordSkillVerifyCompletion(input: {
     missionId: string
     nodeId: string
     sessionId: string
     passed: boolean
     reportPath?: string
   }) {
-    const recorded = this.mutate(() => {
-      const item: RegistrySkillVerifyCompletion = {
-        missionId: input.missionId,
-        nodeId: input.nodeId,
-        sessionId: input.sessionId,
-        passed: input.passed,
-        completedAt: now(),
-        ...(input.reportPath && { reportPath: input.reportPath }),
-      }
-      this.skillVerifyCompletions.set(skillVerifyCompletionKey(input.missionId, input.nodeId), item)
-      return item
-    })
-    this.deactivateVerifyAgentForNode(input.missionId, input.nodeId)
-    await this.maybeNotifyCuratorSkillExtractComplete(input.missionId)
-    const after = this.skillVerifyStatus(input.missionId)
-    if (after.status === "ok" && after.allDone) this.deactivateVerifyAgentsForMission(input.missionId)
-    return recorded
+    return extractService.recordSkillVerifyCompletion(this.host(), input)
   }
 
-  private async maybeKickoffSkillVerify(missionId: string) {
-    const status = this.skillExtractStatus(missionId)
-    if (status.status !== "ok" || !status.allDone || status.verifyStarted) return
+  kickoffCuratorSkillAssignment(input: { missionId: string; objective?: string; spec: MissionTeamSpec }) {
+    return extractService.kickoffCuratorSkillAssignment(this.host(), input)
+  }
 
-    const extractManifest = await readExtractManifest(this.options.directory, missionId)
-    if (!extractManifest || extractManifest.extract_order.length === 0) return
+  kickoffExtractSkillSessions(extract: MissionExtractManifest) {
+    return extractService.kickoffExtractSkillSessions(this.host(), extract)
+  }
 
-    const verify = await createVerifyManifest({
-      client: this.options.client,
-      projectDirectory: this.options.directory,
-      extract: extractManifest,
-    })
-    await writeVerifyManifest(this.options.directory, verify)
-    this.syncVerifyFromManifest(verify)
-    this.beginSkillVerifyRun(missionId, verify.verify_order)
-    this.mutate(() => {
-      const run = this.skillExtractRuns.get(missionId)
-      if (!run) return
-      this.skillExtractRuns.set(missionId, { ...run, verifyStartedAt: now() })
-    })
-    await this.kickoffSkillVerifySessions(verify)
+  kickoffSkillVerifySessions(verify: MissionVerifyManifest) {
+    return extractService.kickoffSkillVerifySessions(this.host(), verify)
   }
 
   deactivateExtractAgentForNode(missionId: string, nodeId: string) {
-    return this.mutate(() => {
-      const agentId = extractAgentId(missionId, nodeId)
-      const agent = this.agents.get(agentId)
-      if (!agent || agent.status !== "active") return 0
-      this.agents.set(agentId, { ...agent, status: "completed", updatedAt: now() })
-      return 1
-    })
+    return agentRegistry.deactivateExtractAgentForNode(this.host(), missionId, nodeId)
   }
 
   deactivateVerifyAgentForNode(missionId: string, nodeId: string) {
-    return this.mutate(() => {
-      const agentId = verifyAgentId(missionId, nodeId)
-      const agent = this.agents.get(agentId)
-      if (!agent || agent.status !== "active") return 0
-      this.agents.set(agentId, { ...agent, status: "completed", updatedAt: now() })
-      return 1
-    })
+    return agentRegistry.deactivateVerifyAgentForNode(this.host(), missionId, nodeId)
   }
 
   deactivateVerifyAgentsForMission(missionId: string) {
-    return this.mutate(() => {
-      const updatedAt = now()
-      for (const [agentId, agent] of this.agents.entries()) {
-        if (agent.scope !== "verify" || agent.missionId !== missionId || agent.status !== "active") continue
-        this.agents.set(agentId, { ...agent, status: "completed", updatedAt })
-      }
-    })
+    return agentRegistry.deactivateVerifyAgentsForMission(this.host(), missionId)
   }
-
-  private async maybeNotifyCuratorSkillExtractComplete(missionId: string) {
-    const verifyStatus = this.skillVerifyStatus(missionId)
-    if (verifyStatus.status !== "ok" || !verifyStatus.allDone) return
-    const skillRun = this.skillExtractRuns.get(missionId)
-    if (!skillRun || skillRun.curatorNotifiedAt) return
-    const curator = this.byProfile("curator", "outer")
-    if (!curator?.sessionId) return
-    const extractStatus = this.skillExtractStatus(missionId)
-    const completions = extractStatus.status === "ok"
-      ? extractStatus.completed.map((nodeId) => {
-          const item = this.skillExtractCompletions.get(skillExtractCompletionKey(missionId, nodeId))
-          return { nodeId, summaryPath: item?.summaryPath ?? curatorSkillSummaryRelPath(missionId, nodeId) }
-        })
-      : []
-    await archiveLowUtilitySkills(this.options.directory)
-    const sent = await this.deliverSystemMessage(
-      curator,
-      curatorSkillExtractBatchReadyMessage(
-        missionId,
-        completions,
-        readAgentNamesSync(this.options.directory),
-        readLocaleSync(this.options.directory),
-      ),
-    )
-    if (sent.status === "failed") return
-    this.mutate(() => {
-      const run = this.skillExtractRuns.get(missionId)
-      if (!run) return
-      this.skillExtractRuns.set(missionId, { ...run, curatorNotifiedAt: now() })
-    })
-  }
-
-  /** System / runtime delivery (execution work orders, kickoff). */
-  async deliverSystemPrompt(
-    recipient: RegistryAgent,
-    promptText: string,
-    options?: { promptProfile?: string; senderAgentId?: string },
-  ) {
-    return this.deliverToRecipient({
-      recipient,
-      promptText,
-      ...(options?.promptProfile && { promptProfile: options.promptProfile }),
-      ...(options?.senderAgentId && { senderAgentId: options.senderAgentId }),
-    })
-  }
-
-  private async deliverToRecipient(input: {
-    recipient: RegistryAgent
-    promptText: string
-    promptProfile?: string
-    senderAgentId?: string
-  }) {
-    const sender = input.senderAgentId ? this.byAgentId(input.senderAgentId) : undefined
-    const portalChat = (suffix?: string) =>
-      this.emitPortalChat(input.recipient, input.promptText, { sender, ...(suffix && { suffix }) })
-    const busy = await this.busySessionIds()
-    if (busy.has(input.recipient.sessionId)) {
-      this.enqueueDelivery({
-        recipient: input.recipient,
-        senderAgentId: input.senderAgentId,
-        promptText: input.promptText,
-        promptProfile: input.promptProfile ?? input.recipient.profile,
-      })
-      portalChat("(queued delivery)")
-      return { status: "queued" as const }
-    }
-    const sent = await this.sendPrompt(input.recipient, input.promptText, input.promptProfile)
-    if (sent.status === "failed") return { status: "failed" as const, error: sent.error }
-    portalChat()
-    return { status: "sent" as const }
-  }
-
-  private enqueueDelivery(input: {
-    recipient: RegistryAgent
-    senderAgentId?: string
-    promptText: string
-    promptProfile?: string
-  }) {
-    this.mutate(() => {
-      this.pendingDeliveries = [
-        ...this.pendingDeliveries,
-        {
-          id: crypto.randomUUID(),
-          recipientSessionId: input.recipient.sessionId,
-          recipientAgentId: input.recipient.agentId,
-          promptText: input.promptText,
-          createdAt: now(),
-          ...(input.senderAgentId && { senderAgentId: input.senderAgentId }),
-          ...(input.promptProfile && { promptProfile: input.promptProfile }),
-        },
-      ]
-    })
-  }
-
-  private async sendPrompt(recipient: RegistryAgent, promptText: string, promptProfile?: string) {
-    try {
-      await promptSession(this.options.client, this.options.directory, recipient.sessionId, {
-        text: promptText,
-        profile: promptProfile ?? recipient.profile,
-      }, this.options.plugin)
-      return { status: "sent" as const }
-    } catch (error) {
-      return { status: "failed" as const, error: errorMessage(error) }
-    }
-  }
-
-  flushPendingDeliveries() {
-    const run = this.flushTail.then(() => this.flushPendingDeliveriesOnce())
-    this.flushTail = run.then(
-      () => undefined,
-      () => undefined,
-    )
-    return run
-  }
-
-  private async flushPendingDeliveriesOnce() {
-    this.loadSnapshot()
-    const nowIso = now()
-    const busy = await this.busySessionIds()
-    const recipients = [
-      ...new Set(
-        this.pendingDeliveries
-          .filter((delivery) => pendingEligible(delivery, nowIso))
-          .map((delivery) => delivery.recipientSessionId),
-      ),
-    ].sort()
-
-    for (const recipientSessionId of recipients) {
-      if (busy.has(recipientSessionId)) continue
-      await this.flushRecipientFifo(recipientSessionId, nowIso)
-    }
-  }
-
-  private async flushRecipientFifo(recipientSessionId: string, nowIso: string) {
-    for (;;) {
-      this.loadSnapshot()
-      const batch = this.pendingDeliveries
-        .filter(
-          (delivery) => delivery.recipientSessionId === recipientSessionId && pendingEligible(delivery, nowIso),
-        )
-        .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))
-      const next = batch[0]
-      if (!next) return
-
-      const recipient = this.byAgentId(next.recipientAgentId)
-      if (!recipient) {
-        this.mutate(() => {
-          this.pendingDeliveries = this.pendingDeliveries.filter((delivery) => delivery.id !== next.id)
-        })
-        continue
-      }
-
-      const sent = await this.sendPrompt(recipient, next.promptText, next.promptProfile)
-      if (sent.status === "sent") {
-        const sender = next.senderAgentId ? this.byAgentId(next.senderAgentId) : undefined
-        this.emitPortalChat(recipient, next.promptText, { sender })
-        this.mutate(() => {
-          this.pendingDeliveries = this.pendingDeliveries.filter((delivery) => delivery.id !== next.id)
-        })
-        continue
-      }
-
-      const attempts = (next.attempts ?? 0) + 1
-      if (attempts >= MAX_DELIVERY_ATTEMPTS) {
-        this.mutate(() => {
-          this.pendingDeliveries = this.pendingDeliveries.filter((delivery) => delivery.id !== next.id)
-        })
-        return
-      }
-
-      this.mutate(() => {
-        this.pendingDeliveries = this.pendingDeliveries.map((delivery) =>
-          delivery.id === next.id
-            ? {
-                ...delivery,
-                attempts,
-                lastAttemptAt: nowIso,
-                lastError: sent.error,
-                nextRetryAt: new Date(Date.now() + deliveryBackoffMs(attempts)).toISOString(),
-              }
-            : delivery,
-        )
-      })
-      return
-    }
-  }
-
-  private async busySessionIds() {
-    const map =
-      (await sessionStatusById(this.options.client, this.options.directory, this.options.plugin)) ??
-      new Map<string, import("../session/status.ts").SessionRuntimeStatus>()
-    return new Set(
-      [...map.entries()]
-        .filter(([, status]) => status === "busy" || status === "retry")
-        .map(([sessionId]) => sessionId),
-    )
-  }
-}
-
-function pickNodeRecipient(matches: RegistryAgent[], sender?: RegistryAgent) {
-  if (matches.length === 1) return matches[0]
-  if (matches.length < 2) return undefined
-  if (sender?.scope === "inner") {
-    const inner = matches.filter((agent) => agent.scope === "inner")
-    if (inner.length === 1) return inner[0]
-  }
-  return undefined
-}
-
-function sendPolicyViolation(
-  sender: RegistryAgent,
-  recipient: RegistryAgent,
-  names: Record<OuterProfile, string>,
-  projectDirectory: string,
-) {
-  if (sender.scope !== "outer") {
-    return "gatehouse_send_message is outer-team only"
-  }
-  if (sender.profile === "lead") {
-    if (recipient.scope === "outer" && (recipient.profile === "architect" || recipient.profile === "curator")) return undefined
-    if (isTerminalInnerAgent(projectDirectory, recipient)) return undefined
-    return `profile lead (${names.lead}) may only message architect (${names.architect}), curator (${names.curator}), or the terminal node`
-  }
-  if (sender.profile === "architect") {
-    if (recipient.scope === "outer" && recipient.profile === "lead") return undefined
-    return `profile architect (${names.architect}) may only message lead (${names.lead})`
-  }
-  if (sender.profile === "curator") {
-    if (recipient.scope === "outer" && recipient.profile === "lead") return undefined
-    if (recipient.scope === "inner") return undefined
-    return `profile curator (${names.curator}) may only message lead (${names.lead}) or execution team sessions`
-  }
-  return "sender is not allowed to use gatehouse_send_message"
 }

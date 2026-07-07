@@ -1,8 +1,8 @@
 import type { Database } from "bun:sqlite"
 import type { OrchestrationState } from "../orchestration/types.ts"
 import type { MissionScriptMeta, MissionScriptRecord } from "../orchestration/types.ts"
-import type { OrchestrationPlan } from "../orchestration/plan-types.ts"
-import type { OrchestrationBaseline } from "../orchestration/plan-types.ts"
+import type { OrchestrationPlan } from "../orchestration/plan/types.ts"
+import type { OrchestrationBaseline } from "../orchestration/plan/types.ts"
 import type { MissionTeamSpec } from "../missions/manifest/types.ts"
 
 export const ORCHESTRATION_TABLE_SQL = `

@@ -845,7 +845,7 @@ export class RegistryDatabase {
     return persistMutateOrchestrationState(this.db, missionId, mutator)
   }
 
-  saveOrchestrationPlan(plan: import("../orchestration/plan-types.ts").OrchestrationPlan) {
+  saveOrchestrationPlan(plan: import("../orchestration/plan/types.ts").OrchestrationPlan) {
     persistOrchestrationPlan(this.db, plan)
   }
 
@@ -857,7 +857,7 @@ export class RegistryDatabase {
     return readLatestOrchestrationPlan(this.db, missionId)
   }
 
-  saveOrchestrationBaseline(baseline: import("../orchestration/plan-types.ts").OrchestrationBaseline) {
+  saveOrchestrationBaseline(baseline: import("../orchestration/plan/types.ts").OrchestrationBaseline) {
     persistOrchestrationBaseline(this.db, baseline)
   }
 

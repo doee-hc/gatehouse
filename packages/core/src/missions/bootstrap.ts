@@ -15,9 +15,9 @@ import { assertMissionRunning } from "./parse.ts"
 import { scheduleOfficeLayoutSync } from "../portal/office-layout-schedule.ts"
 import { buildBootstrapSystemForNode } from "../execution/node-session.ts"
 import { readNodeBriefRegistry } from "../execution/artifacts.ts"
-import { loadMissionScript } from "../orchestration/script-load.ts"
-import { resolveTerminalNode, teamNodeOrder } from "../orchestration/plan-graph.ts"
-import { prepareOrchestrationRuntime, startOrchestrationRuntime } from "../orchestration/runtime.ts"
+import { loadMissionScript } from "../orchestration/script/load.ts"
+import { resolveTerminalNode, teamNodeOrder } from "../orchestration/plan/graph.ts"
+import { prepareOrchestrationRuntime, startOrchestrationRuntime } from "../orchestration/lifecycle/coordinator.ts"
 
 export type MissionBootstrapResult = {
   mission_id: string

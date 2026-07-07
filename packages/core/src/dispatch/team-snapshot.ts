@@ -1,12 +1,12 @@
 import { gatehouseMessage } from "../i18n.ts"
 import type { GatehouseLocale } from "../locale.ts"
 import { readLocaleSync } from "../locale.ts"
-import type { OrchestrationPlan } from "../orchestration/plan-types.ts"
+import type { OrchestrationPlan } from "../orchestration/plan/types.ts"
 import {
   planChildNodeIds,
   planDeliverableDescendantNodeIds,
   teamNodeOrder,
-} from "../orchestration/plan-graph.ts"
+} from "../orchestration/plan/graph.ts"
 import {
   type ListTeamExecutionMember,
   type ListTeamOuterMember,

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { readFileSync } from "node:fs"
 import path from "node:path"
-import { dryRunMissionScriptSource } from "../src/orchestration/script-validate.ts"
+import { dryRunMissionScriptSource } from "../src/orchestration/script/validate.ts"
 
 const smokeFixture = path.join(import.meta.dir, "fixtures/core-example-smoke-v1/mission.script.ts")
 

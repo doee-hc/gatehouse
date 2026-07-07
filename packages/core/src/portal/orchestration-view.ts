@@ -1,14 +1,14 @@
 import { RegistryDatabase } from "../registry/db.ts"
 import { portalNodeDisplayName } from "../paths.ts"
 import type { PortalMissionTeam } from "./snapshot.ts"
-import type { PlanStepOp } from "../orchestration/plan-types.ts"
+import type { PlanStepOp } from "../orchestration/plan/types.ts"
 import type { OrchestrationNodeStatus } from "../orchestration/types.ts"
 import {
   buildPortalOrchestrationFlowEdges,
   type PortalOrchestrationFlowEdge,
 } from "./orchestration-flow-edges.ts"
 import { activationOrderFromPlan } from "./orchestration-plan-layout.ts"
-import { listPlanRunActivations } from "../orchestration/plan-graph.ts"
+import { listPlanRunActivations } from "../orchestration/plan/graph.ts"
 
 export type { PortalOrchestrationFlowEdge } from "./orchestration-flow-edges.ts"
 

@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import {
   mockStructuredFromSchema,
   validateJsonSchema,
-} from "../src/orchestration/json-schema-validate.ts"
+} from "../src/orchestration/script/json-schema-validate.ts"
 
 describe("validateJsonSchema", () => {
   test("accepts object matching required properties", () => {

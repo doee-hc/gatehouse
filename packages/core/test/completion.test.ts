@@ -11,22 +11,22 @@ import {
   parseStructuredOutputInput,
   validateStructuredOutputAgainstBrief,
   synthesizeTerminalDeliveryMarkdown,
-} from "../src/orchestration/completion.ts"
-import { orchestrationComplete } from "../src/orchestration/events.ts"
-import { deliverOrchestrationPrompt } from "../src/orchestration/prompt.ts"
-import { saveMissionScriptRecord } from "../src/orchestration/context.ts"
-import { mergeAndSaveBrief } from "../src/orchestration/events.ts"
+} from "../src/orchestration/engine/completion.ts"
+import { orchestrationComplete } from "../src/orchestration/engine/events.ts"
+import { deliverOrchestrationPrompt } from "../src/orchestration/engine/prompt.ts"
+import { saveMissionScriptRecord } from "../src/orchestration/lifecycle/coordinator.ts"
+import { mergeAndSaveBrief } from "../src/orchestration/engine/events.ts"
 import {
   initOrchestrationState,
   markNodeRunning,
   readOrchestrationState,
   writeOrchestrationState,
-} from "../src/orchestration/state.ts"
+} from "../src/orchestration/state/store.ts"
 import { OUTER_ARCHITECT_ID } from "../src/registry/types.ts"
 import { RegistryStore } from "../src/registry/store.ts"
 import type { GatehouseClient } from "../src/session/client.ts"
 import type { MissionTeamSpec } from "../src/missions/manifest/types.ts"
-import type { OrchestrationPlan } from "../src/orchestration/plan-types.ts"
+import type { OrchestrationPlan } from "../src/orchestration/plan/types.ts"
 import { startPortalInternalEventCapture, withPortalEnv } from "./portal-test-server.ts"
 
 const team: MissionTeamSpec = {

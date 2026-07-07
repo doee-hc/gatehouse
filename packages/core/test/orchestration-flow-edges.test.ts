@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import type { PlanStep } from "../src/orchestration/plan-types.ts"
+import type { PlanStep } from "../src/orchestration/plan/types.ts"
 import { buildPortalOrchestrationFlowEdges } from "../src/portal/orchestration-flow-edges.ts"
 
 describe("portal orchestration flow edges", () => {

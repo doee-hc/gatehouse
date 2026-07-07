@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { rm } from "node:fs/promises"
 import { buildPortalOrchestration } from "../src/portal/orchestration-view.ts"
-import { createMissionHostHandlers } from "../src/orchestration/ctx-host.ts"
-import { saveOrchestrationPlanRecord } from "../src/orchestration/plan-store.ts"
-import { advanceReplayCursor } from "../src/orchestration/replay-cursor.ts"
-import { resumeOrchestrationRuntime } from "../src/orchestration/resume.ts"
+import { createMissionHostHandlers } from "../src/orchestration/sandbox/host.ts"
+import { saveOrchestrationPlanRecord } from "../src/orchestration/plan/store.ts"
+import { advanceReplayCursor } from "../src/orchestration/plan/replay.ts"
+import { resumeOrchestrationRuntime } from "../src/orchestration/lifecycle/resume.ts"
 import {
   startSandboxOrchestration,
   stopSandboxOrchestration,
-} from "../src/orchestration/sandbox-runtime.ts"
-import { markNodeRunning, mutateOrchestrationState, writeOrchestrationState } from "../src/orchestration/state.ts"
+} from "../src/orchestration/sandbox/runtime.ts"
+import { markNodeRunning, mutateOrchestrationState, writeOrchestrationState } from "../src/orchestration/state/store.ts"
 import type { PortalMissionTeam } from "../src/portal/snapshot.ts"
 import {
   completeRunningNode,

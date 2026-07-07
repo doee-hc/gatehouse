@@ -1,9 +1,9 @@
 import { tool, type PluginInput } from "@opencode-ai/plugin"
 import { getRegistryStore } from "../registry/context.ts"
-import { orchestrationComplete, orchestrationRework } from "../orchestration/events.ts"
-import { isMissionTerminalNode } from "../orchestration/plan-graph.ts"
-import { parseStructuredOutputInput } from "../orchestration/completion.ts"
-import { hasOrchestrationRuntime, readOrchestrationState } from "../orchestration/state.ts"
+import { orchestrationComplete, orchestrationRework } from "../orchestration/engine/events.ts"
+import { isMissionTerminalNode } from "../orchestration/plan/graph.ts"
+import { parseStructuredOutputInput } from "../orchestration/engine/completion.ts"
+import { hasOrchestrationRuntime, readOrchestrationState } from "../orchestration/state/store.ts"
 import type { NodeCompletion } from "../orchestration/types.ts"
 import {
   formatPrecheckSummary,

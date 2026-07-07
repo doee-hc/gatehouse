@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { orchestrationParallel, orchestrationPipeline } from "../src/orchestration/primitives.ts"
+import { orchestrationParallel, orchestrationPipeline } from "../src/orchestration/engine/primitives.ts"
 
 describe("orchestrationPipeline", () => {
   test("runs single stage per item in parallel", async () => {

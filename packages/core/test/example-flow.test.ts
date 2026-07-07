@@ -12,8 +12,8 @@ import { isRecord, parseYaml } from "../src/yaml.ts"
 import { getRegistryStore } from "../src/registry/context.ts"
 import { OUTER_ARCHITECT_ID, OUTER_CURATOR_ID } from "../src/registry/types.ts"
 import { gatehouseMessage } from "../src/i18n.ts"
-import { stopSandboxOrchestration } from "../src/orchestration/sandbox-runtime.ts"
-import { hasOrchestrationRuntime } from "../src/orchestration/state.ts"
+import { stopSandboxOrchestration } from "../src/orchestration/sandbox/runtime.ts"
+import { hasOrchestrationRuntime } from "../src/orchestration/state/store.ts"
 import { startPortalInternalEventCapture, withPortalEnv } from "./portal-test-server.ts"
 
 const scaffoldScript = path.join(import.meta.dir, "../script/scaffold.ts")

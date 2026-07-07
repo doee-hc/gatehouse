@@ -1,7 +1,7 @@
 import { tool, type PluginInput } from "@opencode-ai/plugin"
 import { getRegistryStore } from "../registry/context.ts"
 import { readMissionManifest, writeMissionManifest } from "../missions/manifest/store.ts"
-import { resolveTeamSource } from "../orchestration/resolve-team.ts"
+import { resolveTeamSource } from "../orchestration/script/resolve-team.ts"
 import { bootstrapMission } from "../missions/bootstrap.ts"
 import { skillDomainContextNote } from "../retro/skill-kickoff.ts"
 import { selectSkillsForTask, formatRetrievedSkillCatalog } from "../skills/retrieval.ts"

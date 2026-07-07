@@ -19,7 +19,7 @@ import {
 import { retroAnalysisNodeOrder } from "../src/retro/analysis-order.ts"
 import { formatSkillDomainsRegistry } from "../src/skills/domains.ts"
 import { sampleMissionManifest, sampleMissionTeamSpec } from "./helpers/mission-fixtures.ts"
-import type { OrchestrationPlan } from "../src/orchestration/plan-types.ts"
+import type { OrchestrationPlan } from "../src/orchestration/plan/types.ts"
 import { copyExampleMission } from "./copy-example-mission.ts"
 import { seedTerminalPlan } from "./seed-terminal-plan.ts"
 

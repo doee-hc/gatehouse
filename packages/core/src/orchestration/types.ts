@@ -141,5 +141,5 @@ export type LoadedMissionScript = {
   scriptSource: string
   scriptHash: string
   scriptPath: string
-  plan?: import("./plan-types.ts").OrchestrationPlan
+  plan: import("./plan/types.ts").OrchestrationPlan
 }

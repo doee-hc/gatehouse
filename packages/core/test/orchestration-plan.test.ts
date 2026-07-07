@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test"
 import { readFileSync } from "node:fs"
 import path from "node:path"
-import { dryRunMissionScriptSource } from "../src/orchestration/script-validate.ts"
-import { splitOrchestrateStatements } from "../src/orchestration/plan-compile.ts"
+import { dryRunMissionScriptSource } from "../src/orchestration/script/validate.ts"
+import { splitOrchestrateStatements } from "../src/orchestration/plan/compile.ts"
 import {
   captureOrchestrationBaseline,
   resetOrchestrationForContinuation,
-} from "../src/orchestration/baseline.ts"
-import { initOrchestrationState } from "../src/orchestration/state.ts"
+} from "../src/orchestration/state/baseline.ts"
+import { initOrchestrationState } from "../src/orchestration/state/store.ts"
 
 const smokeFixture = path.join(import.meta.dir, "fixtures/core-example-smoke-v1/mission.script.ts")
 

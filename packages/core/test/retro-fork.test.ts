@@ -16,7 +16,7 @@ import { isRecord, parseYaml } from "../src/yaml.ts"
 import { getRegistryStore } from "../src/registry/context.ts"
 import { OUTER_CURATOR_ID, OUTER_LEAD_ID } from "../src/registry/types.ts"
 import { seedSubmittedDelivery } from "./seed-delivery.ts"
-import { stopSandboxOrchestration } from "../src/orchestration/sandbox-runtime.ts"
+import { stopSandboxOrchestration } from "../src/orchestration/sandbox/runtime.ts"
 
 const scaffoldScript = path.join(import.meta.dir, "../script/scaffold.ts")
 

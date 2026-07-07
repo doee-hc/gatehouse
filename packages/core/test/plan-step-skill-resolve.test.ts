@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test"
-import { validatePlanStepStatement } from "../src/orchestration/plan-step-compile.ts"
-import { trimPlanStatementChunk } from "../src/orchestration/plan-compile.ts"
+import { validatePlanStepStatement } from "../src/orchestration/plan/replay.ts"
+import { trimPlanStatementChunk } from "../src/orchestration/plan/compile.ts"
 import {
   inferAssignmentsFromDomains,
   parseUserSkillAssignments,
   resolveSkillDomainAssignments,
 } from "../src/skills/resolve-assignments.ts"
-import type { OrchestrationPlan } from "../src/orchestration/plan-types.ts"
+import type { OrchestrationPlan } from "../src/orchestration/plan/types.ts"
 import type { MissionTeamSpec } from "../src/missions/manifest/types.ts"
 
 describe("plan step compile", () => {

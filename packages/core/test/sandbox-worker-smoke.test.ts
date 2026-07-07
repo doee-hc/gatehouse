@@ -4,10 +4,10 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import type { PluginInput } from "@opencode-ai/plugin"
 import { getRegistryStore } from "../src/registry/context.ts"
-import { loadMissionScript } from "../src/orchestration/script-load.ts"
-import { initOrchestrationState, writeOrchestrationState } from "../src/orchestration/state.ts"
-import { startSandboxOrchestration, stopSandboxOrchestration } from "../src/orchestration/sandbox-runtime.ts"
-import { teamNodeOrder } from "../src/orchestration/plan-graph.ts"
+import { loadMissionScript } from "../src/orchestration/script/load.ts"
+import { initOrchestrationState, writeOrchestrationState } from "../src/orchestration/state/store.ts"
+import { startSandboxOrchestration, stopSandboxOrchestration } from "../src/orchestration/sandbox/runtime.ts"
+import { teamNodeOrder } from "../src/orchestration/plan/graph.ts"
 
 describe("sandbox worker smoke", () => {
   test("worker delivers first prompt via RPC", async () => {

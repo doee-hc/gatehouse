@@ -1,7 +1,7 @@
 import { tool, type PluginInput } from "@opencode-ai/plugin"
 import { getRegistryStore } from "../registry/context.ts"
 import type { RegistryAgent } from "../registry/types.ts"
-import { isTerminalInnerAgent } from "../orchestration/plan-graph.ts"
+import { isTerminalInnerAgent } from "../orchestration/plan/graph.ts"
 import { sessionMessages } from "../session/client.ts"
 import {
   clampSnapshotLines,

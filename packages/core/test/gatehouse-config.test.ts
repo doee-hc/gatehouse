@@ -21,7 +21,7 @@ import {
   ORCHESTRATION_STALL_NOTIFY_COOLDOWN_MS,
   ORCHESTRATION_STALL_RESUME_COOLDOWN_MS,
 } from "../src/watchdog/orchestration-stall.ts"
-import { ORCHESTRATION_STALL_THRESHOLD_MS } from "../src/orchestration/stall.ts"
+import { ORCHESTRATION_STALL_THRESHOLD_MS } from "../src/orchestration/state/stall.ts"
 import {
   WATCHDOG_IDLE_THRESHOLD_MS,
   WATCHDOG_POLL_MS,

@@ -4,7 +4,7 @@ import path from "node:path"
 import { tmpdir } from "node:os"
 import { resolveMissionInfo, resolveMissionInfoRoleView } from "../src/missions/info.ts"
 import type { RegistryAgent } from "../src/registry/types.ts"
-import { saveMissionScriptRecord } from "../src/orchestration/context.ts"
+import { saveMissionScriptRecord } from "../src/orchestration/lifecycle/coordinator.ts"
 
 function agent(partial: Partial<RegistryAgent> & Pick<RegistryAgent, "scope" | "profile">): RegistryAgent {
   return {

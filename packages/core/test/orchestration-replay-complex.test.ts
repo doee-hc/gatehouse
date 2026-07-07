@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { rm } from "node:fs/promises"
-import { dryRunMissionScriptSource } from "../src/orchestration/script-validate.ts"
-import { resumeOrchestrationRuntime } from "../src/orchestration/resume.ts"
+import { dryRunMissionScriptSource } from "../src/orchestration/script/validate.ts"
+import { resumeOrchestrationRuntime } from "../src/orchestration/lifecycle/resume.ts"
 import {
   startSandboxOrchestration,
   stopSandboxOrchestration,
-} from "../src/orchestration/sandbox-runtime.ts"
-import { writeOrchestrationState } from "../src/orchestration/state.ts"
+} from "../src/orchestration/sandbox/runtime.ts"
+import { writeOrchestrationState } from "../src/orchestration/state/store.ts"
 import {
   completeNodes,
   completeRunningNode,

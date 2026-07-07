@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test"
-import type { OrchestrationPlan } from "../src/orchestration/plan-types.ts"
+import type { OrchestrationPlan } from "../src/orchestration/plan/types.ts"
 import {
   advanceReplayCursor,
   isReplayStepComplete,
   replayNextStepIndex,
   resetReplayCursor,
-} from "../src/orchestration/replay-cursor.ts"
-import { initOrchestrationState } from "../src/orchestration/state.ts"
+} from "../src/orchestration/plan/replay.ts"
+import { initOrchestrationState } from "../src/orchestration/state/store.ts"
 
 const steps: OrchestrationPlan["steps"] = [
   { id: "step-0", op: "run", statement: 'await ctx.run("a")' },

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import { orchestrationParallel } from "../src/orchestration/primitives.ts"
-import { orchestrationRun } from "../src/orchestration/run.ts"
+import { orchestrationParallel } from "../src/orchestration/engine/primitives.ts"
+import { orchestrationRun } from "../src/orchestration/engine/run.ts"
 import type { NodeBriefPartial, OrchestrationEngine } from "../src/orchestration/types.ts"
 
 function mockEngine() {

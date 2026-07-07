@@ -7,7 +7,7 @@ import { gatehouseMessage } from "../i18n.ts"
 import { DEFAULT_GATEHOUSE_LOCALE, readLocaleSync, type GatehouseLocale } from "../locale.ts"
 import { defaultAgentNames, readAgentNamesSync, renderGatehouseTemplate, type OuterProfile } from "../names.ts"
 import { retroAnalysisSteps, type RetroAnalysisStep } from "./analysis-order.ts"
-import type { OrchestrationPlan } from "../orchestration/plan-types.ts"
+import type { OrchestrationPlan } from "../orchestration/plan/types.ts"
 import type { MissionManifest } from "../missions/manifest/types.ts"
 
 function formatAnalysisSteps(steps: RetroAnalysisStep[], locale: GatehouseLocale) {

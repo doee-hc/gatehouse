@@ -1,6 +1,6 @@
 import { RegistryDatabase } from "../src/registry/db.ts"
-import type { OrchestrationPlan } from "../src/orchestration/plan-types.ts"
-import { ORCHESTRATION_PLAN_SCHEMA_VERSION } from "../src/orchestration/plan-types.ts"
+import type { OrchestrationPlan } from "../src/orchestration/plan/types.ts"
+import { ORCHESTRATION_PLAN_SCHEMA_VERSION } from "../src/orchestration/plan/types.ts"
 
 /** Seed a minimal persisted plan so terminal-node checks resolve in registry/watchdog tests. */
 export function seedTerminalPlan(projectDirectory: string, missionId: string, terminalNodeId: string) {

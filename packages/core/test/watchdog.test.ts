@@ -3,7 +3,7 @@ import path from "node:path"
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { sampleMissionManifest } from "./helpers/mission-fixtures.ts"
-import { orchestrationProblemNodeIds, initOrchestrationState } from "../src/orchestration/state.ts"
+import { orchestrationProblemNodeIds, initOrchestrationState } from "../src/orchestration/state/store.ts"
 import {
   allSessionsIdle,
   checkExecutionWatchdogMission,
@@ -26,7 +26,7 @@ import {
   setMissionWatchState,
 } from "../src/watchdog/state-store.ts"
 import { MissionWatchdog } from "../src/watchdog/mission-watchdog.ts"
-import { ORCHESTRATION_STALL_THRESHOLD_MS } from "../src/orchestration/stall.ts"
+import { ORCHESTRATION_STALL_THRESHOLD_MS } from "../src/orchestration/state/stall.ts"
 import {
   ORCHESTRATION_STALL_NOTIFY_COOLDOWN_MS,
   ORCHESTRATION_STALL_RESUME_COOLDOWN_MS,

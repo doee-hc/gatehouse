@@ -8,7 +8,7 @@ import type {
   ResolvedWatchdogPollTiming,
 } from "../gatehouse-config.ts"
 import { sessionRuntimeStatus, sessionStatusById, type SessionRuntimeStatus } from "../session/status.ts"
-import { orchestrationProblemNodeIds, readOrchestrationState } from "../orchestration/state.ts"
+import { orchestrationProblemNodeIds, readOrchestrationState } from "../orchestration/state/store.ts"
 import type { OrchestrationState } from "../orchestration/types.ts"
 import { readMissionManifest, readRetroManifest } from "../missions/manifest/store.ts"
 import type { MissionManifest } from "../missions/manifest/types.ts"

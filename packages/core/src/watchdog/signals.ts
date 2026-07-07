@@ -1,4 +1,4 @@
-import { isTerminalInnerAgent } from "../orchestration/plan-graph.ts"
+import { isTerminalInnerAgent } from "../orchestration/plan/graph.ts"
 import type { RegistryAgent } from "../registry/types.ts"
 
 export type NodeWatchState = {

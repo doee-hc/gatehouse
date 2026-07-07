@@ -1,4 +1,4 @@
-import type { OrchestrationPlan } from "../orchestration/plan-types.ts"
+import type { OrchestrationPlan } from "../orchestration/plan/types.ts"
 
 export type RetroAnalysisStep = {
   step_id: string

@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test"
-import { lintOrchestrationScript } from "../src/orchestration/orchestration-lint.ts"
-import { compileOrchestrationPlan } from "../src/orchestration/plan-compile.ts"
-import { planTrackForNode } from "../src/orchestration/plan-graph.ts"
-import { dryRunMissionScriptSource } from "../src/orchestration/script-validate.ts"
+import { lintOrchestrationScript } from "../src/orchestration/script/lint.ts"
+import { compileOrchestrationPlan } from "../src/orchestration/plan/compile.ts"
+import { planTrackForNode } from "../src/orchestration/plan/graph.ts"
+import { dryRunMissionScriptSource } from "../src/orchestration/script/validate.ts"
 
 const dualTrackTeam = `
 export const team = {

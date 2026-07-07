@@ -1,14 +1,14 @@
 import { describe, expect, test } from "bun:test"
-import { compileOrchestrationPlan } from "../src/orchestration/plan-compile.ts"
+import { compileOrchestrationPlan } from "../src/orchestration/plan/compile.ts"
 import {
   acceptanceLayerNodeIds,
   inferTerminalNodeFromPlan,
   listPlanRunActivations,
   planLeafNodeIds,
   upstreamDependsOnNodes,
-} from "../src/orchestration/plan-graph.ts"
-import { validateReworkRequest } from "../src/orchestration/rework.ts"
-import { initOrchestrationState } from "../src/orchestration/state.ts"
+} from "../src/orchestration/plan/graph.ts"
+import { validateReworkRequest } from "../src/orchestration/state/rework.ts"
+import { initOrchestrationState } from "../src/orchestration/state/store.ts"
 import type { MissionTeamSpec } from "../src/missions/manifest/types.ts"
 
 const team: MissionTeamSpec = {

@@ -2,11 +2,11 @@ import { tool, type PluginInput } from "@opencode-ai/plugin"
 import type { ToolContext } from "@opencode-ai/plugin/tool"
 import { getRegistryStore } from "../registry/context.ts"
 import { readMissionManifest } from "../missions/manifest/store.ts"
-import { resolveTeamSource } from "../orchestration/resolve-team.ts"
+import { resolveTeamSource } from "../orchestration/script/resolve-team.ts"
 import { validateMissionTeamSpec } from "../missions/manifest/team-spec.ts"
-import { resumeOrchestrationForActiveMission } from "../orchestration/resume.ts"
-import { continueOrchestrationWithNewScript } from "../orchestration/continuation.ts"
-import { isSandboxRunning } from "../orchestration/sandbox-runtime.ts"
+import { resumeOrchestrationForActiveMission } from "../orchestration/lifecycle/resume.ts"
+import { continueOrchestrationWithNewScript } from "../orchestration/lifecycle/continuation.ts"
+import { isSandboxRunning } from "../orchestration/sandbox/runtime.ts"
 import {
   AWAITING_SKILL_DOMAINS_PHASE,
   initAwaitingSkillDomainsState,
@@ -14,10 +14,10 @@ import {
   orchestrationAllDone,
   readOrchestrationState,
   writeOrchestrationState,
-} from "../orchestration/state.ts"
-import { loadMissionScript } from "../orchestration/script-load.ts"
-import { MissionScriptParseError } from "../orchestration/script-parse.ts"
-import { missionScriptErrorHint } from "../orchestration/script-error-hints.ts"
+} from "../orchestration/state/store.ts"
+import { loadMissionScript } from "../orchestration/script/load.ts"
+import { MissionScriptParseError } from "../orchestration/script/parse.ts"
+import { missionScriptErrorHint } from "../orchestration/script/error-hints.ts"
 import { bootstrapMission } from "../missions/bootstrap.ts"
 import { readSkillDomainsRegistry } from "../skills/domains.ts"
 import {
@@ -25,7 +25,7 @@ import {
   resolveSkillDomainAssignments,
 } from "../skills/resolve-assignments.ts"
 import { ensureSkillDomainDirs } from "../skills/ensure-domain-dirs.ts"
-import { orchestrationSandboxHealthy } from "../orchestration/guards.ts"
+import { orchestrationSandboxHealthy } from "../orchestration/state/guards.ts"
 import { ARCHITECT_OPENCODE, CURATOR_OPENCODE } from "../registry/types.ts"
 import { readActiveMissionContract } from "../missions/contract.ts"
 import { readMissionsDocument } from "../missions/store.ts"

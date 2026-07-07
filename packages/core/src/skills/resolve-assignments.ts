@@ -1,5 +1,5 @@
-import type { OrchestrationPlan } from "../orchestration/plan-types.ts"
-import { acceptanceLayerNodeIds } from "../orchestration/plan-graph.ts"
+import type { OrchestrationPlan } from "../orchestration/plan/types.ts"
+import { acceptanceLayerNodeIds } from "../orchestration/plan/graph.ts"
 import type { MissionTeamSpec } from "../missions/manifest/types.ts"
 import type { SkillDomainEntry } from "./domains.ts"
 

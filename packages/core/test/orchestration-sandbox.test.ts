@@ -2,9 +2,9 @@ import { describe, expect, test } from "bun:test"
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { dryRunMissionScriptSource } from "../src/orchestration/script-validate.ts"
-import { parseMissionScriptSource, MissionScriptParseError } from "../src/orchestration/script-parse.ts"
-import { loadMissionScript } from "../src/orchestration/script-load.ts"
+import { dryRunMissionScriptSource } from "../src/orchestration/script/validate.ts"
+import { parseMissionScriptSource, MissionScriptParseError } from "../src/orchestration/script/parse.ts"
+import { loadMissionScript } from "../src/orchestration/script/load.ts"
 
 const smokeFixture = path.join(import.meta.dir, "fixtures/core-example-smoke-v1/mission.script.ts")
 const importFsFixture = path.join(import.meta.dir, "fixtures/malicious-script/import-fs.mission.script.ts")

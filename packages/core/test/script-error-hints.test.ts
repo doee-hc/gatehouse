@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { missionScriptErrorHint } from "../src/orchestration/script-error-hints.ts"
+import { missionScriptErrorHint } from "../src/orchestration/script/error-hints.ts"
 
 describe("missionScriptErrorHint", () => {
   test("returns hint for common architect failure codes", () => {

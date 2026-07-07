@@ -3,7 +3,7 @@ import type { OrchestrationState } from "../src/orchestration/types.ts"
 import {
   detectOrchestrationStall,
   ORCHESTRATION_STALL_THRESHOLD_MS,
-} from "../src/orchestration/stall.ts"
+} from "../src/orchestration/state/stall.ts"
 
 function orchState(input: {
   updated_at: string

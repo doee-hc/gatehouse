@@ -9,7 +9,7 @@ import {
 } from "./locale.ts"
 import { DEFAULT_AGENT_NAMES, OUTER_PROFILES, type OuterProfile } from "./names.ts"
 import { gatehouseRoot } from "./paths.ts"
-import { ORCHESTRATION_STALL_THRESHOLD_MS } from "./orchestration/stall.ts"
+import { ORCHESTRATION_STALL_THRESHOLD_MS } from "./orchestration/state/stall.ts"
 import {
   AUTOPILOT_WAKE_POLL_MS,
   AUTOPILOT_WAKE_THRESHOLD_MS,
