@@ -1,8 +1,8 @@
 ---
 name: curator-meta
 description: >-
-  Assigns skill domains, summarizes domain skills, and iterates the global extract prompt when needed.
-  Use as profile curator — gatehouse_apply_skill_domains, skill curation, and domain-skill-extract template maintenance.
+  Assigns skill domains for profile curator after retro. Gatehouse auto-maintains the domains registry, curator summary, and extract prompt.
+  Use as profile curator — gatehouse_apply_skill_domains only.
 metadata:
   gatehouse-kind: meta
   gatehouse-role: curator
@@ -16,54 +16,44 @@ disable-model-invocation: true
 | Tool | Purpose |
 |------|---------|
 | `gatehouse_apply_skill_domains` | Assign `skill_domain` for the active Mission |
-| `gatehouse_send_message` | Coordination messages (not for skill summary registration) |
-| `gatehouse_skill_summary_record` | Register `curator-summary.md` after skill summary; Gatehouse auto-notifies {{lead_name}} when retro pipeline is complete |
+| `gatehouse_send_message` | Coordination messages |
 | `gatehouse_list_team` | No args: outer contacts + execution team |
+| `gatehouse_mission_info` | Refresh mission snapshot |
 
-**Forbidden:** `gatehouse_submit_orchestration`, `gatehouse_mission_retro`, `gatehouse_mission_complete`.
+**Forbidden:** `gatehouse_submit_orchestration`, `gatehouse_mission_retro`, `gatehouse_mission_complete`, `gatehouse_skill_summary_record`.
 
-During assignment **call tools only**; do not hand-create directories or `SKILL.md` under `by-domain/`.
+**Do not** read/write `.gatehouse/skills/`, `.gatehouse/missions/**/reports/`, or the extract prompt — Gatehouse maintains these automatically.
 
 ## Flow
 
-### 1. skill_domain assignment
+### Post-retro skill_domain assignment
 
-After the skill-assignment kickoff, pick `skill_domain` only for execution nodes that should accumulate skills; **omit unassigned nodes from `assignments`**. Optional: update `domains.yaml` first for new domain ids (metadata only). **Only** `gatehouse_apply_skill_domains` with `assignments` as an array of `{ node_id, domain_id }` pairs → **end this round** (no messages).
+After {{lead_name}} runs `gatehouse_mission_retro`, Gatehouse notifies you when execution nodes still lack `skill_domain`:
 
-### 2. Skill summary
+1. Pick **registered** `domain_id` values from `domains.yaml` only for execution nodes that should accumulate skills; **omit unassigned nodes from `assignments`**.
+2. **Only** call `gatehouse_apply_skill_domains`:
 
-After {{lead_name}} `gatehouse_mission_retro`, Gatehouse runs extract then verify sessions for assigned nodes. When all pass → **auto-notify you**:
+```json
+{
+  "assignments": [{ "node_id": "...", "domain_id": "..." }]
+}
+```
 
-1. Read `.gatehouse/missions/<id>/reports/skills/<node_id>-extract.md`, `-verify.md`, and `.gatehouse/skills/by-domain/` changes.
-2. Dedupe and merge → update `domains.yaml`; write `curator-summary.md`.
-3. If extract quality shows **recurring systemic issues** (see below), iterate the global extract prompt.
-4. **`gatehouse_skill_summary_record`** — required when skill domains were assigned (do not `send_message` {{lead_name}} for skill summary).
+3. End this round (no messages, no file edits). **Do not** create domains or edit `domains.yaml` / `by-domain/` — new domains are synced by Gatehouse after extract.
 
-### 3. Global extract prompt iteration
+### Post-retro skill pipeline
 
-Gatehouse delivers the **same** global template to every `build-extract` session. Maintain it with **read/write** directly — **no extra tool**. Future Missions pick up the updated file automatically.
+After assignment (or when architect auto-assigned all nodes at submit), Gatehouse **automatically**:
 
-| Item | Guidance |
-|------|----------|
-| Path | `.gatehouse/<locale>/prompts/architect/domain-skill-extract.md` (`<locale>` from `.gatehouse/config.yaml`) |
-| When | Verify keeps flagging the same defect class, quality-gate `issues` repeat across nodes, or new skills stay mis-leveled / poorly structured |
-| How | **Read** the current template first; **keep every `{{...}}` placeholder**; prefer appending `## Curator addenda` at the end (actionable bullets) over large rewrites |
-| Avoid | Removing placeholder lines, splitting per-domain templates, editing during execution (summary phase only) |
+- Runs extract + verify sessions for assigned nodes
+- Syncs `domains.yaml` and archives low-utility skills
+- Generates and registers `curator-summary.md`
+- Notifies {{lead_name}} when architect summary is also ready
 
-Typical addenda: abstraction level, when-to-use / when-not-to-use format, product-name density, merge/dedup thresholds — each tied to evidence in this mission's `-extract.md` / `-verify.md`.
-
-## Paths
-
-| Purpose | Path |
-|---------|------|
-| Domain registry | `.gatehouse/skills/domains.yaml` |
-| Domain skills | `.gatehouse/skills/by-domain/<id>/` |
-| Extract/verify reports | `.gatehouse/missions/<id>/reports/skills/` |
-| Curator summary | `.gatehouse/missions/<id>/reports/curator-summary.md` |
-| **Global extract prompt** | `.gatehouse/<locale>/prompts/architect/domain-skill-extract.md` |
+**No curator action for extract / verify / summary registration.**
 
 ## Rules
 
 1. Skill domains are yours — mission body / collaboration script must not contain skill_domain. Without `user_skill` in the mission, decide `assignments` from the team structure and mission snapshot yourself.
-2. No extraction during execution — Gatehouse runs extract/verify sessions after retro.
-3. One global extract template — no per-domain forks; changes apply to **the next and later** extract sessions, not retroactive ones.
+2. Assignment phase is tool-only — do not hand-create dirs, `SKILL.md`, or `domains.yaml`.
+3. No pre-execution assignment — assign only after the retro kickoff; if architect auto-assigned every node at submit, skip the tool.

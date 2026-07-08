@@ -845,21 +845,14 @@ describe("registry harness", () => {
       const pluginInput = { directory: dir, client: mockClient } as unknown as PluginInput
       const preStore = await RegistryStore.create({ directory: dir, client: mockClient })
       preStore.register({
-        agentId: OUTER_CURATOR_ID,
+        agentId: OUTER_ARCHITECT_ID,
         scope: "outer",
-        profile: "curator",
-        sessionId: "ses_curator",
-        displayName: "Curator",
+        profile: "architect",
+        sessionId: "ses_architect",
+        displayName: "Architect",
       })
 
-      const bootstrap = submitOrchestrationTool(pluginInput)
-      await bootstrap.execute({}, mockToolContext(dir, "ses_architect", "architect"))
-
-      const apply = applySkillDomainsTool(pluginInput)
-      await apply.execute(
-        { assignments: { "node-doc": "docs" } },
-        mockToolContext(dir, "ses_curator", "curator"),
-      )
+      await submitOrchestrationTool(pluginInput).execute({}, mockToolContext(dir, "ses_architect", "architect"))
 
       const store = await RegistryStore.create({ directory: dir, client: mockClient })
       const inner = store.list({ scope: "inner", missionId: "core-example-smoke-v1" })

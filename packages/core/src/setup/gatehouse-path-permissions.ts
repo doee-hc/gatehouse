@@ -119,7 +119,7 @@ export const architectFilesystemPermissions = filesystemPathPermissions(
   ),
 )
 
-/** profile curator — domain skills, skill pipeline reports, curator meta; no lead queue or mission scripts. */
+/** profile curator — read skill pipeline reports; assignment via gatehouse_apply_skill_domains only. */
 export const curatorFilesystemPermissions = filesystemPathPermissions(
   gatehouseRules(
     [
@@ -128,7 +128,6 @@ export const curatorFilesystemPermissions = filesystemPathPermissions(
       `${GH}/skills/domains.yaml`,
       ...metaSkillPatterns(GATEHOUSE_ROLE_SKILLS.curator),
       `${GH}/missions/**/reports/**`,
-      ...localePatterns("prompts/architect/domain-skill-extract.md"),
       ...promptRolePatterns("curator"),
     ],
     [
@@ -139,18 +138,10 @@ export const curatorFilesystemPermissions = filesystemPathPermissions(
       `${GH}/missions/**/mission.script.ts`,
       `${GH}/missions/**/context/**`,
       ...retroToolkitPatterns,
-    ],
-  ),
-  gatehouseRules(
-    [
-      `${GH}/skills/by-domain/**`,
-      `${GH}/skills/domains.yaml`,
-      ...metaSkillPatterns(GATEHOUSE_ROLE_SKILLS.curator),
       ...localePatterns("prompts/architect/domain-skill-extract.md"),
-      `${GH}/missions/**/reports/**`,
     ],
-    [...denyOtherOuterMetaSkills(GATEHOUSE_ROLE_SKILLS.curator), `${GH}/lead/**`, `${GH}/arbiter/**`],
   ),
+  gatehouseRules([], [...denyOtherOuterMetaSkills(GATEHOUSE_ROLE_SKILLS.curator), `${GH}/**`]),
 )
 
 /** profile arbiter — read-only audit; other outer meta-skills denied to avoid cross-role playbook leakage. */

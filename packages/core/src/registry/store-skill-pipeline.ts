@@ -82,12 +82,25 @@ export class RegistryStoreSkillPipeline {
     return extractService.recordSkillVerifyCompletion(this.host(), input)
   }
 
-  kickoffCuratorSkillAssignment(input: { missionId: string; objective?: string; spec: MissionTeamSpec }) {
+  kickoffCuratorSkillAssignment(input: {
+    missionId: string
+    objective?: string
+    spec: MissionTeamSpec
+    phase?: "retro"
+  }) {
     return extractService.kickoffCuratorSkillAssignment(this.host(), input)
   }
 
   kickoffExtractSkillSessions(extract: MissionExtractManifest) {
     return extractService.kickoffExtractSkillSessions(this.host(), extract)
+  }
+
+  kickoffExtractDeliveriesForNodes(extract: MissionExtractManifest, nodeIds: string[]) {
+    return extractService.kickoffExtractDeliveriesForNodes(this.host(), extract, nodeIds)
+  }
+
+  appendSkillExtractRunNodes(missionId: string, nodeIds: string[]) {
+    return extractService.appendSkillExtractRunNodes(this.host(), missionId, nodeIds)
   }
 
   kickoffSkillVerifySessions(verify: MissionVerifyManifest) {

@@ -161,18 +161,14 @@ export function nodeAlreadyActivated(state: OrchestrationState, nodeId: string) 
   )
 }
 
-export const AWAITING_SKILL_DOMAINS_PHASE = "awaiting_skill_domains"
-
-/** True when bootstrap must seed missing team nodes (e.g. after awaiting_skill_domains). */
 export function orchestrationStateNeedsNodeInit(
   state: OrchestrationState,
   nodeIds: readonly string[],
 ): boolean {
-  if (state.phase === AWAITING_SKILL_DOMAINS_PHASE) return true
   return nodeIds.some((nodeId) => !state.nodes[nodeId])
 }
 
-/** Merge fresh pending nodes with any existing progress; clears awaiting_skill_domains phase. */
+/** Merge fresh pending nodes with any existing progress. */
 export function ensureOrchestrationNodesInitialized(
   existing: OrchestrationState,
   nodeIds: readonly string[],
@@ -186,29 +182,8 @@ export function ensureOrchestrationNodesInitialized(
   next.compound_replay = existing.compound_replay
   next.sandbox = existing.sandbox ?? next.sandbox
   if (existing.baseline_id) next.baseline_id = existing.baseline_id
-  if (existing.phase && existing.phase !== AWAITING_SKILL_DOMAINS_PHASE) {
-    next.phase = existing.phase
-  }
+  if (existing.phase) next.phase = existing.phase
   return next
-}
-
-export function initAwaitingSkillDomainsState(missionId: string, scriptHash: string): OrchestrationState {
-  return {
-    schema_version: ORCHESTRATION_STATE_SCHEMA_VERSION,
-    mission_id: missionId,
-    updated_at: new Date().toISOString(),
-    phase: AWAITING_SKILL_DOMAINS_PHASE,
-    nodes: {},
-    sandbox: { status: "stopped", script_hash: scriptHash },
-    cursor_step_index: 0,
-  }
-}
-
-export function isAwaitingSkillDomainsForScript(
-  state: OrchestrationState | undefined,
-  scriptHash: string,
-): boolean {
-  return state?.phase === AWAITING_SKILL_DOMAINS_PHASE && state.sandbox?.script_hash === scriptHash
 }
 
 export function markNodeRunning(state: OrchestrationState, nodeId: string) {

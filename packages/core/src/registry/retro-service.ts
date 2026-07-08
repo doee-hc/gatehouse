@@ -53,7 +53,6 @@ export function retroCompleteReadiness(host: RegistryHost, missionId: string) {
     else {
       const verify = skillVerifyStatus(host, missionId)
       if (verify.status === "no_run" || !verify.allDone) pending.push("skill_verify_nodes")
-      else if (!skill.curatorNotified) pending.push("curator_skill_kickoff")
       else if (!skill.curatorSummarySubmitted) pending.push("curator_skill_summary")
     }
   }
@@ -96,8 +95,9 @@ export async function recordCuratorSkillSummary(host: RegistryHost, input: { mis
   if (skill.status !== "ok" || skill.run.expectedNodeIds.length === 0) {
     throw new Error(`Mission ${input.missionId} has no skill extract pipeline for curator`)
   }
-  if (!skill.curatorNotified) {
-    throw new Error(`Mission ${input.missionId} curator skill kickoff has not completed yet`)
+  const verify = skillVerifyStatus(host, input.missionId)
+  if (verify.status !== "ok" || !verify.allDone) {
+    throw new Error(`Mission ${input.missionId} skill verify pipeline is not complete yet`)
   }
   const alreadySubmitted = skill.curatorSummarySubmitted
   if (!alreadySubmitted) {

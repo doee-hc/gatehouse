@@ -9,11 +9,11 @@ Architecture & workflow: project `.gatehouse/**/SKILL.md` prompts (scaffolded on
 | Tool | Purpose |
 |------|---------|
 | `gatehouse_init_team` | **profile lead** — register architect, curator, arbiter registry sessions (idempotent; first conversation) |
-| `gatehouse_submit_orchestration` | **profile architect** — validate `mission.script.ts`, wake curator for skill_domain assignment (no exec sessions yet). Execution team is created inside `gatehouse_apply_skill_domains` |
+| `gatehouse_submit_orchestration` | **profile architect** — validate `mission.script.ts` and start execution immediately (auto-applies skill_domain when every eligible node maps to domains.yaml; otherwise curator assigns after retro) |
 | `gatehouse_list_team` | Team roster (no args): outer core team only — full mission roster for lead/architect/curator; arbiter includes `session_id` for permission correlation. Inner profiles cannot call this tool |
 | `gatehouse_send_message` | Registry messaging; busy→queue in SQLite, idle/15s flush; send policy by sender scope |
 | `gatehouse_session_snapshot` | **lead / architect / arbiter** — one-off diagnostic tail (≤50 lines) + `session_status`; not for polling |
-| `gatehouse_apply_skill_domains` | **profile curator** — assign `skill_domain` and create execution team when no manifest yet |
+| `gatehouse_apply_skill_domains` | **profile curator** — assign existing `skill_domain` ids after retro (or mid-mission for newly added nodes); starts extract for retro assignments |
 | `gatehouse_mission_start` | **profile lead** — read queued entry from `missions.yaml`, freeze snapshot in `registry.db`, set `running`, notify architect |
 | `gatehouse_mission_info` | **all roles except arbiter** — mission scope for the caller: boundaries, frozen contract, and own node brief (role-filtered) |
 | `gatehouse_mission_retro` | **profile lead** — start retro after user confirms submitted delivery (requires all inner idle); fork retro sessions, dump `context/`, create isolated `build-extract` sessions for nodes with `skill_domain`, kickoff retro + skill-extract |
@@ -25,7 +25,7 @@ Architecture & workflow: project `.gatehouse/**/SKILL.md` prompts (scaffolded on
 | `gatehouse_retro_summary_record` | **profile architect** — register `architect-summary.md`; when retro summaries are complete, auto-notifies **profile lead** |
 | `gatehouse_skill_extract_record` | **build-extract** session only — runs quality gates, records extract completion; when all nodes complete, auto-starts verify sessions |
 | `gatehouse_skill_verify_record` | **build-verify** session only — programmatic + agent verification; when all nodes pass, auto-notifies **profile curator** |
-| `gatehouse_skill_summary_record` | **profile curator** — register `curator-summary.md`; when retro summaries are complete, auto-notifies **profile lead** |
+| `gatehouse_skill_summary_record` | **internal** — Gatehouse auto-registers `curator-summary.md` after extract + verify; notifies **profile lead** when retro summaries are complete |
 | `gatehouse_inspector_queue` | **profile arbiter** — list pending permission requests |
 | `gatehouse_inspector_decide` | **profile arbiter** — approve (`once` / `always`) or reject a permission request |
 | `gatehouse_execution_rework` | **inner** — reopen a dependency node (in-flight rework) |
@@ -122,7 +122,7 @@ Creates `.gatehouse/` with:
 - `skills/curator-meta/SKILL.md`（`curator-meta`）+ `prompts/curator/` skill assignment / summary prompts
 - `skills/arbiter-meta/SKILL.md`（`arbiter-meta`）
 - `config.yaml` — global `~/.config/gatehouse/config.yaml` + project `.gatehouse/config.yaml` (Portal brand, ICP, **outer team display names**, per-role `models`)
-- `skills/by-domain/` + `skills/domains.yaml` (curator assigns domains after orchestration submit; Gatehouse creates extract/verify sessions and delivers skill prompts on retro)
+- `skills/by-domain/` + `skills/domains.yaml` (curator assigns existing domains via `gatehouse_apply_skill_domains`; Gatehouse syncs registry from `by-domain/` after retro and runs extract/verify)
 - empty `missions/` (mission artifacts written after lead confirms)
 
 ## Example smoke mission (core-example-smoke-v1)
@@ -133,4 +133,4 @@ Lightweight smoke fixture at **`test/fixtures/core-example-smoke-v1/mission.scri
 bun run --cwd packages/core test
 ```
 
-Manual OpenCode smoke: copy `test/fixtures/core-example-smoke-v1/mission.script.ts` to `.gatehouse/missions/core-example-smoke-v1/`, start the mission in `missions.yaml`, then run architect submit_orchestration → curator apply_skill_domains.
+Manual OpenCode smoke: copy `test/fixtures/core-example-smoke-v1/mission.script.ts` to `.gatehouse/missions/core-example-smoke-v1/`, start the mission in `missions.yaml`, then run architect `gatehouse_submit_orchestration` → lead `gatehouse_mission_retro` → curator `gatehouse_apply_skill_domains` when prompted.

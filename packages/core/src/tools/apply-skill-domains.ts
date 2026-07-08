@@ -2,28 +2,29 @@ import { tool, type PluginInput } from "@opencode-ai/plugin"
 import { getRegistryStore } from "../registry/context.ts"
 import { readMissionManifest, writeMissionManifest } from "../missions/manifest/store.ts"
 import { resolveTeamSource } from "../orchestration/script/resolve-team.ts"
-import { bootstrapMission } from "../missions/bootstrap.ts"
 import { skillDomainContextNote } from "../retro/skill-kickoff.ts"
 import { selectSkillsForTask, formatRetrievedSkillCatalog } from "../skills/retrieval.ts"
 import { readLocaleSync } from "../locale.ts"
 import { readAgentNamesSync } from "../names.ts"
 import { innerAgentId } from "../registry/types.ts"
-import { readActiveMissionContract } from "../missions/contract.ts"
 import { requireActiveMissionId } from "../missions/scope.ts"
-import { ensureSkillDomainDirs, skillDomainIdsFromAssignments } from "../skills/ensure-domain-dirs.ts"
 import { parseSkillDomainAssignments } from "../skills/parse-assignments.ts"
+import { readSkillDomainsRegistry, unknownSkillDomainIds } from "../skills/domains.ts"
+import { readMissionsDocument } from "../missions/store.ts"
+import { requireMission } from "../missions/lifecycle.ts"
+import { appendExtractNodesForAssignments } from "../extract/retro-assignments.ts"
 import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
 
 export function applySkillDomainsTool(input: PluginInput) {
   return tool({
     description:
-      "profile curator only: assign skill_domain on execution nodes for the active Mission. Creates missing `.gatehouse/skills/by-domain/<domain-id>/` dirs (no SKILL.md). Call after architect gatehouse_submit_orchestration.",
+      "profile curator only: assign skill_domain on execution nodes using existing ids from domains.yaml. During retro, starts extract sessions for newly assigned nodes. During execution, injects skill catalog into assigned inner nodes.",
     args: {
       assignments: tool.schema
         .array(
           tool.schema.object({
             node_id: tool.schema.string().describe("execution node id from mission.script team"),
-            domain_id: tool.schema.string().describe("domain id from domains.yaml"),
+            domain_id: tool.schema.string().describe("existing skill domain id from domains.yaml"),
           }),
         )
         .describe("skill_domain assignment for each execution node"),
@@ -52,54 +53,74 @@ export function applySkillDomainsTool(input: PluginInput) {
           }
         }
 
-        await ensureSkillDomainDirs(input.directory, skillDomainIdsFromAssignments(assignments))
+        const registered = await readSkillDomainsRegistry(input.directory)
+        const unknown = unknownSkillDomainIds(assignments, registered)
+        if (unknown.length > 0) {
+          return {
+            output: toolFail(
+              toolName,
+              "UNKNOWN_SKILL_DOMAIN",
+              `domain id(s) not in domains.yaml: ${unknown.join(", ")}`,
+            ),
+            ...toolMetadata(toolName),
+          }
+        }
 
         const manifest = await readMissionManifest(input.directory, missionId)
         if (!manifest) {
-          const resolved = await resolveTeamSource(input.directory, missionId)
-          if (!resolved) {
+          return {
+            output: toolFail(
+              toolName,
+              "MANIFEST_NOT_FOUND",
+              "Mission manifest missing — architect must call gatehouse_submit_orchestration first",
+            ),
+            ...toolMetadata(toolName),
+          }
+        }
+
+        const mission = requireMission(await readMissionsDocument(input.directory), missionId)
+        const isRetro = mission.status === "retro"
+        const resolvedTeam = await resolveTeamSource(input.directory, missionId)
+        const locale = readLocaleSync(input.directory)
+        const agentNames = readAgentNamesSync(input.directory)
+
+        for (const [nodeId, domainValue] of Object.entries(assignments)) {
+          if (!domainValue.trim()) continue
+          const node = manifest.nodes[nodeId]
+          if (!node) {
             return {
-              output: toolFail(toolName, "MISSION_SCRIPT_NOT_FOUND", "No mission.script.ts for active mission"),
+              output: toolFail(toolName, "UNKNOWN_NODE", `Execution team has no node ${nodeId}`),
               ...toolMetadata(toolName),
             }
           }
-          const spec = structuredClone(resolved.spec)
-          for (const [nodeId, domainValue] of Object.entries(assignments)) {
-            if (!domainValue.trim()) continue
-            const node = spec.nodes[nodeId]
-            if (!node) {
-              return {
-                output: toolFail(toolName, "UNKNOWN_NODE", `Execution team has no node ${nodeId}`),
-                ...toolMetadata(toolName),
-              }
-            }
-            node.skill_domain = domainValue.trim()
-          }
-          const contract = readActiveMissionContract(input.directory, missionId)
-          const bootstrap = await bootstrapMission(input, spec, {
-            objective: contract?.objective,
+          node.skill_domain = domainValue.trim()
+        }
+
+        await writeMissionManifest(input.directory, manifest)
+        registry.syncInnerFromManifest(manifest)
+
+        if (isRetro) {
+          const extract = await appendExtractNodesForAssignments({
+            client: input.client,
+            projectDirectory: input.directory,
+            registry,
+            manifest,
+            assignments,
           })
           return {
             output: toolOk(toolName, {
-              phase: "bootstrapped",
+              phase: "retro_extract_started",
               mission_id: missionId,
               applied: Object.keys(assignments).length,
-              node_count: bootstrap.node_count,
+              extract_nodes_started: extract.appended,
             }),
             ...toolMetadata(toolName),
           }
         }
 
-        const resolvedTeam = await resolveTeamSource(input.directory, missionId)
-        const locale = readLocaleSync(input.directory)
-        const agentNames = readAgentNamesSync(input.directory)
-
         let delivered = 0
         for (const [nodeId, domainValue] of Object.entries(assignments)) {
           if (!domainValue.trim()) continue
-          const node = manifest.nodes[nodeId]
-          if (!node) continue
-          node.skill_domain = domainValue.trim()
           const recipient = registry.byAgentId(innerAgentId(missionId, nodeId))
           if (!recipient) continue
           const specNode = resolvedTeam?.spec.nodes[nodeId]
@@ -118,9 +139,6 @@ export function applySkillDomainsTool(input: PluginInput) {
           )
           if (result.status === "sent" || result.status === "queued") delivered += 1
         }
-
-        await writeMissionManifest(input.directory, manifest)
-        registry.syncInnerFromManifest(manifest)
         await registry.flushPendingDeliveries()
 
         return {

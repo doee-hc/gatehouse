@@ -112,18 +112,6 @@ Retro summaries are fully registered (architect summary{curator_suffix}). Read:
     zh: "- `{curator_summary_path}`",
     en: "- `{curator_summary_path}`",
   },
-  "curator.skillExtractBatchReady": {
-    zh: `[Gatehouse 领域 skill 提炼与验证就绪 · Mission {mission_id}]
-
-全部配置了 skill_domain 的节点已完成 extract + verify 并登记。请阅读各节点 \`-extract.md\` / \`-verify.md\` 摘要与 \`.gatehouse/skills/by-domain/\` 下变更，整理 domains 注册表、去重合并；若提炼质量有系统性问题，按 \`curator-meta\` 更新 \`.gatehouse/<locale>/prompts/architect/domain-skill-extract.md\`（保留全部 \`{{...}}\` 占位符）。完成后调用 **gatehouse_skill_summary_record** 提交 \`curator-summary.md\` 登记。
-
-{lines}`,
-    en: `[Gatehouse · Domain skill extract + verify ready · Mission {mission_id}]
-
-All nodes with skill_domain finished extract + verify and registration. Review \`-extract.md\` / \`-verify.md\` summaries and changes under \`.gatehouse/skills/by-domain/\`, reconcile the domains registry, and dedupe; if extract quality shows recurring issues, update \`.gatehouse/<locale>/prompts/architect/domain-skill-extract.md\` per \`curator-meta\` (keep all \`{{...}}\` placeholders). When done, call **gatehouse_skill_summary_record** to register \`curator-summary.md\`.
-
-{lines}`,
-  },
   "skillDomain.existing.empty": {
     zh: "（本领域目录尚无已有 skill；仅根据本次亲历新建，勿为其它领域或未见步骤预建目录。）",
     en: "(No existing skills in this domain yet; create only from what you experienced—do not pre-create dirs for other domains or unseen steps.)",
@@ -161,6 +149,14 @@ All nodes with skill_domain finished extract + verify and registration. Review \
   "portal.architectBootstrapCuratorHint": {
     zh: "协作脚本已提交，请为执行节点分配 skill_domain",
     en: "Collaboration script submitted — please assign skill_domain to execution nodes",
+  },
+  "curator.skillAssign.introRetro": {
+    zh: "{{lead_name}} 已启动复盘。请为需要沉淀 skill 的执行节点分配 **已在 `domains.yaml` 注册的** `skill_domain`，然后 Gatehouse 会启动 extract session。",
+    en: "{{lead_name}} started retro. Assign **registered** `skill_domain` values from `domains.yaml` to execution nodes that should accumulate skills; Gatehouse will then start extract sessions.",
+  },
+  "curator.skillAssign.introPreExecution": {
+    zh: "请为需要沉淀 skill 的执行节点分配 **已在 `domains.yaml` 注册的** `skill_domain`。",
+    en: "Assign **registered** `skill_domain` values from `domains.yaml` to execution nodes that should accumulate skills.",
   },
   "arbiter.caseHeader": { zh: "[Gatehouse 权限案卷]", en: "[Gatehouse permission case]" },
   "arbiter.requesterHeader": { zh: "请求方 registry:", en: "Requester registry:" },

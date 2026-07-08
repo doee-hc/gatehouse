@@ -19,6 +19,9 @@ import { dumpMissionContext, dumpPhaseSessionMetrics } from "../session/context-
 import type { GatehouseClient } from "../session/client.ts"
 import { readMissionsDocument, setMissionStatus } from "../missions/store.ts"
 import { requireLeadCaller, requireMission, waitForAllMissionAgentsIdle } from "../missions/lifecycle.ts"
+import { readActiveMissionContract } from "../missions/contract.ts"
+import { nodesPendingSkillDomainAssignment } from "../skills/resolve-assignments.ts"
+import { readSkillDomainsRegistry } from "../skills/domains.ts"
 import { requireActiveMissionId, requireSenderMissionId } from "../missions/scope.ts"
 import { deliveryIsSubmitted, readDeliveryDocument } from "../delivery/store.ts"
 import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
@@ -185,6 +188,23 @@ export function missionRetroTool(input: PluginInput) {
           }
         }
 
+        const contract = readActiveMissionContract(input.directory, missionId)
+        const pendingSkillNodes =
+          plan && resolved.spec
+            ? nodesPendingSkillDomainAssignment(manifest, resolved.spec, plan)
+            : []
+        const domains = await readSkillDomainsRegistry(input.directory)
+        const skillAssignmentPending = pendingSkillNodes.length > 0 && domains.length > 0
+
+        if (skillAssignmentPending) {
+          await registry.skillPipeline.kickoffCuratorSkillAssignment({
+            missionId,
+            objective: contract?.objective,
+            spec: resolved.spec,
+            phase: "retro",
+          })
+        }
+
         const extract = await createExtractManifest({
           client: input.client,
           projectDirectory: input.directory,
@@ -196,7 +216,9 @@ export function missionRetroTool(input: PluginInput) {
 
         await Promise.all([
           registry.retro.kickoffRetroSession(manifest, plan),
-          registry.skillPipeline.kickoffExtractSkillSessions(extract),
+          ...(extract.extract_order.length > 0
+            ? [registry.skillPipeline.kickoffExtractSkillSessions(extract)]
+            : []),
         ])
         await registry.flushPendingDeliveries()
 
@@ -205,6 +227,13 @@ export function missionRetroTool(input: PluginInput) {
             mission_id: manifest.mission_id,
             retro_session_id: retroSessionId,
             analysis_order: analysisOrder,
+            ...(skillAssignmentPending && {
+              skill_assignment_pending: true,
+              pending_skill_nodes: pendingSkillNodes,
+            }),
+            ...(extract.extract_order.length > 0 && {
+              extract_nodes_started: extract.extract_order,
+            }),
           }),
           ...toolMetadata(toolName),
         }

@@ -124,7 +124,7 @@ const outerRetroSummaryRecordDenials = {
   gatehouse_retro_summary_record: "deny",
 } as const
 
-/** Curator skill summary — curator only. */
+/** Curator skill summary — system auto-registers; deny manual calls. */
 const outerSkillSummaryRecordDenials = {
   gatehouse_skill_summary_record: "deny",
 } as const
@@ -207,9 +207,9 @@ export const curatorSessionPermissions = {
   gatehouse_execution_rework: "deny",
   gatehouse_execution_status: "deny",
   gatehouse_direction_status: "deny",
-  gatehouse_skill_summary_record: "allow",
   ...outerRetroRecordDenials,
   ...outerRetroSummaryRecordDenials,
+  ...outerSkillSummaryRecordDenials,
   ...nonArbiterInspectorDenials,
 } as const
 

@@ -141,9 +141,9 @@ export function resolveSkillDomainAssignments(
     if (!spec.nodes[nodeId]) return undefined
   }
 
-  const domainIds = new Set(input.domains.map((entry) => entry.id))
-  for (const domainId of Object.values(assignments)) {
-    if (!domainIds.has(domainId)) return undefined
+  const registeredIds = new Set(input.domains.map((domain) => domain.id))
+  if (!Object.values(assignments).every((domainId) => registeredIds.has(domainId.trim()))) {
+    return undefined
   }
 
   return { assignments, source }
@@ -157,4 +157,13 @@ export function applySkillDomainAssignments(spec: MissionTeamSpec, assignments: 
     node.skill_domain = domainId
   }
   return next
+}
+
+export function nodesPendingSkillDomainAssignment(
+  manifest: { nodes: Record<string, { skill_domain?: string }> },
+  spec: MissionTeamSpec,
+  plan: OrchestrationPlan,
+) {
+  const eligible = new Set(nodesEligibleForSkillDomain(spec, plan))
+  return [...eligible].filter((nodeId) => !manifest.nodes[nodeId]?.skill_domain?.trim())
 }

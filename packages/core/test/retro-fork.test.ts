@@ -9,7 +9,7 @@ import { submitOrchestrationTool } from "../src/tools/submit-orchestration.ts"
 import { applySkillDomainsTool } from "../src/tools/apply-skill-domains.ts"
 import { readExtractManifest, readRetroManifest } from "../src/missions/manifest/store.ts"
 import { readMissionsDocument } from "../src/missions/store.ts"
-import { copyExampleMission } from "./copy-example-mission.ts"
+import { copyExampleMission, seedSkillDomainsRegistry } from "./copy-example-mission.ts"
 import { missionEntryToRecord } from "../src/missions/contract.ts"
 import { RegistryDatabase } from "../src/registry/db.ts"
 import { isRecord, parseYaml } from "../src/yaml.ts"
@@ -108,14 +108,7 @@ describe("retro_batch skill kickoffs", () => {
 
       const pluginInput = { directory: dir, client: mockClient } as unknown as PluginInput
       await registerJiyiForTest(pluginInput, "ses_curator")
-      const bootstrap = submitOrchestrationTool(pluginInput)
-      await bootstrap.execute({}, mockToolContext(dir, "architect"))
-
-      const apply = applySkillDomainsTool(pluginInput)
-      await apply.execute(
-        { assignments: { "node-doc": "docs" } },
-        mockToolContext(dir, "ses_curator", "curator"),
-      )
+      await submitOrchestrationTool(pluginInput).execute({}, mockToolContext(dir, "architect"))
 
       promptCalls.length = 0
 
@@ -129,6 +122,12 @@ describe("retro_batch skill kickoffs", () => {
       if (!isRecord(parsed) || !isRecord(parsed.data)) throw new Error("unexpected tool output")
 
       expect(typeof parsed.data.retro_session_id).toBe("string")
+      expect(parsed.data.skill_assignment_pending).toBe(true)
+
+      await applySkillDomainsTool(pluginInput).execute(
+        { assignments: [{ node_id: "node-doc", domain_id: "docs" }] },
+        mockToolContext(dir, "ses_curator", "curator"),
+      )
 
       const skillPrompts = promptCalls.filter((call) => call.text.includes("领域 skill 提炼"))
       expect(skillPrompts).toHaveLength(1)
@@ -152,6 +151,7 @@ describe("retro_batch skill kickoffs", () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-retro-batch-solo-"))
     try {
       await Bun.$`bun ${scaffoldScript} ${dir}`.quiet()
+      await seedSkillDomainsRegistry(dir)
       const missionId = "solo-root-mission"
       const missionDir = path.join(dir, ".gatehouse/missions", missionId)
       await mkdir(missionDir, { recursive: true })
@@ -243,7 +243,7 @@ export default async function orchestrate(ctx) {
       await registerJiyiForTest(pluginInput, "ses_curator")
       await submitOrchestrationTool(pluginInput).execute({}, mockToolContext(dir, "architect"))
       await applySkillDomainsTool(pluginInput).execute(
-        { assignments: { "node-root": "docs" } },
+        { assignments: [{ node_id: "node-root", domain_id: "docs" }] },
         mockToolContext(dir, "ses_curator", "curator"),
       )
 
@@ -314,10 +314,6 @@ export default async function orchestrate(ctx) {
         {},
         mockToolContext(dir, "architect"),
       )
-      await applySkillDomainsTool(pluginInput).execute(
-        { assignments: {} },
-        mockToolContext(dir, "ses_curator", "curator"),
-      )
 
       await registerLeadForTest(pluginInput)
       await seedSubmittedDelivery(dir, "core-example-smoke-v1")
@@ -376,7 +372,7 @@ export default async function orchestrate(ctx) {
       await registerJiyiForTest(pluginInput, "ses_curator")
       await submitOrchestrationTool(pluginInput).execute({}, mockToolContext(dir, "architect"))
       await applySkillDomainsTool(pluginInput).execute(
-        { assignments: {} },
+        { assignments: [{ node_id: "node-doc", domain_id: "docs" }] },
         mockToolContext(dir, "ses_curator", "curator"),
       )
 

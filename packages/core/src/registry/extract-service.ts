@@ -1,16 +1,14 @@
 import { loadDomainSkillExtractPrompt } from "../retro/skill-kickoff.ts"
 import { loadDomainSkillVerifyPrompt } from "../extract/prompt.ts"
 import { createVerifyManifest } from "../extract/verify-setup.ts"
-import { loadCuratorSkillAssignKickoff, curatorSkillExtractBatchReadyMessage } from "../curator/prompt.ts"
+import { loadCuratorSkillAssignKickoff } from "../curator/prompt.ts"
 import { archiveLowUtilitySkills } from "../skills/utility.ts"
+import { writeAutoCuratorSummary } from "../skills/curator-summary.ts"
+import { syncSkillDomainsRegistryFromByDomain } from "../skills/domains.ts"
+import { recordCuratorSkillSummary } from "./retro-service.ts"
 import { readExtractManifest, writeVerifyManifest } from "../missions/manifest/store.ts"
 import type { MissionExtractManifest, MissionTeamSpec, MissionVerifyManifest } from "../missions/manifest/types.ts"
-import { curatorSkillSummaryRelPath } from "../paths.ts"
-import { gatehouseMessage } from "../i18n.ts"
-import { readAgentNamesSync } from "../names.ts"
-import { readLocaleSync } from "../locale.ts"
-import { emitPortalEvent } from "../portal/events.ts"
-import { spawnIdForAgent } from "../portal/spawn-id.ts"
+import { curatorSummaryRelPath } from "../paths.ts"
 import {
   extractAgentId,
   verifyAgentId,
@@ -29,7 +27,7 @@ import {
   deactivateVerifyAgentsForMission,
   syncVerifyFromManifest,
 } from "./agent-registry.ts"
-import { deliverSystemMessage, deliverSystemPrompt } from "./messaging-service.ts"
+import { deliverSystemMessage, deliverSystemPrompt, flushPendingDeliveries } from "./messaging-service.ts"
 import { formatDirectedNotification } from "./helpers.ts"
 
 export function beginSkillExtractRun(host: RegistryHost, missionId: string, expectedNodeIds: string[]) {
@@ -181,7 +179,7 @@ export async function recordSkillVerifyCompletion(
     return item
   })
   deactivateVerifyAgentForNode(host, input.missionId, input.nodeId)
-  await maybeNotifyCuratorSkillExtractComplete(host, input.missionId)
+  await maybeFinalizeSkillPipeline(host, input.missionId)
   const after = skillVerifyStatus(host, input.missionId)
   if (after.status === "ok" && after.allDone) deactivateVerifyAgentsForMission(host, input.missionId)
   return recorded
@@ -210,32 +208,24 @@ async function maybeKickoffSkillVerify(host: RegistryHost, missionId: string) {
   await kickoffSkillVerifySessions(host, verify)
 }
 
-async function maybeNotifyCuratorSkillExtractComplete(host: RegistryHost, missionId: string) {
+async function maybeFinalizeSkillPipeline(host: RegistryHost, missionId: string) {
   const verifyStatus = skillVerifyStatus(host, missionId)
   if (verifyStatus.status !== "ok" || !verifyStatus.allDone) return
   const skillRun = host.state.skillExtractRuns.get(missionId)
   if (!skillRun || skillRun.curatorNotifiedAt) return
-  const curator = host.byProfile("curator", "outer")
-  if (!curator?.sessionId) return
+
   const extractStatus = skillExtractStatus(host, missionId)
-  const completions = extractStatus.status === "ok"
-    ? extractStatus.completed.map((nodeId) => {
-        const item = host.state.skillExtractCompletions.get(skillExtractCompletionKey(missionId, nodeId))
-        return { nodeId, summaryPath: item?.summaryPath ?? curatorSkillSummaryRelPath(missionId, nodeId) }
-      })
-    : []
+  const nodeIds = extractStatus.status === "ok" ? extractStatus.completed : []
+
   await archiveLowUtilitySkills(host.directory)
-  const sent = await deliverSystemMessage(
-    host,
-    curator,
-    curatorSkillExtractBatchReadyMessage(
-      missionId,
-      completions,
-      readAgentNamesSync(host.directory),
-      readLocaleSync(host.directory),
-    ),
-  )
-  if (sent.status === "failed") return
+  await syncSkillDomainsRegistryFromByDomain(host.directory)
+  await writeAutoCuratorSummary(host.directory, missionId, nodeIds)
+  await recordCuratorSkillSummary(host, {
+    missionId,
+    reportPath: curatorSummaryRelPath(missionId),
+  })
+  await flushPendingDeliveries(host)
+
   host.mutate(() => {
     const run = host.state.skillExtractRuns.get(missionId)
     if (!run) return
@@ -245,7 +235,7 @@ async function maybeNotifyCuratorSkillExtractComplete(host: RegistryHost, missio
 
 export async function kickoffCuratorSkillAssignment(
   host: RegistryHost,
-  input: { missionId: string; objective?: string; spec: MissionTeamSpec },
+  input: { missionId: string; objective?: string; spec: MissionTeamSpec; phase?: "retro" },
 ) {
   const curator = host.byProfile("curator", "outer")
   if (!curator?.sessionId) {
@@ -261,21 +251,10 @@ export async function kickoffCuratorSkillAssignment(
       missionId: input.missionId,
       objective: input.objective,
       spec: input.spec,
+      phase: input.phase ?? "retro",
     }),
   )
   const result = await deliverSystemPrompt(host, curator, promptText, { promptProfile: curator.profile })
-  if (result.status !== "failed") {
-    const architect = host.byProfile("architect", "outer")
-    if (architect) {
-      const locale = readLocaleSync(host.directory)
-      emitPortalEvent({
-        type: "agent.chat",
-        fromSpawnId: spawnIdForAgent(architect),
-        toSpawnId: spawnIdForAgent(curator),
-        text: gatehouseMessage("portal.architectBootstrapCuratorHint", locale),
-      })
-    }
-  }
   return {
     curator_session_id: curator.sessionId,
     delivery: result.status,
@@ -283,10 +262,13 @@ export async function kickoffCuratorSkillAssignment(
   }
 }
 
-export async function kickoffExtractSkillSessions(host: RegistryHost, extract: MissionExtractManifest) {
-  beginSkillExtractRun(host, extract.mission_id, extract.extract_order)
+export async function kickoffExtractDeliveriesForNodes(
+  host: RegistryHost,
+  extract: MissionExtractManifest,
+  nodeIds: string[],
+) {
   const deliveries: Array<{ nodeId: string; skillDomain: string; delivery: "sent" | "queued" | "failed"; error?: string }> = []
-  for (const nodeId of extract.extract_order) {
+  for (const nodeId of nodeIds) {
     const extractNode = extract.nodes[nodeId]
     if (!extractNode) continue
     const recipient = host.byAgentId(extractAgentId(extract.mission_id, nodeId))
@@ -313,6 +295,28 @@ export async function kickoffExtractSkillSessions(host: RegistryHost, extract: M
     })
   }
   return deliveries
+}
+
+export function appendSkillExtractRunNodes(host: RegistryHost, missionId: string, nodeIds: string[]) {
+  if (nodeIds.length === 0) return
+  host.mutate(() => {
+    const existing = host.state.skillExtractRuns.get(missionId)
+    if (existing) {
+      const expectedNodeIds = [...new Set([...existing.expectedNodeIds, ...nodeIds])]
+      host.state.skillExtractRuns.set(missionId, { ...existing, expectedNodeIds })
+      return
+    }
+    host.state.skillExtractRuns.set(missionId, {
+      missionId,
+      expectedNodeIds: [...nodeIds],
+      startedAt: now(),
+    })
+  })
+}
+
+export async function kickoffExtractSkillSessions(host: RegistryHost, extract: MissionExtractManifest) {
+  beginSkillExtractRun(host, extract.mission_id, extract.extract_order)
+  return kickoffExtractDeliveriesForNodes(host, extract, extract.extract_order)
 }
 
 export async function kickoffSkillVerifySessions(host: RegistryHost, verify: MissionVerifyManifest) {

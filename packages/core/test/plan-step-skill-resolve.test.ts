@@ -102,4 +102,37 @@ describe("skill domain auto resolve", () => {
     }
     expect(resolveSkillDomainAssignments(team, plan, { domains })).toBeUndefined()
   })
+
+  test("resolveSkillDomainAssignments rejects user_skill with unregistered domain ids", () => {
+    const team: MissionTeamSpec = {
+      mission_id: "m1",
+      terminal: "terminal",
+      nodes: {
+        terminal: { description: "root" },
+        worker: { description: "文档执行成员，负责 README 示例章节" },
+      },
+    }
+    const plan: OrchestrationPlan = {
+      schema_version: 1,
+      mission_id: "m1",
+      plan_version: "v1",
+      script_hash: "hash",
+      warnings: [],
+      steps: [
+        { id: "step-0", op: "run", statement: 'await ctx.run("worker", { text: "go" })', nodeId: "worker" },
+        {
+          id: "step-1",
+          op: "run",
+          statement: 'await ctx.run("terminal", { text: "summary", dependsOn: [{ node: "worker", deliverable: true }] })',
+          nodeId: "terminal",
+        },
+      ],
+    }
+    expect(
+      resolveSkillDomainAssignments(team, plan, {
+        userSkill: '{"worker":"brand-new-domain"}',
+        domains: [{ id: "docs", description: "Documentation" }],
+      }),
+    ).toBeUndefined()
+  })
 })

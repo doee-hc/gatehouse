@@ -7,14 +7,7 @@ import { validateMissionTeamSpec } from "../missions/manifest/team-spec.ts"
 import { resumeOrchestrationForActiveMission } from "../orchestration/lifecycle/resume.ts"
 import { continueOrchestrationWithNewScript } from "../orchestration/lifecycle/continuation.ts"
 import { isSandboxRunning } from "../orchestration/sandbox/runtime.ts"
-import {
-  AWAITING_SKILL_DOMAINS_PHASE,
-  initAwaitingSkillDomainsState,
-  isAwaitingSkillDomainsForScript,
-  orchestrationAllDone,
-  readOrchestrationState,
-  writeOrchestrationState,
-} from "../orchestration/state/store.ts"
+import { orchestrationAllDone, readOrchestrationState } from "../orchestration/state/store.ts"
 import { loadMissionScript } from "../orchestration/script/load.ts"
 import { MissionScriptParseError } from "../orchestration/script/parse.ts"
 import { missionScriptErrorHint } from "../orchestration/script/error-hints.ts"
@@ -24,9 +17,8 @@ import {
   applySkillDomainAssignments,
   resolveSkillDomainAssignments,
 } from "../skills/resolve-assignments.ts"
-import { ensureSkillDomainDirs } from "../skills/ensure-domain-dirs.ts"
 import { orchestrationSandboxHealthy } from "../orchestration/state/guards.ts"
-import { ARCHITECT_OPENCODE, CURATOR_OPENCODE } from "../registry/types.ts"
+import { ARCHITECT_OPENCODE } from "../registry/types.ts"
 import { readActiveMissionContract } from "../missions/contract.ts"
 import { readMissionsDocument } from "../missions/store.ts"
 import { assertMissionRunning } from "../missions/parse.ts"
@@ -36,7 +28,7 @@ import { toolFail, toolErrorMetadata, toolMetadata, toolOk } from "./envelope.ts
 export function submitOrchestrationTool(input: PluginInput) {
   return tool({
     description:
-      "profile architect only: validate and submit mission.script.ts for orchestration. Use mode=continue after rewriting mid-mission. When skill domains are already resolved, execution starts automatically; otherwise curator is woken for gatehouse_apply_skill_domains.",
+      "profile architect only: validate and submit mission.script.ts for orchestration. Use mode=continue after rewriting mid-mission. Starts execution immediately; auto-applies skill_domain only when every eligible node maps to an existing domains.yaml entry (otherwise curator assigns after retro).",
     args: {
       mode: tool.schema
         .enum(["submit", "continue"])
@@ -192,80 +184,27 @@ export function submitOrchestrationTool(input: PluginInput) {
             ...(contract?.user_skill && { userSkill: contract.user_skill }),
             domains,
           })
-          if (skillReady) {
-            const specWithDomains = applySkillDomainAssignments(spec, skillReady.assignments)
-            await ensureSkillDomainDirs(input.directory, Object.values(skillReady.assignments))
-            const bootstrap = await bootstrapMission(input, specWithDomains, {
-              objective: contract?.objective,
-            })
-            await registry.flushPendingDeliveries()
-            return {
-              output: toolOk(toolName, {
-                phase: "bootstrapped",
-                mission_id: spec.mission_id,
-                node_count: bootstrap.node_count,
-                ...(planWarnings?.length && { plan_warnings: planWarnings }),
-              }),
-              ...toolMetadata(toolName),
-            }
-          }
-
-          const orchState = readOrchestrationState(input.directory, spec.mission_id)
-          if (isAwaitingSkillDomainsForScript(orchState, script.scriptHash)) {
-            return {
-              output: toolOk(toolName, {
-                phase: AWAITING_SKILL_DOMAINS_PHASE,
-                mission_id: spec.mission_id,
-                skill_assignment_pending: true,
-                ...(planWarnings?.length && { plan_warnings: planWarnings }),
-              }),
-              ...toolMetadata(toolName),
-            }
-          }
-
-          const kickoff = await registry.skillPipeline.kickoffCuratorSkillAssignment({
-            missionId: spec.mission_id,
+          const specToBootstrap = skillReady
+            ? applySkillDomainAssignments(spec, skillReady.assignments)
+            : spec
+          const bootstrap = await bootstrapMission(input, specToBootstrap, {
             objective: contract?.objective,
-            spec,
           })
-          if (kickoff.delivery !== "failed") {
-            writeOrchestrationState(
-              input.directory,
-              initAwaitingSkillDomainsState(spec.mission_id, script.scriptHash),
-            )
-          }
           await registry.flushPendingDeliveries()
           return {
             output: toolOk(toolName, {
-              phase: AWAITING_SKILL_DOMAINS_PHASE,
-              mission_id: spec.mission_id,
-              ...(planWarnings?.length && { plan_warnings: planWarnings }),
-              ...(kickoff.delivery === "failed" && {
-                kickoff_delivery: kickoff.delivery,
-                ...(kickoff.error && { kickoff_error: kickoff.error }),
-              }),
-            }),
-            ...toolMetadata(toolName),
-          }
-        }
-
-        if (caller === "curator") {
-          const contract = readActiveMissionContract(input.directory, spec.mission_id)
-          const result = await bootstrapMission(input, spec, {
-            objective: contract?.objective,
-          })
-          return {
-            output: toolOk(toolName, {
               phase: "bootstrapped",
-              mission_id: result.mission_id,
-              node_count: result.node_count,
+              mission_id: spec.mission_id,
+              node_count: bootstrap.node_count,
+              skill_domains: skillReady ? "auto" : "deferred_to_retro",
+              ...(planWarnings?.length && { plan_warnings: planWarnings }),
             }),
             ...toolMetadata(toolName),
           }
         }
 
         return {
-          output: toolFail(toolName, "NOT_AUTHORIZED", "Only profile architect or curator may call gatehouse_submit_orchestration"),
+          output: toolFail(toolName, "NOT_AUTHORIZED", "Only profile architect may call gatehouse_submit_orchestration"),
           ...toolMetadata(toolName),
         }
       } catch (error) {
@@ -293,8 +232,6 @@ async function resolveSubmitOrchestrationCaller(input: PluginInput, context: Too
   const registry = await getRegistryStore(input)
   const sender = registry.bySession(context.sessionID)
   if (sender?.scope === "outer" && sender.profile === "architect") return "architect"
-  if (sender?.scope === "outer" && sender.profile === "curator") return "curator"
   if (context.agent === ARCHITECT_OPENCODE) return "architect"
-  if (context.agent === CURATOR_OPENCODE) return "curator"
   return undefined
 }

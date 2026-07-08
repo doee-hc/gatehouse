@@ -266,12 +266,14 @@ describe("gatehouse path permissions", () => {
     expect(read[".gatehouse/en/prompts/architect/**"]).toBe("allow")
   })
 
-  test("curator allows by-domain skills and blocks architect prompts except extract template", () => {
+  test("curator is read-only under gatehouse and denies skill summary record", () => {
+    expect(curatorSessionPermissions.gatehouse_skill_summary_record).toBe("deny")
     const read = curatorSessionPermissions.read as Record<string, string>
+    const edit = curatorSessionPermissions.edit as Record<string, string>
     expect(read[".gatehouse/skills/by-domain/**"]).toBe("allow")
     expect(read[".gatehouse/missions/**/mission.script.ts"]).toBe("deny")
-    expect(read[".gatehouse/en/prompts/architect/domain-skill-extract.md"]).toBe("allow")
-    expect(read[".gatehouse/en/prompts/architect/**"]).toBe("deny")
+    expect(read[".gatehouse/en/prompts/architect/domain-skill-extract.md"]).toBe("deny")
+    expect(edit[".gatehouse/**"]).toBe("deny")
     expect(read[".gatehouse/lead/**"]).toBe("deny")
   })
 

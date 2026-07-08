@@ -38,7 +38,7 @@ disable-model-invocation: true
 4. **验收** — 编排 **terminal 节点**全树 `gatehouse_execution_complete` 后（交付已记录 + precheck；**尚未**上 Portal）→ 读系统发给 Lead 的交付通知（含节点汇报汇总、precheck、`done_when`）与项目内交付路径 → **在对话中请用户对照确认**（autopilot 开启时可自主决断）。
   - **接受且发布**：用户确认接受并要上 Portal → `gatehouse_mission_complete(status=done, publish_deliverables=true, user_feedback=...)`（Skill 仍自动发布；交付物仅此一步上 Portal）。
   - **接受不发布**：`gatehouse_mission_complete(status=done)` — 仅结案，不上 Portal。
-  - **接受 + 复盘**：`gatehouse_mission_retro` → 等待 Gatehouse **复盘摘要就绪**通知（architect `gatehouse_retro_summary_record`；有 skill 分配时 curator `gatehouse_skill_summary_record`）→ `gatehouse_mission_complete(status=done, publish_deliverables=...)` → 请用户确认是否结案（autopilot 开启时可自主）。
+  - **接受 + 复盘**：`gatehouse_mission_retro` → 等待 Gatehouse **复盘摘要就绪**通知（architect `gatehouse_retro_summary_record`；有 skill 分配时 Gatehouse 自动生成并登记 curator 摘要）→ `gatehouse_mission_complete(status=done, publish_deliverables=...)` → 请用户确认是否结案（autopilot 开启时可自主）。
   - **直接完成（不复盘）**：`gatehouse_mission_complete(status=done)` — 向用户说明：**将跳过 skill 提炼**（{{curator_name}} 已登记的 domain 不会生成 `by-domain/*/SKILL.md`）。
   - **拒绝**：`gatehouse_delivery_review(decision=rejected, user_feedback=...)` — 与用户确认后续（`mission_complete(cancelled)` 取消，或改走返工）。
   - **取消 / 中途停止**：`gatehouse_mission_complete`（`status=cancelled` 或 `done`）；**勿**手改 `missions.yaml` 的 `cancelled`/`done`。

@@ -12,10 +12,8 @@ import { RegistryStore } from "../src/registry/store.ts"
 import { OUTER_ARCHITECT_ID } from "../src/registry/types.ts"
 import type { GatehouseClient } from "../src/session/client.ts"
 import {
-  AWAITING_SKILL_DOMAINS_PHASE,
   ensureOrchestrationNodesInitialized,
   hasOrchestrationRuntime,
-  initAwaitingSkillDomainsState,
   initOrchestrationState,
   markNodeRunning,
   mutateOrchestrationState,
@@ -70,14 +68,16 @@ describe("orchestration state", () => {
     expect(orchestrationNeedsResume(state, false)).toBe(false)
   })
 
-  test("ensureOrchestrationNodesInitialized seeds nodes after awaiting_skill_domains", () => {
-    const awaiting = initAwaitingSkillDomainsState("m1", "abc123")
-    expect(orchestrationStateNeedsNodeInit(awaiting, ["a", "b"])).toBe(true)
+  test("ensureOrchestrationNodesInitialized seeds missing nodes", () => {
+    const partial: ReturnType<typeof initOrchestrationState> = {
+      ...initOrchestrationState("m1", []),
+      sandbox: { status: "stopped", script_hash: "abc123" },
+    }
+    expect(orchestrationStateNeedsNodeInit(partial, ["a", "b"])).toBe(true)
 
-    const initialized = ensureOrchestrationNodesInitialized(awaiting, ["a", "b"])
+    const initialized = ensureOrchestrationNodesInitialized(partial, ["a", "b"])
     expect(initialized.nodes.a?.status).toBe("pending")
     expect(initialized.nodes.b?.status).toBe("pending")
-    expect(initialized.phase).toBeUndefined()
     expect(initialized.sandbox?.script_hash).toBe("abc123")
   })
 
@@ -109,10 +109,13 @@ describe("orchestration state", () => {
     }
   })
 
-  test("prepareOrchestrationRuntime initializes nodes after awaiting_skill_domains", async () => {
+  test("prepareOrchestrationRuntime initializes missing orchestration nodes", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "gh-orch-prepare-"))
     try {
-      writeOrchestrationState(dir, initAwaitingSkillDomainsState("orch-m1", "hash123"))
+      writeOrchestrationState(dir, {
+        ...initOrchestrationState("orch-m1", []),
+        sandbox: { status: "stopped", script_hash: "hash123" },
+      })
       const manifest = {
         mission_id: "orch-m1",
         status: "running" as const,
@@ -146,7 +149,6 @@ describe("orchestration state", () => {
       expect(prepared.state.nodes.terminal?.status).toBe("pending")
       expect(prepared.state.nodes.a?.status).toBe("pending")
       expect(prepared.state.nodes.b?.status).toBe("pending")
-      expect(prepared.state.phase).not.toBe(AWAITING_SKILL_DOMAINS_PHASE)
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

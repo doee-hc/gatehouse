@@ -90,7 +90,7 @@ export function retroSummaryRecordTool(input: PluginInput) {
 export function skillSummaryRecordTool(input: PluginInput) {
   return tool({
     description:
-      "profile curator only: register curator skill summary after writing curator-summary.md. When architect summary is also registered, Gatehouse auto-notifies profile lead.",
+      "internal: Gatehouse auto-registers curator-summary.md after extract + verify. Manual calls are not used in normal flow.",
     args: {},
     async execute(_args, context) {
       const toolName = "gatehouse_skill_summary_record"

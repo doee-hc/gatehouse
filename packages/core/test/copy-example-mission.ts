@@ -5,6 +5,18 @@ import { readMissionsDocument, writeMissionsDocument } from "../src/missions/sto
 import { missionEntryToRecord } from "../src/missions/contract.ts"
 import { RegistryDatabase } from "../src/registry/db.ts"
 import { writeActiveMission } from "../src/portal/active-mission.ts"
+import { writeSkillDomainsRegistry } from "../src/skills/domains.ts"
+
+const defaultTestSkillDomains = [
+  { id: "docs", label: "Documentation", description: "README and docs tasks" },
+] as const
+
+export async function seedSkillDomainsRegistry(
+  projectDirectory: string,
+  domains: Array<{ id: string; label?: string; description?: string }> = [...defaultTestSkillDomains],
+) {
+  await writeSkillDomainsRegistry(projectDirectory, domains)
+}
 
 const fixtureRoot = path.join(import.meta.dir, "fixtures/core-example-smoke-v1")
 const missionId = "core-example-smoke-v1"
@@ -65,6 +77,7 @@ export async function copyExampleMission(projectDir: string) {
   await writeMissionsDocument(projectDir, { schema_version: missions.schema_version, missions: without })
 
   await seedExampleMissionRegistry(projectDir)
+  await seedSkillDomainsRegistry(projectDir)
 }
 
 /** Queued entry in yaml only (tests gatehouse_mission_start). */
