@@ -200,4 +200,26 @@ export default async function orchestrate(ctx) {
     const result = await dryRunMissionScriptSource(source, "plan-m1")
     expect(result.ok).toBe(true)
   })
+
+  test("plan replay includes orchestrate preamble for local const references", async () => {
+    const source = `
+export const team = {
+  mission_id: "plan-m1",
+  terminal: "a",
+  nodes: { a: { description: "a" } },
+}
+export default async function orchestrate(ctx) {
+  const OUTPUT_SCHEMA = { type: "object", properties: { ok: { type: "boolean" } } }
+  await ctx.run("a", {
+    brief: { your_work: ["w"], acceptance_slice: ["done"], completion_schema: OUTPUT_SCHEMA },
+    text: "go",
+  })
+}
+`
+    const result = await dryRunMissionScriptSource(source, "plan-m1")
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.plan.steps[0]?.statement).toContain("const OUTPUT_SCHEMA")
+    expect(result.plan.steps[0]?.statement).toContain("completion_schema: OUTPUT_SCHEMA")
+  })
 })

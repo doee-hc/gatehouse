@@ -11,6 +11,7 @@ import { innerAgentId } from "../registry/types.ts"
 import { readActiveMissionContract } from "../missions/contract.ts"
 import { requireActiveMissionId } from "../missions/scope.ts"
 import { ensureSkillDomainDirs, skillDomainIdsFromAssignments } from "../skills/ensure-domain-dirs.ts"
+import { parseSkillDomainAssignments } from "../skills/parse-assignments.ts"
 import { toolFail, toolMetadata, toolOk } from "./envelope.ts"
 
 export function applySkillDomainsTool(input: PluginInput) {
@@ -19,8 +20,13 @@ export function applySkillDomainsTool(input: PluginInput) {
       "profile curator only: assign skill_domain on execution nodes for the active Mission. Creates missing `.gatehouse/skills/by-domain/<domain-id>/` dirs (no SKILL.md). Call after architect gatehouse_submit_orchestration.",
     args: {
       assignments: tool.schema
-        .record(tool.schema.string(), tool.schema.string())
-        .describe('Map node_id to domain-id for nodes that need a domain'),
+        .array(
+          tool.schema.object({
+            node_id: tool.schema.string().describe("execution node id from mission.script team"),
+            domain_id: tool.schema.string().describe("domain id from domains.yaml"),
+          }),
+        )
+        .describe("skill_domain assignment for each execution node"),
     },
     async execute(args, context) {
       const toolName = "gatehouse_apply_skill_domains"
@@ -35,7 +41,16 @@ export function applySkillDomainsTool(input: PluginInput) {
         }
 
         const missionId = requireActiveMissionId(registry)
-        const assignments = args.assignments
+        let assignments: Record<string, string>
+        try {
+          assignments = parseSkillDomainAssignments(args.assignments)
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error)
+          return {
+            output: toolFail(toolName, "INVALID_ASSIGNMENTS", message),
+            ...toolMetadata(toolName),
+          }
+        }
 
         await ensureSkillDomainDirs(input.directory, skillDomainIdsFromAssignments(assignments))
 

@@ -28,7 +28,7 @@ During assignment **call tools only**; do not hand-create directories or `SKILL.
 
 ### 1. skill_domain assignment
 
-After the skill-assignment kickoff, pick `skill_domain` only for execution nodes that should accumulate skills; **omit unassigned nodes from `assignments`**. Optional: update `domains.yaml` first for new domain ids (metadata only). **Only** `gatehouse_apply_skill_domains(assignments='{"node-id":"domain-id"}')` → **end this round** (no messages).
+After the skill-assignment kickoff, pick `skill_domain` only for execution nodes that should accumulate skills; **omit unassigned nodes from `assignments`**. Optional: update `domains.yaml` first for new domain ids (metadata only). **Only** `gatehouse_apply_skill_domains` with `assignments` as an array of `{ node_id, domain_id }` pairs → **end this round** (no messages).
 
 ### 2. Skill summary
 

@@ -28,7 +28,7 @@ disable-model-invocation: true
 
 ### 1. skill_domain 分配
 
-收到 skill 分配 kickoff 后，仅为需沉淀的执行节点选定 `skill_domain`；**未分配节点不要写入 `assignments`**。可选：新 domain-id 先更新 `domains.yaml`（仅元数据）。**仅** `gatehouse_apply_skill_domains(assignments='{"node-id":"domain-id"}')` → **结束本轮**（勿发消息）。
+收到 skill 分配 kickoff 后，仅为需沉淀的执行节点选定 `skill_domain`；**未分配节点不要写入 `assignments`**。可选：新 domain-id 先更新 `domains.yaml`（仅元数据）。**仅**调用 `gatehouse_apply_skill_domains`，`assignments` 为 `{ node_id, domain_id }` 对象数组 → **结束本轮**（勿发消息）。
 
 ### 2. skill 汇总
 

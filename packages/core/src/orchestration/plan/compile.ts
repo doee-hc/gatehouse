@@ -20,6 +20,29 @@ export function trimPlanStatementChunk(chunk: string) {
   return trimmed.trim()
 }
 
+/** Local const/let definitions before the first top-level ctx.run/parallel/pipeline call. */
+export function extractOrchestratePreamble(orchestrateSource: string) {
+  const trimmed = orchestrateSource.trim()
+  if (!trimmed) return ""
+
+  const boundaryPattern = /\bawait\s+ctx\.(?:run|parallel|pipeline)\s*\(/gm
+  let match: RegExpExecArray | null
+  let firstStart: number | undefined
+  while ((match = boundaryPattern.exec(trimmed)) !== null) {
+    if (parenBraceDepthBefore(trimmed, match.index) === 0) {
+      firstStart = match.index
+      break
+    }
+  }
+  if (firstStart === undefined || firstStart === 0) return ""
+  return trimPlanStatementChunk(trimmed.slice(0, firstStart))
+}
+
+export function attachOrchestratePreamble(preamble: string, statement: string) {
+  if (!preamble) return statement
+  return `${preamble}\n${statement}`
+}
+
 /** Split orchestrate body into top-level await ctx.run/parallel/pipeline statements. */
 export function splitOrchestrateStatements(orchestrateSource: string) {
   const statements: string[] = []
@@ -129,9 +152,11 @@ export function compileOrchestrationPlan(input: {
     throw new MissionScriptParseError("SCRIPT_EMPTY_PLAN", "orchestrate body has no await ctx.run/parallel steps")
   }
 
+  const preamble = extractOrchestratePreamble(input.orchestrateSource)
   const steps: PlanStep[] = rawStatements.map((statement, index) => {
-    const step = classifyStatement(statement, input.team)
-    return { ...step, id: `step-${index}` }
+    const fullStatement = attachOrchestratePreamble(preamble, statement)
+    const step = classifyStatement(fullStatement, input.team)
+    return { ...step, id: `step-${index}`, statement: fullStatement }
   })
 
   const warnings = validateWaitSequence(steps)
